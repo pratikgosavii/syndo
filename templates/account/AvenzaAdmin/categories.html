@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Categories</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .category-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 10px;
+        transition: transform 0.3s ease;
+      }
+      .category-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+      }
+      .category-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #291a4a;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .category-card:hover {
+        transform: scale(1.05);
+      }
+      .category-card:hover .category-overlay {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container my-5">
+      <h1 class="text-center text-primary fw-bold mb-5">Categoies</h1>
+      <div class="row g-4" id="categories-container">
+        <!-- Dynamic content will be inserted here -->
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Categories data
+      const categories = [
+        {
+          title: "Birthday",
+          imgSrc:
+            "https://cheetah.cherishx.com/uploads/1715946193_original.jpg?format=avif&width=640",
+        },
+        {
+          title: "Baby Shower",
+          imgSrc:
+            "https://cheetah.cherishx.com/website_layout/baby-shower/Baby-Journey_01.jpg?format=avif",
+        },
+        {
+          title: "Candlelight Dinner",
+          imgSrc:
+            "https://cheetah.cherishx.com/uploads/1680860983_original.jpg?format=avif&width=256",
+        },
+        {
+          title: "Baby Welcome",
+          imgSrc:
+            "https://cheetah.cherishx.com/uploads/1687941004_original.jpg?format=avif&width=384&height=384",
+        },
+        {
+          title: "Wedding Anniversary",
+          imgSrc:
+            "https://cheetah.cherishx.com/uploads/1669111480_original.jpg?format=avif&width=640",
+        },
+        {
+          title: "Haldi & Mehndi",
+          imgSrc:
+            "https://cheetah.cherishx.com/uploads/1672293108_original.jpg?format=avif&width=640",
+        },
+      ];
+
+      // Populate the categories dynamically
+      const container = document.getElementById("categories-container");
+
+      categories.forEach((category) => {
+        const col = document.createElement("div");
+        col.className = "col-12 col-md-6 col-lg-4";
+
+        col.innerHTML = `
+        <div class="category-card shadow border border-light">
+          <img src="${category.imgSrc}" alt="${category.title}" />
+          <div class="category-overlay">${category.title}</div>
+        </div>
+      `;
+
+        container.appendChild(col);
+      });
+    </script>
+  </body>
+</html>
