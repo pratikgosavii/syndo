@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Select Your City</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f8f9fa;
+        margin: 0;
+      }
+
+      .container {
+        max-width: 800px;
+      }
+
+      .city-option {
+        border: 1px solid #291a4a;
+        border-radius: 8px;
+        text-align: center;
+        padding: 15px;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .city-option:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .city-option.selected {
+        background-color: #ece4ff;
+        border-color: #291a4a;
+      }
+
+      .city-option img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        margin-bottom: 10px;
+      }
+
+      .selected-tick {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        font-size: 20px;
+        color: #007bff;
+        display: none;
+      }
+
+      .city-option.selected .selected-tick {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h3 class="text-center mb-4">Select Your City</h3>
+      <div class="row g-3">
+        <div class="col-4">
+          <div class="city-option" data-city="Delhi NCR">
+            <div class="selected-tick">&#10003;</div>
+            <img src="assets/new-delhi.png" alt="Delhi NCR" />
+            <div>Delhi NCR</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="city-option" data-city="Bangalore">
+            <div class="selected-tick">&#10003;</div>
+            <img src="assets/bangalore.png" alt="Bangalore" />
+            <div>Bangalore</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="city-option" data-city="Hyderabad">
+            <div class="selected-tick">&#10003;</div>
+            <img src="assets/hyderabad-charminar.png" alt="Hyderabad" />
+            <div>Hyderabad</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="city-option" data-city="Kolkata">
+            <div class="selected-tick">&#10003;</div>
+            <img src="assets/kolkata.png" alt="Kolkata" />
+            <div>Kolkata</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="city-option" data-city="Jaipur">
+            <div class="selected-tick">&#10003;</div>
+            <img src="assets/jaipur.png" alt="Jaipur" />
+            <div>Jaipur</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="city-option" data-city="Mumbai">
+            <div class="selected-tick">&#10003;</div>
+            <img src="assets/gate-of-india.png" alt="Mumbai" />
+            <div>Mumbai</div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="city-option" data-city="Across India">
+            <div class="selected-tick">&#10003;</div>
+            <img src="assets/india.png" alt="Across India" />
+            <div>Across India</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document.querySelectorAll(".city-option").forEach((option) => {
+        option.addEventListener("click", () => {
+          option.classList.toggle("selected");
+        });
+      });
+    </script>
+  </body>
+</html>

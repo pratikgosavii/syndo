@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Category</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f0d28c;
+        padding: 20px;
+      }
+      .form-container {
+        background-color: #ffffff;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      .form-heading {
+        text-align: left;
+        margin-bottom: 20px;
+        font-weight: bold;
+        font-size: 2rem;
+        color: #291a4a;
+      }
+      .description-box {
+        height: 150px; /* Enough height for 200-250 words */
+        resize: none;
+      }
+      .image-preview {
+        max-height: 100px;
+        margin-top: 10px;
+      }
+      .btn-primary {
+        background-color: #291a4a;
+        border-color: #291a4a;
+      }
+      .custom-button {
+        width: 150px; /* Adjust to your desired width */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="form-container">
+        <h1 class="form-heading">Create Category</h1>
+        <form>
+          <!-- Banner Image Upload Section -->
+          <div class="mb-4">
+            <label for="bannerImages" class="form-label mb-4"
+              >Upload Images (Banner Slider)
+            </label>
+            <div class="row g-3">
+              <div class="col-md-3">
+                <input
+                  type="file"
+                  class="form-control"
+                  id="bannerImage1"
+                  accept="image/*"
+                />
+                <img
+                  id="preview1"
+                  class="image-preview"
+                  src=""
+                  alt="Preview"
+                  hidden
+                />
+              </div>
+              <div class="col-md-3">
+                <input
+                  type="file"
+                  class="form-control"
+                  id="bannerImage2"
+                  accept="image/*"
+                />
+                <img
+                  id="preview2"
+                  class="image-preview"
+                  src=""
+                  alt="Preview"
+                  hidden
+                />
+              </div>
+              <div class="col-md-3">
+                <input
+                  type="file"
+                  class="form-control"
+                  id="bannerImage3"
+                  accept="image/*"
+                />
+                <img
+                  id="preview3"
+                  class="image-preview"
+                  src=""
+                  alt="Preview"
+                  hidden
+                />
+              </div>
+              <div class="col-md-3">
+                <input
+                  type="file"
+                  class="form-control"
+                  id="bannerImage4"
+                  accept="image/*"
+                />
+                <img
+                  id="preview4"
+                  class="image-preview"
+                  src=""
+                  alt="Preview"
+                  hidden
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Category Title Section -->
+          <div class="mb-4">
+            <label for="categoryTitle" class="form-label"
+              >Category Title:</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="categoryTitle"
+              placeholder="Title"
+              required
+            />
+          </div>
+
+          <!-- Category Description Section -->
+          <div class="mb-4">
+            <label for="categoryDescription" class="form-label"
+              >Category Description:</label
+            >
+            <textarea
+              class="form-control description-box"
+              id="categoryDescription"
+              placeholder="Description"
+              required
+            ></textarea>
+          </div>
+
+          <!-- Category Description Section -->
+          <div class="mb-4">
+            <label for="categorySubDescription" class="form-label"
+              >Category Sub Description:</label
+            >
+            <textarea
+              class="form-control sub-description-box"
+              id="categorySubDescription"
+              placeholder="Sub Description"
+              required
+            ></textarea>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary custom-button">
+              Submit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Image preview logic
+      function previewImage(input, previewId) {
+        const file = input.files[0];
+        const preview = document.getElementById(previewId);
+
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (event) {
+            preview.src = event.target.result;
+            preview.hidden = false;
+          };
+          reader.readAsDataURL(file);
+        } else {
+          preview.src = "";
+          preview.hidden = true;
+        }
+      }
+
+      document
+        .getElementById("bannerImage1")
+        .addEventListener("change", (e) => previewImage(e.target, "preview1"));
+      document
+        .getElementById("bannerImage2")
+        .addEventListener("change", (e) => previewImage(e.target, "preview2"));
+      document
+        .getElementById("bannerImage3")
+        .addEventListener("change", (e) => previewImage(e.target, "preview3"));
+      document
+        .getElementById("bannerImage4")
+        .addEventListener("change", (e) => previewImage(e.target, "preview4"));
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

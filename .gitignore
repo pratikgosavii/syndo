@@ -1,0 +1,11 @@
+db.sqlite3
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+syndo/svindovenderapp-firebase-adminsdk-fbsvc-d8015466eb.json
+media
+.env
+# Ignore wsgi.py
+syndo/wsgi.py
+
