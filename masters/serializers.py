@@ -59,3 +59,17 @@ class HomeBannerSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(obj.image.url)
         return obj.image.url
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = company
+        fields = '__all__'
+        read_only_fields = ['user']
+
+
+    def create(self, validated_data):
+        request = self.context['request']
+        validated_data['user'] = request.user
+        return super().create(validated_data)
+    

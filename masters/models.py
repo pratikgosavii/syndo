@@ -86,7 +86,6 @@ class product_category(models.Model):
         return self.name
 
 
-
 class product(models.Model):
     
     name = models.CharField(max_length=255)
@@ -104,9 +103,6 @@ class product(models.Model):
         return self.name
 
 
-
-
-
 class event(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -118,6 +114,17 @@ class event(models.Model):
         return self.name
 
 
+class company(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    company_name = models.CharField(max_length=100)
+    brand_name = models.CharField(max_length=100)
+    email = models.EmailField(max_length=255)
+    image = models.ImageField(upload_to='doctor_images/')
+    date_created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
 
 
 class home_banner(models.Model):

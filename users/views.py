@@ -145,9 +145,7 @@ class LoginAPIView(APIView):
             if user:
                 role_map = {
                     "customer": user.is_customer,
-                    "doctor": user.is_doctor,
-                    "daycare": user.is_daycare,
-                    "service_provider": user.is_service_provider
+                    "doctor": user.is_vendor,
                 }
 
                 if not role_map.get(user_type, False):
@@ -162,9 +160,7 @@ class LoginAPIView(APIView):
             else:
                 role_flags = {
                     "is_customer": False,
-                    "is_doctor": False,
-                    "is_daycare": False,
-                    "is_service_provider": False
+                    "is_vendor": False,
                 }
 
                 if f"is_{user_type}" not in role_flags:
