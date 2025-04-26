@@ -145,7 +145,7 @@ class LoginAPIView(APIView):
             if user:
                 role_map = {
                     "customer": user.is_customer,
-                    "doctor": user.is_vendor,
+                    "vendor": user.is_vendor,
                 }
 
                 if not role_map.get(user_type, False):
