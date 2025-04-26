@@ -623,3 +623,32 @@ def get_home_banner(request):
     return JsonResponse({"data": serialized_data}, status=200)
 
 
+
+from rest_framework import viewsets
+
+
+class CompanyViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        queryset = company.objects.all()
+        serializer = CompanySerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        obj = get_object_or_404(company, pk=pk)
+        serializer = CompanySerializer(obj)
+        return Response(serializer.data)
+
+    def update(self, request, pk=None):
+        obj = get_object_or_404(company, pk=pk)
+        serializer = CompanySerializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        obj = get_object_or_404(company, pk=pk)
+        obj.delete()
+        return Response({"detail": "Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
