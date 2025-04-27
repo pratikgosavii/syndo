@@ -118,6 +118,7 @@ class company(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     company_name = models.CharField(max_length=100)
+    address = models.CharField(max_length=100)
     brand_name = models.CharField(max_length=100)
     email = models.EmailField(max_length=255)
     image = models.ImageField(upload_to='doctor_images/')
