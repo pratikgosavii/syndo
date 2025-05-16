@@ -88,19 +88,89 @@ class product_category(models.Model):
 
 class product(models.Model):
     
+    TYPE_CHOICES = (
+        ('product', 'Product'),
+        ('service', 'Service'),
+        ('print', 'Print'),
+    )
+
+    SALE_TYPE_CHOICES = (
+        ('offline', 'Offline Only'),
+        ('both', 'Both Online & Offline'),
+    )
+
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='productssdsdsd')
+
+    product_type  = models.CharField(max_length=10, choices=TYPE_CHOICES, default='product')
+    sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES, default='offline')
+
     name = models.CharField(max_length=255)
-    category = models.ForeignKey(product_category, on_delete=models.CASCADE, null=True, blank=True)
+    category = models.ForeignKey(product_category, on_delete=models.SET_NULL, null=True, blank=True)
+    sub_category = models.CharField(max_length=255, null=True, blank=True)
+
+    # Pricing details
+    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
+    sales_price = models.DecimalField(max_digits=10, decimal_places=2)
+    mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    unit = models.CharField(max_length=50, null=True, blank=True)
+    hsn = models.CharField(max_length=50, null=True, blank=True)
+    gst = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Stock
+    track_serial_numbers = models.BooleanField(default=False)
+    opening_stock = models.IntegerField(null=True, blank=True)
+    low_stock_alert = models.BooleanField(default=False)
+    low_stock_quantity = models.IntegerField(null=True, blank=True)
+
+    # Optional
+    brand_name = models.CharField(max_length=255, null=True, blank=True)
+    color = models.CharField(max_length=50, null=True, blank=True)
+    size = models.CharField(max_length=50, null=True, blank=True)
+    batch_number = models.CharField(max_length=100, null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+
     description = models.TextField(null=True, blank=True)
-    image = models.ImageField(upload_to='product_images/')
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0, null=True, blank=True)
+    image = models.ImageField(upload_to='product_images/', null=True, blank=True)
+    gallery_images = models.ImageField(upload_to='product_gallery/', null=True, blank=True)
+
+    # Delivery & Policies
+    instant_delivery = models.BooleanField(default=False)
+    self_pickup = models.BooleanField(default=False)
+    general_delivery = models.BooleanField(default=False)
+
+    return_policy = models.BooleanField(default=False)
+    cod = models.BooleanField(default=False)
+    replacement = models.BooleanField(default=False)
+    shop_exchange = models.BooleanField(default=False)
+    shop_warranty = models.BooleanField(default=False)
+    brand_warranty = models.BooleanField(default=False)
+
+    # Flags
     is_popular = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+    @property
+    def current_stock(self):
+        if self.track_serial_numbers:
+            return self.serials.filter(is_sold=False).count()
+        return self.opening_stock or 0
+
+
+class ProductSerial(models.Model):
+    product = models.ForeignKey(product, on_delete=models.CASCADE, related_name='serials')
+    serial_number = models.CharField(max_length=100, unique=True)
+    is_sold = models.BooleanField(default=False)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.serial_number}"
 
 
 class event(models.Model):

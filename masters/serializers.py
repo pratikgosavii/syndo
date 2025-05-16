@@ -30,9 +30,11 @@ class testimonials_serializer(serializers.ModelSerializer):
 
 
 class product_serializer(serializers.ModelSerializer):
+    
     class Meta:
         model = product
         fields = '__all__'
+        read_only_fields = ['user']  
 
 
 class product_category_serializer(serializers.ModelSerializer):
