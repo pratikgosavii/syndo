@@ -19,6 +19,18 @@
                         </li>
 
                    
+                        <li>
+                            <li>
+                                <a href="javascript: void(0);" class="has-arrow">
+                                    <i data-feather="layers"></i>
+                                    <span data-key="t-authentication">Company Profile</span>
+                                </a>
+                                <ul class="sub-menu" aria-expanded="false">
+                                    <li><a href="{% url 'add_company_profile' %}">Add Company Profile</a></li>
+                                    <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li>
+                                </ul>
+                            </li>
+                        <li>
                         
                         <li>
                             <li>
@@ -44,7 +56,18 @@
                             </ul>
                         </li> 
 
-                            <li>
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Product Addon</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_addon' %}">Add Addon</a></li>
+                                <li><a href="{% url 'list_addon' %}"> Addon List</a></li>
+                            </ul>
+                        </li> 
+
+                        <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
                                 <span data-key="t-authentication">Product</span>

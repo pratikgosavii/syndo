@@ -13,15 +13,11 @@ from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register(r'customer-address', customer_address_ViewSet, basename='pet-test-booking')
 router.register(r'company', CompanyViewSet, basename='company')
-router.register(r'product', ProductViewSet, basename='product')
-# router.register(r'product-addon', ProductAddonViewSet, basename='ProductAddonViewSet')
 
 
 
 urlpatterns = [
 
-
-    
 
     path('add-coupon/', add_coupon, name='add_coupon'),
     path('update-coupon/<coupon_id>', update_coupon, name='update_coupon'),
@@ -52,12 +48,6 @@ urlpatterns = [
     path('list-customer-address/', list_customer_address, name='list_customer_address'),  # create or fetch list of admins
     path('delete-customer-address/<customer_address_id>', delete_customer_address, name='delete_customer_address'),  # create or fetch list of admins
     # path('get-customer-address/', get_customer_address.as_view() , name='get_customer_address '), 
-
-    path('add-product/', add_product, name='add_product'),
-    path('update-product/<product_id>', update_product, name='update_product'),
-    path('delete-product/<product_id>', delete_product, name='delete_product'),
-    path('list-product/', list_product, name='list_product'),
-    # path('get-product/', get_product.as_view(), name='get_product'),
 
     
     path('add-home-banner/', add_home_banner, name='add_home_banner'),  # create or fetch list of admins

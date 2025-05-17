@@ -11,11 +11,6 @@ class couponFilter(django_filters.FilterSet):
         model = coupon
         exclude = ['image']  # ⛔ Exclude unsupported field
 
-class productFilter(django_filters.FilterSet):
-    class Meta:
-        model = product
-        exclude = ['image', 'gallery_images', 'user']  # ⛔ Exclude unsupported field
-
 class product_categoryFilter(django_filters.FilterSet):
     class Meta:
         model = product_category
