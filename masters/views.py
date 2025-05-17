@@ -6,6 +6,7 @@ from masters.filters import EventFilter
 
 
 from .models import *
+from vendor.models import *
 from .forms import *
 from django.contrib.auth.decorators import login_required
 
@@ -25,7 +26,6 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
       
-
 
 @login_required(login_url='login_admin')
 def add_coupon(request):
@@ -423,7 +423,7 @@ def update_customer_address(request, customer_address_id):
 
 def list_customer_address(request):
 
-    data = customer_address.objects.all()
+    data = customer_address.objects.filter(user = request.user)
 
     return render(request, 'list_customer_address.html', {'data' : data})
 
@@ -449,92 +449,7 @@ class get_customer_address(ListAPIView):
         return customer_address.objects.filter(user=self.request.user)
 
 
-
-@login_required(login_url='login_admin')
-def add_product(request):
-
-    if request.method == 'POST':
-
-        forms = product_Form(request.POST, request.FILES)
-
-        if forms.is_valid():
-            forms.save()
-            return redirect('list_product')
-        else:
-            print(forms.errors)
-            context = {
-                'form': forms
-            }
-            return render(request, 'add_product.html', context)
-    
-    else:
-
-        forms = product_Form()
-
-        context = {
-            'form': forms
-        }
-        return render(request, 'add_product.html', context)
-
-        
-
-@login_required(login_url='login_admin')
-def update_product(request, product_id):
-
-    if request.method == 'POST':
-
-        instance = product.objects.get(id=product_id)
-
-        forms = product_Form(request.POST, request.FILES, instance=instance)
-
-        if forms.is_valid():
-            forms.save()
-            return redirect('list_product')
-        else:
-            print(forms.errors)
-    
-    else:
-
-        instance = product.objects.get(id=product_id)
-        forms = product_Form(instance=instance)
-
-        context = {
-            'form': forms
-        }
-        return render(request, 'add_product.html', context)
-
-        
-
-@login_required(login_url='login_admin')
-def delete_product(request, product_id):
-
-    product.objects.get(id=product_id).delete()
-
-    return HttpResponseRedirect(reverse('list_product'))
-
-
-@login_required(login_url='login_admin')
-def list_product(request):
-
-    data = product.objects.all()
-    context = {
-        'data': data
-    }
-    return render(request, 'list_product.html', context)
-
-
-from django.http import JsonResponse
-
-
-class get_product(ListAPIView):
-    queryset = product.objects.all()
-    serializer_class = product_serializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = '__all__'  # enables filtering on all fields
-    filterset_class = productFilter  # enables filtering on all fields
-
-
-
+from django.forms import inlineformset_factory
 
 
 def add_home_banner(request):
@@ -641,17 +556,4 @@ class CompanyViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-from users.permissions import *
 
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = product.objects.all()
-    serializer_class = product_serializer
-    permission_classes = [IsVendor]
-
-    def get_queryset(self):
-        # Return only products of logged-in user
-        return product.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        # Automatically assign logged-in user to the product
-        serializer.save(user=self.request.user)

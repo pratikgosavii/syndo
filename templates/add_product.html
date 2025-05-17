@@ -55,10 +55,6 @@
                     <form method="POST" enctype="multipart/form-data">
                         {% csrf_token %}
                         
-                        <div class="mb-3">
-                            <label for="id_name" class="form-label">User Name</label>
-                            {{ form.user }}
-                        </div>
                         
                         <div class="mb-3">
                             <label for="id_name" class="form-label">Product Name</label>
@@ -253,6 +249,49 @@
                             <label class="form-check-label" for="id_is_active">Is Active</label>
                         </div>
 
+
+                    
+
+                        <hr>
+                        <h5 class="form-heading">Addons</h5>
+                        <div id="addon-formset">
+                            {{ formset.management_form }}
+                            {% for addon_form in formset %}
+                                <div class="addon-form mb-4 p-3 border rounded">
+                                    
+                                    {# Render hidden fields first (like id, product, DELETE checkbox hidden input) #}
+                                    {% for hidden in addon_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+
+                                    {# Render visible fields #}
+                                    {% for field in addon_form.visible_fields %}
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ field.label }}</label>
+                                            {{ field }}
+                                            {% if field.help_text %}
+                                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                                            {% endif %}
+                                            {% for error in field.errors %}
+                                                <div class="text-danger">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+
+                                  
+                                </div>
+                            {% endfor %}
+                            <button type="button" class="btn btn-outline-primary" id="add-addon">Add Another Addon</button>
+                        </div>
+
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary custom-button">Submit</button>
+                        </div>
+                
+                        </div>
+
+                        
                         
 
                     </form>
@@ -286,4 +325,60 @@
         }
     });
 </script>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const addBtn = document.getElementById("add-addon");
+        const formContainer = document.getElementById("addon-formset");
+        const totalForms = document.getElementById("id_product_addon_set-TOTAL_FORMS");
+        const totalFormsElement = document.getElementById("id_product_addon_set-TOTAL_FORMS");
+
+        if (totalFormsElement) {
+            let totalForms = parseInt(totalFormsElement.value);
+            console.log(totalForms);
+        }
+        
+        if (totalFormsElement) {
+            const totalForms = parseInt(totalFormsElement.value);
+            // your logic to clone and insert a new form
+        } else {
+            console.error("TOTAL_FORMS element not found");
+        }
+        
+        addBtn.addEventListener("click", function() {
+            const currentFormCount = parseInt(totalForms.value);
+            const newForm = formContainer.querySelector(".addon-form").cloneNode(true);
+    
+            // Clear the values and update indices
+            Array.from(newForm.querySelectorAll("input, select")).forEach(function(input) {
+                const name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
+                const id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
+                input.name = name;
+                input.id = id;
+    
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    input.checked = false;
+                } else {
+                    input.value = '';
+                }
+            });
+    
+            // Also update label `for` attributes
+            Array.from(newForm.querySelectorAll("label")).forEach(function(label) {
+                if (label.htmlFor) {
+                    label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${currentFormCount}-`);
+                }
+            });
+    
+            totalForms.value = currentFormCount + 1;
+            formContainer.appendChild(newForm);
+        });
+    });
+    </script>
+    
+
+
+
+
 {% endblock extra_js %}
