@@ -450,88 +450,88 @@ class get_customer_address(ListAPIView):
 
 
 
-# @login_required(login_url='login_admin')
-# def add_product(request):
+@login_required(login_url='login_admin')
+def add_product(request):
 
-#     if request.method == 'POST':
+    if request.method == 'POST':
 
-#         forms = product_Form(request.POST, request.FILES)
+        forms = product_Form(request.POST, request.FILES)
 
-#         if forms.is_valid():
-#             forms.save()
-#             return redirect('list_product')
-#         else:
-#             print(forms.errors)
-#             context = {
-#                 'form': forms
-#             }
-#             return render(request, 'add_product.html', context)
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_product')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_product.html', context)
     
-#     else:
+    else:
 
-#         forms = product_Form()
+        forms = product_Form()
 
-#         context = {
-#             'form': forms
-#         }
-#         return render(request, 'add_product.html', context)
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_product.html', context)
 
         
 
-# @login_required(login_url='login_admin')
-# def update_product(request, product_id):
+@login_required(login_url='login_admin')
+def update_product(request, product_id):
 
-#     if request.method == 'POST':
+    if request.method == 'POST':
 
-#         instance = product.objects.get(id=product_id)
+        instance = product.objects.get(id=product_id)
 
-#         forms = product_Form(request.POST, request.FILES, instance=instance)
+        forms = product_Form(request.POST, request.FILES, instance=instance)
 
-#         if forms.is_valid():
-#             forms.save()
-#             return redirect('list_product')
-#         else:
-#             print(forms.errors)
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_product')
+        else:
+            print(forms.errors)
     
-#     else:
+    else:
 
-#         instance = product.objects.get(id=product_id)
-#         forms = product_Form(instance=instance)
+        instance = product.objects.get(id=product_id)
+        forms = product_Form(instance=instance)
 
-#         context = {
-#             'form': forms
-#         }
-#         return render(request, 'add_product.html', context)
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_product.html', context)
 
         
 
-# @login_required(login_url='login_admin')
-# def delete_product(request, product_id):
+@login_required(login_url='login_admin')
+def delete_product(request, product_id):
 
-#     product.objects.get(id=product_id).delete()
+    product.objects.get(id=product_id).delete()
 
-#     return HttpResponseRedirect(reverse('list_product'))
-
-
-# @login_required(login_url='login_admin')
-# def list_product(request):
-
-#     data = product.objects.all()
-#     context = {
-#         'data': data
-#     }
-#     return render(request, 'list_product.html', context)
+    return HttpResponseRedirect(reverse('list_product'))
 
 
-# from django.http import JsonResponse
+@login_required(login_url='login_admin')
+def list_product(request):
+
+    data = product.objects.all()
+    context = {
+        'data': data
+    }
+    return render(request, 'list_product.html', context)
 
 
-# class get_product(ListAPIView):
-#     queryset = product.objects.all()
-#     serializer_class = product_serializer
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_fields = '__all__'  # enables filtering on all fields
-#     filterset_class = productFilter  # enables filtering on all fields
+from django.http import JsonResponse
+
+
+class get_product(ListAPIView):
+    queryset = product.objects.all()
+    serializer_class = product_serializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = '__all__'  # enables filtering on all fields
+    filterset_class = productFilter  # enables filtering on all fields
 
 
 

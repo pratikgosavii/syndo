@@ -56,54 +56,205 @@
                         {% csrf_token %}
                         
                         <div class="mb-3">
+                            <label for="id_name" class="form-label">User Name</label>
+                            {{ form.user }}
+                        </div>
+                        
+                        <div class="mb-3">
                             <label for="id_name" class="form-label">Product Name</label>
                             {{ form.name }}
                         </div>
-
+                    
                         <div class="mb-3">
-                            <label for="id_name" class="form-label">Category Name</label>
+                            <label for="id_product_type" class="form-label">Product Type</label>
+                            {{ form.product_type }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_sale_type" class="form-label">Sale Type</label>
+                            {{ form.sale_type }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_category" class="form-label">Category</label>
                             {{ form.category }}
                         </div>
-
+                    
+                        <div class="mb-3">
+                            <label for="id_sub_category" class="form-label">Sub Category</label>
+                            {{ form.sub_category }}
+                        </div>
+                    
                         <div class="mb-3">
                             <label for="id_description" class="form-label">Description</label>
                             {{ form.description }}
                         </div>
-
+                    
+                        <!-- Pricing -->
+                        <hr>
                         <div class="mb-3">
-                            <label for="id_image" class="form-label">Image</label>
+                            <label for="id_wholesale_price" class="form-label">Wholesale Price</label>
+                            {{ form.wholesale_price }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_purchase_price" class="form-label">Purchase Price</label>
+                            {{ form.purchase_price }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_sales_price" class="form-label">Sales Price</label>
+                            {{ form.sales_price }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_mrp" class="form-label">MRP</label>
+                            {{ form.mrp }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_unit" class="form-label">Unit</label>
+                            {{ form.unit }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_hsn" class="form-label">HSN</label>
+                            {{ form.hsn }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_gst" class="form-label">GST (%)</label>
+                            {{ form.gst }}
+                        </div>
+                    
+                        <!-- Stock -->
+                        <hr>
+                        <div class="mb-3 form-check">
+                            {{ form.track_serial_numbers }}
+                            <label class="form-check-label" for="id_track_serial_numbers">Track Serial Numbers</label>
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_opening_stock" class="form-label">Opening Stock</label>
+                            {{ form.opening_stock }}
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.low_stock_alert }}
+                            <label class="form-check-label" for="id_low_stock_alert">Low Stock Alert</label>
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_low_stock_quantity" class="form-label">Low Stock Quantity</label>
+                            {{ form.low_stock_quantity }}
+                        </div>
+                    
+                        <!-- Optional Attributes -->
+                        <hr>
+                        <div class="mb-3">
+                            <label for="id_brand_name" class="form-label">Brand Name</label>
+                            {{ form.brand_name }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_color" class="form-label">Color</label>
+                            {{ form.color }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_size" class="form-label">Size</label>
+                            {{ form.size }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_batch_number" class="form-label">Batch Number</label>
+                            {{ form.batch_number }}
+                        </div>
+                    
+                        <div class="mb-3">
+                            <label for="id_expiry_date" class="form-label">Expiry Date</label>
+                            {{ form.expiry_date }}
+                        </div>
+                    
+                        <!-- Images -->
+                        <hr>
+                        <div class="mb-3">
+                            <label for="id_image" class="form-label">Main Image</label>
                             {{ form.image }}
                             <img id="preview" class="image-preview" src="#" alt="Image Preview" hidden>
                         </div>
-
+                    
                         <div class="mb-3">
-                            <label for="id_price" class="form-label">Price</label>
-                            {{ form.price }}
+                            <label for="id_gallery_images" class="form-label">Gallery Images</label>
+                            {{ form.gallery_images }}
                         </div>
-
-                        <div class="mb-3">
-                            <label for="id_rating" class="form-label">Rating</label>
-                            {{ form.rating }}
+                    
+                        <!-- Delivery & Policies -->
+                        <hr>
+                        <div class="mb-3 form-check">
+                            {{ form.instant_delivery }}
+                            <label class="form-check-label" for="id_instant_delivery">Instant Delivery</label>
                         </div>
-
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.self_pickup }}
+                            <label class="form-check-label" for="id_self_pickup">Self Pickup</label>
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.general_delivery }}
+                            <label class="form-check-label" for="id_general_delivery">General Delivery</label>
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.return_policy }}
+                            <label class="form-check-label" for="id_return_policy">Return Policy</label>
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.cod }}
+                            <label class="form-check-label" for="id_cod">Cash on Delivery</label>
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.replacement }}
+                            <label class="form-check-label" for="id_replacement">Replacement</label>
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.shop_exchange }}
+                            <label class="form-check-label" for="id_shop_exchange">Shop Exchange</label>
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.shop_warranty }}
+                            <label class="form-check-label" for="id_shop_warranty">Shop Warranty</label>
+                        </div>
+                    
+                        <div class="mb-3 form-check">
+                            {{ form.brand_warranty }}
+                            <label class="form-check-label" for="id_brand_warranty">Brand Warranty</label>
+                        </div>
+                    
+                        <!-- Flags -->
+                        <hr>
                         <div class="mb-3 form-check">
                             {{ form.is_popular }}
-                            <label class="form-check-label" for="id_is_active">Is Popular</label>
+                            <label class="form-check-label" for="id_is_popular">Is Popular</label>
                         </div>
-
+                    
                         <div class="mb-3 form-check">
                             {{ form.is_featured }}
-                            <label class="form-check-label" for="id_is_active">Is Featured</label>
+                            <label class="form-check-label" for="id_is_featured">Is Featured</label>
                         </div>
-
+                    
                         <div class="mb-3 form-check">
                             {{ form.is_active }}
                             <label class="form-check-label" for="id_is_active">Is Active</label>
                         </div>
 
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary custom-button">Submit</button>
-                        </div>
+                        
+
                     </form>
                 </div>
             </div>

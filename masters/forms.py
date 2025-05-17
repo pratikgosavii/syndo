@@ -75,6 +75,57 @@ class product_category_Form(forms.ModelForm):
 #             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
 #         }
 
+
+class product_Form(forms.ModelForm):
+    class Meta:
+        model = product
+        fields = '__all__'
+        widgets = {
+            'user': forms.Select(attrs={'class': 'form-control'}),
+            'product_type': forms.Select(attrs={'class': 'form-control'}),
+            'sale_type': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            'sub_category': forms.TextInput(attrs={'class': 'form-control'}),
+
+            'wholesale_price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'purchase_price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'sales_price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'mrp': forms.NumberInput(attrs={'class': 'form-control'}),
+            'unit': forms.TextInput(attrs={'class': 'form-control'}),
+            'hsn': forms.TextInput(attrs={'class': 'form-control'}),
+            'gst': forms.NumberInput(attrs={'class': 'form-control'}),
+
+            'track_serial_numbers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'opening_stock': forms.NumberInput(attrs={'class': 'form-control'}),
+            'low_stock_alert': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'low_stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+
+            'brand_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'color': forms.TextInput(attrs={'class': 'form-control'}),
+            'size': forms.TextInput(attrs={'class': 'form-control'}),
+            'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'expiry_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'gallery_images': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+
+            'instant_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'self_pickup': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'general_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'return_policy': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'cod': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'replacement': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'shop_exchange': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'shop_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'brand_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+
+            'is_popular': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
 class event_Form(forms.ModelForm):
     class Meta:
         model = event

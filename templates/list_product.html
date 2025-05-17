@@ -87,8 +87,32 @@
                                                 <th>Image</th>
                                                 <th>Name</th>
                                                 <th>Category</th>
-                                                <th>Price</th>
-                                                <th>Rating</th>
+                                                <th>Sub Category</th>
+                                                <th>Brand</th>
+                                                <th>Color</th>
+                                                <th>Size</th>
+                                                <th>Unit</th>
+                                                <th>HSN</th>
+                                                <th>GST (%)</th>
+                                                <th>Wholesale Price</th>
+                                                <th>Purchase Price</th>
+                                                <th>Sales Price</th>
+                                                <th>MRP</th>
+                                                <th>Opening Stock</th>
+                                                <th>Low Stock Alert</th>
+                                                <th>Low Stock Qty</th>
+                                                <th>Batch No.</th>
+                                                <th>Expiry Date</th>
+                                                <th>Track Serial No.</th>
+                                                <th>Instant Delivery</th>
+                                                <th>Self Pickup</th>
+                                                <th>General Delivery</th>
+                                                <th>Return Policy</th>
+                                                <th>COD</th>
+                                                <th>Replacement</th>
+                                                <th>Shop Exchange</th>
+                                                <th>Shop Warranty</th>
+                                                <th>Brand Warranty</th>
                                                 <th>Is Popular</th>
                                                 <th>Is Featured</th>
                                                 <th>Is Active</th>
@@ -109,8 +133,32 @@
                                                     </td>
                                                     <td>{{ i.name }}</td>
                                                     <td>{{ i.category }}</td>
-                                                    <td>₹{{ i.price }}</td>
-                                                    <td>{{ i.rating }}</td>
+                                                    <td>{{ i.sub_category }}</td>
+                                                    <td>{{ i.brand_name }}</td>
+                                                    <td>{{ i.color }}</td>
+                                                    <td>{{ i.size }}</td>
+                                                    <td>{{ i.unit }}</td>
+                                                    <td>{{ i.hsn }}</td>
+                                                    <td>{{ i.gst }}</td>
+                                                    <td>₹{{ i.wholesale_price }}</td>
+                                                    <td>₹{{ i.purchase_price }}</td>
+                                                    <td>₹{{ i.sales_price }}</td>
+                                                    <td>₹{{ i.mrp }}</td>
+                                                    <td>{{ i.opening_stock }}</td>
+                                                    <td>{{ i.low_stock_alert }}</td>
+                                                    <td>{{ i.low_stock_quantity }}</td>
+                                                    <td>{{ i.batch_number }}</td>
+                                                    <td>{{ i.expiry_date }}</td>
+                                                    <td>{{ i.track_serial_numbers }}</td>
+                                                    <td>{{ i.instant_delivery }}</td>
+                                                    <td>{{ i.self_pickup }}</td>
+                                                    <td>{{ i.general_delivery }}</td>
+                                                    <td>{{ i.return_policy }}</td>
+                                                    <td>{{ i.cod }}</td>
+                                                    <td>{{ i.replacement }}</td>
+                                                    <td>{{ i.shop_exchange }}</td>
+                                                    <td>{{ i.shop_warranty }}</td>
+                                                    <td>{{ i.brand_warranty }}</td>
                                                     <td>{{ i.is_popular }}</td>
                                                     <td>{{ i.is_featured }}</td>
                                                     <td>
@@ -132,11 +180,12 @@
                                                 {% endfor %}
                                             {% else %}
                                                 <tr>
-                                                    <td colspan="7" class="text-center">No products available.</td>
+                                                    <td colspan="34" class="text-center">No products available.</td>
                                                 </tr>
                                             {% endif %}
                                         </tbody>
                                     </table>
+                                    
                                 </div>
                             </div>
                         </div>
