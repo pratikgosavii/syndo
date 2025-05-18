@@ -46,6 +46,19 @@ class testimonials_Form(forms.ModelForm):
 
 
 
+class expense_category_Form(forms.ModelForm):
+    class Meta:
+        model = expense_category
+        fields = '__all__'
+        widgets = {
+           
+            'name': forms.TextInput(attrs={
+                'class': 'form-control', 'id': 'name'
+            }),
+
+        }
+
+
 class product_category_Form(forms.ModelForm):
     class Meta:
         model = product_category
