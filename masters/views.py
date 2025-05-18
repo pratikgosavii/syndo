@@ -359,6 +359,77 @@ class get_product_category(ListAPIView):
     
 
 
+
+
+def add_expense_category(request):
+    
+    if request.method == "POST":
+
+        forms = expense_category_Form(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_expense_category')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_expense_category.html', context)
+
+
+    else:
+
+        # create first row using admin then editing only
+
+        
+
+        return render(request, 'add_expense_category.html', { 'form' : expense_category_Form()})
+
+def update_expense_category(request, expense_category_id):
+    
+    instance = expense_category.objects.get(id = expense_category_id)
+
+    if request.method == "POST":
+
+        forms = expense_category_Form(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_expense_category')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_expense_category.html', context)
+    
+    else:
+
+        # create first row using admin then editing only
+
+        forms = expense_category_Form(instance=instance)
+
+        return render(request, 'add_expense_category.html', {'form' : forms})
+
+
+def list_expense_category(request):
+
+    data = expense_category.objects.all()
+
+    return render(request, 'list_expense_category.html', {'data' : data})
+
+
+def delete_expense_category(request, expense_category_id):
+
+    data = expense_category.objects.get(id = expense_category_id).delete()
+
+    return redirect('list_expense_category')
+
+
+
+
+
 from rest_framework.response import Response
 
 from rest_framework.views import APIView

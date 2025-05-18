@@ -43,6 +43,11 @@ urlpatterns = [
     path('delete-product-category/<product_category_id>', delete_product_category, name='delete_product_category'),  # create or fetch list of admins
     path('get-product-category/', get_product_category.as_view() , name='get_product_category '), 
 
+      path('add-expense-category/', add_expense_category, name='add_expense_category'),  # create or fetch list of admins
+    path('update-expense-category/<expense_category_id>', update_expense_category, name='update_expense_category'),  # create or fetch list of admins
+    path('list-expense-category/', list_expense_category, name='list_expense_category'),  # create or fetch list of admins
+    path('delete-expense-category/<expense_category_id>', delete_expense_category, name='delete_expense_category'),  # create or fetch list of admins
+
     # path('add-customer-address/', add_customer_address.as_view(), name='add_customer_address'),  # create or fetch list of admins
     path('update-customer-address/<customer_address_id>', update_customer_address, name='update_customer_address'),  # create or fetch list of admins
     path('list-customer-address/', list_customer_address, name='list_customer_address'),  # create or fetch list of admins

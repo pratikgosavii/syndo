@@ -37,4 +37,17 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['user']  
 
 
+class PurchaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Purchase
+        fields = '__all__'
+        read_only_fields = ['user']
+
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expense
+        fields = '__all__'
+        read_only_fields = ['user']
+
 

@@ -18,6 +18,30 @@ from users.models import User
 
 
 
+class vendor_vendors(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
+    name = models.CharField(max_length=50)
+    email = models.EmailField()
+    contact = models.CharField(max_length=15)
+    balance = models.BigIntegerField()
+
+
+    def __str__(self):
+        return self.name
+
+
+class vendor_customers(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
+    name = models.CharField(max_length=50)
+    email = models.EmailField()
+    contact = models.CharField(max_length=15)
+    balance = models.BigIntegerField()
+
+    def __str__(self):
+        return self.name
+
+
+
 class addon(models.Model):
     product_category = models.ForeignKey("masters.product_category", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
@@ -144,18 +168,35 @@ class SpotlightProduct(models.Model):
         return self.product.name
 
 
+import uuid
+
 class Purchase(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    purchase_code = models.CharField(max_length=50)
+    
+    BANK_CASH_CHOICES = [
+        ('bank', 'Bank'),
+        ('cash', 'Cash'),
+        ('upi', 'UPI'),
+        ('card', 'Card'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
+    purchase_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    # other fields...
+
+    
     purchase_date = models.DateField()
-    vendor = models.CharField(max_length=255, blank=True, null=True)
+    vendor = models.ForeignKey(vendor_vendors, on_delete=models.CASCADE)
     product = models.CharField(max_length=255, blank=True, null=True)
     supplier_invoice_date = models.DateField(blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
     # Optional fields
     dispatch_address = models.CharField(max_length=255, blank=True, null=True)
-    bank_cash = models.CharField(max_length=100, blank=True, null=True)
-    signature = models.CharField(max_length=255, blank=True, null=True)
+    payment_type = models.CharField(
+        max_length=100,
+        choices=BANK_CASH_CHOICES,
+        blank=True,
+        null=True
+    )
     references = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     terms = models.TextField(blank=True, null=True)
@@ -166,10 +207,12 @@ class Purchase(models.Model):
     def __str__(self):
         return self.purchase_code
     
-    
+
+            
+
 class CompanyProfile(models.Model):
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     company_name = models.CharField(max_length=255)
     gstin = models.CharField(max_length=15, blank=True, null=True)
     email = models.EmailField()
@@ -184,3 +227,27 @@ class CompanyProfile(models.Model):
     def __str__(self):
         return self.company_name
 
+
+class Expense(models.Model):
+    PAYMENT_TYPES = [
+        ('upi', 'UPI'),
+        ('cash', 'Cash'),
+        ('card', 'Card'),
+        ('cheque', 'Cheque'),
+        ('emi', 'EMI'),
+        ('netbanking', 'Netbanking'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    expense_date = models.DateField()
+    category = models.ForeignKey("masters.expense_category", on_delete=models.CASCADE)
+    is_paid = models.BooleanField(default=False)
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES)
+    payment_date = models.DateField(null=True, blank=True)
+    bank = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    attachment = models.FileField(upload_to='expenses/', null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.category} - {self.amount}"

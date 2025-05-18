@@ -103,6 +103,157 @@ def list_company_profile(request):
     return render(request, 'list_company_profile.html', context)
 
 
+@login_required(login_url='login_admin')
+def add_vendor(request):
+
+    if request.method == 'POST':
+
+        forms = vendor_vendorsForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_vendor')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_vendor.html', context)
+    
+    else:
+
+        forms = vendor_vendorsForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_vendor.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_vendor(request, vendor_id):
+
+    if request.method == 'POST':
+
+        instance = vendor_vendors.objects.get(id=vendor_id)
+
+        forms = vendor_vendorsForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_vendor')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = vendor_vendors.objects.get(id=vendor_id)
+        forms = vendor_vendorsForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_vendor.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_vendor(request, vendor_id):
+
+    vendor_vendors.objects.get(id=vendor_id).delete()
+
+    return HttpResponseRedirect(reverse('list_vendor'))
+
+
+@login_required(login_url='login_admin')
+def list_vendor(request):
+
+    data = vendor_vendors.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_vendor.html', context)
+
+
+
+@login_required(login_url='login_admin')
+def add_customer(request):
+
+    if request.method == 'POST':
+
+        forms = vendor_customersForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_vendor')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_customer.html', context)
+    
+    else:
+
+        forms = vendor_customersForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_customer.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_customer(request, vendor_id):
+
+    if request.method == 'POST':
+
+        instance = vendor_customers.objects.get(id=vendor_id)
+
+        forms = vendor_vendorsForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_vendor')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = vendor_customers.objects.get(id=vendor_id)
+        forms = vendor_vendorsForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_customer.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_customer(request, vendor_id):
+
+    vendor_customers.objects.get(id=vendor_id).delete()
+
+    return HttpResponseRedirect(reverse('list_vendor'))
+
+
+@login_required(login_url='login_admin')
+def list_customer(request):
+
+    data = vendor_customers.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_customer.html', context)
+
+
 
 
 
@@ -372,3 +523,197 @@ class CompanyProfileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Automatically assign logged-in user to the product
         serializer.save(user=self.request.user)
+
+
+
+class PurchaseViewSet(viewsets.ModelViewSet):
+    serializer_class = PurchaseSerializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        return Purchase.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ExpenseViewSet(viewsets.ModelViewSet):
+    serializer_class = ExpenseSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Expense.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+def generate_unique_code(self):
+    prefix = "PUR-"
+    last_purchase = Purchase.objects.filter(purchase_code__startswith=prefix).order_by('purchase_code').last()
+    if not last_purchase:
+        new_number = 1
+    else:
+        # Extract the numeric part after prefix and convert to int
+        last_number = int(last_purchase.purchase_code.replace(prefix, ''))
+        new_number = last_number + 1
+
+    # Format with leading zeros, e.g. PUR-00001
+    return f"{prefix}{new_number:05d}"
+
+
+
+@login_required(login_url='login_admin')
+def add_purchase(request):
+
+    if request.method == 'POST':
+
+        forms = PurchaseForm(request.POST, request.FILES, user=request.user)
+
+        if forms.is_valid():
+          
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_purchase')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_purchase.html', context)
+    
+    else:
+
+        forms = PurchaseForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_purchase.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_purchase(request, purchase_id):
+
+    if request.method == 'POST':
+
+        instance = Purchase.objects.get(id=purchase_id)
+
+        forms = PurchaseForm(request.POST, request.FILES, instance=instance, user=request.user)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_purchase')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = Purchase.objects.get(id=purchase_id)
+        forms = PurchaseForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_purchase.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_purchase(request, purchase_id):
+
+    Purchase.objects.get(id=purchase_id).delete()
+
+    return HttpResponseRedirect(reverse('list_purchase'))
+
+
+@login_required(login_url='login_admin')
+def list_purchase(request):
+
+    data = Purchase.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_purchase.html', context)
+
+
+
+
+
+
+@login_required(login_url='login_admin')
+def add_expense(request):
+
+    if request.method == 'POST':
+
+        forms = ExpenseForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_expense')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_expense.html', context)
+    
+    else:
+
+        forms = ExpenseForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_expense.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_expense(request, expense_id):
+
+    if request.method == 'POST':
+
+        instance = Expense.objects.get(id=expense_id)
+
+        forms = ExpenseForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_expense')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = Expense.objects.get(id=expense_id)
+        forms = ExpenseForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_expense.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_expense(request, expense_id):
+
+    Expense.objects.get(id=expense_id).delete()
+
+    return HttpResponseRedirect(reverse('list_expense'))
+
+
+@login_required(login_url='login_admin')
+def list_expense(request):
+
+    data = Expense.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_expense.html', context)
+

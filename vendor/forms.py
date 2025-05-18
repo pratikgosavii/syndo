@@ -114,6 +114,32 @@ class SpotlightProductForm(forms.ModelForm):
         }
 
 
+class vendor_vendorsForm(forms.ModelForm):
+    class Meta:
+        model = vendor_vendors
+        fields = '__all__'
+        widgets = {
+            'user': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+            'contact': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contact Number'}),
+            'balance': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Balance'}),
+        }
+
+
+class vendor_customersForm(forms.ModelForm):
+    class Meta:
+        model = vendor_customers
+        fields = '__all__'
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Customer Name'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+            'contact': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contact Number'}),
+            'balance': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Balance'}),
+        }
+
+
+
 class CompanyProfileForm(forms.ModelForm):
     class Meta:
         model = CompanyProfile
@@ -133,3 +159,80 @@ class CompanyProfileForm(forms.ModelForm):
         }
 
 
+
+from django.utils import timezone
+
+
+class PurchaseForm(forms.ModelForm):
+
+    purchase_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        initial=timezone.now().date()
+    )
+     
+    class Meta:
+        model = Purchase
+        exclude = ['user']  # Removed fields='__all__'
+        widgets = {
+            'purchase_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'vendor': forms.Select(attrs={'class': 'form-control'}),
+            'product': forms.TextInput(attrs={'class': 'form-control'}),
+            'supplier_invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'serial_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'dispatch_address': forms.TextInput(attrs={'class': 'form-control'}),
+            'payment_type': forms.Select(attrs={'class': 'form-control'}),
+            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # If this is a new form (no instance or no code), set initial purchase_code
+        if not self.instance.pk or not self.instance.purchase_code:
+            self.fields['purchase_code'].initial = self.generate_unique_code()
+        user = kwargs.pop('user', None)
+        super(PurchaseForm, self).__init__(*args, **kwargs)
+        if user is not None:
+            self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
+
+    def clean_purchase_code(self):
+        purchase_code = self.cleaned_data.get('purchase_code')
+
+        if purchase_code:
+            qs = Purchase.objects.filter(purchase_code=purchase_code)
+            if self.instance.pk:
+                # Exclude current instance when editing
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("This purchase code already exists.")
+            return purchase_code
+        else:
+            # If empty on submit, generate unique code again (edge case)
+            return self.generate_unique_code()
+
+    def generate_unique_code(self):
+        prefix = "PUR-"
+        last_purchase = Purchase.objects.filter(purchase_code__startswith=prefix).order_by('purchase_code').last()
+        if not last_purchase:
+            new_number = 1
+        else:
+            last_number = int(last_purchase.purchase_code.replace(prefix, ''))
+            new_number = last_number + 1
+        return f"{prefix}{new_number:05d}"
+    
+
+
+class ExpenseForm(forms.ModelForm):
+    class Meta:
+        model = Expense
+        fields = '__all__'
+        widgets = {
+            'amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'expense_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            'is_paid': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'payment_type': forms.Select(attrs={'class': 'form-control'}),
+            'payment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'bank': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control'}),
+            'attachment': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
