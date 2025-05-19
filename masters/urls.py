@@ -19,12 +19,6 @@ router.register(r'company', CompanyViewSet, basename='company')
 urlpatterns = [
 
 
-    path('add-coupon/', add_coupon, name='add_coupon'),
-    path('update-coupon/<coupon_id>', update_coupon, name='update_coupon'),
-    path('delete-coupon/<coupon_id>', delete_coupon, name='delete_coupon'),
-    path('list-coupon/', list_coupon, name='list_coupon'),
-    path('get-coupon/', get_coupon.as_view(), name='get_coupon'),
-
     path('add-event/', add_event, name='add_event'),
     path('update-event/<event_id>', update_event, name='update_event'),
     path('delete-event/<event_id>', delete_event, name='delete_event'),
@@ -41,9 +35,8 @@ urlpatterns = [
     path('update-product-category/<product_category_id>', update_product_category, name='update_product_category'),  # create or fetch list of admins
     path('list-product-category/', list_product_category, name='list_product_category'),  # create or fetch list of admins
     path('delete-product-category/<product_category_id>', delete_product_category, name='delete_product_category'),  # create or fetch list of admins
-    path('get-product-category/', get_product_category.as_view() , name='get_product_category '), 
 
-      path('add-expense-category/', add_expense_category, name='add_expense_category'),  # create or fetch list of admins
+    path('add-expense-category/', add_expense_category, name='add_expense_category'),  # create or fetch list of admins
     path('update-expense-category/<expense_category_id>', update_expense_category, name='update_expense_category'),  # create or fetch list of admins
     path('list-expense-category/', list_expense_category, name='list_expense_category'),  # create or fetch list of admins
     path('delete-expense-category/<expense_category_id>', delete_expense_category, name='delete_expense_category'),  # create or fetch list of admins

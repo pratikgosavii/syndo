@@ -69,7 +69,7 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">Product List</h4>
+                        <h4 class="mb-sm-0 font-size-18">Catalogue List</h4>
                     </div>
                 </div>
             </div>
@@ -93,17 +93,7 @@
                                                 <th>Size</th>
                                                 <th>Unit</th>
                                                 <th>HSN</th>
-                                                <th>Stock</th>
                                                 <th>GST (%)</th>
-                                                <th>Wholesale Price</th>
-                                                <th>Purchase Price</th>
-                                                <th>Sales Price</th>
-                                                <th>MRP</th>
-                                                <th>Opening Stock</th>
-                                                <th>Low Stock Alert</th>
-                                                <th>Low Stock Qty</th>
-                                                <th>Batch No.</th>
-                                                <th>Expiry Date</th>
                                                 <th>Track Serial No.</th>
                                                 <th>Instant Delivery</th>
                                                 <th>Self Pickup</th>
@@ -140,17 +130,7 @@
                                                     <td>{{ i.size }}</td>
                                                     <td>{{ i.unit }}</td>
                                                     <td>{{ i.hsn }}</td>
-                                                    <td>{{ i.current_stock }}</td>
                                                     <td>{{ i.gst }}</td>
-                                                    <td>₹{{ i.wholesale_price }}</td>
-                                                    <td>₹{{ i.purchase_price }}</td>
-                                                    <td>₹{{ i.sales_price }}</td>
-                                                    <td>₹{{ i.mrp }}</td>
-                                                    <td>{{ i.opening_stock }}</td>
-                                                    <td>{{ i.low_stock_alert }}</td>
-                                                    <td>{{ i.low_stock_quantity }}</td>
-                                                    <td>{{ i.batch_number }}</td>
-                                                    <td>{{ i.expiry_date }}</td>
                                                     <td>{{ i.track_serial_numbers }}</td>
                                                     <td>{{ i.instant_delivery }}</td>
                                                     <td>{{ i.self_pickup }}</td>
@@ -171,13 +151,11 @@
                                                         {% endif %}
                                                     </td>
                                                     <td>
-                                                       <a href="{% url 'add_to_super_catalogue' i.id %}" class="text-decoration-none" title="Add to Catalogue">
-                                                            <i class="bi bi-box-arrow-in-down text-success action-icons"></i>
-                                                        </a>
-                                                        <a href="{% url 'update_product' i.id %}">
+
+                                                        <a href="{% url 'update_super_catalogue' i.id %}">
                                                             <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
                                                         </a>
-                                                        <a href="{% url 'delete_product' i.id %}">
+                                                        <a href="{% url 'delete_super_catalogue' i.id %}">
                                                             <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
                                                         </a>
                                                     </td>

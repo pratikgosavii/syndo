@@ -23,6 +23,21 @@
                             <li>
                                 <a href="javascript: void(0);" class="has-arrow">
                                     <i data-feather="layers"></i>
+                                    <span data-key="t-authentication">Store Setting</span>
+                                </a>
+                                <ul class="sub-menu" aria-expanded="false">
+                                    <li><a href="{% url 'online_store_setting' %}">Online Store Setting</a></li>
+                                    <li><a href="{% url 'store_hours' %}">Store Hours</a></li>
+
+                                    {% comment %} <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li> {% endcomment %}
+                                </ul>
+                            </li>
+                        <li>
+
+                        <li>
+                            <li>
+                                <a href="javascript: void(0);" class="has-arrow">
+                                    <i data-feather="layers"></i>
                                     <span data-key="t-authentication">Company Profile</span>
                                 </a>
                                 <ul class="sub-menu" aria-expanded="false">
@@ -31,7 +46,154 @@
                                 </ul>
                             </li>
                         <li>
+                   
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Catalogue</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_super_catalogue' %}">Add Catalogue</a></li>
+                                <li><a href="{% url 'list_super_catalogue' %}">Catalogue List</a></li>
+                            </ul>
+                        </li> 
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Product</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+
+                                <!-- Product Category -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">Category</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_product_category' %}">Add Category</a></li>
+                                        <li><a href="{% url 'list_product_category' %}">Category List</a></li>
+                                    </ul>
+                                </li>
+
+                                <!-- Addon -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">Addon</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_addon' %}">Add Addon</a></li>
+                                        <li><a href="{% url 'list_addon' %}">Addon List</a></li>
+                                    </ul>
+                                </li>
+
+                                <!-- Product -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">Product</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_product' %}">Add Product</a></li>
+                                        <li><a href="{% url 'list_product' %}">Product List</a></li>
+                                    </ul>
+                                </li>
+
+                               <li>
+                                    <a href="{% url 'product_settings' %}">
+                                        <i data-feather="settings"></i>
+                                        <span>Product Settings</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Purchase</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+
+                                <!-- Product Category -->
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Vendor</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_vendor' %}">Add Vendor</a></li>
+                                        <li><a href="{% url 'list_vendor' %}">Vendor List</a></li>
+                                    </ul>
+                                </li> 
+
+
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Purchase</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_purchase' %}">Add Purchase</a></li>
+                                        <li><a href="{% url 'list_purchase' %}">Purchase List</a></li>
+                                    </ul>
+                                </li> 
+                            </ul> 
+                        </li> 
+
+
+                                
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Expense</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+
+                                <!-- Product Category -->
+
+                               <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Expense Category</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_expense_category' %}">Add Expense Category</a></li>
+                                        <li><a href="{% url 'list_expense_category' %}">Expense List</a></li>
+                                    </ul>
+                                </li> 
+
+
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Expense</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_expense' %}">Add Expense</a></li>
+                                        <li><a href="{% url 'list_expense' %}">Expense List</a></li>
+                                    </ul>
+                                </li> 
+                            </ul> 
+                        </li> 
+
+
                         
+                       
+                       
+
+
+                       
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Customer</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_customer' %}">Add Customer</a></li>
+                                <li><a href="{% url 'list_customer' %}">Customer List</a></li>
+                            </ul>
+                        </li> 
+
+
+                             
                         <li>
                             <li>
                                 <a href="javascript: void(0);" class="has-arrow">
@@ -45,94 +207,7 @@
                             </li>
                         <li>
 
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Product Category</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_product_category' %}">Add Product Category</a></li>
-                                <li><a href="{% url 'list_product_category' %}">Product Category List</a></li>
-                            </ul>
-                        </li> 
 
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Product Addon</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_addon' %}">Add Addon</a></li>
-                                <li><a href="{% url 'list_addon' %}"> Addon List</a></li>
-                            </ul>
-                        </li> 
-
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Product</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_product' %}">Add Product</a></li>
-                                <li><a href="{% url 'list_product' %}">Product List</a></li>
-                            </ul>
-                        </li> 
-
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Vendor</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_vendor' %}">Add Vendor</a></li>
-                                <li><a href="{% url 'list_vendor' %}">Vendor List</a></li>
-                            </ul>
-                        </li> 
-
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Purchase</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_purchase' %}">Add Purchase</a></li>
-                                <li><a href="{% url 'list_purchase' %}">Purchase List</a></li>
-                            </ul>
-                        </li> 
-
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Expense Category</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_expense_category' %}">Add Expense Category</a></li>
-                                <li><a href="{% url 'list_expense_category' %}">Expense List</a></li>
-                            </ul>
-                        </li> 
-
-
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Expense</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_expense' %}">Add Expense</a></li>
-                                <li><a href="{% url 'list_expense' %}">Expense List</a></li>
-                            </ul>
-                        </li> 
-
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Customer</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_customer' %}">Add Customer</a></li>
-                                <li><a href="{% url 'list_customer' %}">Customer List</a></li>
-                            </ul>
-                        </li> 
 
                         <li>
                             <li>

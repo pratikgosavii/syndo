@@ -27,90 +27,6 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
       
 
-@login_required(login_url='login_admin')
-def add_coupon(request):
-
-    if request.method == 'POST':
-
-        forms = coupon_Form(request.POST, request.FILES)
-
-        if forms.is_valid():
-            forms.save()
-            return redirect('list_coupon')
-        else:
-            print(forms.errors)
-            context = {
-                'form': forms
-            }
-            return render(request, 'add_coupon.html', context)
-    
-    else:
-
-        forms = coupon_Form()
-
-        context = {
-            'form': forms
-        }
-        return render(request, 'add_coupon.html', context)
-
-        
-
-@login_required(login_url='login_admin')
-def update_coupon(request, coupon_id):
-
-    if request.method == 'POST':
-
-        instance = coupon.objects.get(id=coupon_id)
-
-        forms = coupon_Form(request.POST, request.FILES, instance=instance)
-
-        if forms.is_valid():
-            forms.save()
-            return redirect('list_coupon')
-        else:
-            print(forms.errors)
-    
-    else:
-
-        instance = coupon.objects.get(id=coupon_id)
-        forms = coupon_Form(instance=instance)
-
-        context = {
-            'form': forms
-        }
-        return render(request, 'add_coupon.html', context)
-
-        
-
-@login_required(login_url='login_admin')
-def delete_coupon(request, coupon_id):
-
-    coupon.objects.get(id=coupon_id).delete()
-
-    return HttpResponseRedirect(reverse('list_coupon'))
-
-
-@login_required(login_url='login_admin')
-def list_coupon(request):
-
-    data = coupon.objects.all()
-    context = {
-        'data': data
-    }
-    return render(request, 'list_coupon.html', context)
-
-
-from django.http import JsonResponse
-from .filters import *
-
-class get_coupon(ListAPIView):
-    queryset = coupon.objects.all()
-    serializer_class = coupon_serializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = '__all__'  # enables filtering on all fields
-    filterset_class = couponFilter  # enables filtering on all fields
-
-
 
 @login_required(login_url='login_admin')
 def add_event(request):
@@ -350,13 +266,6 @@ def delete_product_category(request, product_category_id):
 from django.views import View
 
 
-
-class get_product_category(ListAPIView):
-    queryset = product_category.objects.all()
-    serializer_class = product_category_serializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = product_categoryFilter
-    
 
 
 
