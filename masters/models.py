@@ -18,31 +18,6 @@ from users.models import User
 
 
 
-
-class coupon(models.Model):
-
-    TYPE_CHOICES = [
-        ('percent', 'Percentage'),
-        ('amount', 'Amount'),
-    ]
-    type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='percent')  # 👈 Add this
-
-    code = models.CharField(max_length=50, unique=True)
-    title = models.CharField(max_length=50)
-    description = models.CharField(max_length=500, null=True, blank=True)
-    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    min_purchase = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    max_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    image = models.ImageField(upload_to='doctor_images/')
-    start_date = models.DateTimeField(default=now)
-    end_date = models.DateTimeField()
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.code
-
-
 class customer_address(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)

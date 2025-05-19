@@ -17,6 +17,76 @@ from users.models import User
 
 
 
+class coupon(models.Model):
+
+    COUPON_TYPE_CHOICES = [
+    ("discount", "Discount Coupon"),
+    ("no_return", "No Return & Exchange"),
+    ("online_pay", "Online Pay"),
+    ]
+
+    TYPE_CHOICES = [
+        ('percent', 'Percentage'),
+        ('amount', 'Amount'),
+    ]
+    
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, null=True, blank=True)
+    coupon_type = models.CharField(max_length=10, choices=COUPON_TYPE_CHOICES, default='percent')  # 👈 Add this
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='percent')  # 👈 Add this
+    customer_id = models.IntegerField(null=True, blank=True)
+    code = models.CharField(max_length=50, unique=True)
+    title = models.CharField(max_length=50)
+    description = models.CharField(max_length=500, null=True, blank=True)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    min_purchase = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    max_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    image = models.ImageField(upload_to='doctor_images/')
+    start_date = models.DateTimeField(default=now)
+    end_date = models.DateTimeField()
+    only_followers = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.code
+
+
+class OnlineStoreSetting(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    store_page_visible = models.BooleanField(default=True)
+    store_location_visible = models.BooleanField(default=True)
+    display_as_catalog = models.BooleanField(default=False)
+    private_catalog = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.username}'s Store Settings"
+
+
+class vendor_store(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="vendor_store", blank=True, null=True)
+
+DAYS_OF_WEEK = [
+    ('sunday', 'Sunday'),
+    ('monday', 'Monday'),
+    ('tuesday', 'Tuesday'),
+    ('wednesday', 'Wednesday'),
+    ('thursday', 'Thursday'),
+    ('friday', 'Friday'),
+    ('saturday', 'Saturday'),
+]
+
+class StoreWorkingHour(models.Model):
+    
+    store = models.ForeignKey(vendor_store, on_delete=models.CASCADE, related_name='working_hours')
+    day = models.CharField(max_length=10, choices=DAYS_OF_WEEK, unique=True)
+    open_time = models.TimeField(null=True, blank=True)
+    close_time = models.TimeField(null=True, blank=True)
+    is_open = models.BooleanField(default=True)
+    
+
+    def __str__(self):
+        return f"{self.day.title()} - {'Open' if self.is_open else 'Closed'}"
+
 
 class vendor_vendors(models.Model):
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
@@ -55,6 +125,66 @@ class addon(models.Model):
 
 
 
+
+
+class super_catalogue(models.Model):
+    
+    TYPE_CHOICES = (
+        ('product', 'Product'),
+        ('service', 'Service'),
+        ('print', 'Print'),
+    )
+
+    SALE_TYPE_CHOICES = (
+        ('offline', 'Offline Only'),
+        ('both', 'Both Online & Offline'),
+    )
+
+    product_type  = models.CharField(max_length=10, choices=TYPE_CHOICES, default='product')
+    sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES, default='offline')
+
+    name = models.CharField(max_length=255)
+    category = models.ForeignKey("masters.product_category", on_delete=models.SET_NULL, null=True, blank=True)
+    sub_category = models.CharField(max_length=255, null=True, blank=True)
+
+   
+    unit = models.CharField(max_length=50, null=True, blank=True)
+    hsn = models.CharField(max_length=50, null=True, blank=True)
+    gst = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Stock
+    track_serial_numbers = models.BooleanField(default=False)
+
+    # Optional
+    brand_name = models.CharField(max_length=255, null=True, blank=True)
+    color = models.CharField(max_length=50, null=True, blank=True)
+    size = models.CharField(max_length=50, null=True, blank=True)
+
+    description = models.TextField(null=True, blank=True)
+    image = models.ImageField(upload_to='product_images/', null=True, blank=True)
+    gallery_images = models.ImageField(upload_to='product_gallery/', null=True, blank=True)
+
+    # Delivery & Policies
+    instant_delivery = models.BooleanField(default=False)
+    self_pickup = models.BooleanField(default=False)
+    general_delivery = models.BooleanField(default=False)
+
+    return_policy = models.BooleanField(default=False)
+    cod = models.BooleanField(default=False)
+    replacement = models.BooleanField(default=False)
+    shop_exchange = models.BooleanField(default=False)
+    shop_warranty = models.BooleanField(default=False)
+    brand_warranty = models.BooleanField(default=False)
+
+    # Flags
+    is_popular = models.BooleanField(default=False)
+    is_featured = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
 
 
 class product(models.Model):
@@ -156,6 +286,47 @@ class product_addon(models.Model):
         return f"{self.product.name} - {self.addon.name}"
 
 
+class ProductSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="product_settings")
+
+    # Product Fields
+    wholesale_price = models.BooleanField(default=False)
+    stock = models.BooleanField(default=False)
+    imei = models.BooleanField(default=False)
+    low_stock_alert = models.BooleanField(default=False)
+    category = models.BooleanField(default=False)
+    sub_category = models.BooleanField(default=False)
+    brand_name = models.BooleanField(default=False)
+    color = models.BooleanField(default=False)
+    size = models.BooleanField(default=False)
+    batch_number = models.BooleanField(default=False)
+    expiry_date = models.BooleanField(default=False)
+    description = models.BooleanField(default=False)
+    image = models.BooleanField(default=False)
+    tax = models.BooleanField(default=False)
+    food = models.BooleanField(default=False)
+
+    # Delivery
+    instant_delivery = models.BooleanField(default=False)
+    self_pickup = models.BooleanField(default=False)
+    general_delivery = models.BooleanField(default=False)
+
+    # Policies
+    return_policy = models.BooleanField(default=False)
+    cod = models.BooleanField(default=False)
+    replacement = models.BooleanField(default=False)
+    shop_exchange = models.BooleanField(default=False)
+    shop_warranty = models.BooleanField(default=False)
+    brand_warranty = models.BooleanField(default=False)
+
+    # Catalog
+    online_catalog_only = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.username} Settings"
+    
+
+    
 class SpotlightProduct(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -166,6 +337,28 @@ class SpotlightProduct(models.Model):
 
     def __str__(self):
         return self.product.name
+
+
+class Post(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # user who created post
+    media = models.FileField(upload_to='posts/')  # upload media
+    description = models.TextField(blank=True)
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+    boost_post = models.BooleanField(default=False)
+    budget = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Reel(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # user who created post
+    media = models.FileField(upload_to='posts/')  # upload media
+    description = models.TextField(blank=True)
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+    boost_post = models.BooleanField(default=False)
+    budget = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
 
 
 import uuid

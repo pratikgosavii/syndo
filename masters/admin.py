@@ -5,6 +5,5 @@ from .models import *
 
 from .models import *
 
-admin.site.register(coupon)
 admin.site.register(customer_address)
 admin.site.register(testimonials)

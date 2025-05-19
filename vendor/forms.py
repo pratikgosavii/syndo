@@ -23,6 +23,92 @@ from django.contrib.admin.widgets import  AdminDateWidget, AdminTimeWidget, Admi
 #         }
 
 
+
+class coupon_Form(forms.ModelForm):
+    class Meta:
+        model = coupon
+        fields = '__all__'  # Include all fields
+        widgets = {
+            'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Coupon Code'}),
+            'coupon_type': forms.Select(attrs={'class': 'form-control'}),
+            'type': forms.Select(attrs={'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Title'}),
+            'customer_id': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Title'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Enter Coupon Code'}),
+            'discount_percentage': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'min_purchase': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'max_discount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'start_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'end_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'only_followers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class OnlineStoreSettingForm(forms.ModelForm):
+    class Meta:
+        model = OnlineStoreSetting
+        fields = [
+            'store_page_visible',
+            'store_location_visible',
+            'display_as_catalog',
+            'private_catalog'
+        ]
+        widgets = {
+            'store_page_visible': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'store_location_visible': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'display_as_catalog': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'private_catalog': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+
+class super_catalogue_Form(forms.ModelForm):
+    class Meta:
+        model = super_catalogue
+        fields = '__all__'
+        widgets = {
+            'product_type': forms.Select(attrs={'class': 'form-control'}),
+            'sale_type': forms.Select(attrs={'class': 'form-control'}),
+
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            'sub_category': forms.TextInput(attrs={'class': 'form-control'}),
+
+            'unit': forms.TextInput(attrs={'class': 'form-control'}),
+            'hsn': forms.TextInput(attrs={'class': 'form-control'}),
+
+            'track_serial_numbers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+
+            'brand_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'color': forms.TextInput(attrs={'class': 'form-control'}),
+            'size': forms.TextInput(attrs={'class': 'form-control'}),
+            'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'gst': forms.NumberInput(attrs={'class': 'form-control'}),
+
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'gallery_images': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+
+            'instant_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'self_pickup': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'general_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+
+            'return_policy': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'cod': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'replacement': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'shop_exchange': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'shop_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'brand_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+
+            'is_popular': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
 class product_Form(forms.ModelForm):
     class Meta:
         model = product
@@ -235,4 +321,15 @@ class ExpenseForm(forms.ModelForm):
             'bank': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control'}),
             'attachment': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+
+
+class StoreWorkingHourForm(forms.ModelForm):
+    class Meta:
+        model = StoreWorkingHour
+        fields = ['day', 'open_time', 'close_time', 'is_open']
+        widgets = {
+            'open_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'close_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
         }
