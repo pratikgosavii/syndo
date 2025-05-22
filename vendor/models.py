@@ -197,10 +197,31 @@ class product(models.Model):
 
     SALE_TYPE_CHOICES = (
         ('offline', 'Offline Only'),
+        ('online', 'Online Only'),
         ('both', 'Both Online & Offline'),
     )
 
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='productssdsdsd')
+    UNIT_CHOICES = [
+        ('kg', 'Kilogram'),
+        ('g', 'Gram'),
+        ('mg', 'Milligram'),
+        ('lb', 'Pound'),
+        ('l', 'Litre'),
+        ('ml', 'Millilitre'),
+        ('km', 'Kilometre'),
+        ('m', 'Metre'),
+        ('cm', 'Centimetre'),
+        ('mm', 'Millimetre'),
+        ('pcs', 'Piece'),
+        ('box', 'Box'),
+        ('unit', 'Unit'),
+        ('dozen', 'Dozen'),
+        ('set', 'Set'),
+        ('pack', 'Pack'),
+        ('pair', 'Pair'),
+    ]
+
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='productssdsdsd', null=True, blank=True)
 
     product_type  = models.CharField(max_length=10, choices=TYPE_CHOICES, default='product')
     sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES, default='offline')
@@ -214,7 +235,7 @@ class product(models.Model):
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
     sales_price = models.DecimalField(max_digits=10, decimal_places=2)
     mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    unit = models.CharField(max_length=50, null=True, blank=True)
+    unit = models.CharField(max_length=20, choices=UNIT_CHOICES, null=True, blank=True)
     hsn = models.CharField(max_length=50, null=True, blank=True)
     gst = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
@@ -285,7 +306,31 @@ class product_addon(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.addon.name}"
 
+class PrintVariant(models.Model):
+    COLOR_CHOICES = [('color', 'Color'), ('bw', 'Black & White')]
+    SIDED_CHOICES = [('single', 'Single Side'), ('both', 'Both Side')]
+    
+    PAPER_CHOICES = [
+        ('a4_70gsm', 'A4 - 70 GSM'),
+        ('a4_80gsm', 'A4 - 80 GSM'),
+        ('glossy_90gsm', 'Glossy - 90 GSM'),
+        ('matte_100gsm', 'Matte - 100 GSM'),
+        ('a3_70gsm', 'A3 - 70 GSM'),
+        # Add more commonly used types
+    ]
 
+    product = models.ForeignKey(product, related_name='print_variants', on_delete=models.CASCADE)
+    paper = models.CharField(max_length=30, choices=PAPER_CHOICES)
+    color_type = models.CharField(max_length=10, choices=COLOR_CHOICES)
+    sided = models.CharField(max_length=10, choices=SIDED_CHOICES)
+    min_quantity = models.PositiveIntegerField()
+    max_quantity = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.get_color_type_display()} | {self.get_sided_display()} | {self.get_paper_display()}"
+    
+    
 class ProductSettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="product_settings")
 
@@ -326,10 +371,10 @@ class ProductSettings(models.Model):
         return f"{self.user.username} Settings"
     
 
-    
+
 class SpotlightProduct(models.Model):
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     product = models.ForeignKey(product, on_delete=models.CASCADE)
     discount_tag = models.CharField(max_length=255, blank=True, null=True)
     boost = models.BooleanField(default=False)
@@ -341,7 +386,7 @@ class SpotlightProduct(models.Model):
 
 class Post(models.Model):
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # user who created post
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # user who created post
     media = models.FileField(upload_to='posts/')  # upload media
     description = models.TextField(blank=True)
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
@@ -351,7 +396,7 @@ class Post(models.Model):
 
 class Reel(models.Model):
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # user who created post
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # user who created post
     media = models.FileField(upload_to='posts/')  # upload media
     description = models.TextField(blank=True)
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
@@ -444,3 +489,57 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"{self.category} - {self.amount}"
+
+
+        
+class Party(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    name = models.CharField(max_length=200)
+    mobile_number = models.CharField(max_length=15, unique=True)
+
+    def __str__(self):
+        return self.name
+
+from decimal import Decimal
+
+class Sale(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    party = models.ForeignKey(Party, on_delete=models.SET_NULL, null=True, blank=True)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    credit_time_days = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def total_items(self):
+        return sum(item.quantity for item in self.items.all())
+
+    @property
+    def total_amount(self):
+        return sum(item.amount for item in self.items.all())
+
+    @property
+    def total_tax(self):
+        tax_rate = Decimal("0.10")  # use Decimal, not float
+        return round(self.total_amount * tax_rate, 2)
+
+    @property
+    def final_amount(self):
+        discount = (self.discount_percentage / Decimal("100")) * self.total_amount
+        return round(self.total_amount - discount + self.total_tax, 2)
+
+    def __str__(self):
+        return f"Sale #{self.id} - {self.party.name if self.party else 'Walk-in'}"
+
+class SaleItem(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)  # price at time of sale
+
+    @property
+    def amount(self):
+        return round(self.quantity * self.price, 2)
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity}"

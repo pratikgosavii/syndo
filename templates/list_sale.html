@@ -1,0 +1,110 @@
+{% extends "partials/adminBase.html" %}
+{% load static %}
+
+{% block title %}Sales List{% endblock title %}
+
+{% block extra_css %}
+<style>
+    .sale-card {
+        margin-bottom: 2rem;
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
+    }
+    .sale-header {
+        background-color: #ffdb8a;
+        color: black;
+        padding: 10px 15px;
+        border-radius: 8px 8px 0 0;
+        font-weight: bold;
+    }
+    .sale-items table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .sale-items th, .sale-items td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+    }
+    .sale-items th {
+        background-color: gray;
+        color: white;
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+
+
+
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">Sales List</h4>
+                    </div>
+                </div>
+            </div>
+
+
+
+<div class="container">
+
+    {% if data %}
+        {% for sale in data %}
+        <div class="sale-card">
+            <div class="sale-header">
+                Sale #{{ sale.id }} - {{ sale.party.name }} - Created at: {{ sale.created_at|date:"M d, Y H:i" }}
+            </div>
+            <div class="sale-summary mt-2">
+                Total Items: {{ sale.total_items }}<br>
+                Total Amount: ₹{{ sale.total_amount }}<br>
+                Tax (10%): ₹{{ sale.total_tax }}<br>
+                Discount: {{ sale.discount_percentage }}%<br>
+                <strong>Final Amount: ₹{{ sale.final_amount }}</strong>
+            </div>
+
+            <div class="sale-items mt-3">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Price (₹)</th>
+                            <th>Amount (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in sale.items.all %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ item.product.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.price }}</td>
+                            <td>{{ item.amount }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">No items for this sale.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+       
+        {% endfor %}
+    {% else %}
+        <p>No sales found.</p>
+    {% endif %}
+</div>
+
+ </div>
+        </div>
+        </div>
+{% endblock content %}

@@ -137,6 +137,42 @@
                         </li> 
 
 
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">POS</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+
+                                <!-- Product Category -->
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Sale</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'create-sale' %}">Add Sale</a></li>
+                                        <li><a href="{% url 'list_sale' %}">Sale List</a></li>
+                                    </ul>
+                                </li> 
+
+
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Party</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_party' %}">Add Party</a></li>
+                                        <li><a href="{% url 'list_party' %}">Party List</a></li>
+                                    </ul>
+                                </li> 
+                            </ul> 
+                        </li> 
+
+
                                 
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">

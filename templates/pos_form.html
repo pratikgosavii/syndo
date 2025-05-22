@@ -1,0 +1,188 @@
+{% extends "partials/adminBase.html" %}
+{% load static %}
+
+{% block title %}Sales & POS{% endblock %}
+
+{% block extra_css %}
+  <style>
+    .remove-btn { cursor: pointer; color: red; font-size: 1.2rem; }
+  </style>
+{% endblock %}
+
+{% block content %}
+
+
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <!-- start page title -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="form-container">
+
+                                    
+                <div class="container py-4">
+                <h3 class="text-center">Sales & POS</h3>
+
+                <form method="post" action="{% url 'create-sale' %}" id="pos-form">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                    <label class="form-label">Select Party</label>
+                    <select class="form-select" name="party">
+                        {% for party in parties %}
+                        <option value="{{ party.id }}">{{ party.name }} - {{ party.mobile_number }}</option>
+                        {% endfor %}
+                    </select>
+                    </div>
+
+                    <hr>
+
+                    <div id="items-container">
+                    <div class="row g-2 align-items-center mb-2 item-row">
+                        <div class="col-4">
+                        <select class="form-select product-select" name="product">
+                            <option value="">Select Product</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}" data-price="{{ product.price }}">{{ product.name }}</option>
+                            {% endfor %}
+                        </select>
+                        </div>
+                        <div class="col-2">
+                        <input type="number" class="form-control quantity" name="quantity" value="1" placeholder="Qty">
+                        </div>
+                        <div class="col-2">
+                        <input type="number" class="form-control price" name="price" placeholder="Price">
+                        </div>
+                        <div class="col-2">
+                        <input type="text" class="form-control amount" readonly placeholder="Amount">
+                        </div>
+                        <div class="col-2 text-center">
+                        <span class="remove-btn">&times;</span>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div class="my-2">
+                    <button type="button" class="btn btn-warning" id="add-item">Add Item</button>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                    <div class="col-md-4">
+                        <label>Discount (%)</label>
+                        <input type="number" class="form-control" name="discount_percentage" value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Credit Time (days)</label>
+                        <input type="number" class="form-control" name="credit_time_days" placeholder="Ex: 60">
+                    </div>
+                    </div>
+
+                    <div class="my-4">
+                    <h5>Summary</h5>
+                    <p>Total Items: <span id="total-items">0</span></p>
+                    <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
+                    </div>
+
+                    <div class="text-end">
+                    <button type="submit" class="btn btn-success">Checkout</button>
+                    <button type="reset" class="btn btn-danger">Discard</button>
+                    </div>
+                </form>
+                </div>
+                </div>
+                </div>
+                </div>
+                </div>
+                </div>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+  function recalculateTotals() {
+    let totalItems = 0;
+    let totalAmount = 0;
+    document.querySelectorAll('.item-row').forEach(row => {
+      const qty = parseFloat(row.querySelector('.quantity').value) || 0;
+      const price = parseFloat(row.querySelector('.price').value) || 0;
+      const amount = qty * price;
+      row.querySelector('.amount').value = amount.toFixed(2);
+      totalItems += qty;
+      totalAmount += amount;
+    });
+    document.getElementById('total-items').innerText = totalItems;
+    document.getElementById('total-amount').innerText = totalAmount.toFixed(2);
+  }
+
+  function initSelects() {
+    $('.product-select').selectpicker('refresh');
+  }
+
+  function handleProductSelect(row) {
+    const select = row.querySelector('.product-select');
+    select.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+      const price = selectedOption.getAttribute('data-price');
+      if (price) {
+        row.querySelector('.price').value = parseFloat(price).toFixed(2);
+        recalculateTotals();
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+  
+    document.getElementById('items-container').addEventListener('input', recalculateTotals);
+    document.getElementById('items-container').addEventListener('click', function(e) {
+      if (e.target.classList.contains('remove-btn')) {
+        e.target.closest('.item-row').remove();
+        recalculateTotals();
+      }
+    });
+
+    document.getElementById('add-item').addEventListener('click', function () {
+      const row = document.querySelector('.item-row').cloneNode(true);
+      row.querySelectorAll('input').forEach(input => input.value = '');
+      const select = row.querySelector('.product-select');
+      select.innerHTML = document.querySelector('.product-select').innerHTML;
+      $('#items-container').append(row);
+      $('.product-select').selectpicker('refresh');
+      handleProductSelect(row);
+    });
+  });
+</script>
+
+
+<script>
+$(document).on('change', '.product-select', function () {
+    var productId = $(this).val();
+    var row = $(this).closest('.row');
+    if (productId) {
+        $.ajax({
+            url: "{% url 'get_product_price' %}",
+            data: { product_id: productId },
+           success: function (data) {
+    row.find('.price').val(data.price);
+    let qty = parseFloat(row.find('.quantity').val()) || 0;
+    row.find('.amount').val((qty * parseFloat(data.price)).toFixed(2));
+    $('#total-items').text(document.querySelectorAll('.item-row').length);
+    recalculateTotals();
+}
+        });
+    }
+});
+</script>
+
+
+
+
+{% endblock %}
