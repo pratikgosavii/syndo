@@ -186,6 +186,77 @@
                         </div>
                     
                         <!-- Delivery & Policies -->
+
+                         <hr>
+                        <h5 class="form-heading">Addons</h5>
+                        <div id="addon-formset">
+                            {{ formset.management_form }}
+                            {% for addon_form in formset %}
+                                <div class="addon-form mb-4 p-3 border rounded">
+                                    
+                                    {# Render hidden fields first (like id, product, DELETE checkbox hidden input) #}
+                                    {% for hidden in addon_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+
+                                    {# Render visible fields #}
+                                    {% for field in addon_form.visible_fields %}
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ field.label }}</label>
+                                            {{ field }}
+                                            {% if field.help_text %}
+                                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                                            {% endif %}
+                                            {% for error in field.errors %}
+                                                <div class="text-danger">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+
+                                  
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <button type="button" class="btn btn-outline-primary" id="add-addon">Add Another Addon</button>
+                            {{ variant_formset.management_form }}
+                        
+                        <div id="variantSection">
+
+                        <hr>
+                        <h5 class="form-heading">Variant</h5>
+                        <div id="variant-formset">
+                            {% for variant_form in variant_formset %}
+                                <div class="variant-form mb-4 p-3 border rounded">
+                                    
+                                    {# Render hidden fields first (like id, product, DELETE checkbox hidden input) #}
+                                    {% for hidden in variant_form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+
+                                    {# Render visible fields #}
+                                    {% for field in variant_form.visible_fields %}
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ field.label }}</label>
+                                            {{ field }}
+                                            {% if field.help_text %}
+                                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                                            {% endif %}
+                                            {% for error in field.errors %}
+                                                <div class="text-danger">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+
+                                  
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <button type="button" class="btn btn-outline-primary" id="add-variant">Add Another Addon</button>
+                    </div>
+
+
                         <hr>
                         <div class="mb-3 form-check">
                             {{ form.instant_delivery }}
@@ -252,37 +323,7 @@
 
                     
 
-                        <hr>
-                        <h5 class="form-heading">Addons</h5>
-                        <div id="addon-formset">
-                            {{ formset.management_form }}
-                            {% for addon_form in formset %}
-                                <div class="addon-form mb-4 p-3 border rounded">
-                                    
-                                    {# Render hidden fields first (like id, product, DELETE checkbox hidden input) #}
-                                    {% for hidden in addon_form.hidden_fields %}
-                                        {{ hidden }}
-                                    {% endfor %}
-
-                                    {# Render visible fields #}
-                                    {% for field in addon_form.visible_fields %}
-                                        <div class="mb-3">
-                                            <label class="form-label">{{ field.label }}</label>
-                                            {{ field }}
-                                            {% if field.help_text %}
-                                                <small class="form-text text-muted">{{ field.help_text }}</small>
-                                            {% endif %}
-                                            {% for error in field.errors %}
-                                                <div class="text-danger">{{ error }}</div>
-                                            {% endfor %}
-                                        </div>
-                                    {% endfor %}
-
-                                  
-                                </div>
-                            {% endfor %}
-                            <button type="button" class="btn btn-outline-primary" id="add-addon">Add Another Addon</button>
-                        </div>
+                       
 
 
                         <div class="text-center">
@@ -374,7 +415,131 @@
             totalForms.value = currentFormCount + 1;
             formContainer.appendChild(newForm);
         });
+
+        const addAddonBtn = document.getElementById("add-addon");
+    const addonContainer = document.getElementById("addon-formset");
+    const addonTotalForms = document.getElementById("id_product_addon_set-TOTAL_FORMS");
+
+    addAddonBtn?.addEventListener("click", function () {
+        const currentFormCount = parseInt(addonTotalForms.value);
+        const newForm = addonContainer.querySelector(".addon-form").cloneNode(true);
+
+        Array.from(newForm.querySelectorAll("input, select")).forEach(function (input) {
+            input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
+            input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
+            input.type === 'checkbox' || input.type === 'radio' ? input.checked = false : input.value = '';
+        });
+
+        Array.from(newForm.querySelectorAll("label")).forEach(function (label) {
+            if (label.htmlFor) {
+                label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${currentFormCount}-`);
+            }
+        });
+
+        addonTotalForms.value = currentFormCount + 1;
+        addonContainer.appendChild(newForm);
     });
+
+    // ---------- Variant Section ----------
+    const addVariantBtn = document.getElementById("add-variant");
+    const variantContainer = document.getElementById("variant-formset");
+    const variantTotalForms = document.getElementById("id_print_variants-TOTAL_FORMS");  // Adjust prefix if needed
+
+    addVariantBtn?.addEventListener("click", function () {
+        const currentFormCount = parseInt(variantTotalForms.value);
+        const newForm = variantContainer.querySelector(".variant-form").cloneNode(true);
+
+        Array.from(newForm.querySelectorAll("input, select")).forEach(function (input) {
+            input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
+            input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
+            input.type === 'checkbox' || input.type === 'radio' ? input.checked = false : input.value = '';
+        });
+
+        Array.from(newForm.querySelectorAll("label")).forEach(function (label) {
+            if (label.htmlFor) {
+                label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${currentFormCount}-`);
+            }
+        });
+
+        variantTotalForms.value = currentFormCount + 1;
+        variantContainer.appendChild(newForm);
+    });
+
+
+    });
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    const productType = document.getElementById("productType");
+    const saleType = document.getElementById("saleType");
+    const variantSection = document.getElementById("variantSection");
+
+    const allSaleOptions = {
+        'offline': 'Offline Only',
+        'online': 'Online Only',
+        'both': 'Both Online & Offline',
+    };
+
+    function clearSaleTypeOptions() {
+        saleType.innerHTML = '';
+    }
+
+    function addSaleTypeOption(value, text) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.text = text;
+        saleType.appendChild(option);
+    }
+
+    function setSaleTypeOptionsForPrint() {
+        clearSaleTypeOptions();
+        addSaleTypeOption('online', 'Online Only');
+        saleType.value = 'online';
+        saleType.setAttribute('readonly', true);
+    }
+
+    function setSaleTypeOptionsDefault() {
+        clearSaleTypeOptions();
+        Object.entries(allSaleOptions).forEach(([value, text]) => {
+            addSaleTypeOption(value, text);
+        });
+        saleType.removeAttribute('readonly');
+        saleType.removeAttribute('disabled');
+    }
+
+    function toggleVariantFormSection(show) {
+        if (show) {
+            variantSection.style.display = 'block';
+            Array.from(variantSection.querySelectorAll("input, select, textarea")).forEach(el => {
+                el.disabled = false;
+            });
+        } else {
+            variantSection.style.display = 'none';
+            Array.from(variantSection.querySelectorAll("input, select, textarea")).forEach(el => {
+                el.disabled = true;
+            });
+        }
+    }
+
+    function handleProductTypeChange() {
+        const selectedType = productType.value;
+        if (selectedType === 'print') {
+            setSaleTypeOptionsForPrint();
+            toggleVariantFormSection(true);
+        } else {
+            setSaleTypeOptionsDefault();
+            toggleVariantFormSection(false);
+        }
+    }
+
+    productType.addEventListener("change", handleProductTypeChange);
+
+    // Trigger on load
+    handleProductTypeChange();
+});
+
+
+
     </script>
     
 

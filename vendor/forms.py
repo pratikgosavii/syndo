@@ -115,8 +115,8 @@ class product_Form(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'user': forms.Select(attrs={'class': 'form-control'}),
-            'product_type': forms.Select(attrs={'class': 'form-control'}),
-            'sale_type': forms.Select(attrs={'class': 'form-control'}),
+            'product_type': forms.Select(attrs={'id': 'productType', 'class': 'form-control'}),
+            'sale_type': forms.Select(attrs={'id': 'saleType', 'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'category': forms.Select(attrs={'class': 'form-control'}),
             'sub_category': forms.TextInput(attrs={'class': 'form-control'}),
@@ -125,7 +125,7 @@ class product_Form(forms.ModelForm):
             'purchase_price': forms.NumberInput(attrs={'class': 'form-control'}),
             'sales_price': forms.NumberInput(attrs={'class': 'form-control'}),
             'mrp': forms.NumberInput(attrs={'class': 'form-control'}),
-            'unit': forms.TextInput(attrs={'class': 'form-control'}),
+            'unit': forms.Select(attrs={'class': 'form-control'}),
             'hsn': forms.TextInput(attrs={'class': 'form-control'}),
             'gst': forms.NumberInput(attrs={'class': 'form-control'}),
 
@@ -186,6 +186,12 @@ class ProductAddonForm(forms.ModelForm):
         self.fields['addon'].label_from_instance = lambda obj: f"{obj.name} (₹{obj.price_per_unit})"
 
 
+class PrintVariantForm(forms.ModelForm):
+    class Meta:
+        model = PrintVariant
+        fields = ['product', 'paper', 'color_type', 'min_quantity', 'max_quantity', 'price', 'sided']
+
+
 
 class SpotlightProductForm(forms.ModelForm):
     class Meta:
@@ -222,6 +228,15 @@ class vendor_customersForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
             'contact': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contact Number'}),
             'balance': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Balance'}),
+        }
+
+class PartyForm(forms.ModelForm):
+    class Meta:
+        model = Party
+        fields = '__all__'
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Party Name'}),
+            'mobile_number': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Mobile Number'}),
         }
 
 

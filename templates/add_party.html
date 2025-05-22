@@ -30,7 +30,7 @@
             margin-bottom: 20px;
             font-weight: bold;
             font-size: 2rem;
-            color: #775599;;
+            color: #ffdb8a;
         }
 
         .description-box {
@@ -76,22 +76,13 @@
                             <label for="code" class="form-label">Name:</label>
                             {{ form.name }}
                         </div>
-                       
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Description:</label>
-                            {{ form.description }}
+                   
+
+                          <div class="mb-4">
+                            <label for="code" class="form-label">Mobile Number:</label>
+                            {{ form.mobile_number }}
                         </div>
-                         
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Start Date :</label>
-                            {{ form.start_date }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="discount_percentage" class="form-label">Image:</label>
-                            {{ form.image }}
-                        </div>
-                        
+                   
                         
                                 <!-- Submit Button -->
                         <div class="text-center">
@@ -186,26 +177,5 @@ function displaySelectedImages() {
 
 
     </script>
-
-    <script>
-$(document).on('change', '.product-select', function () {
-    var productId = $(this).val();
-    var row = $(this).closest('.row');
-    if (productId) {
-        $.ajax({
-            url: '/api/get-product-price/',
-            data: { product_id: productId },
-            success: function (data) {
-                row.find('.price-input').val(data.price);
-                let qty = parseFloat(row.find('.qty-input').val()) || 0;
-                row.find('.amount-input').val((qty * parseFloat(data.price)).toFixed(2));
-            }
-        });
-    }
-});
-</script>
-
-
-
 
 {% endblock extra_js %}

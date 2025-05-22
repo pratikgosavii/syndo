@@ -271,6 +271,81 @@ def list_vendor(request):
     return render(request, 'list_vendor.html', context)
 
 
+@login_required(login_url='login_admin')
+def add_party(request):
+
+    if request.method == 'POST':
+
+        forms = PartyForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_party')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_party.html', context)
+    
+    else:
+
+        forms = PartyForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_party.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_party(request, party_id):
+
+    if request.method == 'POST':
+
+        instance = Party.objects.get(id=party_id)
+
+        forms = PartyForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_party')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = Party.objects.get(id=party_id)
+        forms = PartyForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_party.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_party(request, party_id):
+
+    Party.objects.get(id=party_id).delete()
+
+    return HttpResponseRedirect(reverse('list_party'))
+
+
+@login_required(login_url='login_admin')
+def list_party(request):
+
+    data = Party.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_party.html', context)
+
+
 
 @login_required(login_url='login_admin')
 def add_customer(request):
@@ -486,51 +561,55 @@ def list_super_catalogue(request):
 
 @login_required(login_url='login_admin')
 def add_product(request):
-
-    AddonFormSet = inlineformset_factory(
-        product, product_addon,
-        form=ProductAddonForm,
-        fields=['addon'],
-        extra=1,
-        can_delete=True
-        )
+    AddonFormSet = inlineformset_factory(product, product_addon, form=ProductAddonForm, extra=1, can_delete=True)
+    VariantFormSet = inlineformset_factory(product, PrintVariant, form=PrintVariantForm, extra=1, can_delete=True)
 
     if request.method == 'POST':
+        print("POST data:", request.POST)
+
         product_form = product_Form(request.POST, request.FILES)
-        
 
         if product_form.is_valid():
             product_instance = product_form.save(commit=False)
             product_instance.user = request.user
-            product_instance.save()  # fully save the product
+            product_instance.save()
 
-            formset = AddonFormSet(request.POST, request.FILES, instance=product_instance)
+            addon_formset = AddonFormSet(
+                request.POST, request.FILES,
+                instance=product_instance,
+                prefix='addon'   # Add a prefix here
+            )
+            variant_formset = VariantFormSet(
+                request.POST, request.FILES,
+                instance=product_instance,
+                prefix='print_variants'   # And here (must match template)
+            )
 
-            if formset.is_valid():
-                formset.save()
+            if addon_formset.is_valid() and variant_formset.is_valid():
+                addon_formset.save()
+                variant_formset.save()
                 return redirect('list_product')
             else:
-                print("Addon formset errors:", formset.errors)
+                print("Addon formset errors:", addon_formset.errors)
+                print("Variant formset errors:", variant_formset.errors)
+                print("Variant formset non-form errors:", variant_formset.non_form_errors())
+
         else:
             print("Product form errors:", product_form.errors)
-
-        # Return with errors
-        context = {
-            'form': product_form,
-            'formset': formset if 'formset' in locals() else AddonFormSet(),
-        }
-        return render(request, 'add_product.html', context)
+            addon_formset = AddonFormSet(request.POST, request.FILES, prefix='addon')
+            variant_formset = VariantFormSet(request.POST, request.FILES, prefix='print_variants')
 
     else:
         product_form = product_Form()
-        formset = AddonFormSet()
+        addon_formset = AddonFormSet(prefix='addon')
+        variant_formset = VariantFormSet(prefix='print_variants')
 
         context = {
             'form': product_form,
-            'formset': formset,
+            'formset': addon_formset,
+            'variant_formset': variant_formset,
         }
         return render(request, 'add_product.html', context)
-
         
 
 @login_required(login_url='login_admin')
@@ -546,25 +625,41 @@ def update_product(request, product_id):
         can_delete=True
     )
 
-    if request.method == 'POST':
-        product_form = product_Form(request.POST, request.FILES, instance=instance)
-        formset = AddonFormSet(request.POST, request.FILES, instance=instance)
+    
+    VariantFormSet = inlineformset_factory(product, PrintVariant, form=PrintVariantForm, extra=1, can_delete=True)
 
-        if product_form.is_valid() and formset.is_valid():
-            product_form.save()
-            formset.save()
+
+    if request.method == 'POST':
+
+        variant_formset = VariantFormSet(request.POST or None, request.FILES or None, instance=instance, prefix='print_variants')
+
+    
+        product_form = product_Form(request.POST, request.FILES, instance=instance)
+        addon_formset = AddonFormSet(request.POST, request.FILES, instance=instance)
+
+
+        if product_form.is_valid() and addon_formset.is_valid() and variant_formset.is_valid():
+            product_instance = product_form.save(commit=False)
+            product_instance.user = request.user
+            product_instance.save()
+
+            addon_formset.save()
+            variant_formset.save()
             return redirect('list_product')
         else:
             print("Product form errors:", product_form.errors)
-            print("Addon formset errors:", formset.errors)
+            print("Addon formset errors:", addon_formset.errors)
+            print("Variant formset errors:", variant_formset.errors)
 
     else:
         product_form = product_Form(instance=instance)
-        formset = AddonFormSet(instance=instance)
+        addon_formset = AddonFormSet(instance=instance)
+        variant_formset = VariantFormSet(instance=instance)
 
     context = {
         'form': product_form,
-        'formset': formset,
+        'formset': addon_formset,
+        'variant_formset': variant_formset,
     }
     return render(request, 'add_product.html', context)
         
@@ -1077,3 +1172,86 @@ def store_hours_view(request):
         "days": days,
         "hours": hours
     })
+
+
+
+class PartyViewSet(viewsets.ModelViewSet):
+    serializer_class = PartySerializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        return Party.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class SaleViewSet(viewsets.ModelViewSet):
+    serializer_class = SaleSerializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        return Sale.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+from django.db import transaction
+
+@login_required
+def pos(request):
+    if request.method == 'POST':
+        with transaction.atomic():
+            sale = Sale.objects.create(
+                user=request.user,
+                party_id=request.POST.get("party"),
+                discount_percentage=request.POST.get("discount_percentage") or 0,
+                credit_time_days=request.POST.get("credit_time_days") or None,
+            )
+
+            products = request.POST.getlist("product")
+            quantities = request.POST.getlist("quantity")
+            prices = request.POST.getlist("price")
+
+            for p, q, pr in zip(products, quantities, prices):
+                if p and q and pr:
+                    SaleItem.objects.create(
+                        user=request.user,
+                        sale=sale,
+                        product_id=p,
+                        quantity=int(q),
+                        price=float(pr),
+                    )
+        return redirect("create-sale")  # or success page
+
+    parties = Party.objects.filter(user=request.user)
+    products = product.objects.filter(user=request.user)
+    return render(request, "pos_form.html", {
+        "parties": parties,
+        "products": products,
+    })
+
+
+def list_sale(request):
+
+    data = Sale.objects.prefetch_related('items__product').all()
+
+    context = {
+        'data': data
+    }
+    return render(request, 'list_sale.html', context)
+
+        
+
+
+
+from django.views.decorators.http import require_GET
+
+@require_GET
+def get_product_price(request):
+    product_id = request.GET.get('product_id')
+    try:
+        product_instance = product.objects.get(id=product_id)
+        return JsonResponse({'price': str(product_instance.sales_price)})
+    except product.DoesNotExist:
+        return JsonResponse({'error': 'Product not found'}, status=404)

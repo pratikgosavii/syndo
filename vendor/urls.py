@@ -42,6 +42,11 @@ urlpatterns = [
     path('update-vendor/<vendor_id>', update_vendor, name='update_vendor'),
     path('delete-vendor/<vendor_id>', delete_vendor, name='delete_vendor'),
     path('list-vendor/', list_vendor, name='list_vendor'),
+
+    path('add-party/', add_party, name='add_party'),
+    path('update-party/<party_id>', update_party, name='update_party'),
+    path('delete-party/<party_id>', delete_party, name='delete_party'),
+    path('list-party/', list_party, name='list_party'),
     
     path('add-customer/', add_customer, name='add_customer'),
     path('update-customer/<customer_id>', update_customer, name='update_customer'),
@@ -78,6 +83,10 @@ urlpatterns = [
 
     path('store-working-hours/', store_hours_view, name='store_hours'),
     path('online-store-setting/', online_store_setting, name='online_store_setting'),
+
+    path('pos/', pos, name='create-sale'),
+    path('list-sale/', list_sale, name='list_sale'),
+    path('get_product_price/', get_product_price, name='get_product_price'),
 
 
 
