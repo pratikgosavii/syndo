@@ -63,8 +63,8 @@
             <div class="sale-summary mt-2">
                 Total Items: {{ sale.total_items }}<br>
                 Total Amount: ₹{{ sale.total_amount }}<br>
-                Tax (10%): ₹{{ sale.total_tax }}<br>
-                Discount: {{ sale.discount_percentage }}%<br>
+                Tax ({{ sale.tax_percentage }}%): ₹{{ sale.total_tax }}<br>
+                Discount({{ sale.discount_percentage }}%): {{ sale.total_discount }}<br>
                 <strong>Final Amount: ₹{{ sale.final_amount }}</strong>
             </div>
 
