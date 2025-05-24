@@ -1198,39 +1198,98 @@ class SaleViewSet(viewsets.ModelViewSet):
 
 from django.db import transaction
 
+from decimal import Decimal
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.shortcuts import render, redirect
+from .models import Sale, SaleItem, Party, product  # Adjust as per your app structure
+
 @login_required
 def pos(request):
     if request.method == 'POST':
         with transaction.atomic():
-            sale = Sale.objects.create(
-                user=request.user,
-                party_id=request.POST.get("party"),
-                discount_percentage=request.POST.get("discount_percentage") or 0,
-                credit_time_days=request.POST.get("credit_time_days") or None,
-            )
+            party_type = request.POST.get("party_type")  # 'none', 'customer', or 'vendor'
+            print(party_type)
+            # Create or fetch party
+            if party_type == "customer":
+                customer_name = request.POST.get("customer_name")
+                customer_mobile = request.POST.get("customer_mobile")
+
+                
+                sale = Sale.objects.create(
+                    user=request.user,
+                    customer_name = customer_name,
+                    customer_mobile = customer_mobile,
+                    discount_percentage=request.POST.get("discount_percentage") or 0,
+                    credit_time_days=request.POST.get("credit_time_days") or None,
+                )
+
+            elif party_type == "vendor":
+                party_id = request.POST.get("vendor_party_id")
+                party = Party.objects.get(id=party_id)
+            
+
+                sale = Sale.objects.create(
+                    user=request.user,
+                    party=party,
+                    discount_percentage=request.POST.get("discount_percentage") or 0,
+                    credit_time_days=request.POST.get("credit_time_days") or None,
+                )
+
+            else:
+
+                 sale = Sale.objects.create(
+                    user=request.user,
+                    discount_percentage=request.POST.get("discount_percentage") or 0,
+                    credit_time_days=request.POST.get("credit_time_days") or None,
+                )
+
 
             products = request.POST.getlist("product")
             quantities = request.POST.getlist("quantity")
             prices = request.POST.getlist("price")
 
+            total_items = 0
+            total_amount = Decimal("0.00")
+
             for p, q, pr in zip(products, quantities, prices):
                 if p and q and pr:
+                    qty = int(q)
+                    price = Decimal(pr)
+                    amount = qty * price
+
+
+
                     SaleItem.objects.create(
                         user=request.user,
                         sale=sale,
                         product_id=p,
-                        quantity=int(q),
-                        price=float(pr),
+                        quantity=qty,
+                        price=price,
                     )
-        return redirect("create-sale")  # or success page
 
-    parties = Party.objects.filter(user=request.user)
+                    total_items += qty
+                    total_amount += amount
+
+            
+            discount_percentage = Decimal(request.POST.get("discount_percentage") or 0)
+            tax_percentage = Decimal(request.POST.get("tax_percentage") or 0)
+            credit_time_days = request.POST.get("credit_time_days") or None
+
+            sale.discount_percentage = discount_percentage
+            sale.tax_percentage = tax_percentage
+            sale.credit_time_days = credit_time_days
+
+            sale.save()
+
+        return redirect("create-sale")
+
+    vendor_parties = Party.objects.filter(user=request.user)
     products = product.objects.filter(user=request.user)
     return render(request, "pos_form.html", {
-        "parties": parties,
+        "vendor_parties": vendor_parties,
         "products": products,
     })
-
 
 def list_sale(request):
 

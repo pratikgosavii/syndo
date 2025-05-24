@@ -503,11 +503,32 @@ class Party(models.Model):
 from decimal import Decimal
 
 class Sale(models.Model):
+
+    PAYMENT_CHOICES = [
+        ('upi', 'UPI'),
+        ('card', 'Card'),
+        ('cash', 'Cash'),
+        ('credit', 'Credit'),
+    ]
+
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
+
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     party = models.ForeignKey(Party, on_delete=models.SET_NULL, null=True, blank=True)
+    customer_name = models.CharField(max_length=50, null=True, blank=True)
+    customer_mobile = models.CharField(max_length=14, null=True, blank=True)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
     credit_time_days = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_wholesale_rate = models.BooleanField(default=False)
+
+    total_items = models.IntegerField(default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_tax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    final_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     @property
     def total_items(self):
@@ -518,14 +539,18 @@ class Sale(models.Model):
         return sum(item.amount for item in self.items.all())
 
     @property
+    def total_discount(self):
+        return round((self.discount_percentage / Decimal("100")) * self.total_amount, 2)
+
+    @property
     def total_tax(self):
-        tax_rate = Decimal("0.10")  # use Decimal, not float
-        return round(self.total_amount * tax_rate, 2)
+        discount_amount = self.total_discount
+        taxable_amount = self.total_amount - discount_amount
+        return round(taxable_amount * (self.tax_percentage / Decimal("100")), 2)
 
     @property
     def final_amount(self):
-        discount = (self.discount_percentage / Decimal("100")) * self.total_amount
-        return round(self.total_amount - discount + self.total_tax, 2)
+        return round(self.total_amount - self.total_discount + self.total_tax, 2)
 
     def __str__(self):
         return f"Sale #{self.id} - {self.party.name if self.party else 'Walk-in'}"

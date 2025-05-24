@@ -34,13 +34,28 @@
                     {% csrf_token %}
 
                     <div class="mb-3">
-                    <label class="form-label">Select Party</label>
-                    <select class="form-select" name="party">
-                        {% for party in parties %}
-                        <option value="{{ party.id }}">{{ party.name }} - {{ party.mobile_number }}</option>
-                        {% endfor %}
-                    </select>
+                        <label class="form-label">Select Party Type</label><br>
+                        <input type="radio" name="party_type" value="none" id="radio_none" checked> None
+                        <input type="radio" name="party_type" value="customer" id="radio_customer" class="ms-3"> Customer
+                        <input type="radio" name="party_type" value="vendor" id="radio_vendor" class="ms-3"> Vendor
+                        </div>
+
+                        <!-- Customer Input Fields -->
+                        <div id="customer_fields" class="mb-3" style="display: none;">
+                        <input type="text" class="form-control mb-2" placeholder="Enter name" name="customer_name">
+                        <input type="text" class="form-control" placeholder="Enter mobile number" name="customer_mobile">
+                        </div>
+
+                        <!-- Vendor Dropdown -->
+                        <div id="vendor_dropdown" class="mb-3" style="display: none;">
+                        <label class="form-label">Select Party</label>
+                        <select class="form-select" name="party">
+                            {% for party in parties %}
+                            <option value="{{ party.id }}">{{ party.name }} - {{ party.mobile_number }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
+
 
                     <hr>
 
@@ -75,21 +90,41 @@
 
                     <hr>
 
-                    <div class="row">
+                      <div class="mb-3">
+                        
+                    <label><strong>Payment</strong></label><br>
+                    <div class="btn-group mb-3" role="group" aria-label="Payment methods">
+                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('cash', this)">Cash</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
+                    </div>
+
+                  
+                    
+                    <hr>
+                   
+  <div class="row">
                     <div class="col-md-4">
                         <label>Discount (%)</label>
-                        <input type="number" class="form-control" name="discount_percentage" value="0">
+                        <input type="number" class="form-control" name="discount_percentage" id="discount-percentage" value="0">
+                        <label>Tax (%)</label>
+                        <input type="number" class="form-control" name="tax_percentage" id="tax-percentage"  value="0">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="credit_time" style="display: none;">
                         <label>Credit Time (days)</label>
                         <input type="number" class="form-control" name="credit_time_days" placeholder="Ex: 60">
                     </div>
                     </div>
+                    <input type="hidden" name="payment_method" id="payment_method">
 
-                    <div class="my-4">
+                    <div class="my-4" style="border:1px solid black; padding:10px;">
                     <h5>Summary</h5>
                     <p>Total Items: <span id="total-items">0</span></p>
+                    <p>Total Amount Before Discount: ₹<span id="total-amount-before-discount">0.00</span></p>
+                    <p>Discount: ₹<span id="discount-amount">0.00</span></p>
                     <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
+                    
                     </div>
 
                     <div class="text-end">
@@ -109,18 +144,32 @@
 
 <script>
   function recalculateTotals() {
-    let totalItems = 0;
-    let totalAmount = 0;
-    document.querySelectorAll('.item-row').forEach(row => {
-      const qty = parseFloat(row.querySelector('.quantity').value) || 0;
-      const price = parseFloat(row.querySelector('.price').value) || 0;
-      const amount = qty * price;
-      row.querySelector('.amount').value = amount.toFixed(2);
-      totalItems += qty;
-      totalAmount += amount;
-    });
-    document.getElementById('total-items').innerText = totalItems;
-    document.getElementById('total-amount').innerText = totalAmount.toFixed(2);
+   let totalItems = 0;
+  let totalAmount = 0;
+
+  document.querySelectorAll('.item-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.quantity').value) || 0;
+    const price = parseFloat(row.querySelector('.price').value) || 0;
+    const amount = qty * price;
+
+    row.querySelector('.amount').value = amount.toFixed(2);
+    totalItems += qty;
+    totalAmount += amount;
+  });
+
+  const discountPercentage = parseFloat(document.getElementById('discount-percentage').value) || 0;
+  const taxPercentage = parseFloat(document.getElementById('tax-percentage').value) || 0;
+
+  const discountAmount = totalAmount * (discountPercentage / 100);
+  const amountAfterDiscount = totalAmount - discountAmount;
+  const taxAmount = amountAfterDiscount * (taxPercentage / 100);
+  const totalAfterTax = amountAfterDiscount + taxAmount;
+
+  document.getElementById('total-items').innerText = totalItems;
+  document.getElementById('total-amount-before-discount').innerText = totalAmount.toFixed(2);
+  document.getElementById('discount-amount').innerText = discountAmount.toFixed(2);
+  document.getElementById('total-amount').innerText = totalAfterTax.toFixed(2);
+  
   }
 
   function initSelects() {
@@ -163,6 +212,9 @@
 
 
 <script>
+
+    document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
+
 $(document).on('change', '.product-select', function () {
     var productId = $(this).val();
     var row = $(this).closest('.row');
@@ -182,7 +234,55 @@ $(document).on('change', '.product-select', function () {
 });
 </script>
 
+<script>
+  const radioNone = document.getElementById('radio_none');
+  const radioCustomer = document.getElementById('radio_customer');
+  const radioVendor = document.getElementById('radio_vendor');
+  const customerFields = document.getElementById('customer_fields');
+  const vendorDropdown = document.getElementById('vendor_dropdown');
 
+  function toggleFields() {
+    if (radioCustomer.checked) {
+      customerFields.style.display = 'block';
+      vendorDropdown.style.display = 'none';
+    } else if (radioVendor.checked) {
+      customerFields.style.display = 'none';
+      vendorDropdown.style.display = 'block';
+    } else {
+      customerFields.style.display = 'none';
+      vendorDropdown.style.display = 'none';
+    }
+  }
+
+  radioNone.addEventListener('change', toggleFields);
+  radioCustomer.addEventListener('change', toggleFields);
+  radioVendor.addEventListener('change', toggleFields);
+
+  // Initialize view on load
+  window.onload = toggleFields;
+
+  function selectPayment(method, btn) {
+    document.getElementById('payment_method').value = method;
+
+    document.getElementById('payment_method').value = method;
+
+    if (method === "credit") {
+    document.getElementById("credit_time").style.display = "block";
+    } else {
+    document.getElementById("credit_time").style.display = "none";
+    }
+
+    // Style buttons
+    document.querySelectorAll('.btn-group .btn').forEach(b => {
+      b.classList.remove('btn-warning', 'text-white');
+      b.classList.add('btn-outline-dark');
+    });
+
+    btn.classList.remove('btn-outline-dark');
+    btn.classList.add('btn-warning', 'text-white');
+  }
+
+</script>
 
 
 {% endblock %}
