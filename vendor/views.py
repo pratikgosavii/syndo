@@ -1206,43 +1206,24 @@ from .models import Sale, SaleItem, Party, product  # Adjust as per your app str
 
 @login_required
 def pos(request):
+
+    forms = SaleForm()
+
     if request.method == 'POST':
         with transaction.atomic():
             party_type = request.POST.get("party_type")  # 'none', 'customer', or 'vendor'
             print(party_type)
             # Create or fetch party
-            if party_type == "customer":
-                customer_name = request.POST.get("customer_name")
-                customer_mobile = request.POST.get("customer_mobile")
+           
+            forms = SaleForm(request.POST)
 
-                
-                sale = Sale.objects.create(
-                    user=request.user,
-                    customer_name = customer_name,
-                    customer_mobile = customer_mobile,
-                    discount_percentage=request.POST.get("discount_percentage") or 0,
-                    credit_time_days=request.POST.get("credit_time_days") or None,
-                )
+            if forms.is_valid(request.POST):
 
-            elif party_type == "vendor":
-                party_id = request.POST.get("vendor_party_id")
-                party = Party.objects.get(id=party_id)
-            
-
-                sale = Sale.objects.create(
-                    user=request.user,
-                    party=party,
-                    discount_percentage=request.POST.get("discount_percentage") or 0,
-                    credit_time_days=request.POST.get("credit_time_days") or None,
-                )
+                instance = forms.save()
 
             else:
 
-                 sale = Sale.objects.create(
-                    user=request.user,
-                    discount_percentage=request.POST.get("discount_percentage") or 0,
-                    credit_time_days=request.POST.get("credit_time_days") or None,
-                )
+                return render(request, "pos_form.html", {"forms": forms})
 
 
             products = request.POST.getlist("product")
@@ -1258,11 +1239,9 @@ def pos(request):
                     price = Decimal(pr)
                     amount = qty * price
 
-
-
                     SaleItem.objects.create(
                         user=request.user,
-                        sale=sale,
+                        sale=instance,
                         product_id=p,
                         quantity=qty,
                         price=price,
@@ -1271,25 +1250,16 @@ def pos(request):
                     total_items += qty
                     total_amount += amount
 
-            
-            discount_percentage = Decimal(request.POST.get("discount_percentage") or 0)
-            tax_percentage = Decimal(request.POST.get("tax_percentage") or 0)
-            credit_time_days = request.POST.get("credit_time_days") or None
-
-            sale.discount_percentage = discount_percentage
-            sale.tax_percentage = tax_percentage
-            sale.credit_time_days = credit_time_days
-
-            sale.save()
-
         return redirect("create-sale")
 
-    vendor_parties = Party.objects.filter(user=request.user)
-    products = product.objects.filter(user=request.user)
     return render(request, "pos_form.html", {
-        "vendor_parties": vendor_parties,
-        "products": products,
+        "products" : product.objects.filter(user = request.user),
+        "form": forms,
+        "saleitemform": SaleItemForm(),
+        
     })
+
+
 
 def list_sale(request):
 
