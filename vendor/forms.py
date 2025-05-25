@@ -348,3 +348,48 @@ class StoreWorkingHourForm(forms.ModelForm):
             'open_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
             'close_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
         }
+
+
+
+
+
+class SaleItemForm(forms.ModelForm):
+    class Meta:
+        model = SaleItem
+        fields = ['product', 'quantity', 'price']
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-select product-select'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control quantity-input', 'min': '1'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control price-input', 'readonly': 'readonly'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super(SaleItemForm, self).__init__(*args, **kwargs)
+        
+        if user:
+            self.fields['product'].queryset = product.objects.filter(user=user)
+
+
+
+class SaleForm(forms.ModelForm):
+    class Meta:
+        model = Sale
+        fields = '__all__'
+        widgets = {
+            'party': forms.Select(attrs={'class': 'form-select'}),
+            'customer': forms.Select(attrs={'class': 'form-select'}),
+            'sale_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'payment_type': forms.Select(attrs={'class': 'form-select'}),
+            'company_profile': forms.Select(attrs={'class': 'form-select'}),
+            'total_amount': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super(SaleForm, self).__init__(*args, **kwargs)
+        
+        if user:
+            self.fields['vendor'].queryset = Party.objects.filter(user=user)
+            self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
+            self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)

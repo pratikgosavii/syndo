@@ -33,6 +33,12 @@
                 <form method="post" action="{% url 'create-sale' %}" id="pos-form">
                     {% csrf_token %}
 
+                     <div class="mb-3">
+                        <label class="form-label">Billing</label><br>
+                        {{ form.company_profile }}
+                    </div>
+
+
                     <div class="mb-3">
                         <label class="form-label">Select Party Type</label><br>
                         <input type="radio" name="party_type" value="none" id="radio_none" checked> None
@@ -42,32 +48,32 @@
 
                         <!-- Customer Input Fields -->
                         <div id="customer_fields" class="mb-3" style="display: none;">
-                        <input type="text" class="form-control mb-2" placeholder="Enter name" name="customer_name">
-                        <input type="text" class="form-control" placeholder="Enter mobile number" name="customer_mobile">
+                          <label class="form-label">Select Customer</label>
+                          {{ form.customer }}
+
                         </div>
 
                         <!-- Vendor Dropdown -->
                         <div id="vendor_dropdown" class="mb-3" style="display: none;">
                         <label class="form-label">Select Party</label>
-                        <select class="form-select" name="party">
-                            {% for party in parties %}
-                            <option value="{{ party.id }}">{{ party.name }} - {{ party.mobile_number }}</option>
-                            {% endfor %}
-                        </select>
+                        {{ form.party }}
                     </div>
 
 
                     <hr>
 
+                      <button type="button" class="btn  mb-3" data-bs-toggle="modal" data-bs-target="#productSearchModal">
+                            Search & Add Product
+                          </button>
+
                     <div id="items-container">
                     <div class="row g-2 align-items-center mb-2 item-row">
                         <div class="col-4">
-                        <select class="form-select product-select" name="product">
-                            <option value="">Select Product</option>
-                            {% for product in products %}
-                            <option value="{{ product.id }}" data-price="{{ product.price }}">{{ product.name }}</option>
-                            {% endfor %}
-                        </select>
+
+                          
+                          {{ saleitemform.product }}
+
+                        
                         </div>
                         <div class="col-2">
                         <input type="number" class="form-control quantity" name="quantity" value="1" placeholder="Qty">
@@ -138,6 +144,55 @@
                 </div>
                 </div>
                 </div>
+
+                <!-- Product Search Modal -->
+<!-- Product Search Modal -->
+<div class="modal fade" id="productSearchModal" tabindex="-1" aria-labelledby="productSearchModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      
+      <div class="modal-header">
+        <h5 class="modal-title" id="productSearchModalLabel">Search & Select Product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <input type="text" class="form-control mb-4" id="product-search-input" placeholder="Search by name...">
+
+        <div class="row" id="product-list">
+          {% for product in products %}
+          <div class="col-lg-2 col-md-3 col-sm-4 mb-3">
+            <div class="card h-100 shadow-sm product-card" 
+                 data-id="{{ product.id }}"
+                 data-name="{{ product.name }}"
+                 data-price="{{ product.sales_price }}"
+                 data-image="{{ product.image.url|default:'' }}">
+              
+              <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="">
+              
+              <div class="card-body text-center">
+                <h6 class="card-title mb-2">{{ product.name }}</h6>
+                <p class="mb-2">₹{{ product.sales_price }}</p>
+                
+                <div class="input-group mb-2 justify-content-center">
+                  <button class="btn btn-outline-secondary minus-btn" type="button">−</button>
+                  <input type="number" class="form-control quantity-input text-center mx-1" value="1" min="1" style="max-width: 60px;">
+                  <button class="btn btn-outline-secondary plus-btn" type="button">+</button>
+                </div>
+
+                <button class="btn btn-sm btn-primary add-to-pos-btn">Add to POS</button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
 {% endblock %}
 
 {% block extra_js %}
@@ -283,6 +338,65 @@ $(document).on('change', '.product-select', function () {
   }
 
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Live search
+  document.getElementById('product-search-input').addEventListener('input', function () {
+    const search = this.value.toLowerCase();
+    document.querySelectorAll('#product-list .product-card').forEach(card => {
+      const name = card.dataset.name.toLowerCase();
+      card.style.display = name.includes(search) ? 'block' : 'none';
+    });
+  });
+
+  // Quantity +/- buttons
+  document.querySelectorAll('.plus-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const input = this.closest('.input-group').querySelector('.quantity-input');
+      input.value = parseInt(input.value) + 1;
+    });
+  });
+
+  document.querySelectorAll('.minus-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const input = this.closest('.input-group').querySelector('.quantity-input');
+      if (parseInt(input.value) > 1) {
+        input.value = parseInt(input.value) - 1;
+      }
+    });
+  });
+
+  // Add to POS form
+  document.querySelectorAll('.add-to-pos-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const card = this.closest('.product-card');
+      const productId = card.dataset.id;
+      const productName = card.dataset.name;
+      const productPrice = card.dataset.price;
+      console.log(card.dataset)
+      const quantity = card.querySelector('.quantity-input').value;
+
+      // Clone row and populate
+      const row = document.querySelector('.item-row').cloneNode(true);
+      row.querySelectorAll('input').forEach(input => input.value = '');
+
+      const select = row.querySelector('.product-select');
+      select.innerHTML = document.querySelector('.product-select').innerHTML;
+      select.value = productId;
+      row.querySelector('.price').value = parseFloat(productPrice).toFixed(2);
+      row.querySelector('.quantity').value = quantity;
+      row.querySelector('.amount').value = (parseFloat(productPrice) * quantity).toFixed(2);
+
+      document.getElementById('items-container').appendChild(row);
+      $('#productSearchModal').modal('hide');
+
+      recalculateTotals();
+    });
+  });
+});
+</script>
+
 
 
 {% endblock %}

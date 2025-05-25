@@ -113,6 +113,8 @@ class vendor_customers(models.Model):
 
 
 class addon(models.Model):
+
+    # user = models.ForeignKey("app.Model", verbose_name=_(""), on_delete=models.CASCADE)
     product_category = models.ForeignKey("masters.product_category", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
@@ -219,7 +221,15 @@ class product(models.Model):
         ('set', 'Set'),
         ('pack', 'Pack'),
         ('pair', 'Pair'),
+        ('page', 'Page'),
     ]
+
+
+    # //on shop opion in add product
+    # add part screen
+    # gst incluiv exluc and auto calcualt show in summ// pos ewmov gst
+    # post flow product add screen 
+    # add bank and show list bank
 
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='productssdsdsd', null=True, blank=True)
 
@@ -513,22 +523,18 @@ class Sale(models.Model):
 
     payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
 
+    company_profile = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, null=True, blank=True)
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     party = models.ForeignKey(Party, on_delete=models.SET_NULL, null=True, blank=True)
-    customer_name = models.CharField(max_length=50, null=True, blank=True)
-    customer_mobile = models.CharField(max_length=14, null=True, blank=True)
+    customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     credit_time_days = models.IntegerField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
     is_wholesale_rate = models.BooleanField(default=False)
 
-    total_items = models.IntegerField(default=0)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total_tax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    final_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     @property
     def total_items(self):
