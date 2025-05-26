@@ -263,6 +263,72 @@ def delete_product_category(request, product_category_id):
     return redirect('list_product_category')
 
 
+def add_product_subcategory(request):
+    
+    if request.method == "POST":
+
+        forms = product_subcategory_Form(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_product_subcategory')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_product_subcategory.html', context)
+
+
+    else:
+
+        # create first row using admin then editing only
+
+        
+
+        return render(request, 'add_product_subcategory.html', { 'form' : product_subcategory_Form()})
+
+def update_product_subcategory(request, product_subcategory_id):
+    
+    instance = product_subcategory.objects.get(id = product_subcategory_id)
+
+    if request.method == "POST":
+
+        forms = product_subcategory_Form(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_product_subcategory')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_product_subcategory.html', context)
+    
+    else:
+
+        # create first row using admin then editing only
+
+        forms = product_subcategory_Form(instance=instance)
+
+        return render(request, 'add_product_subcategory.html', {'form' : forms})
+
+
+def list_product_subcategory(request):
+
+    data = product_subcategory.objects.all()
+
+    return render(request, 'list_product_subcategory.html', {'data' : data})
+
+
+def delete_product_subcategory(request, product_subcategory_id):
+
+    data = product_subcategory.objects.get(id = product_subcategory_id).delete()
+
+    return redirect('list_product_subcategory')
+
+
 from django.views import View
 
 

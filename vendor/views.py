@@ -346,6 +346,81 @@ def list_party(request):
     return render(request, 'list_party.html', context)
 
 
+@login_required(login_url='login_admin')
+def add_bank(request):
+
+    if request.method == 'POST':
+
+        forms = VendorBankForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_bank')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_bank.html', context)
+    
+    else:
+
+        forms = VendorBankForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_bank.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_bank(request, bank_id):
+
+    if request.method == 'POST':
+
+        instance = vendor_bank.objects.get(id=bank_id)
+
+        forms = VendorBankForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_bank')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = vendor_bank.objects.get(id=bank_id)
+        forms = VendorBankForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_bank.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_bank(request, bank_id):
+
+    vendor_bank.objects.get(id=bank_id).delete()
+
+    return HttpResponseRedirect(reverse('list_bank'))
+
+
+@login_required(login_url='login_admin')
+def list_bank(request):
+
+    data = vendor_bank.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_bank.html', context)
+
+
 
 @login_required(login_url='login_admin')
 def add_customer(request):
@@ -601,7 +676,10 @@ def add_product(request):
 
     else:
         product_form = product_Form()
-        addon_formset = AddonFormSet(prefix='addon')
+        addon_formset = AddonFormSet(
+        prefix='addon',
+        form_kwargs={'user': request.user}  # <-- important
+        )
         variant_formset = VariantFormSet(prefix='print_variants')
 
         context = {
@@ -652,8 +730,11 @@ def update_product(request, product_id):
             print("Variant formset errors:", variant_formset.errors)
 
     else:
-        product_form = product_Form(instance=instance)
-        addon_formset = AddonFormSet(instance=instance)
+        product_form = product_Form()
+        addon_formset = AddonFormSet(
+            prefix='addon',
+            form_kwargs={'user': request.user}  # <-- important
+        )
         variant_formset = VariantFormSet(instance=instance)
 
     context = {
@@ -729,6 +810,8 @@ def add_addon(request):
         forms = addon_Form(request.POST, request.FILES)
 
         if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
             forms.save()
             return redirect('list_addon')
         else:
@@ -759,6 +842,8 @@ def update_addon(request, addon_id):
         forms = addon_Form(request.POST, request.FILES, instance=instance)
 
         if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
             forms.save()
             return redirect('list_addon')
         else:
@@ -986,7 +1071,7 @@ def add_purchase(request):
     
     else:
 
-        forms = PurchaseForm()
+        forms = PurchaseForm(user=request.user)
 
         context = {
             'form': forms
@@ -1217,7 +1302,7 @@ def pos(request):
            
             forms = SaleForm(request.POST)
 
-            if forms.is_valid(request.POST):
+            if forms.is_valid():
 
                 instance = forms.save()
 

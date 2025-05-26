@@ -47,6 +47,11 @@ urlpatterns = [
     path('update-party/<party_id>', update_party, name='update_party'),
     path('delete-party/<party_id>', delete_party, name='delete_party'),
     path('list-party/', list_party, name='list_party'),
+
+    path('add-bank/', add_bank, name='add_bank'),
+    path('update-bank/<bank_id>', update_bank, name='update_bank'),
+    path('delete-bank/<bank_id>', delete_bank, name='delete_bank'),
+    path('list-bank/', list_bank, name='list_bank'),
     
     path('add-customer/', add_customer, name='add_customer'),
     path('update-customer/<customer_id>', update_customer, name='update_customer'),

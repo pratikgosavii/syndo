@@ -100,6 +100,21 @@ class vendor_vendors(models.Model):
         return self.name
 
 
+class vendor_bank(models.Model):
+    
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
+    name = models.CharField(max_length=100)
+    account_holder = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=50, unique=True)
+    ifsc_code = models.CharField(max_length=20)
+    branch = models.CharField(max_length=100, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.account_holder}"
+
+
 class vendor_customers(models.Model):
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
     name = models.CharField(max_length=50)
@@ -114,7 +129,7 @@ class vendor_customers(models.Model):
 
 class addon(models.Model):
 
-    # user = models.ForeignKey("app.Model", verbose_name=_(""), on_delete=models.CASCADE)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
     product_category = models.ForeignKey("masters.product_category", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
@@ -225,11 +240,6 @@ class product(models.Model):
     ]
 
 
-    # //on shop opion in add product
-    # add part screen
-    # gst incluiv exluc and auto calcualt show in summ// pos ewmov gst
-    # post flow product add screen 
-    # add bank and show list bank
 
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='productssdsdsd', null=True, blank=True)
 
@@ -238,7 +248,7 @@ class product(models.Model):
 
     name = models.CharField(max_length=255)
     category = models.ForeignKey("masters.product_category", on_delete=models.SET_NULL, null=True, blank=True)
-    sub_category = models.CharField(max_length=255, null=True, blank=True)
+    sub_category = models.ForeignKey("masters.product_subcategory", related_name='sdfdsz', on_delete=models.SET_NULL, null=True, blank=True)
 
     # Pricing details
     wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -280,6 +290,7 @@ class product(models.Model):
     brand_warranty = models.BooleanField(default=False)
 
     # Flags
+    tax_inclusive = models.BooleanField(default=False)
     is_popular = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -434,6 +445,7 @@ class Purchase(models.Model):
     
     purchase_date = models.DateField()
     vendor = models.ForeignKey(vendor_vendors, on_delete=models.CASCADE)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
     product = models.CharField(max_length=255, blank=True, null=True)
     supplier_invoice_date = models.DateField(blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)

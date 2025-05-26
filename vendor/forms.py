@@ -119,7 +119,7 @@ class product_Form(forms.ModelForm):
             'sale_type': forms.Select(attrs={'id': 'saleType', 'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'category': forms.Select(attrs={'class': 'form-control'}),
-            'sub_category': forms.TextInput(attrs={'class': 'form-control'}),
+            'sub_category': forms.Select(attrs={'class': 'form-control'}),
 
             'wholesale_price': forms.NumberInput(attrs={'class': 'form-control'}),
             'purchase_price': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -136,7 +136,12 @@ class product_Form(forms.ModelForm):
             'low_stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
 
             'brand_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'color': forms.TextInput(attrs={'class': 'form-control'}),
+            'color': forms.TextInput(attrs={
+                'id': 'color_value',
+                'readonly': 'readonly',
+                'placeholder': '#ffffff',
+                'style': 'width: 100px;',
+            }),
             'size': forms.TextInput(attrs={'class': 'form-control'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
             'expiry_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
@@ -155,6 +160,7 @@ class product_Form(forms.ModelForm):
             'shop_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'brand_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
 
+            'tax_inclusive': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_popular': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -173,7 +179,25 @@ class addon_Form(forms.ModelForm):
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
-
+class VendorBankForm(forms.ModelForm):
+    class Meta:
+        model = vendor_bank
+        fields = [
+            'name',
+            'account_holder',
+            'account_number',
+            'ifsc_code',
+            'branch',
+            'is_active',
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Bank Name'}),
+            'account_holder': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Holder Name'}),
+            'account_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Number'}),
+            'ifsc_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'IFSC Code'}),
+            'branch': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Branch Name'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
 class ProductAddonForm(forms.ModelForm):
     class Meta:
@@ -181,10 +205,15 @@ class ProductAddonForm(forms.ModelForm):
         fields = ['addon']
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # 👈 get the user from view
         super().__init__(*args, **kwargs)
-        self.fields['addon'].queryset = addon.objects.filter(is_active=True)
-        self.fields['addon'].label_from_instance = lambda obj: f"{obj.name} (₹{obj.price_per_unit})"
+        
+        if user:
+            self.fields['addon'].queryset = addon.objects.filter(user=user, is_active=True)
+        else:
+            self.fields['addon'].queryset = addon.objects.none()
 
+        self.fields['addon'].label_from_instance = lambda obj: f"{obj.name} (₹{obj.price_per_unit})"
 
 class PrintVariantForm(forms.ModelForm):
     class Meta:
@@ -281,17 +310,18 @@ class PurchaseForm(forms.ModelForm):
             'supplier_invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'serial_number': forms.TextInput(attrs={'class': 'form-control'}),
             'dispatch_address': forms.TextInput(attrs={'class': 'form-control'}),
-            'payment_type': forms.Select(attrs={'class': 'form-control'}),
+            'payment_type': forms.Select(attrs={'class': 'form-control', 'id': 'payment_type'}),
+            'bank': forms.Select(attrs={'class': 'form-control'}),
             'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # 👈 move this up first
         super().__init__(*args, **kwargs)
-        # If this is a new form (no instance or no code), set initial purchase_code
+
         if not self.instance.pk or not self.instance.purchase_code:
             self.fields['purchase_code'].initial = self.generate_unique_code()
-        user = kwargs.pop('user', None)
-        super(PurchaseForm, self).__init__(*args, **kwargs)
+
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
 
