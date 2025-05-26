@@ -119,6 +119,10 @@
                         </div>
                     
                         <div class="mb-3">
+                            
+                            <label for="id_tax_inclusive" class="form-label">Tax Inclusive</label>
+                            {{ form.tax_inclusive }}
+                            
                             <label for="id_gst" class="form-label">GST (%)</label>
                             {{ form.gst }}
                         </div>
@@ -152,10 +156,32 @@
                             {{ form.brand_name }}
                         </div>
                     
-                        <div class="mb-3">
-                            <label for="id_color" class="form-label">Color</label>
-                            {{ form.color }}
-                        </div>
+                         <label for="common_colors">Color</label>
+    <div class="mb-3" style="display: flex; gap: 10px; align-items: center;">
+        <!-- Dropdown of common colors -->
+        <select id="common_colors" class="form-control" onchange="updateColorPickerFromDropdown(this)">
+            <option value="">Select common color</option>
+            <option value="#ffffff">White</option>
+            <option value="#000000">Black</option>
+            <option value="#ff0000">Red</option>
+            <option value="#00ff00">Green</option>
+            <option value="#0000ff">Blue</option>
+            <option value="#ffff00">Yellow</option>
+            <option value="#ffa500">Orange</option>
+            <option value="#800080">Purple</option>
+            <option value="#808080">Gray</option>
+        </select>
+
+        <!-- Color picker -->
+        <input type="color" id="color_picker" onchange="updateDropdownFromColorPicker(this)">
+
+        <!-- Django form field (readonly text input) -->
+        {{ form.color }}
+
+        <!-- Preview -->
+        <div id="color_preview" style="width: 30px; height: 30px; border: 1px solid #ccc;"></div>
+
+        </div>
                     
                         <div class="mb-3">
                             <label for="id_size" class="form-label">Size</label>
@@ -539,6 +565,44 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
+
+document.addEventListener("DOMContentLoaded", function () {
+    const checkbox = document.getElementById("id_tax_inclusive");
+    const gstInput = document.getElementById("id_gst");
+
+    function toggleGSTInput() {
+      gstInput.style.display = checkbox.checked ? "none" : "block";
+    }
+
+    checkbox.addEventListener("change", toggleGSTInput);
+
+    // Initialize on page load
+    toggleGSTInput();
+  });
+
+  const colorPicker = document.getElementById("color_picker");
+  const colorValue = document.getElementById("color_value");
+  const colorPreview = document.getElementById("color_preview");
+  const commonColors = document.getElementById("common_colors");
+
+  function updateColorPickerFromDropdown(select) {
+    if (select.value) {
+      colorPicker.value = select.value;
+      colorValue.value = select.value;
+      colorPreview.style.background = select.value;
+    }
+  }
+
+  function updateDropdownFromColorPicker(picker) {
+    colorValue.value = picker.value;
+    colorPreview.style.background = picker.value;
+    commonColors.value = ""; // Reset dropdown selection
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    colorValue.value = colorPicker.value;
+    colorPreview.style.background = colorPicker.value;
+  });
 
     </script>
     
