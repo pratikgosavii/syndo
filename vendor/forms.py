@@ -117,6 +117,7 @@ class product_Form(forms.ModelForm):
             'user': forms.Select(attrs={'class': 'form-control'}),
             'product_type': forms.Select(attrs={'id': 'productType', 'class': 'form-control'}),
             'sale_type': forms.Select(attrs={'id': 'saleType', 'class': 'form-control'}),
+            'food_type': forms.Select(attrs={'id': 'foodType', 'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'category': forms.Select(attrs={'class': 'form-control'}),
             'sub_category': forms.Select(attrs={'class': 'form-control'}),
@@ -215,10 +216,57 @@ class ProductAddonForm(forms.ModelForm):
 
         self.fields['addon'].label_from_instance = lambda obj: f"{obj.name} (₹{obj.price_per_unit})"
 
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, (forms.TextInput, forms.NumberInput, forms.Select, forms.EmailInput)):
+                field.widget.attrs.update({'class': 'form-control'})
+            elif isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': 'form-check-input'})
+
+                
+
 class PrintVariantForm(forms.ModelForm):
     class Meta:
         model = PrintVariant
         fields = ['product', 'paper', 'color_type', 'min_quantity', 'max_quantity', 'price', 'sided']
+
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, (forms.TextInput, forms.NumberInput, forms.Select, forms.EmailInput)):
+                field.widget.attrs.update({'class': 'form-control'})
+            elif isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': 'form-check-input'})
+
+        # ✅ Make DELETE field not required and style it
+        if 'DELETE' in self.fields:
+            self.fields['DELETE'].required = False
+            self.fields['DELETE'].widget.attrs.update({'class': 'form-check-input'})
+
+                    
+
+class CustomizePrintVariantForm(forms.ModelForm):
+    class Meta:
+        model = CustomizePrintVariant
+        fields = ['size', 'price']
+
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, (forms.TextInput, forms.NumberInput, forms.Select, forms.EmailInput)):
+                field.widget.attrs.update({'class': 'form-control'})
+            elif isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': 'form-check-input'})
+
+    # ✅ Make DELETE field not required and style it
+        if 'DELETE' in self.fields:
+            self.fields['DELETE'].required = False
+            self.fields['DELETE'].widget.attrs.update({'class': 'form-check-input'})
 
 
 

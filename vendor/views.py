@@ -638,6 +638,7 @@ def list_super_catalogue(request):
 def add_product(request):
     AddonFormSet = inlineformset_factory(product, product_addon, form=ProductAddonForm, extra=1, can_delete=True)
     VariantFormSet = inlineformset_factory(product, PrintVariant, form=PrintVariantForm, extra=1, can_delete=True)
+    customize_print_variant_formset = inlineformset_factory(product, CustomizePrintVariant, form=CustomizePrintVariantForm, extra=1, can_delete=True)
 
     if request.method == 'POST':
         print("POST data:", request.POST)
@@ -652,7 +653,8 @@ def add_product(request):
             addon_formset = AddonFormSet(
                 request.POST, request.FILES,
                 instance=product_instance,
-                prefix='addon'   # Add a prefix here
+                prefix='addon',
+                form_kwargs={'user': request.user}  # ✅ FIXED
             )
             variant_formset = VariantFormSet(
                 request.POST, request.FILES,
@@ -686,6 +688,7 @@ def add_product(request):
             'form': product_form,
             'formset': addon_formset,
             'variant_formset': variant_formset,
+            'customize_print_variant_formset': customize_print_variant_formset,
         }
         return render(request, 'add_product.html', context)
         
@@ -703,18 +706,26 @@ def update_product(request, product_id):
         can_delete=True
     )
 
-    
-    VariantFormSet = inlineformset_factory(product, PrintVariant, form=PrintVariantForm, extra=1, can_delete=True)
-
+    VariantFormSet = inlineformset_factory(
+        product, PrintVariant,
+        form=PrintVariantForm,
+        extra=1,
+        can_delete=True
+    )
 
     if request.method == 'POST':
-
-        variant_formset = VariantFormSet(request.POST or None, request.FILES or None, instance=instance, prefix='print_variants')
-
-    
         product_form = product_Form(request.POST, request.FILES, instance=instance)
-        addon_formset = AddonFormSet(request.POST, request.FILES, instance=instance)
-
+        addon_formset = AddonFormSet(
+            request.POST, request.FILES,
+            instance=instance,
+            prefix='addon',
+            form_kwargs={'user': request.user}
+        )
+        variant_formset = VariantFormSet(
+            request.POST, request.FILES,
+            instance=instance,
+            prefix='print_variants'
+        )
 
         if product_form.is_valid() and addon_formset.is_valid() and variant_formset.is_valid():
             product_instance = product_form.save(commit=False)
@@ -730,12 +741,16 @@ def update_product(request, product_id):
             print("Variant formset errors:", variant_formset.errors)
 
     else:
-        product_form = product_Form()
+        product_form = product_Form(instance=instance)  # ✅ FIXED
         addon_formset = AddonFormSet(
+            instance=instance,
             prefix='addon',
-            form_kwargs={'user': request.user}  # <-- important
+            form_kwargs={'user': request.user}  # ✅ FIXED
         )
-        variant_formset = VariantFormSet(instance=instance)
+        variant_formset = VariantFormSet(
+            instance=instance,
+            prefix='print_variants'
+        )
 
     context = {
         'form': product_form,
