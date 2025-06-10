@@ -162,13 +162,23 @@
         <div class="row" id="product-list">
           {% for product in products %}
           <div class="col-lg-2 col-md-3 col-sm-4 mb-3">
-            <div class="card h-100 shadow-sm product-card" 
-                 data-id="{{ product.id }}"
-                 data-name="{{ product.name }}"
-                 data-price="{{ product.sales_price }}"
-                 data-image="{{ product.image.url|default:'' }}">
+            {% if product.image %}
+              <div class="card h-100 shadow-sm product-card" 
+                  data-id="{{ product.id }}"
+                  data-name="{{ product.name }}"
+                  data-price="{{ product.sales_price }}"
+                  data-image="{{ product.image.url }}">
+                <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+            {% else %}
+              <div class="card h-100 shadow-sm product-card" 
+                  data-id="{{ product.id }}"
+                  data-name="{{ product.name }}"
+                  data-price="{{ product.sales_price }}"
+                  data-image="">
+                <img src="{% static 'images/default-product.png' %}" class="card-img-top" alt="No Image">
+            {% endif %}
+
               
-              <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="">
               
               <div class="card-body text-center">
                 <h6 class="card-title mb-2">{{ product.name }}</h6>
