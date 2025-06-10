@@ -218,6 +218,11 @@ class product(models.Model):
         ('both', 'Both Online & Offline'),
     )
 
+    FOOD_TYPE_CHOICES = (
+        ('veg', 'Veg'),
+        ('non_veg', 'Non Veg'),
+    )
+
     UNIT_CHOICES = [
         ('kg', 'Kilogram'),
         ('g', 'Gram'),
@@ -245,6 +250,7 @@ class product(models.Model):
 
     product_type  = models.CharField(max_length=10, choices=TYPE_CHOICES, default='product')
     sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES, default='offline')
+    food_type = models.CharField(max_length=10, choices=FOOD_TYPE_CHOICES, null=True, blank=True)
 
     name = models.CharField(max_length=255)
     category = models.ForeignKey("masters.product_category", on_delete=models.SET_NULL, null=True, blank=True)
@@ -340,16 +346,26 @@ class PrintVariant(models.Model):
         # Add more commonly used types
     ]
 
-    product = models.ForeignKey(product, related_name='print_variants', on_delete=models.CASCADE)
-    paper = models.CharField(max_length=30, choices=PAPER_CHOICES)
-    color_type = models.CharField(max_length=10, choices=COLOR_CHOICES)
-    sided = models.CharField(max_length=10, choices=SIDED_CHOICES)
-    min_quantity = models.PositiveIntegerField()
-    max_quantity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    product = models.ForeignKey(product, related_name='print_variants', on_delete=models.CASCADE, null=True, blank=True)
+    paper = models.CharField(max_length=30, choices=PAPER_CHOICES, null=True, blank=True)
+    color_type = models.CharField(max_length=10, choices=COLOR_CHOICES, null=True, blank=True)
+    sided = models.CharField(max_length=10, choices=SIDED_CHOICES, null=True, blank=True)
+    min_quantity = models.PositiveIntegerField(null=True, blank=True)
+    max_quantity = models.PositiveIntegerField(null=True, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
         return f"{self.get_color_type_display()} | {self.get_sided_display()} | {self.get_paper_display()}"
+    
+
+class CustomizePrintVariant(models.Model):
+
+    product = models.ForeignKey(product, related_name='customize_print_variants', on_delete=models.CASCADE)
+    size = models.CharField(max_length=50)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return self.size()
     
     
 class ProductSettings(models.Model):
