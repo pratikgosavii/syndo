@@ -4,165 +4,146 @@
 {% block title %}Sales & POS{% endblock %}
 
 {% block extra_css %}
-  <style>
-    .remove-btn { cursor: pointer; color: red; font-size: 1.2rem; }
-  </style>
+<style>
+  .remove-btn { cursor: pointer; color: red; font-size: 1.2rem; }
+</style>
 {% endblock %}
 
 {% block content %}
 
 
+
 <div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <!-- start page title -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
-                    </div>
+  <div class="page-content">
+    <div class="container-fluid">
+        <div class="container py-4">
+            <h3 class="text-center">Sales & POS</h3>
+        <form method="post" action="{% url 'create-sale' %}" id="pos-form">
+            {% csrf_token %}
+            
+            <!-- Billing -->
+            <div class="mb-3">
+            <label class="form-label">Billing</label><br>
+            {{ form.company_profile }}
+            </div>
+
+            <!-- Party Type -->
+            <div class="mb-3">
+            <label class="form-label">Select Party Type</label><br>
+            <input type="radio" name="party_type" value="none" id="radio_none" checked> None
+            <input type="radio" name="party_type" value="customer" id="radio_customer" class="ms-3"> Customer
+            <input type="radio" name="party_type" value="vendor" id="radio_vendor" class="ms-3"> Vendor
+            </div>
+
+            <!-- Customer / Vendor -->
+            <div id="customer_fields" class="mb-3" style="display: none;">
+            <label>Select Customer</label>
+            {{ form.customer }}
+            </div>
+            <div id="vendor_dropdown" class="mb-3" style="display: none;">
+            <label>Select Party</label>
+            {{ form.party }}
+            </div>
+
+            <hr>
+
+            <!-- Add Product Button -->
+            <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#productSearchModal">
+            Search & Add Product
+            </button>
+
+            <!-- Items Container (with formsets in mind) -->
+            <div id="items-container">
+            <div class="row g-2 align-items-center mb-2 item-row">
+                <div class="col-4">
+                {{ saleitemform.product }}
+                </div>
+                <div class="col-2">
+                <input type="number" class="form-control qty-input" name="quantity[]" value="1" placeholder="Qty">
+                </div>
+                <div class="col-2">
+                <input type="number" class="form-control rate-input" name="price[]" placeholder="Price">
+                </div>
+                <div class="col-2">
+                <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
+                </div>
+                <div class="col-2 text-center">
+                <span class="remove-btn">&times;</span>
                 </div>
             </div>
-            <div class="container">
-                <div class="form-container">
+            </div>
 
-                                    
-                <div class="container py-4">
-                <h3 class="text-center">Sales & POS</h3>
+            <div class="my-2">
+            <button type="button" class="btn btn-warning" id="add-item">Add Item</button>
+            </div>
 
-                <form method="post" action="{% url 'create-sale' %}" id="pos-form">
-                    {% csrf_token %}
+            <hr>
 
-                     <div class="mb-3">
-                        <label class="form-label">Billing</label><br>
-                        {{ form.company_profile }}
-                    </div>
+            <!-- Payment Options -->
+            <div class="mb-3">
+            <label><strong>Payment</strong></label><br>
+            <div class="btn-group mb-3">
+                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
+                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
+                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('cash', this)">Cash</button>
+                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
+            </div>
+            </div>
 
+            <!-- Discount & Tax -->
+            <div class="row mb-3">
+            <div class="col-md-4">
+                <label>Discount (%)</label>
+                <input type="number" class="form-control" name="discount_percentage" id="discount-percentage" value="0">
 
-                    <div class="mb-3">
-                        <label class="form-label">Select Party Type</label><br>
-                        <input type="radio" name="party_type" value="none" id="radio_none" checked> None
-                        <input type="radio" name="party_type" value="customer" id="radio_customer" class="ms-3"> Customer
-                        <input type="radio" name="party_type" value="vendor" id="radio_vendor" class="ms-3"> Vendor
-                        </div>
+                    <label>Discount (₹)</label>
+                    <input type="number" class="form-control" id="discount-amount-input" value="0">
 
-                        <!-- Customer Input Fields -->
-                        <div id="customer_fields" class="mb-3" style="display: none;">
-                          <label class="form-label">Select Customer</label>
-                          {{ form.customer }}
+                {% comment %} <label class="mt-2">Tax (%)</label>
+                <input type="number" class="form-control" name="tax_percentage" id="tax-percentage" value="0"> {% endcomment %}
+            </div>
+            <div class="col-md-4" id="credit_time" style="display: none;">
+                <label>Credit Time (days)</label>
+                <input type="number" class="form-control" name="credit_time_days" placeholder="e.g. 60">
+            </div>
+            </div>
+            <input type="hidden" name="payment_method" id="payment_method">
 
-                        </div>
+            <!-- Summary -->
+            <div class="my-4 border p-3">
+            <h5>Summary</h5>
+            <p>Total Items: <span id="total-items">0</span></p>
+            <p>Total Amount before Discount: ₹<span id="total-amount-before-discount">0.00</span></p>
+            <p>Discount: ₹<span id="discount-amount">0.00</span></p>
+            <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
+            </div>
 
-                        <!-- Vendor Dropdown -->
-                        <div id="vendor_dropdown" class="mb-3" style="display: none;">
-                        <label class="form-label">Select Party</label>
-                        {{ form.party }}
-                    </div>
+            <div class="text-end">
+            <button type="submit" class="btn btn-success">Checkout</button>
+            <button type="reset" class="btn btn-danger">Discard</button>
+            </div>
+        </form>
+        </div>
+    </div>
+    </div>
+    </div>
 
-
-                    <hr>
-
-                      <button type="button" class="btn  mb-3" data-bs-toggle="modal" data-bs-target="#productSearchModal">
-                            Search & Add Product
-                          </button>
-
-                    <div id="items-container">
-                    <div class="row g-2 align-items-center mb-2 item-row">
-                        <div class="col-4">
-
-                          
-                          {{ saleitemform.product }}
-
-                        
-                        </div>
-                        <div class="col-2">
-                        <input type="number" class="form-control quantity" name="quantity" value="1" placeholder="Qty">
-                        </div>
-                        <div class="col-2">
-                        <input type="number" class="form-control price" name="price" placeholder="Price">
-                        </div>
-                        <div class="col-2">
-                        <input type="text" class="form-control amount" readonly placeholder="Amount">
-                        </div>
-                        <div class="col-2 text-center">
-                        <span class="remove-btn">&times;</span>
-                        </div>
-                    </div>
-                    </div>
-
-                    <div class="my-2">
-                    <button type="button" class="btn btn-warning" id="add-item">Add Item</button>
-                    </div>
-
-                    <hr>
-
-                      <div class="mb-3">
-                        
-                    <label><strong>Payment</strong></label><br>
-                    <div class="btn-group mb-3" role="group" aria-label="Payment methods">
-                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
-                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
-                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('cash', this)">Cash</button>
-                        <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
-                    </div>
-
-                  
-                    
-                    <hr>
-                   
-  <div class="row">
-                    <div class="col-md-4">
-                        <label>Discount (%)</label>
-                        <input type="number" class="form-control" name="discount_percentage" id="discount-percentage" value="0">
-                        <label>Tax (%)</label>
-                        <input type="number" class="form-control" name="tax_percentage" id="tax-percentage"  value="0">
-                    </div>
-                    <div class="col-md-4" id="credit_time" style="display: none;">
-                        <label>Credit Time (days)</label>
-                        <input type="number" class="form-control" name="credit_time_days" placeholder="Ex: 60">
-                    </div>
-                    </div>
-                    <input type="hidden" name="payment_method" id="payment_method">
-
-                    <div class="my-4" style="border:1px solid black; padding:10px;">
-                    <h5>Summary</h5>
-                    <p>Total Items: <span id="total-items">0</span></p>
-                    <p>Total Amount Before Discount: ₹<span id="total-amount-before-discount">0.00</span></p>
-                    <p>Discount: ₹<span id="discount-amount">0.00</span></p>
-                    <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
-                    
-                    </div>
-
-                    <div class="text-end">
-                    <button type="submit" class="btn btn-success">Checkout</button>
-                    <button type="reset" class="btn btn-danger">Discard</button>
-                    </div>
-                </form>
-                </div>
-                </div>
-                </div>
-                </div>
-                </div>
-                </div>
-
-                <!-- Product Search Modal -->
 <!-- Product Search Modal -->
-<div class="modal fade" id="productSearchModal" tabindex="-1" aria-labelledby="productSearchModalLabel" aria-hidden="true">
+    <div class="modal fade" id="productSearchModal" tabindex="-1" aria-labelledby="productSearchModalLabel">
+
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
-      
       <div class="modal-header">
         <h5 class="modal-title" id="productSearchModalLabel">Search & Select Product</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      
       <div class="modal-body">
         <input type="text" class="form-control mb-4" id="product-search-input" placeholder="Search by name...">
-
         <div class="row" id="product-list">
           {% for product in products %}
           <div class="col-lg-2 col-md-3 col-sm-4 mb-3">
-            {% if product.image %}
+
+              {% if product.image %}
               <div class="card h-100 shadow-sm product-card" 
                   data-id="{{ product.id }}"
                   data-name="{{ product.name }}"
@@ -178,43 +159,45 @@
                 <img src="{% static 'images/default-product.png' %}" class="card-img-top" alt="No Image">
             {% endif %}
 
-              
-              
-              <div class="card-body text-center">
-                <h6 class="card-title mb-2">{{ product.name }}</h6>
-                <p class="mb-2">₹{{ product.sales_price }}</p>
-                
-                <div class="input-group mb-2 justify-content-center">
-                  <button class="btn btn-outline-secondary minus-btn" type="button">−</button>
-                  <input type="number" class="form-control quantity-input text-center mx-1" value="1" min="1" style="max-width: 60px;">
-                  <button class="btn btn-outline-secondary plus-btn" type="button">+</button>
-                </div>
 
-                <button class="btn btn-sm btn-primary add-to-pos-btn">Add to POS</button>
+              <div class="card-body text-center">
+                <h6 class="card-title">{{ product.name }}</h6>
+                <p>₹{{ product.sales_price }}</p>
+                <div class="input-group mb-2 justify-content-center">
+                  <button class="btn btn-outline-secondary" onclick="adjustQty('{{ product.id }}', -1)">-</button>
+                  <input type="text" class="form-control text-center" value="0" id="qty-{{ product.id }}" readonly>
+                  <button class="btn btn-outline-secondary" onclick="adjustQty('{{ product.id }}', 1)">+</button>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="addToPOS({{ product.id }}, '{{ product.name }}', {{ product.sales_price }}, 'qty-{{ product.id }}')">Add to POS</button>
               </div>
             </div>
           </div>
           {% endfor %}
         </div>
       </div>
-
     </div>
   </div>
 </div>
 
-
-{% endblock %}
+{% endblock content %}
 
 {% block extra_js %}
-
 <script>
+  // Helper: recalculate one row
+  function recalcRow(row) {
+    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+    const price = parseFloat(row.querySelector('.rate-input').value) || 0;
+    row.querySelector('.amount').value = (qty * price).toFixed(2);
+  }
+
+  // Recalculate totals
   function recalculateTotals() {
-   let totalItems = 0;
+  let totalItems = 0;
   let totalAmount = 0;
 
   document.querySelectorAll('.item-row').forEach(row => {
-    const qty = parseFloat(row.querySelector('.quantity').value) || 0;
-    const price = parseFloat(row.querySelector('.price').value) || 0;
+    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+    const price = parseFloat(row.querySelector('.rate-input').value) || 0;
     const amount = qty * price;
 
     row.querySelector('.amount').value = amount.toFixed(2);
@@ -222,191 +205,222 @@
     totalAmount += amount;
   });
 
-  const discountPercentage = parseFloat(document.getElementById('discount-percentage').value) || 0;
-  const taxPercentage = parseFloat(document.getElementById('tax-percentage').value) || 0;
+  const discountPercentageField = document.getElementById('discount-percentage');
+  const discountAmountField = document.getElementById('discount-amount-input');
 
-  const discountAmount = totalAmount * (discountPercentage / 100);
+  let discountAmount = 0;
+  let discountPercentage = 0;
+
+  // Two-way binding logic
+  if (document.activeElement === discountPercentageField) {
+    discountPercentage = parseFloat(discountPercentageField.value) || 0;
+    discountAmount = totalAmount * (discountPercentage / 100);
+    discountAmountField.value = discountAmount.toFixed(2);
+  } else if (document.activeElement === discountAmountField) {
+    discountAmount = parseFloat(discountAmountField.value) || 0;
+    discountPercentage = (totalAmount === 0) ? 0 : (discountAmount / totalAmount) * 100;
+    discountPercentageField.value = discountPercentage.toFixed(2);
+  } else {
+    discountPercentage = parseFloat(discountPercentageField.value) || 0;
+    discountAmount = totalAmount * (discountPercentage / 100);
+    discountAmountField.value = discountAmount.toFixed(2);
+  }
+
+
   const amountAfterDiscount = totalAmount - discountAmount;
-  const taxAmount = amountAfterDiscount * (taxPercentage / 100);
-  const totalAfterTax = amountAfterDiscount + taxAmount;
+  const totalAfterTax = amountAfterDiscount;
 
   document.getElementById('total-items').innerText = totalItems;
   document.getElementById('total-amount-before-discount').innerText = totalAmount.toFixed(2);
   document.getElementById('discount-amount').innerText = discountAmount.toFixed(2);
   document.getElementById('total-amount').innerText = totalAfterTax.toFixed(2);
+
+}
+
+
+
+  document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
+  document.getElementById('discount-amount-input').addEventListener('input', recalculateTotals);
   
-  }
-
-  function initSelects() {
-    $('.product-select').selectpicker('refresh');
-  }
-
-  function handleProductSelect(row) {
-    const select = row.querySelector('.product-select');
-    select.addEventListener('change', function() {
-      const selectedOption = this.options[this.selectedIndex];
-      const price = selectedOption.getAttribute('data-price');
-      if (price) {
-        row.querySelector('.price').value = parseFloat(price).toFixed(2);
-        recalculateTotals();
-      }
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
   
-    document.getElementById('items-container').addEventListener('input', recalculateTotals);
-    document.getElementById('items-container').addEventListener('click', function(e) {
-      if (e.target.classList.contains('remove-btn')) {
-        e.target.closest('.item-row').remove();
-        recalculateTotals();
+  
+      function getUsedProducts() {
+        const used = [];
+        document.querySelectorAll(".product-select").forEach((sel) => {
+          if (sel.value) used.push(sel.value);
+        });
+        return used;
       }
+
+      
+  // Unique ID adjusters
+  function adjustQty(pid, change) {
+    const el = document.getElementById(`qty-${pid}`);
+    let v = parseInt(el.value) || 0;
+    v = Math.max(1, v + change);
+    el.value = v;
+  }
+
+     function updateSelectOptions() {
+        console.log('sdsdsd')
+        const used = getUsedProducts();
+        document.querySelectorAll(".product-select").forEach((select) => {
+          const current = select.value;
+          select.querySelectorAll("option").forEach((option) => {
+            option.disabled =
+              used.includes(option.value) && option.value !== current;
+          });
+        });
+      }
+
+
+  // Add selected product to POS
+  function addToPOS(pid, name, price, qtyId) {
+
+
+    const qty = parseInt(document.getElementById(qtyId).value) || 1;
+    let rowFound = Array.from(document.querySelectorAll('.item-row')).find(row => {
+      return row.querySelector('.product-select').value == pid;
     });
 
-    document.getElementById('add-item').addEventListener('click', function () {
-      const row = document.querySelector('.item-row').cloneNode(true);
-      row.querySelectorAll('input').forEach(input => input.value = '');
-      const select = row.querySelector('.product-select');
-      select.innerHTML = document.querySelector('.product-select').innerHTML;
-      $('#items-container').append(row);
-      $('.product-select').selectpicker('refresh');
-      handleProductSelect(row);
-    });
-  });
-</script>
+
+    if (!rowFound) document.getElementById('add-item').click(), rowFound = document.querySelector('.item-row:last-child');
+        rowFound.querySelector('.product-select').value = pid;
+        rowFound.querySelector('.qty-input').value = qty;
+        rowFound.querySelector('.rate-input').value = price.toFixed(2);
+        recalcRow(rowFound);
+        recalculateTotals();
+            updateSelectOptions();
+
+      setTimeout(() => {
+    // Remove focus from any element inside the modal
+    document.activeElement.blur(); 
+
+    const modalEl = document.getElementById('productSearchModal');
+    bootstrap.Modal.getInstance(modalEl).hide();
+}, 50);
 
 
-<script>
+  }
 
-    document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
 
-$(document).on('change', '.product-select', function () {
+    function recalculateAmount(row) {
+        const qty = parseInt(row.querySelector(".qty-input").value) || 0;
+        const rate = parseFloat(row.querySelector(".rate-input").value) || 0;
+        row.querySelector(".amount").value = (qty * rate).toFixed(2);
+      }
+
+
+      $(document).on('change', '.product-select', function () {
     var productId = $(this).val();
     var row = $(this).closest('.row');
     if (productId) {
         $.ajax({
             url: "{% url 'get_product_price' %}",
             data: { product_id: productId },
-           success: function (data) {
-    row.find('.price').val(data.price);
-    let qty = parseFloat(row.find('.quantity').val()) || 0;
-    row.find('.amount').val((qty * parseFloat(data.price)).toFixed(2));
-    $('#total-items').text(document.querySelectorAll('.item-row').length);
-    recalculateTotals();
-}
+            success: function (data) {
+                row.find('.rate-input').val(data.price);  // ✅ Sets the price here
+                let qty = parseFloat(row.find('.quantity').val()) || 0;
+                row.find('.amount').val((qty * parseFloat(data.price)).toFixed(2));
+                $('#total-items').text(document.querySelectorAll('.item-row').length);
+                recalculateTotals();
+            }
         });
     }
 });
-</script>
 
-<script>
-  const radioNone = document.getElementById('radio_none');
-  const radioCustomer = document.getElementById('radio_customer');
-  const radioVendor = document.getElementById('radio_vendor');
-  const customerFields = document.getElementById('customer_fields');
-  const vendorDropdown = document.getElementById('vendor_dropdown');
 
-  function toggleFields() {
-    if (radioCustomer.checked) {
-      customerFields.style.display = 'block';
-      vendorDropdown.style.display = 'none';
-    } else if (radioVendor.checked) {
-      customerFields.style.display = 'none';
-      vendorDropdown.style.display = 'block';
-    } else {
-      customerFields.style.display = 'none';
-      vendorDropdown.style.display = 'none';
+
+  // Add item row
+  document.getElementById('add-item').addEventListener('click', () => {
+    const orig = document.querySelector('.item-row');
+    const clone = orig.cloneNode(true);
+    clone.querySelectorAll('input').forEach(i => i.value = i.classList.contains('rate-input') || i.classList.contains('amount') ? '0.00' : '');
+    document.getElementById('items-container').appendChild(clone);
+    attachListeners(clone);
+  });
+
+  // Attach row listeners
+  function attachListeners(row) {
+    const qtyInput = row.querySelector(".qty-input");
+  const select = row.querySelector(".product-select");
+  const rateInput = row.querySelector(".rate-input");
+
+  qtyInput.addEventListener("input", () => {
+
+
+    const id = "qty-" + select.value;
+    const dynamicQtyInput = document.getElementById(id);
+    if (dynamicQtyInput) {
+      dynamicQtyInput.value = qtyInput.value;
     }
+    recalculateTotals();
+  });
+
+  select.addEventListener("change", () => {
+    const selected = select.options[select.selectedIndex];
+    const rate = parseFloat(selected.getAttribute("data-rate")) || 0;
+    rateInput.value = rate.toFixed(2);
+    updateSelectOptions();
+          recalculateAmount(row);
+
+  });
   }
 
-  radioNone.addEventListener('change', toggleFields);
-  radioCustomer.addEventListener('change', toggleFields);
-  radioVendor.addEventListener('change', toggleFields);
-
-  // Initialize view on load
-  window.onload = toggleFields;
-
+  // Payment method selector
   function selectPayment(method, btn) {
     document.getElementById('payment_method').value = method;
-
-    document.getElementById('payment_method').value = method;
-
-    if (method === "credit") {
-    document.getElementById("credit_time").style.display = "block";
-    } else {
-    document.getElementById("credit_time").style.display = "none";
-    }
-
-    // Style buttons
-    document.querySelectorAll('.btn-group .btn').forEach(b => {
-      b.classList.remove('btn-warning', 'text-white');
-      b.classList.add('btn-outline-dark');
-    });
-
-    btn.classList.remove('btn-outline-dark');
-    btn.classList.add('btn-warning', 'text-white');
+    document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.replace('btn-warning', 'btn-outline-dark'));
+    btn.classList.replace('btn-outline-dark', 'btn-warning');
+    document.getElementById('credit_time').style.display = method === 'credit' ? 'block' : 'none';
   }
 
+  // Search filter
+  document.getElementById('product-search-input').addEventListener('input', function(){
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#product-list .product-card').forEach(card => {
+      card.style.display = card.dataset.name.toLowerCase().includes(q) ? 'block' : 'none';
+    });
+  });
+
+  // Initial setup
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.item-row').forEach(attachListeners);
+    document.getElementById('items-container').addEventListener('input', recalculateTotals);
+    document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
+  });
 </script>
+
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  // Live search
-  document.getElementById('product-search-input').addEventListener('input', function () {
-    const search = this.value.toLowerCase();
-    document.querySelectorAll('#product-list .product-card').forEach(card => {
-      const name = card.dataset.name.toLowerCase();
-      card.style.display = name.includes(search) ? 'block' : 'none';
-    });
-  });
+  document.addEventListener("DOMContentLoaded", function () {
+    const radios = document.querySelectorAll('input[name="party_type"]');
+    const customerFields = document.getElementById("customer_fields");
+    const vendorDropdown = document.getElementById("vendor_dropdown");
 
-  // Quantity +/- buttons
-  document.querySelectorAll('.plus-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-      const input = this.closest('.input-group').querySelector('.quantity-input');
-      input.value = parseInt(input.value) + 1;
-    });
-  });
+    function togglePartyFields() {
+      const selected = document.querySelector('input[name="party_type"]:checked').value;
 
-  document.querySelectorAll('.minus-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-      const input = this.closest('.input-group').querySelector('.quantity-input');
-      if (parseInt(input.value) > 1) {
-        input.value = parseInt(input.value) - 1;
+      if (selected === "customer") {
+        customerFields.style.display = "block";
+        vendorDropdown.style.display = "none";
+      } else if (selected === "vendor") {
+        customerFields.style.display = "none";
+        vendorDropdown.style.display = "block";
+      } else {
+        customerFields.style.display = "none";
+        vendorDropdown.style.display = "none";
       }
-    });
+    }
+
+    // Attach listener to all radio buttons
+    radios.forEach(radio => radio.addEventListener("change", togglePartyFields));
+
+    // Initial setup
+    togglePartyFields();
   });
-
-  // Add to POS form
-  document.querySelectorAll('.add-to-pos-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-      const card = this.closest('.product-card');
-      const productId = card.dataset.id;
-      const productName = card.dataset.name;
-      const productPrice = card.dataset.price;
-      console.log(card.dataset)
-      const quantity = card.querySelector('.quantity-input').value;
-
-      // Clone row and populate
-      const row = document.querySelector('.item-row').cloneNode(true);
-      row.querySelectorAll('input').forEach(input => input.value = '');
-
-      const select = row.querySelector('.product-select');
-      select.innerHTML = document.querySelector('.product-select').innerHTML;
-      select.value = productId;
-      row.querySelector('.price').value = parseFloat(productPrice).toFixed(2);
-      row.querySelector('.quantity').value = quantity;
-      row.querySelector('.amount').value = (parseFloat(productPrice) * quantity).toFixed(2);
-
-      document.getElementById('items-container').appendChild(row);
-      $('#productSearchModal').modal('hide');
-
-      recalculateTotals();
-    });
-  });
-});
 </script>
 
 
 
-{% endblock %}
+{% endblock extra_js %}

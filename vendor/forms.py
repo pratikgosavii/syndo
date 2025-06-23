@@ -302,10 +302,34 @@ class vendor_customersForm(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Customer Name'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
-            'contact': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contact Number'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email ID'}),
+            'contact': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mobile Number'}),
             'balance': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Balance'}),
+
+            'company_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Company Name'}),
+            'gst_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'GST'}),
+            'aadhar_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Aadhar Number'}),
+            'pan_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'PAN'}),
+
+            'billing_address_line1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address Line 1'}),
+            'billing_address_line2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address Line 2'}),
+            'billing_pincode': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pincode'}),
+            'billing_city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
+            'billing_state': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'State'}),
+            'billing_country': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Country'}),
+
+            'dispatch_address_line1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address Line 1'}),
+            'dispatch_address_line2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address Line 2'}),
+            'dispatch_pincode': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pincode'}),
+            'dispatch_city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
+            'dispatch_state': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'State'}),
+            'dispatch_country': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Country'}),
+
+            'transport_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Transport Name'}),
         }
+
+
+
 
 class PartyForm(forms.ModelForm):
     class Meta:
