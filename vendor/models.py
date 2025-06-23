@@ -100,6 +100,17 @@ class vendor_vendors(models.Model):
         return self.name
 
 
+class delivery_boy(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
+    name = models.CharField(max_length=50)
+    email = models.EmailField()
+    contact = models.CharField(max_length=15)
+
+
+    def __str__(self):
+        return self.name
+
+
 class vendor_bank(models.Model):
     
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
@@ -117,13 +128,41 @@ class vendor_bank(models.Model):
 
 class vendor_customers(models.Model):
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
+    
+    # Basic
     name = models.CharField(max_length=50)
     email = models.EmailField()
     contact = models.CharField(max_length=15)
-    balance = models.BigIntegerField()
+    balance = models.BigIntegerField(default=0)
+
+    # Business Details
+    company_name = models.CharField(max_length=100, blank=True, null=True)
+    gst_number = models.CharField(max_length=20, blank=True, null=True)
+    aadhar_number = models.CharField(max_length=20, blank=True, null=True)
+    pan_number = models.CharField(max_length=20, blank=True, null=True)
+
+    # Billing Address
+    billing_address_line1 = models.CharField(max_length=255, blank=True, null=True)
+    billing_address_line2 = models.CharField(max_length=255, blank=True, null=True)
+    billing_pincode = models.CharField(max_length=10, blank=True, null=True)
+    billing_city = models.CharField(max_length=50, blank=True, null=True)
+    billing_state = models.CharField(max_length=50, blank=True, null=True)
+    billing_country = models.CharField(max_length=50, blank=True, null=True)
+
+    # Dispatch Address
+    dispatch_address_line1 = models.CharField(max_length=255, blank=True, null=True)
+    dispatch_address_line2 = models.CharField(max_length=255, blank=True, null=True)
+    dispatch_pincode = models.CharField(max_length=10, blank=True, null=True)
+    dispatch_city = models.CharField(max_length=50, blank=True, null=True)
+    dispatch_state = models.CharField(max_length=50, blank=True, null=True)
+    dispatch_country = models.CharField(max_length=50, blank=True, null=True)
+
+    # Transport
+    transport_name = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return self.name
+
 
 
 

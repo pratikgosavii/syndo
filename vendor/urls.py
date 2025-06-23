@@ -93,6 +93,15 @@ urlpatterns = [
     path('list-sale/', list_sale, name='list_sale'),
     path('get_product_price/', get_product_price, name='get_product_price'),
 
+    path('pos-wholesale/', pos_wholesale, name='pos_wholesale'),
+    path('order-details/<order_id>', order_details, name='order_details'),
+    path('order-list/', order_list, name='order_list'),
+    # path('order-list/', pos, name='create-sale'),
+    
+    path('accept-order/<order_id>', accept_order, name='accept_order'),
+    path('assign-delivery-boy/<order_id>', assign_delivery_boy, name='assign_delivery_boy'),
+    
+
 
 
 ]  + router.urls

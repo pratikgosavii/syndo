@@ -116,64 +116,56 @@
                                                 </tr>
                                             </thead>
                                             <tbody id="tableBody">
-                                                {% if data %}
-                                                    {% for i in data %}
-                                                        <tr data-bs-toggle="collapse" data-bs-target="#orderItems{{ i.id }}" style="cursor: pointer;">
-                                                            <td>{{ forloop.counter }}</td>
-                                                            <td>{{ i.id }}</td>
-                                                            <td>{{ i.user }}</td>
-                                                            <td> {{ i.status }} </td>
-                                                            <td>
-                                                                Click to view items
-                                                            </td>
-                                                            <td> {{ i.total }} </td>
-                                                            <td>
-                                                                <a href="{% url 'update_order' i.id %}">
-                                                                    <i class="bi bi-pencil-square text-primary" title="Edit"></i>
-                                                                </a>
-                                                                <a href="{% url 'delete_order' i.id %}">
-                                                                    <i class="bi bi-trash text-danger" title="Delete"></i>
-                                                                </a>
-                                                            </td>
-                                                        </tr>
-                                            
-                                                        <!-- Collapsible row -->
-                                                        <tr class="collapse" id="orderItems{{ i.id }}">
-                                                            <td >
-                                                            </td>
-                                                            <td>
-                                                            </td>
-                                                            <td>
-                                                            </td>
-                                                            <td>
-                                                            </td>
-                                                           
-                                                            <td>
-                                                                {% if i.items.all %}
-                                                                    <ul class="mb-0">
-                                                                        {% for item in i.items.all %}
-
-                                                                            <li>{{ item.product.name }} 
-                                                                                        
-                                                                                X
-                                                                            {{ item.quantity }} </li> 
-
-                                                                        {% endfor %}
-                                                                    </ul>
-                                                                {% else %}
-                                                                    <em>No items found</em>
-                                                                {% endif %}
-                                                            </td>
+                                            {% if data %}
+                                                {% for i in data %}
+                                                    <tr data-bs-toggle="collapse" data-bs-target="#orderItems{{ i.id }}" style="cursor: pointer;">
+                                                        <td>{{ forloop.counter }}</td>
+                                                        <td>{{ i.order_id }}</td>
+                                                        <td>{{ i.customer_name }}</td>
                                                         <td>
+                                                            <span class="badge 
+                                                                {% if i.status == 'accepted' %} bg-success
+                                                                {% elif i.status == 'cancelled' %} bg-danger
+                                                                {% elif i.status == 'not_accepted' %} bg-warning
+                                                                {% else %} bg-secondary
+                                                                {% endif %}">
+                                                                {{ i.status|capfirst }}
+                                                            </span>
                                                         </td>
+                                                        <td>Click to view items</td>
+                                                        <td>₹{{ i.total_amount }}</td>
                                                         <td>
+                                                            <a href="{% url 'order_details' i.id %}">
+                                                                <i class="bi bi-pencil-square text-primary" title="Details"></i>
+                                                            </a>
+                                                            {% comment %} <a href="{% url 'delete_order' i.id %}">
+                                                                <i class="bi bi-trash text-danger" title="Delete"></i>
+                                                            </a> {% endcomment %}
                                                         </td>
-                                                        </tr>
-                                                    {% endfor %}
-                                                {% endif %}
-                                            </tbody>
-                                            
-                                        </table>
+                                                    </tr>
+
+                                                    <!-- Collapsible order items -->
+                                                    <tr class="collapse" id="orderItems{{ i.id }}">
+                                                        <td colspan="7">
+                                                            <strong>Items:</strong>
+                                                            {% if i.items.all %}
+                                                                <ul class="mb-0">
+                                                                    {% for item in i.items.all %}
+                                                                        <li>{{ item.product.name }} × {{ item.quantity }}</li>
+                                                                    {% endfor %}
+                                                                </ul>
+                                                            {% else %}
+                                                                <em>No items found</em>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            {% else %}
+                                                <tr><td colspan="7" class="text-center">No orders found.</td></tr>
+                                            {% endif %}
+                                        </tbody> 
+                                    </table> 
+
                                     </div>
                                 </div>
                             </div>

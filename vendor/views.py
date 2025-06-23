@@ -1312,7 +1312,7 @@ def pos(request):
     if request.method == 'POST':
         with transaction.atomic():
             party_type = request.POST.get("party_type")  # 'none', 'customer', or 'vendor'
-            print(party_type)
+            print(request.POST)
             # Create or fetch party
            
             forms = SaleForm(request.POST)
@@ -1323,7 +1323,11 @@ def pos(request):
 
             else:
 
-                return render(request, "pos_form.html", {"forms": forms})
+                print(forms.errors)
+
+                return render(request, "pos_form.html", { "products" : product.objects.filter(user = request.user),
+        "form": forms,
+        "saleitemform": SaleItemForm(),})
 
 
             products = request.POST.getlist("product")
@@ -1384,3 +1388,60 @@ def get_product_price(request):
         return JsonResponse({'price': str(product_instance.sales_price)})
     except product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
+    
+
+
+
+def pos_wholesale(request):
+
+    return render(request, 'pos_wholesale.html')
+
+
+def order_details(request, order_id):
+
+    order = Order.objects.prefetch_related('items__product').get(id=order_id)
+    delivery_boy_data = delivery_boy.objects.filter(user = request.user)
+
+    context = {
+        "data" : order,
+        "delivery_boy_data" : delivery_boy_data
+    }
+
+    return render(request, 'order_details.html', context)
+
+
+from customer.models import *
+
+
+def order_list(request):
+
+    data = Order.objects.prefetch_related('items__product').all()
+
+    context = {
+        "data" : data
+    }
+    return render(request, 'list_order.html', context)
+
+
+
+
+def accept_order(request, order_id):
+
+    order = Order.objects.prefetch_related('items__product').get(id=order_id)
+
+    order.status = "accepted"
+    order.save()
+
+    return redirect('order_details', order_id = order_id)
+
+def assign_delivery_boy(request, order_id):
+
+    order = Order.objects.prefetch_related('items__product').get(id=order_id)
+    delivery_boy_id = request.POST.get('delivery_boy_id')
+    delivery_boy_instance = delivery_boy.objects.get(id = delivery_boy_id)
+    order.delivery_boy = delivery_boy_instance
+    order.save()
+
+    return redirect('order_details', order_id = order_id)
+
+

@@ -104,37 +104,62 @@
                                                 id="datatable"
                                                 class="table table-bordered table-striped"
                                         >
-                                            <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Name</th>
-                                                <th>Email</th>
-                                                <th>Contact</th>
-                                                <th>Balance</th>
-                                                <th>Action</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody id="tableBody">
-                                                {% if data %}
-                                            {% for i in data %}
-                                                <tr>
-                                                    <td>{{ forloop.counter }}</td>
-                                                    <td>{{ i.name }}</td>
-                                                    <td>{{ i.email }}</td>
-                                                    <td>{{ i.contact }}</td>
-                                                    <td>{{ i.balance }}</td>
-                                                  
-                                                    <td>
-                                                        <!-- remove Button -->
-                                                        <a href="{% url 'update_customer' i.id %}" ><i class="bi bi-pencil-square text-primary action-icons edit"  title="Edit"></i>  </a>
-                                                        <a href="{% url 'delete_customer' i.id %}" > <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i> </a>
+                                           <thead>
+<tr>
+    <th>#</th>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Contact</th>
+    <th>Balance</th>
+    <th>Company</th>
+    <th>GST</th>
+    <th>Aadhar</th>
+    <th>PAN</th>
+    <th>Billing Address</th>
+    <th>Dispatch Address</th>
+    <th>Transport</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody id="tableBody">
+{% if data %}
+    {% for i in data %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ i.name }}</td>
+            <td>{{ i.email }}</td>
+            <td>{{ i.contact }}</td>
+            <td>{{ i.balance }}</td>
+            <td>{{ i.company_name }}</td>
+            <td>{{ i.gst }}</td>
+            <td>{{ i.aadhar }}</td>
+            <td>{{ i.pan }}</td>
+            <td>
+                {{ i.billing_address_line1 }}<br>
+                {{ i.billing_address_line2 }}<br>
+                {{ i.billing_city }}, {{ i.billing_state }} - {{ i.billing_pincode }}<br>
+                {{ i.billing_country }}
+            </td>
+            <td>
+                {{ i.dispatch_address_line1 }}<br>
+                {{ i.dispatch_address_line2 }}<br>
+                {{ i.dispatch_city }}, {{ i.dispatch_state }} - {{ i.dispatch_pincode }}<br>
+                {{ i.dispatch_country }}
+            </td>
+            <td>{{ i.transport_name }}</td>
+            <td>
+                <a href="{% url 'update_customer' i.id %}">
+                    <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
+                </a>
+                <a href="{% url 'delete_customer' i.id %}">
+                    <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
+                </a>
+            </td>
+        </tr>
+    {% endfor %}
+{% endif %}
+</tbody>
 
-
-                                                    </td>
-                                                </tr>
-                                            {% endfor %}
-                                            {% endif %}
-                                            </tbody>
                                         </table>
                                     </div>
                                 </div>
