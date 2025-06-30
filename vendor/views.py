@@ -1321,13 +1321,14 @@ def pos(request):
 
                 instance = forms.save()
 
+
             else:
 
                 print(forms.errors)
 
                 return render(request, "pos_form.html", { "products" : product.objects.filter(user = request.user),
-        "form": forms,
-        "saleitemform": SaleItemForm(),})
+                "form": forms,
+                "saleitemform": SaleItemForm(),})
 
 
             products = request.POST.getlist("product")
@@ -1354,7 +1355,8 @@ def pos(request):
                     total_items += qty
                     total_amount += amount
 
-        return redirect("create-sale")
+        return redirect('pos_wholesale', sale_id = instance.id)
+
 
     return render(request, "pos_form.html", {
         "products" : product.objects.filter(user = request.user),
@@ -1364,16 +1366,21 @@ def pos(request):
     })
 
 
+from django.db.models import Prefetch
 
 def list_sale(request):
 
-    data = Sale.objects.prefetch_related('items__product').all()
+    data = Sale.objects.prefetch_related(
+        'items__product',
+        Prefetch('wholesales', queryset=pos_wholesale.objects.all())
+    ).all()
 
     context = {
         'data': data
     }
     return render(request, 'list_sale.html', context)
 
+    
         
 
 
@@ -1392,9 +1399,63 @@ def get_product_price(request):
 
 
 
-def pos_wholesale(request):
+def sale_invoice(request, sale_id):
 
-    return render(request, 'pos_wholesale.html')
+    sale = (
+        Sale.objects
+        .prefetch_related(
+            Prefetch('items__product'),
+            Prefetch('wholesales', queryset=pos_wholesale.objects.all())
+        )
+        .select_related('party', 'company_profile')
+        .get(id=sale_id)
+    )
+    wholesale = sale.wholesales.first()
+
+    delivery = wholesale.delivery_charges or 0 if wholesale else 0
+    packaging = wholesale.packaging_charges or 0 if wholesale else 0
+    total_amount = sale.final_amount + delivery + packaging
+
+    return render(request, 'sale_invoice/sale_invoice.html', {
+        'sale_instance': sale,
+        'wholesale': wholesale,
+        'total_amount': total_amount,
+    })
+
+
+
+def pos_wholesaless(request, sale_id):
+
+    sale = get_object_or_404(Sale, id=sale_id)
+
+    if request.method == 'POST':
+        form = pos_wholesaleForm(request.POST, request.FILES)
+        if form.is_valid():
+            invoice = form.save(commit=False)
+            invoice.user = request.user
+            invoice.sale = sale            # 👈 assign the sale from URL
+            invoice.save()
+            return redirect('list_sale')
+        
+        else:
+
+            print(form.errors)
+
+            context = {
+                "form" : form
+            }
+
+            return render(request, 'pos_wholesale.html', context)
+
+    else:
+
+        form = pos_wholesaleForm()
+
+        context = {
+            "form" : form
+        }
+
+        return render(request, 'pos_wholesale.html', context)
 
 
 def order_details(request, order_id):
@@ -1445,3 +1506,31 @@ def assign_delivery_boy(request, order_id):
     return redirect('order_details', order_id = order_id)
 
 
+
+
+from django.shortcuts import render, redirect
+from .models import DeliveryBoy, DeliverySettings
+from .forms import DeliveryBoyForm, DeliverySettingsForm
+
+def delivery_management(request):
+    return render(request, 'delivery/delivery_management.html')
+
+def manage_delivery_boy(request):
+    form = DeliveryBoyForm()
+    delivery_boys = DeliveryBoy.objects.all()
+    if request.method == 'POST':
+        form = DeliveryBoyForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('manage_delivery_boy')
+    return render(request, 'delivery/delivery_boy.html', {'form': form, 'delivery_boys': delivery_boys})
+
+def delivery_settings_view(request):
+    settings, _ = DeliverySettings.objects.get_or_create(id=1)
+    form = DeliverySettingsForm(instance=settings)
+    if request.method == 'POST':
+        form = DeliverySettingsForm(request.POST, instance=settings)
+        if form.is_valid():
+            form.save()
+            return redirect('delivery_settings')
+    return render(request, 'delivery/delivery_settings.html', {'form': form})

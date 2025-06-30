@@ -495,3 +495,77 @@ class SaleForm(forms.ModelForm):
             self.fields['vendor'].queryset = Party.objects.filter(user=user)
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
+
+
+class pos_wholesaleForm(forms.ModelForm):
+    class Meta:
+        model = pos_wholesale
+        fields = [
+            'invoice_type',
+            'invoice_number',
+            'date',
+
+            # Optional Fields
+            'dispatch_address',
+            'delivery_city',
+            'signature',
+            'references',
+            'notes',
+            'terms',
+            'delivery_charges',
+            'reverse_charges',
+            'packaging_charges',
+            'eway_bill_number',
+            'lr_number',
+            'vehicle_number',
+            'transport_name',
+            'number_of_parcels',
+        ]
+
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'invoice_type': forms.Select(attrs={'class': 'form-select'}),
+            'invoice_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'delivery_city': forms.TextInput(attrs={'class': 'form-control', 'delivery_city' : 'delivery_city'}),
+
+            'dispatch_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+
+            'delivery_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'reverse_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'packaging_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+
+            'eway_bill_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'lr_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'vehicle_number': forms.TextInput(attrs={'class': 'form-control', 'id' : 'vehicle_number'}),
+            'transport_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'number_of_parcels': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'number_of_parcels'}),
+
+            'signature': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(pos_wholesaleForm, self).__init__(*args, **kwargs)
+        for field in self.fields:
+            self.fields[field].required = False  # All optional
+
+
+
+from django import forms
+
+class DeliveryBoyForm(forms.ModelForm):
+    class Meta:
+        model = DeliveryBoy
+        fields = ['name', 'mobile', 'photo']
+
+class DeliverySettingsForm(forms.ModelForm):
+    class Meta:
+        model = DeliverySettings
+        fields = [
+            'instant_order_prep_time',
+            'general_delivery_days',
+            'delivery_charge_per_km',
+            'minimum_base_fare'
+        ]

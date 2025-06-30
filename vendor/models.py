@@ -265,7 +265,7 @@ class product(models.Model):
     UNIT_CHOICES = [
         ('kg', 'Kilogram'),
         ('g', 'Gram'),
-        ('mg', 'Milligram'),
+        ('sa', 'Milligram'),
         ('lb', 'Pound'),
         ('l', 'Litre'),
         ('ml', 'Millilitre'),
@@ -596,7 +596,6 @@ class Sale(models.Model):
     party = models.ForeignKey(Party, on_delete=models.SET_NULL, null=True, blank=True)
     customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     credit_time_days = models.IntegerField(null=True, blank=True)
     is_wholesale_rate = models.BooleanField(default=False)
@@ -615,15 +614,10 @@ class Sale(models.Model):
     def total_discount(self):
         return round((self.discount_percentage / Decimal("100")) * self.total_amount, 2)
 
-    @property
-    def total_tax(self):
-        discount_amount = self.total_discount
-        taxable_amount = self.total_amount - discount_amount
-        return round(taxable_amount * (self.tax_percentage / Decimal("100")), 2)
-
+  
     @property
     def final_amount(self):
-        return round(self.total_amount - self.total_discount + self.total_tax, 2)
+        return round(self.total_amount - self.total_discount, 2)
 
     def __str__(self):
         return f"Sale #{self.id} - {self.party.name if self.party else 'Walk-in'}"
@@ -641,3 +635,102 @@ class SaleItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
+    
+class pos_wholesale(models.Model):
+
+    INVOICE_TYPES = [
+        ('invoice', 'Invoice'),
+        ('proforma', 'Pro Forma Invoice'),
+        ('quotation', 'Quotation'),
+        ('credit_note', 'Credit Note'),
+        ('delivery_challan', 'Delivery Challan'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # creator
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="wholesales")
+    invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPES, default='invoice')
+    invoice_number = models.CharField(max_length=100)
+    date = models.DateField(blank=True, null=True)
+
+    # Optional Fields
+    dispatch_address = models.TextField(blank=True, null=True)
+    delivery_city = models.TextField(blank=True, null=True)
+    signature = models.ImageField(upload_to='signatures/', blank=True, null=True)
+    references = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    terms = models.TextField(blank=True, null=True)
+
+    delivery_charges = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    packaging_charges = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    reverse_charges = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
+    eway_bill_number = models.CharField(max_length=50, blank=True, null=True)
+    lr_number = models.CharField(max_length=50, blank=True, null=True)
+    vehicle_number = models.CharField(max_length=50, blank=True, null=True)
+    transport_name = models.CharField(max_length=100, blank=True, null=True)
+    number_of_parcels = models.PositiveIntegerField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'invoice_number')
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            last = pos_wholesale.objects.filter(user=self.user).order_by('-id').first()
+            if last and last.invoice_number.startswith("SVI"):
+                try:
+                    last_number = int(last.invoice_number.replace("SVI", ""))
+                except ValueError:
+                    last_number = 0
+            else:
+                last_number = 0
+            self.invoice_number = f"SVI{last_number + 1}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.invoice_number} - {self.get_invoice_type_display()}" 
+
+        # models.py
+from django.db import models
+
+
+class DeliverySettings(models.Model):
+    instant_order_prep_time = models.PositiveIntegerField(default=30)  # in minutes
+    general_delivery_days = models.PositiveIntegerField(default=2)
+    delivery_charge_per_km = models.DecimalField(max_digits=6, decimal_places=2, default=10.00)
+    minimum_base_fare = models.DecimalField(max_digits=6, decimal_places=2, default=30.00)
+
+class DeliveryBoy(models.Model):
+    name = models.CharField(max_length=100)
+    mobile = models.CharField(max_length=15)
+    photo = models.ImageField(upload_to='delivery_boys/', null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    total_deliveries = models.PositiveIntegerField(default=0)
+    rating = models.DecimalField(max_digits=2, decimal_places=1, default=5.0)
+
+class Wallet(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    spent = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    available = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
+class WalletTransaction(models.Model):
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    transaction_type = models.CharField(max_length=10, choices=[('credit', 'Credit'), ('debit', 'Debit')])
+    order_id = models.CharField(max_length=50)
+    date = models.DateField(auto_now_add=True)
+    time = models.TimeField(auto_now_add=True)
+
+class DeliveryEarnings(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    orders_delivered = models.PositiveIntegerField(default=0)
+    earnings = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    last_order_id = models.CharField(max_length=50, blank=True)
+    last_order_date = models.DateField(null=True, blank=True)
+    last_order_time = models.TimeField(null=True, blank=True)
+
+class DeliveryMode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    is_auto_assign_enabled = models.BooleanField(default=False)
+    is_self_delivery_enabled = models.BooleanField(default=False)
