@@ -56,47 +56,46 @@
 
     {% if data %}
         {% for sale in data %}
-        <div class="sale-card">
-            <div class="sale-header">
-                Sale #{{ sale.id }} - {{ sale.party.name }} - Created at: {{ sale.created_at|date:"M d, Y H:i" }}
-            </div>
-            <div class="sale-summary mt-2">
-                Total Items: {{ sale.total_items }}<br>
-                Total Amount: ₹{{ sale.total_amount }}<br>
-                Tax ({{ sale.tax_percentage }}%): ₹{{ sale.total_tax }}<br>
-                Discount({{ sale.discount_percentage }}%): {{ sale.total_discount }}<br>
-                <strong>Final Amount: ₹{{ sale.final_amount }}</strong>
-            </div>
+   <div class="sale-card">
+    <div class="sale-header">
+        Sale #{{ sale.id }} - {{ sale.party.name }} - Created at: {{ sale.created_at|date:"M d, Y H:i" }}
+    </div>
 
-            <div class="sale-items mt-3">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Product</th>
-                            <th>Quantity</th>
-                            <th>Price (₹)</th>
-                            <th>Amount (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in sale.items.all %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ item.product.name }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.price }}</td>
-                            <td>{{ item.amount }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5">No items for this sale.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="sale-summary mt-2">
+        Total Items: {{ sale.total_items }}<br>
+        Total Amount: ₹{{ sale.total_amount }}<br>
+        Tax ({{ sale.tax_percentage }}%): ₹{{ sale.total_tax }}<br>
+        Discount({{ sale.discount_percentage }}%): {{ sale.total_discount }}<br>
+        <strong>Final Amount: ₹{{ sale.final_amount }}</strong>
+    </div>
+
+    <!-- 🔻 This is the toggle button -->
+    <div class="text-end mt-2">
+        <a href={% url 'sale_invoice' sale.id %}  >  <button class="btn btn-sm btn-outline-secondary toggle-pos" data-sale="{{ sale.id }}">Download Invoice</button> </a>
+
+        <button class="btn btn-sm btn-outline-secondary toggle-pos" data-sale="{{ sale.id }}">Show POS Details</button>
+    </div>
+
+    <!-- 🔻 This part is hidden by default and shown only when clicked -->
+    <div id="pos-details-{{ sale.id }}" class="mt-2" style="display: none;">
+        {% for wholesale in sale.wholesales.all %}
+            <div class="card p-3 bg-light border">
+                <h6>POS Wholesale Invoice</h6>
+                <strong>Invoice No:</strong> {{ wholesale.invoice_number }}<br>
+                <strong>Type:</strong> {{ wholesale.get_invoice_type_display }}<br>
+                <strong>Date:</strong> {{ wholesale.date }}<br>
+                <strong>Dispatch Address:</strong> {{ wholesale.dispatch_address }}<br>
+                <strong>Vehicle Number:</strong> {{ wholesale.vehicle_number }}<br>
+                <strong>Number of Parcels:</strong> {{ wholesale.number_of_parcels }}<br>
+                <strong>Transport:</strong> {{ wholesale.transport_name }}<br>
+                <strong>Charges:</strong> ₹{{ wholesale.delivery_charges }} / ₹{{ wholesale.packaging_charges }}<br>
             </div>
-        </div>
+        {% empty %}
+            <p class="text-muted">No POS invoice info available.</p>
+        {% endfor %}
+    </div>
+</div>
+
        
         {% endfor %}
     {% else %}
@@ -108,3 +107,24 @@
         </div>
         </div>
 {% endblock content %}
+
+{% block extra_js %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.toggle-pos').forEach(button => {
+            button.addEventListener('click', function () {
+                const saleId = button.getAttribute('data-sale');
+                const target = document.getElementById(`pos-details-${saleId}`);
+                const isVisible = target.style.display === 'block';
+
+                target.style.display = isVisible ? 'none' : 'block';
+                button.textContent = isVisible ? 'Show POS Details' : 'Hide POS Details';
+            });
+        });
+    });
+</script>
+
+
+
+{% endblock extra_js %}

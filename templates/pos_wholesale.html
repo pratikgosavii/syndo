@@ -86,13 +86,19 @@ textarea[name="terms"] {
   <!-- Document Type Selection -->
   <div class="mb-3">
     <div class="btn-group" role="group" aria-label="Document Type">
-      <button type="button" class="btn btn-warning text-white">Invoice</button>
-      <button type="button" class="btn btn-outline-secondary">Pro Forma Invoice</button>
-      <button type="button" class="btn btn-outline-secondary">Quotation</button>
-      <button type="button" class="btn btn-outline-secondary">Credit Note</button>
-      <button type="button" class="btn btn-outline-secondary">Delivery Challan</button>
-    </div>
+
+      <input type="hidden" name="invoice_type" id="invoice_type_input" value="{{ form.invoice_type.value|default:'invoice' }}">
+
+      <button type="button" class="btn btn-outline-secondary" data-type="invoice">Invoice</button>
+      <button type="button" class="btn btn-outline-secondary" data-type="proforma">Pro Forma Invoice</button>
+      <button type="button" class="btn btn-outline-secondary" data-type="quotation">Quotation</button>
+      <button type="button" class="btn btn-outline-secondary" data-type="credit_note">Credit Note</button>
+      <button type="button" class="btn btn-outline-secondary" data-type="delivery_challan">Delivery Challan</button>
   </div>
+
+  </div>
+
+  
 
   <!-- Invoice Number and Date -->
   <div class="card mb-3 bg-light border-0">
@@ -142,7 +148,7 @@ textarea[name="terms"] {
 
       <div class="mb-2">
         <label class="form-label"><i class="bi bi-truck-flatbed"></i> Delivery/Shipping Charges</label>
-        {{ form.delivery_shipping_charges }}
+        {{ form.delivery_charges }}
       </div>
 
       <div class="mb-2">
@@ -150,30 +156,53 @@ textarea[name="terms"] {
         {{ form.packaging_charges }}
       </div>
 
-      <div class="mb-2">
-        <label class="form-label"><i class="bi bi-file-earmark-bar-graph"></i> E-way Bill Number</label>
-        {{ form.eway_bill_number }}
-      </div>
+      
+<div class="mb-2">
+  <label class="form-label"><i class="bi bi-geo-alt"></i> Delivery City</label>
+  {{ form.delivery_city }}
+
+</div>
+
+<div class="mb-2">
+  <label class="form-label"><i class="bi bi-arrow-left-right"></i> Reverse Charge</label>
+  {{ form.reverse_charges }}
+
+</div>
+
+
+     <div class="mb-2">
+  <label class="form-label"><i class="bi bi-file-earmark-bar-graph"></i> E-way Bill Number</label>
+  {{ form.eway_bill_number }}
+ 
+</div>
+
 
       <div class="mb-2">
         <label class="form-label"><i class="bi bi-card-list"></i> LR Number</label>
         {{ form.lr_number }}
       </div>
 
-      <div class="mb-2">
-        <label class="form-label"><i class="bi bi-truck-front"></i> Vehicle Number</label>
-        {{ form.vehicle_number }}
-      </div>
+      
+<div class="mb-2">
+  <label class="form-label"><i class="bi bi-truck-front"></i> Vehicle Number</label>
+  <input id="vehicle_number" name="vehicle_number" type="text" class="form-control">
+</div>
 
-      <div class="mb-2">
-        <label class="form-label"><i class="bi bi-building"></i> Transport Name</label>
-        {{ form.transport_name }}
-      </div>
 
-      <div class="mb-2">
-        <label class="form-label"><i class="bi bi-boxes"></i> No. of Parcels</label>
-        {{ form.no_of_parcels }}
-      </div>
+    
+<div class="mb-2">
+  <label class="form-label"><i class="bi bi-building"></i> Transport Name</label>
+  {{ form.transport_name }}
+
+</div>
+
+<div class="mb-2">
+  <label class="form-label"><i class="bi bi-boxes"></i> No. of Parcels</label>
+  <input id="number_of_parcels" name="number_of_parcels" type="text" class="form-control">
+</div>
+
+
+     
     </div>
   </div>
 
@@ -336,6 +365,130 @@ document.addEventListener('DOMContentLoaded', function () {
 
   
       </script>
+
+      <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const invoiceButtons = document.querySelectorAll('[data-type]');
+    const hiddenInput = document.getElementById('invoice_type_input');
+
+    function updateButtonStyles(selectedType) {
+      invoiceButtons.forEach(btn => {
+        if (btn.dataset.type === selectedType) {
+          btn.classList.remove('btn-outline-secondary');
+          btn.classList.add('btn-warning', 'text-white');
+        } else {
+          btn.classList.remove('btn-warning', 'text-white');
+          btn.classList.add('btn-outline-secondary');
+        }
+      });
+    }
+
+    invoiceButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const selectedType = button.dataset.type;
+        hiddenInput.value = selectedType;
+        updateButtonStyles(selectedType);
+      });
+    });
+
+    // Initialize active state on page load
+    updateButtonStyles(hiddenInput.value || 'invoice');
+  });
+</script>
+
+
+<script>
+  const fieldRules = {
+    invoice: {
+      id_eway_bill_number: true,
+      vehicle_number: true,
+      number_of_parcels: true,
+      transport_name: true,
+      delivery_city: true,
+      id_reverse_charge: true,
+    },
+    proforma: {
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
+      transport_name: false,
+      delivery_city: true,
+      id_reverse_charge: true,
+    },
+    quotation: {
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
+      transport_name: false,
+      delivery_city: false,
+      id_reverse_charge: false,
+    },
+    credit_note: {
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
+      transport_name: false,
+      delivery_city: false,
+      id_reverse_charge: false,
+    },
+    delivery_challan: {
+      id_eway_bill_number: true,
+      vehicle_number: true,
+      number_of_parcels: true,
+      id_transport_name: true,
+      id_delivery_city: true,
+      id_reverse_charge: true,
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const invoiceButtons = document.querySelectorAll('[data-type]');
+    const hiddenInput = document.getElementById('invoice_type_input');
+
+    function updateRequiredFields(type) {
+      const rules = fieldRules[type];
+      for (const field in rules) {
+        const el = document.getElementById(field);
+        if (el) {
+          if (rules[field]) {
+            el.setAttribute('required', 'required');
+            el.closest('.mb-2').style.display = '';  // Show field
+          } else {
+            el.removeAttribute('required');
+            el.closest('.mb-2').style.display = '';  // Or hide: style.display = 'none';
+          }
+        }
+      }
+    }
+
+    invoiceButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const selectedType = button.dataset.type;
+        hiddenInput.value = selectedType;
+        updateButtonStyles(selectedType);
+        updateRequiredFields(selectedType);
+      });
+    });
+
+    function updateButtonStyles(selectedType) {
+      invoiceButtons.forEach(btn => {
+        if (btn.dataset.type === selectedType) {
+          btn.classList.remove('btn-outline-secondary');
+          btn.classList.add('btn-warning', 'text-white');
+        } else {
+          btn.classList.remove('btn-warning', 'text-white');
+          btn.classList.add('btn-outline-secondary');
+        }
+      });
+    }
+
+    // Initial load
+    const initialType = hiddenInput.value || 'invoice';
+    updateButtonStyles(initialType);
+    updateRequiredFields(initialType);
+  });
+</script>
+
       
 
 {% endblock extra_js %}

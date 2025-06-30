@@ -92,8 +92,9 @@ urlpatterns = [
     path('pos/', pos, name='create-sale'),
     path('list-sale/', list_sale, name='list_sale'),
     path('get_product_price/', get_product_price, name='get_product_price'),
+    path('pos-wholesale/<sale_id>', pos_wholesaless, name='pos_wholesale'),
+    path('sale-invoice/<sale_id>', sale_invoice, name='sale_invoice'),
 
-    path('pos-wholesale/', pos_wholesale, name='pos_wholesale'),
     path('order-details/<order_id>', order_details, name='order_details'),
     path('order-list/', order_list, name='order_list'),
     # path('order-list/', pos, name='create-sale'),
