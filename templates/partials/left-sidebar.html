@@ -172,6 +172,35 @@
                             </ul> 
                         </li> 
 
+ 
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Bank Account</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_bank' %}">Add Bank</a></li>
+                                <li><a href="{% url 'list_bank' %}">Bank List</a></li>
+                            </ul>
+                        </li> 
+
+
+                          <li>
+                            <a href="{% url 'cash_in_hand' %}">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Cash In Hand</span>
+                            </a>
+                        </li>
+
+
+                        <li>
+                            <a href="{% url 'delivery_management' %}">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Delivery Management</span>
+                            </a>
+                        </li>
+
 
                                 
                         <li>

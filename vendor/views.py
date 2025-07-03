@@ -1133,7 +1133,7 @@ def delete_purchase(request, purchase_id):
 @login_required(login_url='login_admin')
 def list_purchase(request):
 
-    data = Purchase.objects.filter(user = request.user)
+    data = Purchase.objects.filter(user = request.user).order_by('-id')
     context = {
         'data': data
     }
@@ -1212,7 +1212,7 @@ def delete_expense(request, expense_id):
 @login_required(login_url='login_admin')
 def list_expense(request):
 
-    data = Expense.objects.filter(user = request.user)
+    data = Expense.objects.filter(user = request.user).order_by('-id')
     context = {
         'data': data
     }
@@ -1373,7 +1373,7 @@ def list_sale(request):
     data = Sale.objects.prefetch_related(
         'items__product',
         Prefetch('wholesales', queryset=pos_wholesale.objects.all())
-    ).all()
+    ).all().order_by('-id')
 
     context = {
         'data': data
@@ -1476,7 +1476,7 @@ from customer.models import *
 
 def order_list(request):
 
-    data = Order.objects.prefetch_related('items__product').all()
+    data = Order.objects.prefetch_related('items__product').all().order_by('-id')
 
     context = {
         "data" : data
@@ -1534,3 +1534,96 @@ def delivery_settings_view(request):
             form.save()
             return redirect('delivery_settings')
     return render(request, 'delivery/delivery_settings.html', {'form': form})
+
+
+
+
+@login_required
+def auto_assign_delivery(request):
+    user = request.user
+    wallet, _ = Wallet.objects.get_or_create(user=user)
+    transactions = WalletTransaction.objects.filter(wallet=wallet).order_by('-date', '-time')
+
+    delivery_mode, _ = DeliveryMode.objects.get_or_create(user=user)
+    form = DeliveryModeForm(instance=delivery_mode)
+
+    if request.method == 'POST':
+        form = DeliveryModeForm(request.POST, instance=delivery_mode)
+        if form.is_valid():
+            form.save()
+            return redirect('auto_assign_delivery')
+
+    return render(request, 'delivery/auto_assign_delivery.html', {
+        'wallet': wallet,
+        'transactions': transactions,
+        'form': form
+    })
+
+
+
+
+from .models import CashBalance, vendor_bank, CashTransfer
+
+@login_required
+def cash_in_hand(request):
+    balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
+    bank_accounts = vendor_bank.objects.filter(user=request.user)
+    data = CashTransfer.objects.filter(user = request.user)
+    return render(request, 'cash_in_hand.html', {
+        'balance': balance_obj,
+        'bank_accounts': bank_accounts,
+        'data': data,
+    })
+
+
+@login_required
+def adjust_cash(request):
+    if request.method == 'POST':
+        try:
+            amount = float(request.POST.get('amount'))
+            print("Amount entered:", amount)
+
+            balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
+            balance_obj.balance += Decimal(amount)
+            balance_obj.save()
+            print('Balance updated successfully')
+            
+            return redirect('cash_in_hand')
+
+        except Exception as e:
+            messages.error(request, "Somethig went wrong.")
+    
+
+  # optionally handle errors
+    return redirect('cash_in_hand')
+
+
+
+from django.contrib import messages
+
+
+@login_required
+def bank_transfer(request):
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        bank_id = request.POST.get('bank_account')
+
+        try:
+            amount = float(amount)
+            bank = vendor_bank.objects.get(id=bank_id, user=request.user)
+            balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
+
+            if amount > balance_obj.balance:
+                messages.error(request, "Insufficient balance.")
+            else:
+                # Deduct and record transfer
+                balance_obj.balance -= Decimal(amount)
+                balance_obj.save()
+
+                CashTransfer.objects.create(user=request.user, bank_account=bank, amount=amount)
+
+                messages.success(request, "Transfer request submitted.")
+        except Exception as e:
+            print('Error while adjusting cash:', str(e))
+
+    return redirect('cash_in_hand')
