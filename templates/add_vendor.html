@@ -72,26 +72,31 @@
                     <form method="POST"  enctype="multipart/form-data">
                         {% csrf_token %}
                         <!-- Category Title Section -->
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Name:</label>
-                            {{ form.name }}
-                        </div>
-                   
+                                            <!-- Basic Details -->
+                        <h5 style=""><strong>Basic Details</strong></h5>
+                        <div class="mb-4">{{ form.name.label_tag }} {{ form.name }}</div>
+                        <div class="mb-4">{{ form.contact.label_tag }} {{ form.contact }}</div>
+                        <div class="mb-4">{{ form.email.label_tag }} {{ form.email }}</div>
 
-                          <div class="mb-4">
-                            <label for="code" class="form-label">Email:</label>
-                            {{ form.email }}
-                        </div>
-                   
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Contact:</label>
-                            {{ form.contact }}
-                        </div>
-                   
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Balance:</label>
-                            {{ form.balance }}
-                        </div>
+                        <!-- Business Details -->
+                        <h5 style=""><strong>Business Details</strong></h5>
+                        <div class="mb-4">{{ form.company_name.label_tag }} {{ form.company_name }}</div>
+                        <div class="mb-4">{{ form.gst.label_tag }} {{ form.gst }}</div>
+                        <div class="mb-4">{{ form.aadhar.label_tag }} {{ form.aadhar }}</div>
+                        <div class="mb-4">{{ form.pan.label_tag }} {{ form.pan }}</div>
+
+                        <!-- Address -->
+                        <h5 style=""><strong>Address</strong></h5>
+                        <div class="mb-4">{{ form.address_line_1.label_tag }} {{ form.address_line_1 }}</div>
+                        <div class="mb-4">{{ form.address_line_2.label_tag }} {{ form.address_line_2 }}</div>
+                        <div class="mb-4">{{ form.pincode.label_tag }} {{ form.pincode }}</div>
+                        <div class="mb-4">{{ form.city.label_tag }} {{ form.city }}</div>
+                        <div class="mb-4">{{ form.state.label_tag }} {{ form.state }}</div>
+                        <div class="mb-4">{{ form.country.label_tag }} {{ form.country }}</div>
+
+                        <!-- Balance and Submit -->
+                        <div class="mb-4">{{ form.balance.label_tag }} {{ form.balance }}</div>
+
 
                         
                                 <!-- Submit Button -->
