@@ -500,7 +500,7 @@ class Purchase(models.Model):
     
     purchase_date = models.DateField()
     vendor = models.ForeignKey(vendor_vendors, on_delete=models.CASCADE)
-    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
     product = models.CharField(max_length=255, blank=True, null=True)
     supplier_invoice_date = models.DateField(blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
@@ -734,3 +734,24 @@ class DeliveryMode(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     is_auto_assign_enabled = models.BooleanField(default=False)
     is_self_delivery_enabled = models.BooleanField(default=False)
+
+
+
+class CashBalance(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cash_balance')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - Rs {self.balance}"
+
+
+class CashTransfer(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    bank_account = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default="pending")  # pending, approved, failed
+
+    def __str__(self):
+        return f"{self.user.username} → ₹{self.amount} to {self.bank_account.bank_name}"

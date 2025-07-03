@@ -80,7 +80,7 @@ urlpatterns = [
     path('delete_purchase/<int:purchase_id>/', delete_purchase, name='delete_purchase'),
     path('list-purchase/', list_purchase, name='list_purchase'),
 
-    
+
     path('add-addon/', add_addon, name='add_addon'),
     path('update-addon/<addon_id>', update_addon, name='update_addon'),
     path('delete_addon/<addon_id>', delete_addon, name='delete_addon'),
@@ -102,8 +102,15 @@ urlpatterns = [
     path('accept-order/<order_id>', accept_order, name='accept_order'),
     path('assign-delivery-boy/<order_id>', assign_delivery_boy, name='assign_delivery_boy'),
     
+    path('delivery-management/', delivery_management, name='delivery_management'),
+    path('manage-delivery-boy/', manage_delivery_boy, name='manage_delivery_boy'),
+    path('delivery-settings/', delivery_settings_view, name='delivery_settings'),
+    path('auto-assign-delivery/', auto_assign_delivery, name='auto_assign_delivery'),
 
 
+    path('cash-in-hand/', cash_in_hand, name='cash_in_hand'),
+    path('adjust-cash/', adjust_cash, name='adjust_cash'),
+    path('cash-in-hand/transfer/', bank_transfer, name='bank_transfer'),
 
 ]  + router.urls
 

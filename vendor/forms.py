@@ -555,10 +555,17 @@ class pos_wholesaleForm(forms.ModelForm):
 
 from django import forms
 
+
 class DeliveryBoyForm(forms.ModelForm):
     class Meta:
         model = DeliveryBoy
-        fields = ['name', 'mobile', 'photo']
+        fields = ['name', 'mobile', 'photo', 'rating']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'mobile': forms.TextInput(attrs={'class': 'form-control'}),
+            'rating': forms.NumberInput(attrs={'class': 'form-control'}),
+            'photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }
 
 class DeliverySettingsForm(forms.ModelForm):
     class Meta:
@@ -569,3 +576,34 @@ class DeliverySettingsForm(forms.ModelForm):
             'delivery_charge_per_km',
             'minimum_base_fare'
         ]
+        widgets = {
+            'instant_order_prep_time': forms.NumberInput(attrs={'class': 'form-control'}),
+            'general_delivery_days': forms.NumberInput(attrs={'class': 'form-control'}),
+            'delivery_charge_per_km': forms.NumberInput(attrs={'class': 'form-control'}),
+            'minimum_base_fare': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+
+
+
+class DeliveryModeForm(forms.ModelForm):
+    class Meta:
+        model = DeliveryMode
+        fields = ['is_auto_assign_enabled']
+        widgets = {
+            'is_auto_assign_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+
+class BankTransferForm(forms.Form):
+    amount = forms.DecimalField(min_value=1, decimal_places=2, max_digits=10, widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    bank_account = forms.ModelChoiceField(
+        queryset=vendor_bank.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user')
+        super().__init__(*args, **kwargs)
+        self.fields['bank_account'].queryset = vendor_bank.objects.filter(user=user)
