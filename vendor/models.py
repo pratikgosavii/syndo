@@ -89,11 +89,27 @@ class StoreWorkingHour(models.Model):
 
 
 class vendor_vendors(models.Model):
+    
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
     name = models.CharField(max_length=50)
     email = models.EmailField()
     contact = models.CharField(max_length=15)
     balance = models.BigIntegerField()
+
+    # Business Details
+    company_name = models.CharField(max_length=100, blank=True, null=True)
+    gst = models.CharField(max_length=20, blank=True, null=True)
+    aadhar = models.CharField(max_length=20, blank=True, null=True)
+    pan = models.CharField(max_length=20, blank=True, null=True)
+
+    # Address
+    address_line_1 = models.CharField(max_length=255, blank=True, null=True)
+    address_line_2 = models.CharField(max_length=255, blank=True, null=True)
+    pincode = models.CharField(max_length=10, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+
 
 
     def __str__(self):

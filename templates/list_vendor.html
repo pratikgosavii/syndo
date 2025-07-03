@@ -105,36 +105,61 @@
                                                 class="table table-bordered table-striped"
                                         >
                                             <thead>
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Name</th> 
-                                                     <th>Email</th>
-                                                <th>Contact</th>
-                                                <th>Balance</th>
-                                                <th>Action</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody id="tableBody">
-                                                {% if data %}
-                                            {% for i in data %}
-                                                <tr>
-                                                    <td>{{ forloop.counter }}</td>
-                                                    <td>{{ i.name }}</td>
-                                                    <td>{{ i.email }}</td>
-                                                    <td>{{ i.contact }}</td>
-                                                    <td>{{ i.balance }}</td>
-                                                     
-                                                    <td>
-                                                        <!-- remove Button -->
-                                                        <a href="{% url 'update_vendor' i.id %}" ><i class="bi bi-pencil-square text-primary action-icons edit"  title="Edit"></i>  </a>
-                                                        <a href="{% url 'delete_vendor' i.id %}" > <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i> </a>
+    <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Contact</th>
+        <th>Company</th>
+        <th>GST</th>
+        <th>Aadhar</th>
+        <th>PAN</th>
+        <th>Address Line 1</th>
+        <th>Address Line 2</th>
+        <th>Pincode</th>
+        <th>City</th>
+        <th>State</th>
+        <th>Country</th>
+        <th>Balance</th>
+        <th>Action</th>
+    </tr>
+</thead>
+<tbody id="tableBody">
+    {% if data %}
+        {% for i in data %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ i.name }}</td>
+            <td>{{ i.email }}</td>
+            <td>{{ i.contact }}</td>
+            <td>{{ i.company_name }}</td>
+            <td>{{ i.gst }}</td>
+            <td>{{ i.aadhar }}</td>
+            <td>{{ i.pan }}</td>
+            <td>{{ i.address_line1 }}</td>
+            <td>{{ i.address_line2 }}</td>
+            <td>{{ i.pincode }}</td>
+            <td>{{ i.city }}</td>
+            <td>{{ i.state }}</td>
+            <td>{{ i.country }}</td>
+            <td>₹ {{ i.balance|floatformat:2 }}</td>
+            <td>
+                <a href="{% url 'update_vendor' i.id %}">
+                    <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
+                </a>
+                <a href="{% url 'delete_vendor' i.id %}">
+                    <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr>
+            <td colspan="16" class="text-center text-muted">No vendors found.</td>
+        </tr>
+    {% endif %}
+</tbody>
 
-
-                                                    </td>
-                                                </tr>
-                                            {% endfor %}
-                                            {% endif %}
-                                            </tbody>
                                         </table>
                                     </div>
                                 </div>

@@ -113,7 +113,7 @@
                                 <li>
                                     <a href="javascript: void(0);" class="has-arrow">
                                         <i data-feather="layers"></i>
-                                        <span data-key="t-authentication">Vendor</span>
+                                        <span data-key="t-authentication">Manage Vendor</span>
                                     </a>
                                     <ul class="sub-menu" aria-expanded="false">
                                         <li><a href="{% url 'add_vendor' %}">Add Vendor</a></li>
@@ -244,12 +244,21 @@
                        
 
 
-                       
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Manage Vendor</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_vendor' %}">Add Vendor</a></li>
+                                <li><a href="{% url 'list_vendor' %}">Vendor List</a></li>
+                            </ul>
+                        </li> 
 
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Customer</span>
+                                <span data-key="t-authentication">Manage Customer</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
                                 <li><a href="{% url 'add_customer' %}">Add Customer</a></li>

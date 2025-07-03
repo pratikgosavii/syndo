@@ -284,15 +284,18 @@ class SpotlightProductForm(forms.ModelForm):
 
 
 class vendor_vendorsForm(forms.ModelForm):
+    
     class Meta:
         model = vendor_vendors
-        fields = '__all__'
+        fields = [
+            'name', 'email', 'contact', 'balance',
+            'company_name', 'gst', 'aadhar', 'pan',
+            'address_line_1', 'address_line_2', 'pincode',
+            'city', 'state', 'country'
+        ]
         widgets = {
-            'user': forms.Select(attrs={'class': 'form-control'}),
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
-            'contact': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contact Number'}),
-            'balance': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Balance'}),
+            field: forms.TextInput(attrs={'class': 'form-control'}) 
+            for field in fields
         }
 
 
