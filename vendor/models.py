@@ -41,7 +41,7 @@ class coupon(models.Model):
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     min_purchase = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     max_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    image = models.ImageField(upload_to='doctor_images/')
+    image = models.ImageField(upload_to='doctor_images/', null=True, blank=True)
     start_date = models.DateTimeField(default=now)
     end_date = models.DateTimeField()
     only_followers = models.BooleanField(default=False)
@@ -552,6 +552,7 @@ class CompanyProfile(models.Model):
     billing_address = models.TextField(blank=True, null=True)
     shipping_address = models.TextField(blank=True, null=True)
     pan = models.CharField(max_length=10, blank=True, null=True)
+    upi_id = models.CharField(max_length=50, blank=True, null=True)
     website = models.URLField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
 

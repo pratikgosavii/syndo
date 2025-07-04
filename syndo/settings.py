@@ -78,7 +78,7 @@ import os
 from firebase_admin import credentials, initialize_app
 
 # Firebase Admin SDK setup
-firebase_key_path = os.path.join(BASE_DIR, 'syndo', 'svindovenderapp-firebase-adminsdk-fbsvc-d8015466eb.json')
+firebase_key_path = os.path.join(BASE_DIR, 'syndo', 'svindovender-71cf8-firebase-adminsdk-fbsvc-49dc54f6e3.json')
 cred = credentials.Certificate(firebase_key_path)
 initialize_app(cred)
 

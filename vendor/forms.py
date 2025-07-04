@@ -359,6 +359,7 @@ class CompanyProfileForm(forms.ModelForm):
             'billing_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'shipping_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'pan': forms.TextInput(attrs={'class': 'form-control'}),
+            'upi_id': forms.TextInput(attrs={'class': 'form-control'}),
             'website': forms.URLInput(attrs={'class': 'form-control'}),
             'profile_image': forms.FileInput(attrs={'class': 'form-control'}),
         }
