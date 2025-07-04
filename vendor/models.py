@@ -353,6 +353,7 @@ class product(models.Model):
     # Flags
     tax_inclusive = models.BooleanField(default=False)
     is_popular = models.BooleanField(default=False)
+    is_on_shop = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
