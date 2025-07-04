@@ -403,6 +403,14 @@ def delete_expense_category(request, expense_category_id):
 
 
 
+class get_expense_category(ListAPIView):
+    queryset = expense_category.objects.all()
+    serializer_class = expense_category_serializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = '__all__'  # enables filtering on all fields
+
+
+
 
 
 from rest_framework.response import Response
