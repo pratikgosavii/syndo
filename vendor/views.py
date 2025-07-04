@@ -935,7 +935,7 @@ class ProductSettingsViewSet(viewsets.ModelViewSet):
     queryset = ProductSettings.objects.all()
     serializer_class = ProductSettingsSerializer
     permission_classes = [IsVendor]
-    parser_classes = [JSONParser] 
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         # Return only products of logged-in user
