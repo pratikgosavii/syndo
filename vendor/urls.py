@@ -11,8 +11,8 @@ from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
-router.register(r'Coupon', CouponViewSet, basename='CouponViewSet')
-router.register(r'OnlineStoreSetting', OnlineStoreSettingViewSet, basename='OnlineStoreSettingViewSet')
+router.register(r'coupon', CouponViewSet, basename='CouponViewSet')
+router.register(r'onlineStoreSetting', OnlineStoreSettingViewSet, basename='OnlineStoreSettingViewSet')
 router.register(r'company-profile', CompanyProfileViewSet, basename='CompanyProfileViewSet')
 router.register(r'product', ProductViewSet, basename='product')
 router.register(r'productSetting', ProductSettingsViewSet, basename='ProductSettingsViewSet')
