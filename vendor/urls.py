@@ -21,6 +21,7 @@ router.register(r'addon', AddonViewSet, basename='AddonViewSet')
 router.register(r'product-addon', ProductAddonViewSet, basename='ProductAddonViewSet')
 router.register(r'spotlight-product', SpotlightProductViewSet, basename='ProductAddon')
 router.register(r'post', PostViewSet, basename='PostViewSet')
+router.register(r'reel', ReelViewSet, basename='ReelViewSet')
 router.register(r'expense', ExpenseViewSet, basename='ExpenseViewSet')
 
 
