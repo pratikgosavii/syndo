@@ -119,81 +119,70 @@ class SignupView(APIView):
             return Response({"error": str(e)}, status=400)
 
 
+from .serializer import *
+
 class LoginAPIView(APIView):
 
+    
     def post(self, request):
         id_token = request.data.get("idToken")
         user_type = request.data.get("user_type")
 
-        if not id_token or not user_type:
-            return Response({"error": "id_token and user_type are required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not id_token:
+            return Response({"error": "idToken is required"}, status=400)
 
         try:
+            # Verify token with Firebase
             decoded_token = firebase_auth.verify_id_token(id_token)
-            uid = decoded_token["uid"]
-            phone_number = decoded_token.get("phone_number")
-            email = decoded_token.get("email")
+            mobile = decoded_token.get("phone_number")
+            uid = decoded_token.get("uid")
 
-            print(phone_number)
-
-            if not phone_number:
+            if not mobile:
                 return Response({"error": "Phone number not found in token"}, status=400)
 
-            user = User.objects.filter(mobile=phone_number).first()
+            user = User.objects.filter(mobile=mobile).first()
             created = False
 
             if user:
-                role_map = {
-                    "customer": user.is_customer,
-                    "vendor": user.is_vendor,
-                }
-
-                if not role_map.get(user_type, False):
-                    existing_roles = [k for k, v in role_map.items() if v]
-                    return Response({
-                        "error": f"This number is already registered as a {existing_roles[0]}. Cannot login as {user_type}."
-                    }, status=400)
-
+                if not user.is_active:
+                    user.is_active = True
                 if user.firebase_uid != uid:
                     user.firebase_uid = uid
-                    user.save()
+                user.save()
             else:
-                role_flags = {
-                    "is_customer": False,
-                    "is_vendor": False,
-                }
-
-                if f"is_{user_type}" not in role_flags:
-                    return Response({"error": "Invalid user_type"}, status=400)
-
-                role_flags[f"is_{user_type}"] = True
-
-                if email and User.objects.filter(email=email).exists():
-                    return Response({"error": "This email is already in use."}, status=400)
-
                 user = User.objects.create(
-                    mobile=phone_number,
+                    mobile=mobile,
                     firebase_uid=uid,
-                    email=email or "",
-                    **role_flags
                 )
                 created = True
 
+                # Set user type flags based on frontend
+                if user_type == "vendor":
+                    user.is_vendor = True
+                elif user_type == "customer":
+                    user.is_customer = True
+                user.save()
+
+            # Token creation
             refresh = RefreshToken.for_user(user)
+            user_details = UserProfileSerializer(user).data
+
             return Response({
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
                 "user": {
                     "id": user.id,
                     "mobile": user.mobile,
-                    "email": user.email,
+                    "is_vendor": user.is_vendor,
+                    "is_customer": user.is_customer,
                     "created": created
-                }
-            })
+                },
+                "user_details": user_details
+            }, status=201 if created else 200)
 
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-
+            print(f"Login failed: {e}")
+            return Response({"error": "Invalid or expired Firebase token."}, status=400)
 
 
 from .permissions import *
@@ -318,3 +307,36 @@ def user_list(request):
     data = User.objects.all()
 
     return render(request, 'user_list.html', { 'data' : data})
+
+
+
+
+from rest_framework import viewsets, mixins
+from rest_framework.permissions import IsAuthenticated
+from .serializer import UserProfileSerializer
+from .models import User
+from rest_framework.decorators import action
+
+
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+class UserProfileViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    @action(detail=False, methods=['get', 'put'], url_path='me')
+    def me(self, request):
+        user = request.user
+
+        if request.method == 'GET':
+            serializer = UserProfileSerializer(user)
+            return Response(serializer.data)
+
+        elif request.method == 'PUT':
+
+            serializer = UserProfileSerializer(user, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

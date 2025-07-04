@@ -112,6 +112,10 @@
                                                     <th>Email</th>
                                                     <th>Contact</th>
                                                     <th>Brand</th>
+                                                    <th>GST</th>
+                                                    <th>PAN</th>
+                                                    <th>UPI Id</th>
+                                                    <th>Profile Image</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
@@ -123,6 +127,14 @@
                                                     <td>{{ profile.email }}</td>
                                                     <td>{{ profile.contact }}</td>
                                                     <td>{{ profile.brand_name }}</td>
+                                                    <td>{{ profile.gstin }}</td>
+                                                    <td>{{ profile.pan }}</td>
+                                                    <td>{{ profile.upi_id }}</td>
+                                                    <td> {% if profile.profile_image %}
+                                                            <img src="{{ profile.profile_image.url }}" class="product-img" alt="product image">
+                                                        {% else %}
+                                                            N/A
+                                                        {% endif %}</td>
                                                     <td>
                                                         <a href="{% url 'update_company_profile' profile.id %}" class="btn btn-sm btn-primary">Edit</a>
                                                         <a href="{% url 'delete_company_profile' profile.id %}" class="btn btn-sm btn-danger">Delete</a>
