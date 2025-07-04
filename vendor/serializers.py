@@ -17,6 +17,14 @@ class product_serializer(serializers.ModelSerializer):
         read_only_fields = ['user']  
 
 
+class vendor_customers_serializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = vendor_customers
+        fields = '__all__'
+        read_only_fields = ['user']  
+
+
 
 class ProductSettingsSerializer(serializers.ModelSerializer):
     class Meta:

@@ -931,21 +931,20 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Automatically assign logged-in user to the product
         serializer.save(user=self.request.user)
 
-class ProductSettingsViewSet(viewsets.ViewSet):
+class ProductSettingsViewSet(viewsets.ModelViewSet):
+    queryset = ProductSettings.objects.all()
+    serializer_class = ProductSettingsSerializer
     permission_classes = [IsVendor]
+    parser_classes = [JSONParser] 
 
-    def list(self, request):
-        settings, created = ProductSettings.objects.get_or_create(user=request.user)
-        serializer = ProductSettingsSerializer(settings)
-        return Response(serializer.data)
+    def get_queryset(self):
+        # Return only products of logged-in user
+        return ProductSettings.objects.filter(user=self.request.user)
 
-    def update(self, request, pk=None):
-        settings, created = ProductSettings.objects.get_or_create(user=request.user)
-        serializer = ProductSettingsSerializer(settings, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=400)
+    def perform_create(self, serializer):
+        # Automatically assign logged-in user to the product
+        serializer.save(user=self.request.user)
+
 
 class ProductAddonViewSet(viewsets.ModelViewSet):
     queryset = addon.objects.all()
@@ -998,10 +997,14 @@ class ReelViewSet(viewsets.ModelViewSet):
         # Automatically assign logged-in user to the product
         serializer.save(user=self.request.user)
 
+
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+
 class CouponViewSet(viewsets.ModelViewSet):
     queryset = coupon.objects.all()
     serializer_class = coupon_serializer
     permission_classes = [IsVendor]
+    parser_classes = [MultiPartParser, FormParser, JSONParser] 
 
     def get_queryset(self):
         # Return only products of logged-in user
@@ -1020,6 +1023,20 @@ class CompanyProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Return only products of logged-in user
         return CompanyProfile.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Automatically assign logged-in user to the product
+        serializer.save(user=self.request.user)
+
+
+class customerViewSet(viewsets.ModelViewSet):
+    queryset = vendor_customers.objects.all()
+    serializer_class = vendor_customers_serializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        # Return only products of logged-in user
+        return vendor_customers.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         # Automatically assign logged-in user to the product
