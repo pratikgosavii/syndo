@@ -91,6 +91,15 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
 
 
+class vendor_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = vendor_vendors
+        fields = '__all__'
+        read_only_fields = ['user']
+
+
+
+
 class StoreWorkingHourSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreWorkingHour
@@ -131,3 +140,24 @@ class SaleSerializer(serializers.ModelSerializer):
         for item in items_data:
             SaleItem.objects.create(user=self.context['request'].user, sale=sale, **item)
         return sale
+
+        
+class StoreWorkingHourSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StoreWorkingHour
+        fields = ['id', 'day', 'open_time', 'close_time', 'is_open']
+
+
+
+class CashBalanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CashBalance
+        fields = ['balance', 'updated_at']
+
+
+class CashTransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CashTransfer
+        fields = ['id', 'bank_account', 'amount', 'created_at', 'status']
+        read_only_fields = ['created_at', 'status']
+        
