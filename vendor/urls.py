@@ -24,6 +24,10 @@ router.register(r'post', PostViewSet, basename='PostViewSet')
 router.register(r'reel', ReelViewSet, basename='ReelViewSet')
 router.register(r'expense', ExpenseViewSet, basename='ExpenseViewSet')
 router.register(r'purchase', PurchaseViewSet, basename='PurchaseViewSet')
+router.register(r'store-working-hour', StoreWorkingHourViewSet, basename='StoreWorkingHourViewSet')
+
+router.register(r'cash-balance', CashBalanceViewSet, basename='CashBalanceViewSet')
+router.register(r'cash-transfers', CashTransferViewSet, basename='CashTransferViewSet')
 
 
 
@@ -44,6 +48,7 @@ urlpatterns = [
     path('update-vendor/<vendor_id>', update_vendor, name='update_vendor'),
     path('delete-vendor/<vendor_id>', delete_vendor, name='delete_vendor'),
     path('list-vendor/', list_vendor, name='list_vendor'),
+    path('get-vendor/', get_vendor.as_view(), name='get_vendor'),
 
     path('add-party/', add_party, name='add_party'),
     path('update-party/<party_id>', update_party, name='update_party'),

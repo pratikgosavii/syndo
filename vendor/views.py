@@ -271,6 +271,16 @@ def list_vendor(request):
     return render(request, 'list_vendor.html', context)
 
 
+from .serializers import *
+
+class get_vendor(ListAPIView):
+    queryset = vendor_vendors.objects.all()
+    serializer_class = vendor_serializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = '__all__'  # enables filtering on all fields
+
+
+
 @login_required(login_url='login_admin')
 def add_party(request):
 
@@ -1644,3 +1654,92 @@ def bank_transfer(request):
             print('Error while adjusting cash:', str(e))
 
     return redirect('cash_in_hand')
+
+
+
+
+class StoreWorkingHourViewSet(viewsets.ModelViewSet):
+    serializer_class = StoreWorkingHourSerializer
+    permission_classes = [IsAuthenticated]
+
+    
+class StoreWorkingHourViewSet(viewsets.ModelViewSet):
+    serializer_class = StoreWorkingHourSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        store, _ = vendor_store.objects.get_or_create(user=self.request.user)
+        return StoreWorkingHour.objects.filter(store=store)
+
+    def perform_create(self, serializer):
+        store, _ = vendor_store.objects.get_or_create(user=self.request.user)
+        serializer.save(store=store)
+
+    def update(self, request, *args, **kwargs):
+        store, _ = vendor_store.objects.get_or_create(user=self.request.user)
+        instance = self.get_object()
+
+        if instance.store != store:
+            return Response(
+                {"detail": "You do not have permission to update this entry."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+        return super().update(request, *args, **kwargs)
+
+
+
+
+from rest_framework import viewsets, status
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal
+from .models import CashBalance, CashTransfer
+from .serializers import CashBalanceSerializer, CashTransferSerializer
+from vendor.models import vendor_bank
+
+
+
+class CashBalanceViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
+        serializer = CashBalanceSerializer(balance_obj)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='adjust')
+    def adjust_cash(self, request):
+        try:
+            amount = Decimal(request.data.get('amount', 0))
+            balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
+            balance_obj.balance += amount
+            balance_obj.save()
+            return Response({'message': 'Balance updated'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CashTransferViewSet(viewsets.ModelViewSet):
+    serializer_class = CashTransferSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return CashTransfer.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        amount = serializer.validated_data['amount']
+        bank = serializer.validated_data['bank_account']
+        user = self.request.user
+
+        balance_obj, _ = CashBalance.objects.get_or_create(user=user)
+
+        if amount > balance_obj.balance:
+            raise serializers.ValidationError("Insufficient balance.")
+
+        balance_obj.balance -= amount
+        balance_obj.save()
+
+        serializer.save(user=user)
