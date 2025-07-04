@@ -3,7 +3,7 @@ db.sqlite3
 __pycache__/
 *.pyc
 *.pyo
-syndo/svindovenderapp-firebase-adminsdk-fbsvc-d8015466eb.json
+syndo/svindovender-71cf8-firebase-adminsdk-fbsvc-49dc54f6e3.json
 media
 .env
 # Ignore wsgi.py
