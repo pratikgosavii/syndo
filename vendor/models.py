@@ -552,6 +552,7 @@ class CompanyProfile(models.Model):
     billing_address = models.TextField(blank=True, null=True)
     shipping_address = models.TextField(blank=True, null=True)
     pan = models.CharField(max_length=10, blank=True, null=True)
+    upi_id = models.CharField(max_length=50, blank=True, null=True)
     website = models.URLField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
 
