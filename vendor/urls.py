@@ -23,6 +23,7 @@ router.register(r'spotlight-product', SpotlightProductViewSet, basename='Product
 router.register(r'post', PostViewSet, basename='PostViewSet')
 router.register(r'reel', ReelViewSet, basename='ReelViewSet')
 router.register(r'expense', ExpenseViewSet, basename='ExpenseViewSet')
+router.register(r'purchase', PurchaseViewSet, basename='PurchaseViewSet')
 
 
 
