@@ -78,11 +78,13 @@ DAYS_OF_WEEK = [
 class StoreWorkingHour(models.Model):
     
     store = models.ForeignKey(vendor_store, on_delete=models.CASCADE, related_name='working_hours')
-    day = models.CharField(max_length=10, choices=DAYS_OF_WEEK, unique=True)
+    day = models.CharField(max_length=10, choices=DAYS_OF_WEEK)
     open_time = models.TimeField(null=True, blank=True)
     close_time = models.TimeField(null=True, blank=True)
     is_open = models.BooleanField(default=True)
     
+    class Meta:
+        unique_together = ('store', 'day')
 
     def __str__(self):
         return f"{self.day.title()} - {'Open' if self.is_open else 'Closed'}"
