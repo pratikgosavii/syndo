@@ -941,19 +941,28 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Automatically assign logged-in user to the product
         serializer.save(user=self.request.user)
 
+from rest_framework.decorators import action
+
 class ProductSettingsViewSet(viewsets.ModelViewSet):
-    queryset = ProductSettings.objects.all()
-    serializer_class = ProductSettingsSerializer
     permission_classes = [IsVendor]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
-    def get_queryset(self):
-        # Return only products of logged-in user
-        return ProductSettings.objects.filter(user=self.request.user)
+    def retrieve(self, request, *args, **kwargs):
+        settings, _ = ProductSettings.objects.get_or_create(user=request.user)
+        serializer = ProductSettingsSerializer(settings)
+        return Response(serializer.data)
 
-    def perform_create(self, serializer):
-        # Automatically assign logged-in user to the product
-        serializer.save(user=self.request.user)
+    def list(self, request, *args, **kwargs):
+        return self.retrieve(request)  # Same as retrieve for one-to-one
+
+    @action(detail=False, methods=['post'], url_path='update')
+    def update_settings(self, request):
+        settings, _ = ProductSettings.objects.get_or_create(user=request.user)
+        serializer = ProductSettingsSerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProductAddonViewSet(viewsets.ModelViewSet):
