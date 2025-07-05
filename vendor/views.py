@@ -1714,6 +1714,7 @@ class CashBalanceViewSet(viewsets.ViewSet):
     def adjust_cash(self, request):
         try:
             amount = Decimal(request.data.get('amount', 0))
+            print(amount)
             balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
             balance_obj.balance += amount
             balance_obj.save()
