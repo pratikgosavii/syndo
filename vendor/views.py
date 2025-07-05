@@ -917,14 +917,35 @@ from users.permissions import *
 
 
 class OnlineStoreSettingViewSet(viewsets.ModelViewSet):
-    serializer_class = OnlineStoreSettingSerializer
+    
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return OnlineStoreSetting.objects.filter(user=self.request.user)
+    def list(self, request):
+        setting, _ = OnlineStoreSetting.objects.get_or_create(user=request.user)
+        serializer = OnlineStoreSettingSerializer(setting)
+        return Response(serializer.data)
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def create(self, request):
+        setting, _ = OnlineStoreSetting.objects.get_or_create(user=request.user)
+        serializer = OnlineStoreSettingSerializer(setting, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def update(self, request, pk=None):
+        try:
+            setting = OnlineStoreSetting.objects.get(user=request.user)
+        except OnlineStoreSetting.DoesNotExist:
+            return Response({'detail': 'Setting not found'}, status=404)
+
+        serializer = OnlineStoreSettingSerializer(setting, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+
 
 
 
@@ -1671,11 +1692,6 @@ class StoreWorkingHourViewSet(viewsets.ModelViewSet):
     serializer_class = StoreWorkingHourSerializer
     permission_classes = [IsAuthenticated]
 
-    
-class StoreWorkingHourViewSet(viewsets.ModelViewSet):
-    serializer_class = StoreWorkingHourSerializer
-    permission_classes = [IsAuthenticated]
-
     def get_queryset(self):
         store, _ = vendor_store.objects.get_or_create(user=self.request.user)
         return StoreWorkingHour.objects.filter(store=store)
@@ -1684,18 +1700,33 @@ class StoreWorkingHourViewSet(viewsets.ModelViewSet):
         store, _ = vendor_store.objects.get_or_create(user=self.request.user)
         serializer.save(store=store)
 
-    def update(self, request, *args, **kwargs):
+    @action(detail=False, methods=['post'], url_path='bulk')
+    def bulk_create(self, request):
         store, _ = vendor_store.objects.get_or_create(user=self.request.user)
-        instance = self.get_object()
+        data = request.data  # expecting a list of day/hour dicts
 
-        if instance.store != store:
-            return Response(
-                {"detail": "You do not have permission to update this entry."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        created = []
+        errors = []
 
+        for entry in data:
+            entry['store'] = store.id
+            try:
+                obj, created = StoreWorkingHour.objects.update_or_create(
+                    store=store,
+                    day=entry['day'],
+                    defaults={
+                        'open_time': entry.get('open_time'),
+                        'close_time': entry.get('close_time'),
+                        'is_open': entry.get('is_open', True)
+                    }
+                )
+            except Exception as e:
+                errors.append({'day': entry['day'], 'error': str(e)})
 
-        return super().update(request, *args, **kwargs)
+        if errors:
+            return Response({'created': created, 'errors': errors}, status=status.HTTP_207_MULTI_STATUS)
+        
+        return Response({'message': ' Done'}, status=status.HTTP_201_CREATED)
 
 
 
