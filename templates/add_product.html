@@ -115,12 +115,12 @@ input:checked + .slider:before {
                             {{ form.sale_type }}
                         </div>
                     
-                        <div class="mb-3">
+                        <div class="mb-3" id="category_wrapper">
                             <label for="id_category" class="form-label">Category</label>
                             {{ form.category }}
                         </div>
                     
-                        <div class="mb-3">
+                        <div class="mb-3" id="sub_category_wrapper">
                             <label for="id_sub_category" class="form-label">Sub Category</label>
                             {{ form.sub_category }}
                         </div>
@@ -158,26 +158,30 @@ input:checked + .slider:before {
                     
                         <!-- Pricing -->
                         <hr>
-                        <div class="mb-3 product-only-field">
-                            <label for="id_wholesale_price" class="form-label">Wholesale Price</label>
-                            {{ form.wholesale_price }}
+                        <div style="display:flex; gap : 10px;">
+                                
+                            <div class="mb-3 product-only-field">
+                                <label for="id_wholesale_price" class="form-label">Wholesale Price **</label>
+                                {{ form.wholesale_price }}
+                            </div>
+                        
+                            <div class="mb-3 product-only-field">
+                                <label for="id_purchase_price" class="form-label">Purchase Price **</label>
+                                {{ form.purchase_price }}
+                            </div>
+                        
+                            <div class="mb-3 product-only-field">
+                                <label for="id_sales_price" class="form-label">Sales Price</label>
+                                {{ form.sales_price }}
+                            </div>
+                        
+                            <div class="mb-3">
+                                <label for="id_mrp" class="form-label">MRP</label>
+                                {{ form.mrp }}
+                            </div>
+                        
                         </div>
-                    
-                        <div class="mb-3 product-only-field">
-                            <label for="id_purchase_price" class="form-label">Purchase Price</label>
-                            {{ form.purchase_price }}
-                        </div>
-                    
-                        <div class="mb-3 product-only-field">
-                            <label for="id_sales_price" class="form-label">Sales Price</label>
-                            {{ form.sales_price }}
-                        </div>
-                    
-                        <div class="mb-3">
-                            <label for="id_mrp" class="form-label">MRP</label>
-                            {{ form.mrp }}
-                        </div>
-                    
+                        
                         <div class="mb-3">
                             <label for="id_unit" class="form-label">Unit</label>
                             {{ form.unit }}
@@ -197,9 +201,12 @@ input:checked + .slider:before {
                             
                             <label for="id_tax_inclusive" class="form-label">Tax Inclusive</label>
                             {{ form.tax_inclusive }}
-                            
+                           
+                            <div id="tax_div">
+
                             <label for="id_gst" class="form-label">GST (%)</label>
                             {{ form.gst }}
+                            </div>
                         </div>
                     
                         <!-- Stock -->
@@ -226,12 +233,12 @@ input:checked + .slider:before {
                     
                         <!-- Optional Attributes -->
                         <hr class="product-only-field">
-                        <div class="mb-3 product-only-field">
+                        <div class="mb-3 product-only-field" id="brand_name_wrapper">
                             <label for="id_brand_name" class="form-label">Brand Name</label>
                             {{ form.brand_name }}
                         </div>
                     
-                        <div class="mb-3 product-only-field" style="display: flex; gap: 10px; align-items: center;">
+                        <div class="mb-3 product-only-field" style="display: flex; gap: 10px; align-items: center;" id="color_wrapper">
                             
                             <label for="common_colors">Color</label>
                             <!-- Dropdown of common colors -->
@@ -261,25 +268,25 @@ input:checked + .slider:before {
                                     
                        
                     
-                        <div class="mb-3 product-only-field">
+                        <div class="mb-3 product-only-field" id="batch_number_wrapper">
                             <label for="id_batch_number" class="form-label">Batch Number</label>
                             {{ form.batch_number }}
                         </div>
                     
-                        <div class="mb-3 product-only-field">
+                        <div class="mb-3 product-only-field" id="expiry_date_wrapper">
                             <label for="id_expiry_date" class="form-label">Expiry Date</label>
                             {{ form.expiry_date }}
                         </div>
                     
                         <!-- Images -->
                         <hr>
-                        <div class="mb-3">
+                        <div class="mb-3" id="image_wrapper">
                             <label for="id_image" class="form-label">Main Image</label>
                             {{ form.image }}
                             <img id="preview" class="image-preview" src="#" alt="Image Preview" hidden>
                         </div>
                     
-                        <div class="mb-3">
+                        <div class="mb-3" id="gallery_images_wrapper">
                             <label for="id_gallery_images" class="form-label">Gallery Images</label>
                             {{ form.gallery_images }}
                         </div>
@@ -405,67 +412,116 @@ input:checked + .slider:before {
 
 
                         <hr>
-                        <div class="mb-3 form-check">
-                            {{ form.instant_delivery }}
-                            <label class="form-check-label" for="id_instant_delivery">Instant Delivery</label>
+                                
+                        <div id="hide_offline_div">
+                        <div id="delivery_div" class="p-3 rounded" style="background: #fff;">
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-warning fw-bold mb-0">Delivery Details</h6>
+                                <div class="form-check form-switch">
+                                    {{ form.use_default }}
+                                    <label class="form-check-label" for="id_use_default">Use default</label>
+                                </div>
+                            </div>
+                            <hr>
+
+                            <div class="form-check form-switch mb-2">
+                                {{ form.instant_delivery }}
+                                <label class="form-check-label" for="id_instant_delivery">Instant Delivery</label>
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                {{ form.self_pickup }}
+                                <label class="form-check-label" for="id_self_pickup">Self Pickup</label>
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                {{ form.general_delivery }}
+                                <label class="form-check-label" for="id_general_delivery">General Delivery</label>
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                {{ form.is_on_shop }}
+                                <label class="form-check-label" for="id_is_on_shop">On Shop Order</label>
+                            </div>
                         </div>
+
+
+                        <div id="delivery_div" class="p-3 rounded" style="background: #fff;">
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-warning fw-bold mb-0">Policies</h6>
+                                <div class="form-check form-switch">
+                                    {{ form.use_default }}
+                                    <label class="form-check-label" for="id_use_default">Use default</label>
+                                </div>
+                            </div>
+                        
+                            <div class="form-check form-switch mb-2">
+                                {{ form.return_policy }}
+                                <label class="form-check-label" for="id_return_policy">Return Policy</label>
+                            </div>
+                        
+                            <div class="form-check form-switch mb-2">
+                                {{ form.cod }}
+                                <label class="form-check-label" for="id_cod">Cash on Delivery</label>
+                            </div>
+                        
+                            <div class="form-check form-switch mb-2">
+                                {{ form.replacement }}
+                                <label class="form-check-label" for="id_replacement">Replacement</label>
+                            </div>
+                        
+                            <div class="form-check form-switch mb-2">
+                                {{ form.shop_exchange }}
+                                <label class="form-check-label" for="id_shop_exchange">Shop Exchange</label>
+                            </div>
+                        
+                            <div class="form-check form-switch mb-2">
+                                {{ form.shop_warranty }}
+                                <label class="form-check-label" for="id_shop_warranty">Shop Warranty</label>
+                            </div>
+
                     
-                        <div class="mb-3 form-check">
-                            {{ form.self_pickup }}
-                            <label class="form-check-label" for="id_self_pickup">Self Pickup</label>
+                            <div class="form-check form-switch mb-2">
+                                {{ form.brand_warranty }}
+                                <label class="form-check-label" for="id_brand_warranty">Brand Warranty</label>
+                            </div>
+
                         </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.general_delivery }}
-                            <label class="form-check-label" for="id_general_delivery">General Delivery</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.return_policy }}
-                            <label class="form-check-label" for="id_return_policy">Return Policy</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.cod }}
-                            <label class="form-check-label" for="id_cod">Cash on Delivery</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.replacement }}
-                            <label class="form-check-label" for="id_replacement">Replacement</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.shop_exchange }}
-                            <label class="form-check-label" for="id_shop_exchange">Shop Exchange</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.shop_warranty }}
-                            <label class="form-check-label" for="id_shop_warranty">Shop Warranty</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.brand_warranty }}
-                            <label class="form-check-label" for="id_brand_warranty">Brand Warranty</label>
                         </div>
                     
                         <!-- Flags -->
                         <hr>
-                        <div class="mb-3 form-check">
-                            {{ form.is_popular }}
-                            <label class="form-check-label" for="id_is_popular">Is Popular</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
-                            {{ form.is_featured }}
-                            <label class="form-check-label" for="id_is_featured">Is Featured</label>
-                        </div>
-                    
-                        <div class="mb-3 form-check">
+
+                        {% if request.user.is_superuser %}
+
+                            <div id="delivery_div" class="p-3 rounded" style="background: #fff;">
+
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="text-warning fw-bold mb-0">Admin Only</h6>
+                                </div>
+
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.is_popular }}
+                                    <label class="form-check-label" for="id_is_popular">Is Popular</label>
+                                </div>
+                            
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.is_featured }}
+                                    <label class="form-check-label" for="id_is_featured">Is Featured</label>
+                                </div>
+
+                            </div>
+                        
+                        
+                        {% endif %}
+
+                        <div class="form-check form-switch mb-2">
                             {{ form.is_active }}
                             <label class="form-check-label" for="id_is_active">Is Active</label>
                         </div>
+
 
 
                         <div class="text-center">
@@ -655,15 +711,23 @@ document.addEventListener("DOMContentLoaded", function () {
         saleType.setAttribute('disabled', true);
     }
 
-    function setSaleTypeOptionsDefault() {
+
+    function setSaleTypeOptionsDefault(productType) {
         clearSaleTypeOptions();
+
         Object.entries(allSaleOptions).forEach(([value, text]) => {
+            // 👇 if not print, exclude "online"
+            if (productType !== 'print' && value === 'online') return;
             addSaleTypeOption(value, text);
         });
+
         saleType.removeAttribute('disabled');
+        saleType.value = 'offline'; // 👈 set default to offline (or 'both' if preferred)
     }
 
-    function toggleProductOnlyFields(show) {
+
+    // for hiding/ showing product fields on  product type fields
+    function toggleProductOnlyFields(show) {     
         document.querySelectorAll('.product-only-field').forEach(el => {
             el.style.display = show ? '' : 'none';
             el.querySelectorAll('input, select, textarea').forEach(input => {
@@ -682,6 +746,19 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+
+    // for hiding delivery option for offline product
+    function handleSaleTypeChange() {
+        const saleTypeValue = saleType.value;
+        const targetDiv = document.getElementById("hide_offline_div"); // 👈 replace with your div's ID
+
+        if (saleTypeValue === 'offline') {
+            targetDiv.style.display = 'none';
+        } else {
+            targetDiv.style.display = 'block';
+        }
+    }
+
     function handleFoodToggleChange() {
         if (!foodTypeWrapper || !foodTypeField) return;
         if (foodToggle.checked) {
@@ -695,6 +772,113 @@ document.addEventListener("DOMContentLoaded", function () {
             foodTypeField.value = '';
         }
     }
+
+    function adjustFormFields(productType, saleType) {
+    const key = `${productType}_${saleType}`;
+    const rules = {
+        'product_offline': {
+            category: 'optional',
+            sub_category: 'optional',
+            brand_name: 'optional',
+            color: 'optional',
+            size: 'optional',
+            batch_number: 'optional',
+            expiry_date: 'optional',
+            description: 'optional',
+            image: 'optional',
+            gallery_images: 'hide'
+        },
+        'product_online': {
+            category: 'required',
+            sub_category: 'required',
+            brand_name: 'optional',
+            color: 'optional',
+            size: 'optional',
+            batch_number: 'optional',
+            expiry_date: 'optional',
+            description: 'optional',
+            image: 'required',
+            gallery_images: 'optional'
+        },
+        'service_offline': {
+            category: 'optional',
+            sub_category: 'optional',
+            brand_name: 'optional',
+            color: 'optional',
+            size: 'optional',
+            batch_number: 'optional',
+            expiry_date: 'optional',
+            description: 'optional',
+            image: 'optional',
+            gallery_images: 'hide'
+        },
+        'service_online': {
+            category: 'required',
+            sub_category: 'required',
+            brand_name: 'optional',
+            color: 'optional',
+            size: 'optional',
+            batch_number: 'optional',
+            expiry_date: 'optional',
+            description: 'optional',
+            image: 'required',
+            gallery_images: 'optional'
+        },
+        'print_online': {
+            category: 'required',
+            sub_category: 'required',
+            brand_name: 'hide',
+            color: 'hide',
+            size: 'hide',
+            batch_number: 'hide',
+            expiry_date: 'hide',
+            description: 'hide',
+            image: 'hide',
+            gallery_images: 'hide'
+        }
+    };
+
+    const config = rules[key];
+    if (!config) return;
+
+    Object.entries(config).forEach(([field, rule]) => {
+        const wrapper = document.getElementById(`${field}_wrapper`);
+        const input = document.getElementById(`id_${field}`);
+        if (!wrapper || !input) return;
+
+        switch (rule) {
+            case 'required':
+                wrapper.style.display = 'block';
+                input.disabled = false;
+                input.required = true;
+                break;
+            case 'optional':
+                wrapper.style.display = 'block';
+                input.disabled = false;
+                input.required = false;
+                break;
+            case 'hide':
+                wrapper.style.display = 'none';
+                input.disabled = true;
+                input.required = false;
+                break;
+        }
+    });
+}
+
+
+
+document.getElementById('productType').addEventListener('change', updateFieldLogic);
+document.getElementById('saleType').addEventListener('change', updateFieldLogic);
+
+function updateFieldLogic() {
+    const productType = document.getElementById('productType').value;
+    const saleType = document.getElementById('saleType').value;
+    adjustFormFields(productType, saleType);
+}
+
+    saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product
+    document.addEventListener('DOMContentLoaded', handleSaleTypeChange);    // for hiding delivery option for offline product onload
 
     const customizePrintToggleWrapper = document.getElementById('customizePrintToggleWrapper');
 const customPrintToggle = document.getElementById('customPrintToggle');
@@ -790,7 +974,7 @@ document.addEventListener('DOMContentLoaded', handleCustomPrintToggleChange);
 
 document.addEventListener("DOMContentLoaded", function () {
     const checkbox = document.getElementById("id_tax_inclusive");
-    const gstInput = document.getElementById("id_gst");
+    const gstInput = document.getElementById("tax_div");
 
     function toggleGSTInput() {
       gstInput.style.display = checkbox.checked ? "none" : "block";
