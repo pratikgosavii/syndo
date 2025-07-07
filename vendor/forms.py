@@ -154,10 +154,11 @@ class product_Form(forms.ModelForm):
             'instant_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'self_pickup': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'general_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_on_shop': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            
             'return_policy': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'cod': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'replacement': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_on_shop': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'shop_exchange': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'shop_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'brand_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),

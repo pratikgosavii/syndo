@@ -344,6 +344,7 @@ class product(models.Model):
     instant_delivery = models.BooleanField(default=False)
     self_pickup = models.BooleanField(default=False)
     general_delivery = models.BooleanField(default=False)
+    is_on_shop = models.BooleanField(default=False)
 
     return_policy = models.BooleanField(default=False)
     cod = models.BooleanField(default=False)
@@ -355,7 +356,6 @@ class product(models.Model):
     # Flags
     tax_inclusive = models.BooleanField(default=False)
     is_popular = models.BooleanField(default=False)
-    is_on_shop = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
@@ -551,6 +551,7 @@ class CompanyProfile(models.Model):
     brand_name = models.CharField(max_length=255)
     email = models.EmailField(blank=True, null=True)
     gstin = models.CharField(max_length=15, blank=True, null=True)
+    is_gst_registered = models.BooleanField(default=False)
     contact = models.CharField(max_length=15, blank=True, null=True)
     billing_address = models.TextField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)
