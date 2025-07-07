@@ -100,10 +100,7 @@ input:checked + .slider:before {
                         {% csrf_token %}
                         
                         
-                        <div class="mb-3">
-                            <label for="id_name" class="form-label">Product Name</label>
-                            {{ form.name }}
-                        </div>
+                    
                     
                         <div class="mb-3">
                             <label for="id_product_type" class="form-label">Product Type</label>
@@ -113,6 +110,11 @@ input:checked + .slider:before {
                         <div class="mb-3">
                             <label for="id_sale_type" class="form-label">Sale Type</label>
                             {{ form.sale_type }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_name" class="form-label">Product Name</label>
+                            {{ form.name }}
                         </div>
                     
                         <div class="mb-3" id="category_wrapper">
@@ -330,8 +332,8 @@ input:checked + .slider:before {
                         </div>
                         <hr>
                         
-                            {{ variant_formset.management_form }}
-
+                        
+                        {{ variant_formset.management_form }}
                         <div id="standardPrintWrapper" style="display: none;">
 
                             <div id="variantSection">
@@ -678,7 +680,6 @@ input:checked + .slider:before {
 
 // --------------------- based on product type hide show  -------------------------
 
-document.addEventListener("DOMContentLoaded", function () {
     const productType = document.getElementById("productType");
     const saleType = document.getElementById("saleType");
     const variantSection = document.getElementById("variantSection");
@@ -773,147 +774,137 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function adjustFormFields(productType, saleType) {
-    const key = `${productType}_${saleType}`;
-    const rules = {
-        'product_offline': {
-            category: 'optional',
-            sub_category: 'optional',
-            brand_name: 'optional',
-            color: 'optional',
-            size: 'optional',
-            batch_number: 'optional',
-            expiry_date: 'optional',
-            description: 'optional',
-            image: 'optional',
-            gallery_images: 'hide'
-        },
-        'product_online': {
-            category: 'required',
-            sub_category: 'required',
-            brand_name: 'optional',
-            color: 'optional',
-            size: 'optional',
-            batch_number: 'optional',
-            expiry_date: 'optional',
-            description: 'optional',
-            image: 'required',
-            gallery_images: 'optional'
-        },
-        'service_offline': {
-            category: 'optional',
-            sub_category: 'optional',
-            brand_name: 'optional',
-            color: 'optional',
-            size: 'optional',
-            batch_number: 'optional',
-            expiry_date: 'optional',
-            description: 'optional',
-            image: 'optional',
-            gallery_images: 'hide'
-        },
-        'service_online': {
-            category: 'required',
-            sub_category: 'required',
-            brand_name: 'optional',
-            color: 'optional',
-            size: 'optional',
-            batch_number: 'optional',
-            expiry_date: 'optional',
-            description: 'optional',
-            image: 'required',
-            gallery_images: 'optional'
-        },
-        'print_online': {
-            category: 'required',
-            sub_category: 'required',
-            brand_name: 'hide',
-            color: 'hide',
-            size: 'hide',
-            batch_number: 'hide',
-            expiry_date: 'hide',
-            description: 'hide',
-            image: 'hide',
-            gallery_images: 'hide'
-        }
-    };
-
-    const config = rules[key];
-    if (!config) return;
-
-    Object.entries(config).forEach(([field, rule]) => {
-        const wrapper = document.getElementById(`${field}_wrapper`);
-        const input = document.getElementById(`id_${field}`);
-        if (!wrapper || !input) return;
-
-        switch (rule) {
-            case 'required':
-                wrapper.style.display = 'block';
-                input.disabled = false;
-                input.required = true;
-                break;
-            case 'optional':
-                wrapper.style.display = 'block';
-                input.disabled = false;
-                input.required = false;
-                break;
-            case 'hide':
-                wrapper.style.display = 'none';
-                input.disabled = true;
-                input.required = false;
-                break;
-        }
-    });
-}
+   
 
 
 
-document.getElementById('productType').addEventListener('change', updateFieldLogic);
-document.getElementById('saleType').addEventListener('change', updateFieldLogic);
+ function adjustFormFields(productType, saleType) {
+    console.log(productType)
+    console.log(saleType)
+        const key = `${productType}_${saleType}`;
+        const rules = {
+            'product_offline': {
+                category: 'optional',
+                sub_category: 'optional',
+                brand_name: 'optional',
+                color: 'optional',
+                size: 'optional',
+                batch_number: 'optional',
+                expiry_date: 'optional',
+                description: 'optional',
+                image: 'optional',
+                gallery_images: 'hide'
+            },
+            'product_both': {
+                category: 'required',
+                sub_category: 'required',
+                brand_name: 'optional',
+                color: 'optional',
+                size: 'optional',
+                batch_number: 'optional',
+                expiry_date: 'optional',
+                description: 'optional',
+                image: 'required',
+                gallery_images: 'optional'
+            },
+            'service_offline': {
+                category: 'optional',
+                sub_category: 'optional',
+                brand_name: 'optional',
+                color: 'optional',
+                size: 'optional',
+                batch_number: 'optional',
+                expiry_date: 'optional',
+                description: 'optional',
+                image: 'optional',
+                gallery_images: 'hide'
+            },
+            'service_both': {
+                category: 'required',
+                sub_category: 'required',
+                brand_name: 'optional',
+                color: 'optional',
+                size: 'optional',
+                batch_number: 'optional',
+                expiry_date: 'optional',
+                description: 'optional',
+                image: 'required',
+                gallery_images: 'optional'
+            },
+            'print_both': {
+                category: 'required',
+                sub_category: 'required',
+                brand_name: 'hide',
+                color: 'hide',
+                size: 'hide',
+                batch_number: 'hide',
+                expiry_date: 'hide',
+                description: 'hide',
+                image: 'hide',
+                gallery_images: 'hide'
+            }
+        };
 
-function updateFieldLogic() {
-    const productType = document.getElementById('productType').value;
-    const saleType = document.getElementById('saleType').value;
-    adjustFormFields(productType, saleType);
-}
+        const config = rules[key];
+        if (!config) return;
+
+        Object.entries(config).forEach(([field, rule]) => {
+            const wrapper = document.getElementById(`${field}_wrapper`);
+            const input = document.getElementById(`id_${field}`);
+            if (!wrapper || !input) return;
+
+            switch (rule) {
+                case 'required':
+                    wrapper.style.display = 'block';
+                    input.disabled = false;
+                    input.required = true;
+                    break;
+                case 'optional':
+                    wrapper.style.display = 'block';
+                    input.disabled = false;
+                    input.required = false;
+                    break;
+                case 'hide':
+                    wrapper.style.display = 'none';
+                    input.disabled = true;
+                    input.required = false;
+                    break;
+            }
+        });
+    }
+
+
+
+
+    document.getElementById('productType').addEventListener('change', updateFieldLogic);
+    document.getElementById('saleType').addEventListener('change', updateFieldLogic);
+
+    function updateFieldLogic() {
+        const productType = document.getElementById('productType').value;
+        const saleType = document.getElementById('saleType').value;
+        adjustFormFields(productType, saleType);
+    }
 
     saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product
     document.addEventListener('DOMContentLoaded', handleSaleTypeChange);    // for hiding delivery option for offline product onload
 
     const customizePrintToggleWrapper = document.getElementById('customizePrintToggleWrapper');
-const customPrintToggle = document.getElementById('customPrintToggle');
-const standardPrintWrapper = document.getElementById('standardPrintWrapper');
-const customPrintWrapper = document.getElementById('customPrintWrapper');
+    const customPrintToggle = document.getElementById('customPrintToggle');
+    const standardPrintWrapper = document.getElementById('standardPrintWrapper');
+    const customPrintWrapper = document.getElementById('customPrintWrapper');
 
-function handleCustomPrintToggleChange() {
-    const isCustom = customPrintToggle?.checked;
-    const select = document.querySelector('#id_print_variants-0-paper');
 
-    if (isCustom) {
-        standardPrintWrapper.style.display = 'none';
-        customPrintWrapper.style.display = 'block';
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM loaded, calling handleCustomPrintToggleChange()');
+        handleCustomPrintToggleChange();
+    });
 
-        // ❗ Remove required when hidden
-        if (select) {
-            select.removeAttribute('required');
-        }
 
-    } else {
-        standardPrintWrapper.style.display = 'block';
-        customPrintWrapper.style.display = 'none';
 
-        // ❗ Restore required when shown
-        if (select) {
-            select.setAttribute('required', 'required');
-        }
-    }
-}
+    // Attach the handler to the checkbox (or however the toggle is triggered)
+    customPrintToggle.addEventListener('change', handleCustomPrintToggleChange);
 
-// Attach the handler to the checkbox (or however the toggle is triggered)
-customPrintToggle.addEventListener('change', handleCustomPrintToggleChange);
-
-// Optional: run once on load to ensure state is correct
-document.addEventListener('DOMContentLoaded', handleCustomPrintToggleChange);
+    // Optional: run once on load to ensure state is correct
 
 
     function handleProductTypeChange() {
@@ -952,11 +943,11 @@ document.addEventListener('DOMContentLoaded', handleCustomPrintToggleChange);
     }
 
     // Add listener
-    if (customPrintToggle) {
-        customPrintToggle.addEventListener("change", handleCustomPrintToggleChange);
-    }
+        if (customPrintToggle) {
+            customPrintToggle.addEventListener("change", handleCustomPrintToggleChange);
+        }
 
-        // Event listeners
+            // Event listeners
         if (productType) {
             productType.addEventListener("change", handleProductTypeChange);
         }
@@ -966,7 +957,6 @@ document.addEventListener('DOMContentLoaded', handleCustomPrintToggleChange);
 
         // Initial setup
         handleProductTypeChange();
-    });
 
 
 
@@ -1005,10 +995,65 @@ document.addEventListener("DOMContentLoaded", function () {
     commonColors.value = ""; // Reset dropdown selection
   }
 
+
+  
+function handleCustomPrintToggleChange() {
+    const isCustom = document.getElementById('customPrintToggle')?.checked;
+    const select = document.querySelector('#id_print_variants-0-paper');
+
+    console.log('sdsdsd')
+
+    if (isCustom) {
+        standardPrintWrapper.style.display = 'none';
+        customPrintWrapper.style.display = 'block';
+
+        customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+            el.disabled = false;
+            el.required = true;
+        });
+
+        if (select) {
+            select.removeAttribute('required');
+        }
+
+    } else {
+        standardPrintWrapper.style.display = 'block';
+        customPrintWrapper.style.display = 'none';
+
+        customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+            el.disabled = true;
+            el.required = false;
+        });
+
+        if (select) {
+            select.setAttribute('required', 'required');
+        }
+    }
+}
+
+    
+    // ✅ Then: Run it on DOM load
+    document.addEventListener('DOMContentLoaded', () => {
+        const toggle = document.getElementById('customPrintToggle');
+        if (toggle) {
+            toggle.addEventListener('change', handleCustomPrintToggleChange);
+            handleCustomPrintToggleChange();
+        }
+    });
+
+
+
   window.addEventListener("DOMContentLoaded", () => {
+    console.log("-------------------")
+
     colorValue.value = colorPicker.value;
     colorPreview.style.background = colorPicker.value;
   });
+
+
+
+
+  
 
     </script>
     
