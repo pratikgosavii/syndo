@@ -213,22 +213,22 @@ input:checked + .slider:before {
                     
                         <!-- Stock -->
                         <hr class="product-only-field">
-                        <div class="mb-3 form-check product-only-field">
+                        <div class="mb-3 form-check ">
                             {{ form.track_serial_numbers }}
                             <label class="form-check-label" for="id_track_serial_numbers">Track Serial Numbers</label>
                         </div>
                     
-                        <div class="mb-3 product-only-field">
+                        <div class="mb-3">
                             <label for="id_opening_stock" class="form-label">Opening Stock</label>
                             {{ form.opening_stock }}
                         </div>
                     
-                        <div class="mb-3 form-check product-only-field">
+                        <div class="mb-3 form-check ">
                             {{ form.low_stock_alert }}
                             <label class="form-check-label" for="id_low_stock_alert">Low Stock Alert</label>
                         </div>
                     
-                        <div class="mb-3 product-only-field">
+                        <div class="mb-3 ">
                             <label for="id_low_stock_quantity" class="form-label">Low Stock Quantity</label>
                             {{ form.low_stock_quantity }}
                         </div>
@@ -240,7 +240,7 @@ input:checked + .slider:before {
                             {{ form.brand_name }}
                         </div>
                     
-                        <div class="mb-3 product-only-field" style="display: flex; gap: 10px; align-items: center;" id="color_wrapper">
+                        <div class="mb-3" style="display: flex; gap: 10px; align-items: center;" id="color_wrapper">
                             
                             <label for="common_colors">Color</label>
                             <!-- Dropdown of common colors -->
@@ -355,7 +355,7 @@ input:checked + .slider:before {
                                         </tr>
                                     </thead>
                                     <tbody id="variant-formset">
-                                        {% for form in variant_formset %}
+                                        {% for form in variant_formseet %}
                                             <tr class="variant-form">
                                                 <td class="sr-no">{{ forloop.counter }}</td>
                                                 {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
@@ -912,8 +912,14 @@ input:checked + .slider:before {
 
         if (selectedType === 'print') {
             setSaleTypeOptionsForPrint();
+            
             toggleVariantFormSection(true);
             toggleProductOnlyFields(false);
+
+            console.log('in here')
+
+            standardPrintWrapper.style.display = 'block';
+
             foodOptionToggleWrapper.style.display = 'none';
             if (foodToggle) foodToggle.checked = false;
             handleFoodToggleChange();
@@ -936,6 +942,11 @@ input:checked + .slider:before {
             customPrintWrapper.style.display = 'none';
 
            
+            customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = true;
+                el.required = false;
+            });
+
 
 
 
@@ -1004,11 +1015,11 @@ function handleCustomPrintToggleChange() {
     console.log('sdsdsd')
 
     if (isCustom) {
-        standardPrintWrapper.style.display = 'none';
+        standardPrintWrapper.style.display = 'block';
         customPrintWrapper.style.display = 'block';
 
-        customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-            el.disabled = false;
+       customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+            el.disabled = true;
             el.required = true;
         });
 
@@ -1017,11 +1028,12 @@ function handleCustomPrintToggleChange() {
         }
 
     } else {
-        standardPrintWrapper.style.display = 'block';
         customPrintWrapper.style.display = 'none';
 
-        customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-            el.disabled = true;
+        
+
+         customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+            el.disabled = false;
             el.required = false;
         });
 
