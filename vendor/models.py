@@ -50,6 +50,29 @@ class coupon(models.Model):
     def __str__(self):
         return self.code
 
+class BannerCampaign(models.Model):
+    REDIRECT_CHOICES = [
+        ('store', 'Store'),
+        ('product', 'Product'),
+        ('category', 'Category'),
+        ('external', 'External URL'),
+    ]
+
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='banners')
+    banner_image = models.ImageField(upload_to='campaign_banners/', help_text="Max 1MB, Ratio 1:3")
+    campaign_name = models.CharField(max_length=255)
+    redirect_to = models.CharField(max_length=20, choices=REDIRECT_CHOICES)
+    redirect_target = models.CharField(max_length=255, blank=True, null=True)  # ID or URL
+
+    boost_post = models.BooleanField(default=False)
+    budget = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
+    is_approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.campaign_name
+    
 
 class OnlineStoreSetting(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

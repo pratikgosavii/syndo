@@ -9,6 +9,22 @@ class coupon_serializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
+
+class BannerCampaignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BannerCampaign
+        fields = '__all__'
+        read_only_fields = ['user', 'is_approved', 'created_at']
+
+    def validate(self, data):
+        if data.get('boost_post') and not data.get('budget'):
+            raise serializers.ValidationError({"budget": "Budget is required when boost post is enabled."})
+        if data.get('budget') and data.get('budget') < 10:
+            raise serializers.ValidationError({"budget": "Minimum budget is 10 Rupees."})
+        return data
+        
+
 class product_serializer(serializers.ModelSerializer):
     
     class Meta:
@@ -21,6 +37,15 @@ class vendor_customers_serializer(serializers.ModelSerializer):
     
     class Meta:
         model = vendor_customers
+        fields = '__all__'
+        read_only_fields = ['user']  
+
+
+
+class vendor_vendors_serializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = vendor_vendors
         fields = '__all__'
         read_only_fields = ['user']  
 
@@ -153,6 +178,11 @@ class CashBalanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = CashBalance
         fields = ['balance', 'updated_at']
+
+class vendor_bank_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = vendor_bank
+        fields = '__all__'
 
 
 class CashTransferSerializer(serializers.ModelSerializer):

@@ -274,11 +274,13 @@ def list_vendor(request):
 from .serializers import *
 
 class get_vendor(ListAPIView):
-    queryset = vendor_vendors.objects.all()
+    
     serializer_class = vendor_serializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = '__all__'  # enables filtering on all fields
+    filterset_fields = '__all__'
 
+    def get_queryset(self):
+        return vendor_vendors.objects.filter(user=self.request.user)
 
 
 @login_required(login_url='login_admin')
@@ -429,6 +431,17 @@ def list_bank(request):
         'data': data
     }
     return render(request, 'list_bank.html', context)
+
+
+
+class get_bank(ListAPIView):
+    serializer_class = vendor_bank_serializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = '__all__'
+
+    def get_queryset(self):
+        return vendor_bank.objects.filter(user=self.request.user)
+
 
 
 
@@ -1077,6 +1090,36 @@ class customerViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Return only products of logged-in user
         return vendor_customers.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Automatically assign logged-in user to the product
+        serializer.save(user=self.request.user)
+
+
+
+class vendorViewSet(viewsets.ModelViewSet):
+    queryset = vendor_vendors.objects.all()
+    serializer_class = vendor_vendors_serializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        # Return only products of logged-in user
+        return vendor_vendors.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Automatically assign logged-in user to the product
+        serializer.save(user=self.request.user)
+
+
+
+class bankViewSet(viewsets.ModelViewSet):
+    queryset = vendor_bank.objects.all()
+    serializer_class = vendor_bank_serializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        # Return only products of logged-in user
+        return vendor_bank.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         # Automatically assign logged-in user to the product
@@ -1784,3 +1827,18 @@ class CashTransferViewSet(viewsets.ModelViewSet):
         balance_obj.save()
 
         serializer.save(user=user)
+
+
+
+from rest_framework import viewsets, permissions
+
+class BannerCampaignViewSet(viewsets.ModelViewSet):
+    queryset = BannerCampaign.objects.all()
+    serializer_class = BannerCampaignSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

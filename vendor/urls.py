@@ -12,20 +12,27 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'coupon', CouponViewSet, basename='CouponViewSet')
+router.register(r'banner-campaigns', BannerCampaignViewSet, basename='banner-campaign')
 router.register(r'onlineStoreSetting', OnlineStoreSettingViewSet, basename='OnlineStoreSettingViewSet')
 router.register(r'company-profile', CompanyProfileViewSet, basename='CompanyProfileViewSet')
+router.register(r'store-working-hour', StoreWorkingHourViewSet, basename='StoreWorkingHourViewSet')
+
 router.register(r'customer', customerViewSet, basename='customerViewSet')
+router.register(r'vendor', vendorViewSet, basename='vendorViewSet')
+
+router.register(r'post', PostViewSet, basename='PostViewSet')
+router.register(r'reel', ReelViewSet, basename='ReelViewSet')
+router.register(r'spotlight-product', SpotlightProductViewSet, basename='ProductAddon')
+
+router.register(r'expense', ExpenseViewSet, basename='ExpenseViewSet')
+router.register(r'purchase', PurchaseViewSet, basename='PurchaseViewSet')
+
 router.register(r'product', ProductViewSet, basename='product')
 router.register(r'productsetting', ProductSettingsViewSet, basename='ProductSettingsViewSet')
 router.register(r'addon', AddonViewSet, basename='AddonViewSet')
 router.register(r'product-addon', ProductAddonViewSet, basename='ProductAddonViewSet')
-router.register(r'spotlight-product', SpotlightProductViewSet, basename='ProductAddon')
-router.register(r'post', PostViewSet, basename='PostViewSet')
-router.register(r'reel', ReelViewSet, basename='ReelViewSet')
-router.register(r'expense', ExpenseViewSet, basename='ExpenseViewSet')
-router.register(r'purchase', PurchaseViewSet, basename='PurchaseViewSet')
-router.register(r'store-working-hour', StoreWorkingHourViewSet, basename='StoreWorkingHourViewSet')
 
+router.register(r'vendor-bank', bankViewSet, basename='bankViewSet')
 router.register(r'cash-balance', CashBalanceViewSet, basename='CashBalanceViewSet')
 router.register(r'cash-transfers', CashTransferViewSet, basename='CashTransferViewSet')
 
@@ -59,6 +66,8 @@ urlpatterns = [
     path('update-bank/<bank_id>', update_bank, name='update_bank'),
     path('delete-bank/<bank_id>', delete_bank, name='delete_bank'),
     path('list-bank/', list_bank, name='list_bank'),
+    path('get-bank/', get_bank.as_view(), name='get_bank'),
+
     
     path('add-customer/', add_customer, name='add_customer'),
     path('update-customer/<customer_id>', update_customer, name='update_customer'),
