@@ -917,6 +917,83 @@ def list_addon(request):
     return render(request, 'list_addon.html', context)
 
 
+@login_required(login_url='login_admin')
+def add_payment(request):
+
+    if request.method == 'POST':
+
+        forms = PaymentForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_payment')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_payment.html', context)
+    
+    else:
+
+        forms = PaymentForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_payment.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_payment(request, payment_id):
+
+    if request.method == 'POST':
+
+        instance = Payment.objects.get(id=payment_id)
+
+        forms = PaymentForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_payment')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = Payment.objects.get(id=payment_id)
+        forms = PaymentForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_payment.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_payment(request, payment_id):
+
+    Payment.objects.get(id=payment_id).delete()
+
+    return HttpResponseRedirect(reverse('list_payment'))
+
+
+@login_required(login_url='login_admin')
+def list_payment(request):
+
+    data = Payment.objects.all()
+    context = {
+        'data': data
+    }
+    return render(request, 'list_payment.html', context)
+
+
 
 
 
@@ -1842,3 +1919,103 @@ class BannerCampaignViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+
+
+class SaleViewSet(viewsets.ModelViewSet):
+    queryset = Sale.objects.all()
+    serializer_class = SaleSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        with transaction.atomic():
+            serializer.save(user=self.request.user)
+
+
+class DeliverySettingsViewSet(viewsets.ModelViewSet):
+    queryset = DeliverySettings.objects.all()
+    serializer_class = DeliverySettingsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class DeliveryBoyViewSet(viewsets.ModelViewSet):
+    queryset = DeliveryBoy.objects.all()
+    serializer_class = DeliveryBoySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+
+from rest_framework.exceptions import ValidationError
+
+class DeliveryModeViewSet(viewsets.ModelViewSet):
+    serializer_class = DeliveryModeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return DeliveryMode.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        if DeliveryMode.objects.filter(user=self.request.user).exists():
+            raise ValidationError("DeliveryMode for this user already exists.")
+        serializer.save(user=self.request.user)  # 👈 user is passed here
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+
+        # Get delivery mode
+        delivery_mode = DeliveryMode.objects.filter(user=user).first()
+        delivery_mode_data = DeliveryModeSerializer(delivery_mode).data if delivery_mode else {}
+
+        # Get wallet transactions
+        wallet, _ = Wallet.objects.get_or_create(user=user)
+        transactions = WalletTransaction.objects.filter(wallet=wallet).order_by('-date', '-time')
+        transactions_data = WalletTransactionSerializer(transactions, many=True).data
+
+        return Response({
+            "delivery_mode": delivery_mode_data,
+            "wallet_transactions": transactions_data
+        })
+
+
+
+class PaymentViewSet(viewsets.ModelViewSet):
+    serializer_class = PaymentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Payment.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+
+
+def tax_setting(request):
+    setting, created = TaxSettings.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        form = TaxSettingsForm(request.POST, instance=setting)
+        if form.is_valid():
+            form.save()
+            return redirect('tax_setting')
+    else:
+        form = TaxSettingsForm(instance=setting)
+
+    return render(request, 'TaxSettings.html', {'form': form})
+
+
+def invoice_setting(request):
+    setting, created = InvoiceSettings.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        form = InvoiceSettingsForm(request.POST, instance=setting)
+        if form.is_valid():
+            form.save()
+            return redirect('online_store_setting')
+    else:
+        form = OnlineStoreSettingForm(instance=setting)
+
+    return render(request, 'InvoiceSettings.html', {'form': form})
+
