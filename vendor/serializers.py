@@ -191,3 +191,76 @@ class CashTransferSerializer(serializers.ModelSerializer):
         fields = ['id', 'bank_account', 'amount', 'created_at', 'status']
         read_only_fields = ['created_at', 'status']
         
+
+
+
+from rest_framework import serializers
+
+class SaleItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SaleItem
+        fields = ['product', 'quantity', 'price']
+
+
+class SaleSerializer(serializers.ModelSerializer):
+    items = SaleItemSerializer(many=True)
+    
+    class Meta:
+        model = Sale
+        fields = [
+            'id', 'payment_method', 'company_profile', 'party', 'customer',
+            'discount_percentage', 'credit_time_days', 'is_wholesale_rate',
+            'items'
+        ]
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        sale = Sale.objects.create(**validated_data)
+
+        for item in items_data:
+            SaleItem.objects.create(user=sale.user, sale=sale, **item)
+        return sale
+
+
+
+class DeliverySettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliverySettings
+        fields = '__all__'
+
+
+
+class DeliveryBoySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryBoy
+        fields = '__all__'
+
+
+class DeliveryModeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryMode
+        fields = ['is_auto_assign_enabled', 'is_self_delivery_enabled']
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        if DeliveryMode.objects.filter(user=user).exists():
+            raise serializers.ValidationError("DeliveryMode for this user already exists.")
+        return attrs
+
+    # 👇 This is safe: don't set user again, just return default create
+    def create(self, validated_data):
+        return super().create(validated_data)
+
+
+
+class WalletTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WalletTransaction
+        fields = ['id', 'amount', 'transaction_type', 'date', 'time', 'description']  # adjust fields as per your model
+
+        
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = '__all__'
+        read_only_fields = ['user']

@@ -775,7 +775,7 @@ class DeliveryEarnings(models.Model):
     last_order_time = models.TimeField(null=True, blank=True)
 
 class DeliveryMode(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, unique=True)
     is_auto_assign_enabled = models.BooleanField(default=False)
     is_self_delivery_enabled = models.BooleanField(default=False)
 
@@ -799,3 +799,59 @@ class CashTransfer(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → ₹{self.amount} to {self.bank_account.bank_name}"
+
+
+
+class Payment(models.Model):
+    TYPE_CHOICES = (
+        ('gave', 'You Gave'),
+        ('received', 'You Received'),
+    )
+    
+    PARTY_CHOICES = (
+        ('customer', 'Customer'),
+        ('vendor', 'Vendor'),
+    )
+
+    PAYMENT_TYPE_CHOICES = (
+        ('upi', 'UPI'),
+        ('cash', 'Cash'),
+        ('card', 'Card'),
+        ('cheque', 'Cheque'),
+        ('emi', 'EMI'),
+        ('netbanking', 'Netbanking'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    party = models.CharField(max_length=10, choices=PARTY_CHOICES)
+    party_name = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateField()
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPE_CHOICES)
+    account = models.CharField(max_length=100, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    attachment = models.FileField(upload_to='payment_attachments/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.get_type_display()} - {self.party_name} - ₹{self.amount}"
+
+
+
+class TaxSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tax_settings')
+    igst = models.BooleanField(default=False)
+    gst = models.BooleanField(default=False)
+    hsn_sac_code = models.BooleanField(default=False)
+    additional_cess = models.BooleanField(default=False)
+    reverse_charge = models.BooleanField(default=False)
+    city_of_supply = models.BooleanField(default=False)
+    eway_bill_no = models.BooleanField(default=False)
+    composite_scheme = models.BooleanField(default=False)
+
+class InvoiceSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='invoice_settings')
+    show_round_off = models.BooleanField(default=False)
+    show_due_date = models.BooleanField(default=False)
+    show_dispatch_address = models.BooleanField(default=False)
+    show_hsn_sac_summary = models.BooleanField(default=False)

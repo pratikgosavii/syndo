@@ -36,6 +36,13 @@ router.register(r'vendor-bank', bankViewSet, basename='bankViewSet')
 router.register(r'cash-balance', CashBalanceViewSet, basename='CashBalanceViewSet')
 router.register(r'cash-transfers', CashTransferViewSet, basename='CashTransferViewSet')
 
+router.register(r'sales', SaleViewSet, basename='sale')
+
+router.register(r'deliverysettings', DeliverySettingsViewSet)
+router.register(r'deliveryboys', DeliveryBoyViewSet)
+router.register(r'deliverymode', DeliveryModeViewSet, basename='delivery-mode')
+
+router.register(r'payments', PaymentViewSet, basename='payment')
 
 
 urlpatterns = [
@@ -102,6 +109,11 @@ urlpatterns = [
     path('delete_addon/<addon_id>', delete_addon, name='delete_addon'),
     path('list-addon/', list_addon, name='list_addon'),
 
+    path('add-payment/', add_payment, name='add_payment'),
+    path('update-payment/<payment_id>', update_payment, name='update_payment'),
+    path('delete_payment/<payment_id>', delete_payment, name='delete_payment'),
+    path('list-payment/', list_payment, name='list_payment'),
+
     path('store-working-hours/', store_hours_view, name='store_hours'),
     path('online-store-setting/', online_store_setting, name='online_store_setting'),
 
@@ -123,10 +135,12 @@ urlpatterns = [
     path('delivery-settings/', delivery_settings_view, name='delivery_settings'),
     path('auto-assign-delivery/', auto_assign_delivery, name='auto_assign_delivery'),
 
-
     path('cash-in-hand/', cash_in_hand, name='cash_in_hand'),
     path('adjust-cash/', adjust_cash, name='adjust_cash'),
     path('cash-in-hand/transfer/', bank_transfer, name='bank_transfer'),
+
+    path('tax-setting/', tax_setting, name='tax_setting'),
+    path('invoice-setting/', invoice_setting, name='invoice_setting'),
 
 ]  + router.urls
 

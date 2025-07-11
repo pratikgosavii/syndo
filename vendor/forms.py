@@ -613,3 +613,29 @@ class BankTransferForm(forms.Form):
         user = kwargs.pop('user')
         super().__init__(*args, **kwargs)
         self.fields['bank_account'].queryset = vendor_bank.objects.filter(user=user)
+
+
+
+
+class PaymentForm(forms.ModelForm):
+    class Meta:
+        model = Payment
+        fields = ['type', 'party', 'party_name', 'amount', 'payment_date', 'payment_type', 'account', 'notes', 'attachment']
+        widgets = {
+            'payment_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+
+
+        
+class TaxSettingsForm(forms.ModelForm):
+    class Meta:
+        model = TaxSettings
+        exclude = ['user']
+        widgets = {field: forms.CheckboxInput(attrs={'class': 'form-check-input'}) for field in model._meta.get_fields() if field.name != 'user'}
+
+class InvoiceSettingsForm(forms.ModelForm):
+    class Meta:
+        model = InvoiceSettings
+        exclude = ['user']
+        widgets = {field: forms.CheckboxInput(attrs={'class': 'form-check-input'}) for field in model._meta.get_fields() if field.name != 'user'}
