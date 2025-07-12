@@ -263,6 +263,14 @@ def delete_product_category(request, product_category_id):
     return redirect('list_product_category')
 
 
+
+class get_product_category(ListAPIView):
+    queryset = product_category.objects.all()
+    serializer_class = product_category_serializer
+
+
+
+
 def add_product_subcategory(request):
     
     if request.method == "POST":
@@ -327,6 +335,15 @@ def delete_product_subcategory(request, product_subcategory_id):
     data = product_subcategory.objects.get(id = product_subcategory_id).delete()
 
     return redirect('list_product_subcategory')
+
+
+
+
+
+class get_product_subcategory(ListAPIView):
+    queryset = product_subcategory.objects.all()
+    serializer_class = product_subcategory_serializer
+
 
 
 from django.views import View

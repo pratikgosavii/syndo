@@ -264,3 +264,39 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = '__all__'
         read_only_fields = ['user']
+
+        
+class PrintVariantSerializer(serializers.ModelSerializer):
+    color_type_display = serializers.CharField(source='get_color_type_display', read_only=True)
+    sided_display = serializers.CharField(source='get_sided_display', read_only=True)
+    paper_display = serializers.CharField(source='get_paper_display', read_only=True)
+
+    class Meta:
+        model = PrintVariant
+        fields = [
+            'id',
+            'product',
+            'paper',
+            'paper_display',
+            'color_type',
+            'color_type_display',
+            'sided',
+            'sided_display',
+            'min_quantity',
+            'max_quantity',
+            'price',
+        ]
+
+
+
+class ReminderSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReminderSetting
+        fields = [
+            'credit_bill_reminder',
+            'credit_bill_days',
+            'pending_invoice_reminder',
+            'pending_invoice_days',
+            'low_stock_reminder',
+            'expiry_stock_reminder',
+        ]
