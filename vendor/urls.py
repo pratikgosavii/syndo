@@ -27,6 +27,7 @@ router.register(r'spotlight-product', SpotlightProductViewSet, basename='Product
 router.register(r'expense', ExpenseViewSet, basename='ExpenseViewSet')
 router.register(r'purchase', PurchaseViewSet, basename='PurchaseViewSet')
 
+router.register(r'PrintVariant', PrintVariantViewSet, basename='PrintVariantViewSet')
 router.register(r'product', ProductViewSet, basename='product')
 router.register(r'productsetting', ProductSettingsViewSet, basename='ProductSettingsViewSet')
 router.register(r'addon', AddonViewSet, basename='AddonViewSet')
@@ -44,6 +45,7 @@ router.register(r'deliverymode', DeliveryModeViewSet, basename='delivery-mode')
 
 router.register(r'payments', PaymentViewSet, basename='payment')
 
+router.register(r'reminder-settings', ReminderSettingViewSet, basename='reminder-settings')
 
 urlpatterns = [
 
@@ -92,6 +94,8 @@ urlpatterns = [
     path('delete_product/<int:product_id>/', delete_product, name='delete_product'),
     path('list-product/', list_product, name='list_product'),
     path('product-setting/', product_setting, name='product_settings'),
+
+    path('print-variant/choices/', PrintVariantChoiceAPIView.as_view(), name='print-variant-choices'),
     
     path('add-expense/', add_expense, name='add_expense'),
     path('update-expense/<int:expense_id>/', update_expense, name='update_expense'),
@@ -108,6 +112,7 @@ urlpatterns = [
     path('update-addon/<addon_id>', update_addon, name='update_addon'),
     path('delete_addon/<addon_id>', delete_addon, name='delete_addon'),
     path('list-addon/', list_addon, name='list_addon'),
+    path('get-addon/', get_addon.as_view(), name='get_addon'),
 
     path('add-payment/', add_payment, name='add_payment'),
     path('update-payment/<payment_id>', update_payment, name='update_payment'),

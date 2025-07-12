@@ -917,6 +917,14 @@ def list_addon(request):
     return render(request, 'list_addon.html', context)
 
 
+class get_addon(ListAPIView):
+
+    serializer_class = AddonSerializer
+
+    def get_queryset(self):
+        return addon.objects.filter(user=self.request.user)
+    
+
 @login_required(login_url='login_admin')
 def add_payment(request):
 
@@ -2019,3 +2027,44 @@ def invoice_setting(request):
 
     return render(request, 'InvoiceSettings.html', {'form': form})
 
+
+class PrintVariantChoiceAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "paper_choices": [
+                {"value": key, "label": label} for key, label in PrintVariant.PAPER_CHOICES
+            ],
+            "color_type_choices": [
+                {"value": key, "label": label} for key, label in PrintVariant.COLOR_CHOICES
+            ],
+            "sided_choices": [
+                {"value": key, "label": label} for key, label in PrintVariant.SIDED_CHOICES
+            ]
+        })
+    
+
+
+class PrintVariantViewSet(viewsets.ModelViewSet):
+    queryset = PrintVariant.objects.all()
+    serializer_class = PrintVariantSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+
+
+class ReminderSettingViewSet(viewsets.ModelViewSet):
+    serializer_class = ReminderSettingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ReminderSetting.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        instance, _ = ReminderSetting.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

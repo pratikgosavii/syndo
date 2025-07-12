@@ -855,3 +855,22 @@ class InvoiceSettings(models.Model):
     show_due_date = models.BooleanField(default=False)
     show_dispatch_address = models.BooleanField(default=False)
     show_hsn_sac_summary = models.BooleanField(default=False)
+
+
+
+
+class ReminderSetting(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+    # Reminder toggles
+    credit_bill_reminder = models.BooleanField(default=False)
+    pending_invoice_reminder = models.BooleanField(default=False)
+    low_stock_reminder = models.BooleanField(default=False)
+    expiry_stock_reminder = models.BooleanField(default=False)
+
+    # Reminder days
+    credit_bill_days = models.PositiveIntegerField(default=30)
+    pending_invoice_days = models.PositiveIntegerField(default=30)
+
+    def __str__(self):
+        return f"ReminderSettings for {self.user.username}"

@@ -31,6 +31,12 @@ class product_category_serializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class product_subcategory_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = product_subcategory
+        fields = '__all__'
+
+
 class expense_category_serializer(serializers.ModelSerializer):
     class Meta:
         model = expense_category
