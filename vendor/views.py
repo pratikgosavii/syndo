@@ -1669,6 +1669,12 @@ def order_list(request):
     return render(request, 'list_order.html', context)
 
 
+def privacy_policy(request):
+
+  
+    return render(request, 'privacy_policy.html')
+
+
 
 
 def accept_order(request, order_id):

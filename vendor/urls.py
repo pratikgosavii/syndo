@@ -130,6 +130,7 @@ urlpatterns = [
 
     path('order-details/<order_id>', order_details, name='order_details'),
     path('order-list/', order_list, name='order_list'),
+    path('privacy-policy/', privacy_policy, name='privacy_policy'),
     # path('order-list/', pos, name='create-sale'),
     
     path('accept-order/<order_id>', accept_order, name='accept_order'),
