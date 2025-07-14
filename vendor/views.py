@@ -2045,6 +2045,9 @@ class PrintVariantChoiceAPIView(APIView):
             "color_type_choices": [
                 {"value": key, "label": label} for key, label in PrintVariant.COLOR_CHOICES
             ],
+            "unit_choices": [
+                {"value": key, "label": label} for key, label in product.UNIT_CHOICES
+            ],
             "sided_choices": [
                 {"value": key, "label": label} for key, label in PrintVariant.SIDED_CHOICES
             ]
