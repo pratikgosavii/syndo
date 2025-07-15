@@ -300,3 +300,17 @@ class ReminderSettingSerializer(serializers.ModelSerializer):
             'low_stock_reminder',
             'expiry_stock_reminder',
         ]
+
+
+class TaxSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaxSettings
+        fields = '__all__'
+        read_only_fields = ['user']
+
+
+class InvoiceSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceSettings
+        fields = '__all__'
+        read_only_fields = ['user']

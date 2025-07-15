@@ -2077,3 +2077,38 @@ class ReminderSettingViewSet(viewsets.ModelViewSet):
         instance, _ = ReminderSetting.objects.get_or_create(user=request.user)
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+
+class TaxSettingsViewSet(viewsets.ModelViewSet):
+    serializer_class = TaxSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return TaxSettings.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+   
+    def list(self, request, *args, **kwargs):
+        instance, _ = TaxSettings.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    
+    
+
+
+class InvoiceSettingsViewSet(viewsets.ModelViewSet):
+    serializer_class = InvoiceSettingsSerializer  # ✅ FIXED
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return InvoiceSettings.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        instance, _ = InvoiceSettings.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

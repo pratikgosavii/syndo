@@ -43,6 +43,9 @@ router.register(r'deliverysettings', DeliverySettingsViewSet)
 router.register(r'deliveryboys', DeliveryBoyViewSet)
 router.register(r'deliverymode', DeliveryModeViewSet, basename='delivery-mode')
 
+router.register(r'taxsettings', TaxSettingsViewSet, basename='taxsettings')
+router.register(r'invoicesettings', InvoiceSettingsViewSet, basename='invoicesettings')
+
 router.register(r'payments', PaymentViewSet, basename='payment')
 
 router.register(r'reminder-settings', ReminderSettingViewSet, basename='reminder-settings')
