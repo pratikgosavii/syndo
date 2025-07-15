@@ -1048,17 +1048,16 @@ class OnlineStoreSettingViewSet(viewsets.ModelViewSet):
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = product.objects.all()
     serializer_class = product_serializer
     permission_classes = [IsVendor]
 
     def get_queryset(self):
-        # Return only products of logged-in user
         return product.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        # Automatically assign logged-in user to the product
         serializer.save(user=self.request.user)
+
+
 
 from rest_framework.decorators import action
 
