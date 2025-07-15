@@ -25,14 +25,6 @@ class BannerCampaignSerializer(serializers.ModelSerializer):
         return data
         
 
-class product_serializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = product
-        fields = '__all__'
-        read_only_fields = ['user']  
-
-
 class vendor_customers_serializer(serializers.ModelSerializer):
     
     class Meta:
@@ -314,3 +306,42 @@ class InvoiceSettingsSerializer(serializers.ModelSerializer):
         model = InvoiceSettings
         fields = '__all__'
         read_only_fields = ['user']
+
+
+class CustomizePrintVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomizePrintVariant
+        exclude = ['product']
+
+
+class product_serializer(serializers.ModelSerializer):
+    addons = ProductAddonSerializer(many=True, required=False)
+    print_variants = PrintVariantSerializer(many=True, required=False)
+    customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
+
+    class Meta:
+        model = product
+        fields = '__all__'  # or list fields + 'addons', 'print_variants', 'customize_print_variants'
+
+    def create(self, validated_data):
+        addons_data = validated_data.pop('addons', [])
+        variants_data = validated_data.pop('print_variants', [])
+        customize_data = validated_data.pop('customize_print_variants', [])
+
+        instance = product.objects.create(**validated_data)
+
+        for addon in addons_data:
+            product_addon.objects.create(product=instance, **addon)
+
+        for variant in variants_data:
+            PrintVariant.objects.create(product=instance, **variant)
+
+        for custom in customize_data:
+            CustomizePrintVariant.objects.create(product=instance, **custom)
+
+        return instance
+
+    def update(self, instance, validated_data):
+        # Optional: handle nested updates (not required for now)
+        return super().update(instance, validated_data)
+
