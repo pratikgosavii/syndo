@@ -473,7 +473,24 @@ def add_customer(request):
         }
         return render(request, 'add_customer.html', context)
 
-        
+     
+def add_customer_modal(request):
+    if request.method == "POST":
+        form = vendor_customersForm(request.POST)
+        if form.is_valid():
+            forms = form.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return JsonResponse({
+                'success': True,
+                'id': forms.id,
+                'name': forms.name
+            })
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    else:
+        form = vendor_customersForm()
+    return render(request, 'partials/add_customer_modal_form.html', {'form': form})   
 
 @login_required(login_url='login_admin')
 def update_customer(request, vendor_id):
@@ -1492,10 +1509,10 @@ from .models import Sale, SaleItem, Party, product  # Adjust as per your app str
 def pos(request):
 
     forms = SaleForm()
+    customer_forms = vendor_customersForm()
 
     if request.method == 'POST':
         with transaction.atomic():
-            party_type = request.POST.get("party_type")  # 'none', 'customer', or 'vendor'
             print(request.POST)
             # Create or fetch party
            
@@ -1512,6 +1529,7 @@ def pos(request):
 
                 return render(request, "pos_form.html", { "products" : product.objects.filter(user = request.user),
                 "form": forms,
+                "customer_forms": customer_forms,
                 "saleitemform": SaleItemForm(),})
 
 
@@ -1545,6 +1563,7 @@ def pos(request):
     return render(request, "pos_form.html", {
         "products" : product.objects.filter(user = request.user),
         "form": forms,
+        "customer_forms": customer_forms,
         "saleitemform": SaleItemForm(),
         
     })
@@ -2111,3 +2130,12 @@ class InvoiceSettingsViewSet(viewsets.ModelViewSet):
         instance, _ = InvoiceSettings.objects.get_or_create(user=request.user)
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+        
+def barcode_lookup(request):
+    barcode = request.GET.get('barcode')
+    try:
+        product_instance = product.objects.get(barcode=barcode)
+        return JsonResponse({'success': True, 'id': product_instance.id, 'name': product_instance.name, 'price': product_instance.sales_price})
+    except product.DoesNotExist:
+        return JsonResponse({'success': False})

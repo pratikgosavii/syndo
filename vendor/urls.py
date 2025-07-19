@@ -82,6 +82,7 @@ urlpatterns = [
 
     
     path('add-customer/', add_customer, name='add_customer'),
+    path('add-customer-modal/', add_customer_modal, name='add_customer_modal'),
     path('update-customer/<customer_id>', update_customer, name='update_customer'),
     path('delete-customer/<customer_id>', delete_customer, name='delete_customer'),
     path('list-customer/', list_customer, name='list_customer'),
@@ -126,6 +127,7 @@ urlpatterns = [
     path('online-store-setting/', online_store_setting, name='online_store_setting'),
 
     path('pos/', pos, name='create-sale'),
+    path('barcode-lookup/', barcode_lookup, name='barcode_lookup'),
     path('list-sale/', list_sale, name='list_sale'),
     path('get_product_price/', get_product_price, name='get_product_price'),
     path('pos-wholesale/<sale_id>', pos_wholesaless, name='pos_wholesale'),

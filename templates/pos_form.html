@@ -4,6 +4,36 @@
 {% block title %}Sales & POS{% endblock %}
 
 {% block extra_css %}
+
+    <link href="{% static 'libs/select2/dist/css/select2.min.css'%}" rel="stylesheet" type="text/css" />
+ <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        body {
+            background-color: #f0d28c;
+            padding-bottom: 20px;
+        }
+        .form-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .form-heading {
+            text-align: left;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 2rem;
+            color: #ffdb8a;
+        }
+        .btn-primary {
+            background-color: #775599;
+            border-color: #775599;
+        }
+        .custom-button {
+            width: 150px;
+        }
+    </style>
 <style>
   .remove-btn { cursor: pointer; color: red; font-size: 1.2rem; }
 </style>
@@ -16,120 +46,139 @@
 <div class="main-content">
   <div class="page-content">
     <div class="container-fluid">
-        <div class="container py-4">
-            <h3 class="text-center">Sales & POS</h3>
-        <form method="post" action="{% url 'create-sale' %}" id="pos-form">
+      <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0 font-size-18">Sales & POS</h4>
+            </div>
+        </div>
+      </div>
+
+      <div class="container">
+        <div class="form-container">
+          <form method="post" action="{% url 'create-sale' %}" id="pos-form" >
             {% csrf_token %}
             
             <!-- Billing -->
-            <div class="mb-3">
-            <label class="form-label">Billing</label><br>
-            {{ form.company_profile }}
-            </div>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Billing</label>
+                {{ form.company_profile }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Customer</label>
+                <div class="d-flex gap-2 align-items-end">
+                  <div class="flex-grow-1">
+                    {{ form.customer }}
+                  </div>
+                  <div>
+                    <button type="button" class="btn btn-primary px-3" data-bs-toggle="modal" data-bs-target="#customerModal">
+                      <i class="mdi mdi-plus"></i>  Customer
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-            <!-- Party Type -->
-            <div class="mb-3">
-            <label class="form-label">Select Party Type</label><br>
-            <input type="radio" name="party_type" value="none" id="radio_none" checked> None
-            <input type="radio" name="party_type" value="customer" id="radio_customer" class="ms-3"> Customer
-            <input type="radio" name="party_type" value="vendor" id="radio_vendor" class="ms-3"> Vendor
+                  
             </div>
-
-            <!-- Customer / Vendor -->
-            <div id="customer_fields" class="mb-3" style="display: none;">
-            <label>Select Customer</label>
-            {{ form.customer }}
-            </div>
-            <div id="vendor_dropdown" class="mb-3" style="display: none;">
-            <label>Select Party</label>
-            {{ form.party }}
-            </div>
+          
 
             <hr>
+
+            <!-- Barcode Scanner -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Scan Barcode</label>
+              <input type="text" id="barcode-input" class="form-control form-control-lg" placeholder="Scan barcode here..." autocomplete="off">
+              <div class="form-text">Scan the barcode using a scanner or mobile device.</div>
+            </div>
 
             <!-- Add Product Button -->
-            <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#productSearchModal">
-            Search & Add Product
-            </button>
+            <div class="mb-3">
+              <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#productSearchModal">
+                <i class="mdi mdi-magnify"></i> Search & Add Product
+              </button>
+            </div>
 
-            <!-- Items Container (with formsets in mind) -->
+            <!-- Items Table -->
             <div id="items-container">
-            <div class="row g-2 align-items-center mb-2 item-row">
-                <div class="col-4">
-                {{ saleitemform.product }}
+              <div class="row g-2 align-items-center mb-2 item-row">
+                <div class="col-md-4">
+                  {{ saleitemform.product }}
                 </div>
-                <div class="col-2">
-                <input type="number" class="form-control qty-input" name="quantity[]" value="1" placeholder="Qty">
+                <div class="col-md-2">
+                  <input type="number" class="form-control qty-input" name="quantity[]" value="1" placeholder="Qty">
                 </div>
-                <div class="col-2">
-                <input type="number" class="form-control rate-input" name="price[]" placeholder="Price">
+                <div class="col-md-2">
+                  <input type="number" class="form-control rate-input" name="price[]" placeholder="Price">
                 </div>
-                <div class="col-2">
-                <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
+                <div class="col-md-2">
+                  <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
                 </div>
-                <div class="col-2 text-center">
-                <span class="remove-btn">&times;</span>
+                <div class="col-md-2 text-center">
+                  <span class="remove-btn">&times;</span>
                 </div>
-            </div>
+              </div>
             </div>
 
-            <div class="my-2">
-            <button type="button" class="btn btn-warning" id="add-item">Add Item</button>
+            <div class="text-end my-2">
+              <button type="button" class="btn btn-primary" id="add-item">
+                <i class="mdi mdi-plus-circle-outline"></i> Add Item
+              </button>
             </div>
 
             <hr>
 
-            <!-- Payment Options -->
-            <div class="mb-3">
-            <label><strong>Payment</strong></label><br>
-            <div class="btn-group mb-3">
+            <!-- Payment -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Payment Mode</label>
+              <div class="btn-group">
                 <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
                 <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
                 <button type="button" class="btn btn-outline-dark" onclick="selectPayment('cash', this)">Cash</button>
                 <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
-            </div>
+              </div>
             </div>
 
-            <!-- Discount & Tax -->
+            <!-- Discount & Credit Time -->
             <div class="row mb-3">
-            <div class="col-md-4">
-                <label>Discount (%)</label>
+              <div class="col-md-4">
+                <label class="form-label">Discount (%)</label>
                 <input type="number" class="form-control" name="discount_percentage" id="discount-percentage" step="any" value="0">
 
-                    <label>Discount (₹)</label>
-                    <input type="number" class="form-control" id="discount-amount-input" step="any" value="0">
+                <label class="form-label mt-2">Discount (₹)</label>
+                <input type="number" class="form-control" id="discount-amount-input" step="any" value="0">
+              </div>
+              <div class="col-md-4" id="credit_time" style="display: none;">
+                <label class="form-label">Credit Time (days)</label>
+                <input type="date" class="form-control" name="credit_time_days" placeholder="e.g. 60">
+              </div>
+            </div>
 
-                {% comment %} <label class="mt-2">Tax (%)</label>
-                <input type="number" class="form-control" name="tax_percentage" id="tax-percentage" value="0"> {% endcomment %}
-            </div>
-            <div class="col-md-4" id="credit_time" style="display: none;">
-                <label>Credit Time (days)</label>
-                <input type="number" class="form-control" name="credit_time_days" placeholder="e.g. 60">
-            </div>
-            </div>
             <input type="hidden" name="payment_method" id="payment_method">
 
             <!-- Summary -->
-            <div class="my-4 border p-3">
-            <h5>Summary</h5>
-            <p>Total Items: <span id="total-items">0</span></p>
-            <p>Total Amount before Discount: ₹<span id="total-amount-before-discount">0.00</span></p>
-            <p>Discount: ₹<span id="discount-amount">0.00</span></p>
-            <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
+            <div class="border rounded p-3 bg-white shadow-sm mb-4">
+              <h5 class="fw-bold mb-3">Summary</h5>
+              <p>Total Items: <span id="total-items">0</span></p>
+              <p>Total Amount before Discount: ₹<span id="total-amount-before-discount">0.00</span></p>
+              <p>Discount: ₹<span id="discount-amount">0.00</span></p>
+              <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
             </div>
 
             <div class="text-end">
-            <button type="submit" class="btn btn-success">Checkout</button>
-            <button type="reset" class="btn btn-danger">Discard</button>
+              <button type="submit" class="btn btn-success btn-lg">Checkout</button>
+              <button type="reset" class="btn btn-danger btn-lg">Discard</button>
             </div>
-        </form>
+          </form>
         </div>
+      </div>
     </div>
-    </div>
-    </div>
+  </div>
+</div>
+
 
 <!-- Product Search Modal -->
-    <div class="modal fade" id="productSearchModal" tabindex="-1" aria-labelledby="productSearchModalLabel">
+<div class="modal fade" id="productSearchModal" tabindex="-1" aria-labelledby="productSearchModalLabel">
 
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
@@ -179,9 +228,102 @@
   </div>
 </div>
 
+
+
+                                     
+                                        
+                                    
+        <div class="modal fade" id="customerModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exampleModalLabel">Add Customer</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="modal-content" id="customerModalContent">
+                <form id="customerForm" method="post">
+                  {% csrf_token %}
+                  <div class="modal-body">
+                    {% for field in customer_forms %}
+                      <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                          <div class="text-danger">{{ field.errors }}</div>
+                        {% endif %}
+                      </div>
+                    {% endfor %}
+                  </div>
+                
+
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </div>
+
+
+                </form>
+
+            </div>
+          </div>
+            
+        </div>
+      </div>
+                    
+
 {% endblock content %}
 
 {% block extra_js %}
+
+
+<script>
+  $(document).ready(function () {
+    // Load modal content dynamically if needed
+    $('[data-bs-target="#customerModal"]').on('click', function () {
+      $.get("{% url 'add_customer_modal' %}", function (html) {
+        $('#customerModalContent').html(html);
+      });
+    });
+
+    // Properly handle customer form submission
+    $(document).on('submit', '#customerForm', function (e) {
+      e.preventDefault();  // ✅ prevent full form submission
+      const form = this;
+      const formData = new FormData(form);
+
+      $.ajax({
+        url: "{% url 'add_customer_modal' %}",
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+       success: function (data) {
+  if (data.success) {
+    alert("Customer added: " + data.name);
+
+    // 👇 Add new option to dropdown and select it
+    $('#id_customer').append(
+      $('<option>', {
+        value: data.id,  // make sure your view returns the ID
+        text: data.name,
+        selected: true
+      })
+    );
+
+    // 👇 Hide the modal
+    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+  } else {
+    $('#customerModalContent').html(data.html);
+  }
+}
+
+      });
+    });
+  });
+</script>
+
 <script>
   // Helper: recalculate one row
   function recalcRow(row) {
@@ -389,37 +531,76 @@
     document.getElementById('items-container').addEventListener('input', recalculateTotals);
     document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
   });
-</script>
 
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const radios = document.querySelectorAll('input[name="party_type"]');
-    const customerFields = document.getElementById("customer_fields");
-    const vendorDropdown = document.getElementById("vendor_dropdown");
 
-    function togglePartyFields() {
-      const selected = document.querySelector('input[name="party_type"]:checked').value;
+  // Barcode input handler
+document.getElementById('barcode-input').addEventListener('change', function () {
+  const barcode = this.value.trim();
+  if (!barcode) return;
 
-      if (selected === "customer") {
-        customerFields.style.display = "block";
-        vendorDropdown.style.display = "none";
-      } else if (selected === "vendor") {
-        customerFields.style.display = "none";
-        vendorDropdown.style.display = "block";
+  $.ajax({
+    url: "{% url 'barcode_lookup' %}",  // 🔁 Your backend view must return product details
+    method: "GET",
+    data: { barcode },
+    success: function (data) {
+      if (data.success) {
+        addToPOS(data.id, data.name, parseFloat(data.price), null);
+        document.getElementById('barcode-input').value = '';
       } else {
-        customerFields.style.display = "none";
-        vendorDropdown.style.display = "none";
+        alert("Product not found!");
       }
+    },
+    error: function () {
+      alert("Error looking up product!");
     }
-
-    // Attach listener to all radio buttons
-    radios.forEach(radio => radio.addEventListener("change", togglePartyFields));
-
-    // Initial setup
-    togglePartyFields();
   });
+});
+
+// product search
+// Function to apply Select2 to all product dropdowns
+function applySelect2ToProducts() {
+  $('.product-select').select2({
+    width: '100%',
+    placeholder: 'Select product',
+    allowClear: true
+  });
+}
+
+// Initial call on document ready
+
+$(document).ready(function () {
+  applySelect2ToProducts();
+
+  // If you have "Add Item" button functionality that clones a row, re-apply Select2
+  $(document).on('click', '#add-item-btn', function () {
+    let newItem = $('.item-row').first().clone();
+    newItem.find('input').val('');  // clear values
+    $('#items-container').append(newItem);
+
+    // Reinitialize select2 for the new dropdown
+    newItem.find('.product-select select2').select2({
+      width: '100%',
+      placeholder: 'Select product',
+      allowClear: true
+    });
+  });
+});
+
+
+
+
 </script>
+
+
+
+
+
+
+  <script src="{% static 'libs/select2/dist/js/select2.min.js'%}"></script>
+
+    <!-- init js -->
+    <script src="{% static 'js/pages/ecommerce-select2.init.js'%}"></script>
 
 
 

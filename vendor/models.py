@@ -160,6 +160,7 @@ class vendor_bank(models.Model):
     account_number = models.CharField(max_length=50, unique=True)
     ifsc_code = models.CharField(max_length=20)
     branch = models.CharField(max_length=100, blank=True, null=True)
+    balance = models.BigIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -637,11 +638,10 @@ class Sale(models.Model):
     company_profile = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, null=True, blank=True)
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    party = models.ForeignKey(Party, on_delete=models.SET_NULL, null=True, blank=True)
     customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
-    credit_time_days = models.IntegerField(null=True, blank=True)
+    credit_time_days = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     is_wholesale_rate = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
