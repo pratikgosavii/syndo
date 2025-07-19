@@ -191,6 +191,7 @@ class VendorBankForm(forms.ModelForm):
             'account_number',
             'ifsc_code',
             'branch',
+            'balance',
             'is_active',
         ]
         widgets = {
@@ -199,6 +200,10 @@ class VendorBankForm(forms.ModelForm):
             'account_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Number'}),
             'ifsc_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'IFSC Code'}),
             'branch': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Branch Name'}),
+            'balance': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter balance'
+            }),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
@@ -304,7 +309,7 @@ class vendor_vendorsForm(forms.ModelForm):
 class vendor_customersForm(forms.ModelForm):
     class Meta:
         model = vendor_customers
-        fields = '__all__'
+        exclude = ['user']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Customer Name'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email ID'}),
@@ -466,7 +471,7 @@ class SaleItemForm(forms.ModelForm):
         model = SaleItem
         fields = ['product', 'quantity', 'price']
         widgets = {
-            'product': forms.Select(attrs={'class': 'form-select product-select'}),
+            'product': forms.Select(attrs={'class': 'form-select product-select select2'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control quantity-input', 'min': '1'}),
             'price': forms.NumberInput(attrs={'class': 'form-control price-input', 'readonly': 'readonly'}),
         }
@@ -485,8 +490,7 @@ class SaleForm(forms.ModelForm):
         model = Sale
         fields = '__all__'
         widgets = {
-            'party': forms.Select(attrs={'class': 'form-select'}),
-            'customer': forms.Select(attrs={'class': 'form-select'}),
+            'customer': forms.Select(attrs={'class': 'form-select select2'}),
             'sale_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'payment_type': forms.Select(attrs={'class': 'form-select'}),
             'company_profile': forms.Select(attrs={'class': 'form-select'}),
@@ -498,7 +502,6 @@ class SaleForm(forms.ModelForm):
         super(SaleForm, self).__init__(*args, **kwargs)
         
         if user:
-            self.fields['vendor'].queryset = Party.objects.filter(user=user)
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
 

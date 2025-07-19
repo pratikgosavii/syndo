@@ -68,6 +68,7 @@
                                                 <th>Account Number</th>
                                                 <th>IFSC Code</th>
                                                 <th>Branch</th>
+                                                <th>Balance</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -80,6 +81,7 @@
                                                         <td>{{ i.account_number }}</td>
                                                         <td>{{ i.ifsc_code }}</td>
                                                         <td>{{ i.branch }}</td>
+                                                        <td>{{ i.balance }}</td>
                                                         <td>
                                                             <a href="{% url 'update_bank' i.id %}">
                                                                 <i class="bi bi-pencil-square text-primary" title="Edit"></i>
