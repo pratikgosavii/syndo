@@ -2135,7 +2135,7 @@ class InvoiceSettingsViewSet(viewsets.ModelViewSet):
 def barcode_lookup(request):
     barcode = request.GET.get('barcode')
     try:
-        product_instance = product.objects.get(barcode=barcode)
+        product_instance = product.objects.get(id=barcode)
         return JsonResponse({'success': True, 'id': product_instance.id, 'name': product_instance.name, 'price': product_instance.sales_price})
     except product.DoesNotExist:
         return JsonResponse({'success': False})
