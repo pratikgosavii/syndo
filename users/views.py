@@ -340,3 +340,40 @@ class UserProfileViewSet(viewsets.ViewSet):
                 return Response(serializer.data)
 
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from .forms import RoleWithModulesForm
+from .models import Role
+
+def role_create(request):
+    form = RoleWithModulesForm(request.POST or None)
+    if form.is_valid():
+        form.save()
+        return redirect('role_list')  # or any success URL
+    return render(request, 'role_form.html', {'form': form})
+
+
+def role_update(request, pk):
+    role = get_object_or_404(Role, pk=pk)
+    form = RoleWithModulesForm(request.POST or None, instance=role)
+    if form.is_valid():
+        form.save()
+        return redirect('role_list')
+    return render(request, 'role_form.html', {'form': form})
+
+
+def role_list(request):
+    roles = Role.objects.all()
+    return render(request, 'role_list.html', {'roles': roles})
+
+
+
+def assign_roles_to_user(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+    form = UserRoleAssignForm(request.POST or None, instance=user)
+    if form.is_valid():
+        form.save()
+        return redirect('user_list')  # your user list page
+    return render(request, 'users/assign_roles.html', {'form': form, 'user': user})

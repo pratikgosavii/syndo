@@ -31,5 +31,10 @@ urlpatterns = [
     
     path('user_list/', user_list, name='user_list'),
 
+    path('roles/create/', role_create, name='role_create'),
+    path('roles/<int:pk>/edit/', role_update, name='role_update'),
+    path('roles-list/', role_list, name='role_list'),
+
+    path('users/<int:user_id>/assign-roles/', assign_roles_to_user, name='assign_roles_to_user'),
 
 ] + router.urls
