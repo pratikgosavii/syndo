@@ -28,21 +28,17 @@ class Role(models.Model):
 
 
 class User(AbstractUser):
-
     firebase_uid = models.CharField(max_length=128, unique=True, null=True, blank=True)
-    
-    role = roles = models.ManyToManyField(Role, blank=True)
-    
+
     is_customer = models.BooleanField(default=False)
     is_vendor = models.BooleanField(default=False)
 
     mobile = models.CharField(max_length=15, unique=True)
-    email = models.EmailField(null=True, blank=True)  # Email is optional
+    email = models.EmailField(null=True, blank=True)
 
-    username = None  # Remove username field
-
-    USERNAME_FIELD = 'mobile'  # Set mobile as the login field
-    REQUIRED_FIELDS = [] 
+    username = None
+    USERNAME_FIELD = 'mobile'
+    REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
 
