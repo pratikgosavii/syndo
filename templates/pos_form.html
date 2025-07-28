@@ -34,6 +34,56 @@
             width: 150px;
         }
     </style>
+
+     <style>
+    /* Custom Toggle Switch */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 24px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: orange;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(22px);
+    }
+</style>
+
+
 <style>
   .remove-btn { cursor: pointer; color: red; font-size: 1.2rem; }
 </style>
@@ -93,11 +143,22 @@
             </div>
 
             <!-- Add Product Button -->
-            <div class="mb-3">
+
+            <div class="mb-3 d-flex justify-content-between align-items-center">
               <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#productSearchModal">
-                <i class="mdi mdi-magnify"></i> Search & Add Product
+                <i class="mdi mdi-magnify"></i> Search &amp; Add Product
               </button>
+
+              <div>
+                <label class="switch mb-0">
+                  <input type="checkbox" name="wholesale_selector" id="wholesale_selector">
+                  <span class="slider round"></span>
+                </label>
+              <label class="" style="font-weight: bold;">Wholesale</label>
+
+              </div>
             </div>
+
 
             <!-- Items Table -->
             <div id="items-container">
@@ -121,6 +182,8 @@
             </div>
 
             <div class="text-end my-2">
+
+
               <button type="button" class="btn btn-primary" id="add-item">
                 <i class="mdi mdi-plus-circle-outline"></i> Add Item
               </button>
@@ -131,13 +194,17 @@
             <!-- Payment -->
             <div class="mb-4">
               <label class="form-label fw-semibold">Payment Mode</label>
-              <div class="btn-group">
-                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
-                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
-                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('cash', this)">Cash</button>
-                <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
+                <div class="btn-group" role="group" aria-label="Payment method">
+                  <button type="button" class="btn btn-warning" onclick="selectPayment('cash', this)">Cash</button>
+                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
+                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
+                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
+                </div>
+
+                <input type="hidden" name="payment_method" id="payment_method" value="cash" required>
               </div>
-            </div>
+
+
 
             <!-- Discount & Credit Time -->
             <div class="row mb-3">
@@ -154,7 +221,6 @@
               </div>
             </div>
 
-            <input type="hidden" name="payment_method" id="payment_method">
 
             <!-- Summary -->
             <div class="border rounded p-3 bg-white shadow-sm mb-4">
@@ -165,10 +231,142 @@
               <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
             </div>
 
+            
+          <hr>
+
+            <div id="secondform" style="display:none;">
+
+              <!-- Document Type Selection -->
+              <div class="mb-3">
+                <div class="btn-group" role="group" aria-label="Document Type">
+
+                  <input type="hidden" name="invoice_type" id="invoice_type_input" value="{{ form.invoice_type.value|default:'invoice' }}">
+
+                  <button type="button" class="btn btn-outline-secondary" data-type="invoice">Invoice</button>
+                  <button type="button" class="btn btn-outline-secondary" data-type="proforma">Pro Forma Invoice</button>
+                  <button type="button" class="btn btn-outline-secondary" data-type="quotation">Quotation</button>
+                  <button type="button" class="btn btn-outline-secondary" data-type="credit_note">Credit Note</button>
+                  <button type="button" class="btn btn-outline-secondary" data-type="delivery_challan">Delivery Challan</button>
+                </div>
+
+              </div>
+
+              
+
+              <!-- Invoice Number and Date -->
+              <div class="card mb-3 bg-light border-0">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong id="purchase_code_display"></strong>
+                    <input type="hidden" name="invoice_number" id="invoice_number">
+                    <input type="text" name="purchase_code" id="purchase_code_input"
+                          value="{{ wholesale_forms.purchase_code.value }}" class="form-control form-control-sm d-none"
+                          style="width: 150px;" />
+                    {% if wholesale_forms.purchase_code.errors %}
+                    <div class="text-danger mt-1 small">{{ wholesale_forms.purchase_code.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+                  <div>{{ wholesale_forms.purchase_date }}</div>
+                  {% comment %} <button id="edit_btn" type="button" class="btn btn-sm btn-outline-primary">Edit</button> {% endcomment %}
+                </div>
+              </div>
+
+              <!-- Optional Fields -->
+              <div class="card bg-light border-0 mb-3">
+                <div class="card-header bg-transparent fw-bold">Optional</div>
+                <div class="card-body p-2">
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-truck"></i> Dispatch Address</label>
+                    {{ wholesale_forms.dispatch_address }}
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-pen"></i> Select Signature</label>
+                    {{ wholesale_forms.signature }}
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-archive"></i> Add References</label>
+                    {{ wholesale_forms.references }}
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-chat-dots"></i> Add Notes</label>
+                    {{ wholesale_forms.notes }}
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-clipboard-text"></i> Add Terms</label>
+                    {{ wholesale_forms.terms }}
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-truck-flatbed"></i> Delivery/Shipping Charges</label>
+                    {{ wholesale_forms.delivery_charges }}
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-box-seam"></i> Packaging Charges</label>
+                    {{ wholesale_forms.packaging_charges }}
+                  </div>
+
+                  
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-geo-alt"></i> Delivery City</label>
+                    {{ wholesale_forms.delivery_city }}
+
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-arrow-left-right"></i> Reverse Charge</label>
+                    {{ wholesale_forms.reverse_charges }}
+
+                  </div>
+
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-file-earmark-bar-graph"></i> E-way Bill Number</label>
+                    {{ wholesale_forms.eway_bill_number }}
+                  
+                  </div>
+
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-card-list"></i> LR Number</label>
+                    {{ wholesale_forms.lr_number }}
+                  </div>
+
+                  
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-truck-front"></i> Vehicle Number</label>
+                    <input id="vehicle_number" name="vehicle_number" type="text" class="form-control">
+                  </div>
+
+
+                
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-building"></i> Transport Name</label>
+                    {{ wholesale_forms.transport_name }}
+
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label"><i class="bi bi-boxes"></i> No. of Parcels</label>
+                    <input id="number_of_parcels" name="number_of_parcels" type="text" class="form-control">
+                  </div>
+
+
+                
+                </div>
+              </div>
+            </div>
+
+
             <div class="text-end">
               <button type="submit" class="btn btn-success btn-lg">Checkout</button>
               <button type="reset" class="btn btn-danger btn-lg">Discard</button>
             </div>
+
           </form>
         </div>
       </div>
@@ -418,32 +616,89 @@
 
   // Add selected product to POS
   function addToPOS(pid, name, price, qtyId) {
+  const qty = parseInt(document.getElementById(qtyId).value) || 1;
 
+  let rowFound = Array.from(document.querySelectorAll('.item-row')).find(row => {
+    return row.querySelector('.product-select').value == pid;
+  });
 
-    const qty = parseInt(document.getElementById(qtyId).value) || 1;
-    let rowFound = Array.from(document.querySelectorAll('.item-row')).find(row => {
-      return row.querySelector('.product-select').value == pid;
-    });
+  if (!rowFound) {
+    document.getElementById('add-item').click();
+    rowFound = document.querySelector('.item-row:last-child');
 
+    // Reinitialize Select2 on this new row AFTER it is added
+    initializeSelect2OnRow(rowFound);
+  }
 
-    if (!rowFound) document.getElementById('add-item').click(), rowFound = document.querySelector('.item-row:last-child');
-        rowFound.querySelector('.product-select').value = pid;
-        rowFound.querySelector('.qty-input').value = qty;
-        rowFound.querySelector('.rate-input').value = price.toFixed(2);
-        recalcRow(rowFound);
-        recalculateTotals();
-            updateSelectOptions();
+  // Set values
+  const select = rowFound.querySelector('.product-select');
+  select.value = pid;
 
-      setTimeout(() => {
+  // Manually trigger Select2 change event so it updates the UI
+  $(select).trigger('change');
+
+  rowFound.querySelector('.qty-input').value = qty;
+  rowFound.querySelector('.rate-input').value = price.toFixed(2);
+
+  recalcRow(rowFound);
+  recalculateTotals();
+  updateSelectOptions();
+
+  setTimeout(() => {
     // Remove focus from any element inside the modal
-    document.activeElement.blur(); 
+    document.activeElement.blur();
 
     const modalEl = document.getElementById('productSearchModal');
     bootstrap.Modal.getInstance(modalEl).hide();
-}, 50);
+  }, 50);
+}
+  function addToPOS_barcode(pid, name, price, qtyToAdd = 1) {
+  // Find existing row with this product
+  let rowFound = Array.from(document.querySelectorAll('.item-row')).find(row => {
+    return row.querySelector('.product-select').value == pid;
+  });
 
+  if (rowFound) {
+    // Product already in POS: increment quantity
+    const qtyInput = rowFound.querySelector('.qty-input');
+    const currentQty = parseInt(qtyInput.value) || 0;
+    qtyInput.value = currentQty + qtyToAdd;
 
+    // Recalculate row and totals
+    recalcRow(rowFound);
+    recalculateTotals();
+    updateSelectOptions();
+
+    // Trigger Select2 update to keep UI consistent
+    const select = rowFound.querySelector('.product-select');
+    $(select).trigger('change');
+
+  } else {
+    // Not found: add new row
+    document.getElementById('add-item').click();
+    rowFound = document.querySelector('.item-row:last-child');
+
+    initializeSelect2OnRow(rowFound);
+
+    // Set select value & quantity
+    const select = rowFound.querySelector('.product-select');
+    select.value = pid;
+    $(select).trigger('change');
+
+    rowFound.querySelector('.qty-input').value = qtyToAdd;
+    rowFound.querySelector('.rate-input').value = price.toFixed(2);
+
+    recalcRow(rowFound);
+    recalculateTotals();
+    updateSelectOptions();
   }
+
+  setTimeout(() => {
+    // Remove focus from any element inside the modal
+    document.activeElement.blur();
+  }, 50);
+}
+
 
 
     function recalculateAmount(row) {
@@ -474,13 +729,65 @@
 
 
   // Add item row
-  document.getElementById('add-item').addEventListener('click', () => {
-    const orig = document.querySelector('.item-row');
-    const clone = orig.cloneNode(true);
-    clone.querySelectorAll('input').forEach(i => i.value = i.classList.contains('rate-input') || i.classList.contains('amount') ? '0.00' : '');
-    document.getElementById('items-container').appendChild(clone);
-    attachListeners(clone);
+  function initializeSelect2OnRow(row) {
+  const select = row.querySelector('.product-select');
+
+  // Clean up previous Select2 if exists
+  if ($(select).hasClass("select2-hidden-accessible")) {
+    $(select).select2('destroy');
+  }
+
+  // Remove attributes to prevent rendering issues
+  select.removeAttribute('data-select2-id');
+  select.removeAttribute('aria-hidden');
+  select.removeAttribute('tabindex');
+  select.setAttribute('id', '');  // optional
+
+  // Reinitialize
+  $(select).select2({
+    placeholder: "Select product",
+    width: '100%'
   });
+}
+
+// Initial setup for first row
+document.addEventListener('DOMContentLoaded', function () {
+  const rows = document.querySelectorAll('.item-row');
+  rows.forEach(initializeSelect2OnRow);
+});
+
+document.getElementById('add-item').addEventListener('click', () => {
+  const orig = document.querySelector('.item-row');
+  
+  // Remove Select2 before cloning
+  const origSelect = orig.querySelector('.product-select');
+  if ($(origSelect).hasClass("select2-hidden-accessible")) {
+    $(origSelect).select2('destroy');
+  }
+
+  // Clone the raw HTML
+  const clone = orig.cloneNode(true);
+
+  // Reset values in inputs
+  clone.querySelectorAll('input').forEach(i => {
+    if (i.classList.contains('rate-input') || i.classList.contains('amount')) {
+      i.value = '0.00';
+    } else {
+      i.value = '';
+    }
+  });
+
+  // Append new row
+  document.getElementById('items-container').appendChild(clone);
+
+  // Reinitialize Select2 on both original and clone
+  initializeSelect2OnRow(orig);
+  initializeSelect2OnRow(clone);
+
+  // Reattach other listeners if needed
+  attachListeners(clone);
+});
+
 
   // Attach row listeners
   function attachListeners(row) {
@@ -545,7 +852,8 @@ document.getElementById('barcode-input').addEventListener('change', function () 
     data: { barcode },
     success: function (data) {
       if (data.success) {
-        addToPOS(data.id, data.name, parseFloat(data.price), null);
+        console.log(data.id, data.name, parseFloat(data.price), 1)
+        addToPOS_barcode(data.id, data.name, parseFloat(data.price), 1);
         document.getElementById('barcode-input').value = '';
       } else {
         alert("Product not found!");
@@ -588,11 +896,266 @@ $(document).ready(function () {
 });
 
 
+document.addEventListener('DOMContentLoaded', function () {
+  const igstToggle = document.getElementById('wholesale_selector');
+  const wholesaleSection = document.getElementById('secondform');
+
+  function toggleWholesale() {
+    if (igstToggle.checked) {
+      wholesaleSection.style.display = 'block';
+    } else {
+      wholesaleSection.style.display = 'none';
+    }
+  }
+
+  // Initialize on page load
+  toggleWholesale();
+
+  // Listen for changes
+  igstToggle.addEventListener('change', toggleWholesale);
+});
+
 
 
 </script>
 
 
+
+    <script>
+
+        
+function displaySelectedImages() {
+    const input = document.getElementById("images");
+    const selectedImagesContainer = document.getElementById("imagesPreview");
+    selectedImagesContainer.innerHTML = ""; // Clear previously displayed images
+
+    Array.from(input.files).forEach((file) => {
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const imageDiv = document.createElement("div");
+          imageDiv.style.position = "relative";
+          const img = document.createElement("img");
+          img.src = event.target.result;
+          img.alt = file.name;
+          img.style.width = "100px";
+          img.style.height = "100px";
+          img.style.objectFit = "cover";
+          img.style.border = "1px solid #ddd";
+          img.style.borderRadius = "5px";
+          imageDiv.appendChild(img);
+          selectedImagesContainer.appendChild(imageDiv);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+
+
+  
+
+    </script>
+
+    <script>
+        const editBtn = document.getElementById('edit_btn');
+        const codeDisplay = document.getElementById('purchase_code_display');
+        const codeInput = document.getElementById('purchase_code_input');
+      
+        editBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (codeInput.classList.contains('d-none')) {
+            // Show input, hide static text
+            codeInput.classList.remove('d-none');
+            codeDisplay.style.display = 'none';
+            codeInput.focus();
+            editBtn.textContent = 'Save';
+          } else {
+            // Hide input, show static text, update static text with input value
+            const newCode = codeInput.value.trim();
+            if(newCode) {
+              codeDisplay.textContent = newCode;
+            }
+            codeInput.classList.add('d-none');
+            codeDisplay.style.display = '';
+            editBtn.textContent = 'Edit';
+          }
+        });
+
+
+        document.addEventListener('DOMContentLoaded', function () {
+    const paymentType = document.getElementById('payment_type');
+    const bankField = document.getElementById('bank-field');
+
+    function toggleBankField() {
+      if (paymentType.value === 'bank') {
+        bankField.style.display = 'block';
+      } else {
+        bankField.style.display = 'none';
+      }
+    }
+
+    // Initial check
+    toggleBankField();
+
+    // Listen for change
+    paymentType.addEventListener('change', toggleBankField);
+  });
+
+
+
+
+  // Toggle edit/save for purchase code
+document.addEventListener('DOMContentLoaded', function () {
+  const editBtn = document.getElementById('edit_btn');
+  const codeDisplay = document.getElementById('purchase_code_display');
+  const codeInput = document.getElementById('purchase_code_input');
+
+  editBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (codeInput.classList.contains('d-none')) {
+      codeInput.classList.remove('d-none');
+      codeDisplay.style.display = 'none';
+      codeInput.focus();
+      editBtn.textContent = 'Save';
+    } else {
+      const newCode = codeInput.value.trim();
+      if (newCode) codeDisplay.textContent = newCode;
+      codeInput.classList.add('d-none');
+      codeDisplay.style.display = '';
+      editBtn.textContent = 'Edit';
+    }
+  });
+});
+
+
+
+
+  
+      </script>
+
+      <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const invoiceButtons = document.querySelectorAll('[data-type]');
+    const hiddenInput = document.getElementById('invoice_type_input');
+
+    function updateButtonStyles(selectedType) {
+      invoiceButtons.forEach(btn => {
+        if (btn.dataset.type === selectedType) {
+          btn.classList.remove('btn-outline-secondary');
+          btn.classList.add('btn-warning', 'text-white');
+        } else {
+          btn.classList.remove('btn-warning', 'text-white');
+          btn.classList.add('btn-outline-secondary');
+        }
+      });
+    }
+
+    invoiceButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const selectedType = button.dataset.type;
+        hiddenInput.value = selectedType;
+        updateButtonStyles(selectedType);
+      });
+    });
+
+    // Initialize active state on page load
+    updateButtonStyles(hiddenInput.value || 'invoice');
+  });
+</script>
+
+
+<script>
+  const fieldRules = {
+    invoice: {
+      id_eway_bill_number: true,
+      vehicle_number: true,
+      number_of_parcels: true,
+      transport_name: true,
+      delivery_city: true,
+      id_reverse_charge: true,
+    },
+    proforma: {
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
+      transport_name: false,
+      delivery_city: true,
+      id_reverse_charge: true,
+    },
+    quotation: {
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
+      transport_name: false,
+      delivery_city: false,
+      id_reverse_charge: false,
+    },
+    credit_note: {
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
+      transport_name: false,
+      delivery_city: false,
+      id_reverse_charge: false,
+    },
+    delivery_challan: {
+      id_eway_bill_number: true,
+      vehicle_number: true,
+      number_of_parcels: true,
+      id_transport_name: true,
+      id_delivery_city: true,
+      id_reverse_charge: true,
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const invoiceButtons = document.querySelectorAll('[data-type]');
+    const hiddenInput = document.getElementById('invoice_type_input');
+
+    function updateRequiredFields(type) {
+      const rules = fieldRules[type];
+      for (const field in rules) {
+        const el = document.getElementById(field);
+        if (el) {
+          if (rules[field]) {
+            el.setAttribute('required', 'required');
+            el.closest('.mb-2').style.display = '';  // Show field
+          } else {
+            el.removeAttribute('required');
+            el.closest('.mb-2').style.display = '';  // Or hide: style.display = 'none';
+          }
+        }
+      }
+    }
+
+    invoiceButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const selectedType = button.dataset.type;
+        hiddenInput.value = selectedType;
+        updateButtonStyles(selectedType);
+        updateRequiredFields(selectedType);
+      });
+    });
+
+    function updateButtonStyles(selectedType) {
+      invoiceButtons.forEach(btn => {
+        if (btn.dataset.type === selectedType) {
+          btn.classList.remove('btn-outline-secondary');
+          btn.classList.add('btn-warning', 'text-white');
+        } else {
+          btn.classList.remove('btn-warning', 'text-white');
+          btn.classList.add('btn-outline-secondary');
+        }
+      });
+    }
+
+    // Initial load
+    const initialType = hiddenInput.value || 'invoice';
+    updateButtonStyles(initialType);
+    updateRequiredFields(initialType);
+  });
+</script>
 
 
 
@@ -601,6 +1164,50 @@ $(document).ready(function () {
 
     <!-- init js -->
     <script src="{% static 'js/pages/ecommerce-select2.init.js'%}"></script>
+
+<script>
+
+
+  function fetchInvoiceNumber(invoiceType) {
+  fetch(`/vendor/get_invoice_number/?invoice_type=${invoiceType}`)
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById("purchase_code_display").textContent = data.invoice_number;
+      document.getElementById("invoice_number").value = data.invoice_number;
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const hiddenInput = document.getElementById("invoice_type_input");
+  const buttons = document.querySelectorAll('[data-type]');
+  
+  // Initial fetch based on hidden input's default
+  fetchInvoiceNumber(hiddenInput.value);
+
+  buttons.forEach(btn => {
+    btn.addEventListener("click", function () {
+      const type = this.getAttribute("data-type");
+
+      // Update hidden input value
+      hiddenInput.value = type;
+
+      // Highlight selected button
+      buttons.forEach(b => b.classList.remove("btn-warning"));
+      this.classList.add("btn-warning");
+
+      // Fetch updated invoice number
+      fetchInvoiceNumber(type);
+    });
+
+    // Optional: Highlight default selected button on load
+    if (btn.getAttribute("data-type") === hiddenInput.value) {
+      btn.classList.add("btn-warning");
+    }
+  });
+});
+
+
+</script>
 
 
 

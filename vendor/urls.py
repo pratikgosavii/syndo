@@ -126,9 +126,15 @@ urlpatterns = [
     path('store-working-hours/', store_hours_view, name='store_hours'),
     path('online-store-setting/', online_store_setting, name='online_store_setting'),
 
+    path("get_invoice_number/", get_next_invoice_number_api, name="get_invoice_number"),
+
     path('pos/', pos, name='create-sale'),
     path('barcode-lookup/', barcode_lookup, name='barcode_lookup'),
     path('list-sale/', list_sale, name='list_sale'),
+    path('update-sale/', update_sale, name='bill_details_view'),
+
+    path('sale-bill-details/<sale_id>', sale_bill_details, name='sale_bill_details'),
+
     path('get_product_price/', get_product_price, name='get_product_price'),
     path('pos-wholesale/<sale_id>', pos_wholesaless, name='pos_wholesale'),
     path('sale-invoice/<sale_id>', sale_invoice, name='sale_invoice'),

@@ -493,24 +493,24 @@ def add_customer_modal(request):
     return render(request, 'partials/add_customer_modal_form.html', {'form': form})   
 
 @login_required(login_url='login_admin')
-def update_customer(request, vendor_id):
+def update_customer(request, customer_id):
 
     if request.method == 'POST':
 
-        instance = vendor_customers.objects.get(id=vendor_id)
+        instance = vendor_customers.objects.get(id=customer_id)
 
-        forms = vendor_vendorsForm(request.POST, request.FILES, instance=instance)
+        forms = vendor_customersForm(request.POST, request.FILES, instance=instance)
 
         if forms.is_valid():
             forms.save()
-            return redirect('list_vendor')
+            return redirect('list_customer')
         else:
             print(forms.errors)
     
     else:
 
-        instance = vendor_customers.objects.get(id=vendor_id)
-        forms = vendor_vendorsForm(instance=instance)
+        instance = vendor_customers.objects.get(id=customer_id)
+        forms = vendor_customersForm(instance=instance)
 
         context = {
             'form': forms
@@ -529,8 +529,17 @@ def delete_customer(request, vendor_id):
 
 @login_required(login_url='login_admin')
 def list_customer(request):
+    
+    if request.user.is_superuser:
 
-    data = vendor_customers.objects.filter(user = request.user)
+        data = vendor_customers.objects.all()
+
+
+    else:
+
+        data = vendor_customers.objects.filter(user = request.user)
+
+
     context = {
         'data': data
     }
@@ -1505,68 +1514,198 @@ from django.db import transaction
 from django.shortcuts import render, redirect
 from .models import Sale, SaleItem, Party, product  # Adjust as per your app structure
 
+
+
+def get_next_invoice_number_api(request):
+    invoice_type = request.GET.get('invoice_type')
+    user = request.user
+
+    type_prefix_map = {
+        'invoice': 'svin-inv',
+        'proforma': 'svin-prof',
+        'quotation': 'svin-quot',
+        'credit_note': 'svin-crednot',
+        'delivery_challan': 'svin-dc',
+    }
+
+    prefix = type_prefix_map.get(invoice_type, 'svin-inv')
+
+    last_invoice = pos_wholesale.objects.filter(
+        user=user,
+        invoice_type=invoice_type,
+        invoice_number__startswith=prefix
+    ).order_by('-id').first()
+
+    if last_invoice:
+        try:
+            last_number = int(last_invoice.invoice_number.split('-')[-1])
+        except (IndexError, ValueError):
+            last_number = 0
+    else:
+        last_number = 0
+
+    invoice_number = f"{prefix}-{last_number + 1}"
+    return JsonResponse({"invoice_number": invoice_number})
+
+
+
+
 @login_required
 def pos(request):
 
-    forms = SaleForm()
-    customer_forms = vendor_customersForm()
+    sale_form = SaleForm()
+    customer_form = vendor_customersForm()
+    wholesale_form = pos_wholesaleForm()
+
+    if request.method == 'POST':
+        print(request.POST)
+        sale_form = SaleForm(request.POST)
+        customer_form = vendor_customersForm(request.POST)  # if needed
+        wholesale_form = pos_wholesaleForm(request.POST, request.FILES)
+
+        products = request.POST.getlist("product")
+        quantities = request.POST.getlist("quantity")
+        prices = request.POST.getlist("price")
+
+        if not sale_form.is_valid() or not wholesale_form.is_valid():
+            # return immediately with form errors before saving anything
+            print(sale_form.errors)
+            print(wholesale_form.errors)
+            context = {
+                "form": sale_form,
+                "customer_forms": customer_form,
+                "wholesale_forms": wholesale_form,
+                "saleitemform": SaleItemForm(),
+                "products": product.objects.filter(user=request.user),
+            }
+            return render(request, "pos_form.html", context)
+
+        with transaction.atomic():
+            try:
+                # Save sale
+                sale_instance = sale_form.save()
+
+                # Process Sale Items
+                total_items = 0
+                total_amount = Decimal("0.00")
+
+                for p, q, pr in zip(products, quantities, prices):
+                    if p and q and pr:
+                        qty = int(q)
+                        price = Decimal(pr)
+                        amount = qty * price
+
+                        SaleItem.objects.create(
+                            user=request.user,
+                            sale=sale_instance,
+                            product_id=p,
+                            quantity=qty,
+                            price=price,
+                        )
+
+                        total_items += qty
+                        total_amount += amount
+
+                # Save wholesale
+                invoice = wholesale_form.save(commit=False)
+                invoice.user = request.user
+                invoice.sale = sale_instance
+                invoice.save()
+
+                return redirect("list_sale")
+
+            except Exception as e:
+                # Catch-all for any errors in atomic block
+                transaction.set_rollback(True)
+                context = {
+                    "form": sale_form,
+                    "customer_forms": customer_form,
+                    "wholesale_forms": wholesale_form,
+                    "saleitemform": SaleItemForm(),
+                    "products": product.objects.filter(user=request.user),
+                    "error_message": str(e),
+                }
+                return render(request, "pos_form.html", context)
+
+    return render(request, "pos_form.html", {
+        "form": sale_form,
+        "customer_forms": customer_form,
+        "wholesale_forms": wholesale_form,
+        "saleitemform": SaleItemForm(),
+        "products": product.objects.filter(user=request.user),
+    })
+
+
+
+    
+def update_sale(request, sale_id):
+    sale_instance = get_object_or_404(Sale, id=sale_id, user=request.user)
+    customer_forms = vendor_customersForm(instance=sale_instance.customer if sale_instance.customer else None)
 
     if request.method == 'POST':
         with transaction.atomic():
-            print(request.POST)
-            # Create or fetch party
-           
-            forms = SaleForm(request.POST)
+            form = SaleForm(request.POST, instance=sale_instance)
 
-            if forms.is_valid():
-
-                instance = forms.save()
-
-
+            if form.is_valid():
+                updated_sale = form.save()
             else:
+                print(form.errors)
+                return render(request, "pos_update_form.html", {
+                    "form": form,
+                    "products": product.objects.filter(user=request.user),
+                    "customer_forms": customer_forms,
+                    "saleitemform": SaleItemForm(),
+                    "sale": sale_instance,
+                    "items": SaleItem.objects.filter(sale=sale_instance),
+                })
 
-                print(forms.errors)
+            # Clear existing items
+            SaleItem.objects.filter(sale=updated_sale).delete()
 
-                return render(request, "pos_form.html", { "products" : product.objects.filter(user = request.user),
-                "form": forms,
-                "customer_forms": customer_forms,
-                "saleitemform": SaleItemForm(),})
-
-
+            # Add new/updated items
             products = request.POST.getlist("product")
             quantities = request.POST.getlist("quantity")
             prices = request.POST.getlist("price")
-
-            total_items = 0
-            total_amount = Decimal("0.00")
 
             for p, q, pr in zip(products, quantities, prices):
                 if p and q and pr:
                     qty = int(q)
                     price = Decimal(pr)
-                    amount = qty * price
 
                     SaleItem.objects.create(
                         user=request.user,
-                        sale=instance,
+                        sale=updated_sale,
                         product_id=p,
                         quantity=qty,
                         price=price,
                     )
 
-                    total_items += qty
-                    total_amount += amount
+        return redirect('update_sale', sale_id=sale_id)
 
-        return redirect('pos_wholesale', sale_id = instance.id)
+    else:
+        form = SaleForm(instance=sale_instance)
+        items = SaleItem.objects.filter(sale=sale_instance)
 
-
-    return render(request, "pos_form.html", {
-        "products" : product.objects.filter(user = request.user),
-        "form": forms,
+    return render(request, "update_sale.html", {
+        "form": form,
+        "products": product.objects.filter(user=request.user),
         "customer_forms": customer_forms,
         "saleitemform": SaleItemForm(),
-        
+        "sale": sale_instance,
+        "items": items,
     })
+
+
+
+def sale_bill_details(request, sale_id):
+    sale = get_object_or_404(Sale, id=sale_id)
+    wholesale = pos_wholesale.objects.filter(sale=sale).first()  # get wholesale data if exists
+
+    context = {
+        'sale': sale,
+        'wholesale': wholesale,
+    }
+    return render(request, 'sale_bill_details.html', context)
 
 
 from django.db.models import Prefetch
@@ -1610,7 +1749,7 @@ def sale_invoice(request, sale_id):
             Prefetch('items__product'),
             Prefetch('wholesales', queryset=pos_wholesale.objects.all())
         )
-        .select_related('party', 'company_profile')
+        .select_related('customer', 'company_profile')
         .get(id=sale_id)
     )
     wholesale = sale.wholesales.first()
@@ -2134,6 +2273,7 @@ class InvoiceSettingsViewSet(viewsets.ModelViewSet):
         
 def barcode_lookup(request):
     barcode = request.GET.get('barcode')
+    print(barcode)
     try:
         product_instance = product.objects.get(id=barcode)
         return JsonResponse({'success': True, 'id': product_instance.id, 'name': product_instance.name, 'price': product_instance.sales_price})

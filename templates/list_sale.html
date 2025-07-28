@@ -71,9 +71,20 @@
 
     <!-- 🔻 This is the toggle button -->
     <div class="text-end mt-2">
-        <a href={% url 'sale_invoice' sale.id %}  >  <button class="btn btn-sm btn-outline-secondary toggle-pos" data-sale="{{ sale.id }}">Download Invoice</button> </a>
 
-        <button class="btn btn-sm btn-outline-secondary toggle-pos" data-sale="{{ sale.id }}">Show POS Details</button>
+         <a href="{% url 'sale_bill_details' sale.id %}"> <button class="btn btn-sm btn-outline-secondary toggle-pos" style="color:black;">
+                View Bill
+            </button> </a>
+            
+        <a href={% url 'sale_invoice' sale.id %}  >  <button class="btn btn-sm btn-outline-secondary toggle-pos" style="color:black;">Download Invoice</button> </a>
+
+        {% if sale.wholesales.all %}
+          
+            <button class="btn btn-sm btn-outline-secondary toggle-pos" style="color:black;" data-sale="{{ sale.id }}">
+                Show Wholesale Details
+            </button>
+        {% endif %}
+
     </div>
 
     <!-- 🔻 This part is hidden by default and shown only when clicked -->

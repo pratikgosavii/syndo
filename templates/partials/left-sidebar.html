@@ -280,16 +280,7 @@
                        
 
 
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Manage Role</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'role_create' %}">Add Role</a></li>
-                            </ul>
-                        </li> 
-
+                      
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
@@ -358,6 +349,18 @@
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Orders Management</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'order_list' %}">Order Add</a></li>
+                                <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
+
+                            </ul>
+                        </li>
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
                                 <span data-key="t-authentication">Banner</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
@@ -371,13 +374,35 @@
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Users</span>
+                                <span data-key="t-authentication">User Management</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'user_list' %}">Users List</a></li>
+                                
+                                <!-- Manage Role -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <span>Manage Role</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'role_create' %}">Add Role</a></li>
+                                        <li><a href="{% url 'role_list' %}">Role List</a></li>
+                                    </ul>
+                                </li>
+
+                                <!-- Manage User -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <span>Manage User</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_user_with_roles' %}">Add User</a></li>
+                                        <li><a href="{% url 'role_list' %}">User List</a></li>
+                                    </ul>
+                                </li>
 
                             </ul>
                         </li>
+
                         
 
                        

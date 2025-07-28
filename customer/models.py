@@ -32,7 +32,7 @@ class Order(models.Model):
     customer_name = models.CharField(max_length=255)
     customer_mobile = models.CharField(max_length=15)
     customer_address = models.TextField()
-
+    
     delivery_boy = models.ForeignKey("vendor.delivery_boy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
     created_at = models.DateField(auto_now=True)
 
@@ -45,6 +45,9 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="items")
     quantity = models.IntegerField(default=1)
+    price = models.IntegerField()
+    
+
 
     def total_price(self):
         return self.quantity * self.mrp
