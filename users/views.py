@@ -377,3 +377,13 @@ def assign_roles_to_user(request, user_id):
         form.save()
         return redirect('user_list')  # your user list page
     return render(request, 'users/assign_roles.html', {'form': form, 'user': user})
+
+
+def create_user_with_roles(request):
+    form = UserCreateWithRolesForm(request.POST or None)
+    if form.is_valid():
+        form.save()
+        return redirect('user_list')  # or success page
+    else:
+        print(form.errors)
+    return render(request, 'add_user_with_roles.html', {'form': form})

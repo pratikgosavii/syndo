@@ -583,6 +583,8 @@ class CompanyProfile(models.Model):
     upi_id = models.CharField(max_length=50, blank=True, null=True)
     website = models.URLField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
+    signature  = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
+    payment_qr  = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
 
     def __str__(self):
         return self.company_name
@@ -638,7 +640,7 @@ class Sale(models.Model):
     company_profile = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, null=True, blank=True)
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True)
+    customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True, related_name="customer")
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     credit_time_days = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -664,7 +666,7 @@ class Sale(models.Model):
         return round(self.total_amount - self.total_discount, 2)
 
     def __str__(self):
-        return f"Sale #{self.id} - {self.party.name if self.party else 'Walk-in'}"
+        return f"Sale #{self.id}"
 
 class SaleItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)

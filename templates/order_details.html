@@ -127,10 +127,10 @@
                             <small>{{ data.created_at }}</small>
                             <p class="text-primary">Self Pickup</p>
                             <span class="text-danger">
-                                {% if order.is_paid %}
-                            Paid / {{ order.payment_mode }}
+                                {% if data.is_paid %}
+                            Paid / {{ data.payment_mode }}
                         {% else %}
-                            Unpaid / {{ order.payment_mode|default:"COD" }}
+                            Unpaid / {{ data.payment_mode|default:"COD" }}
                         {% endif %}
                             </span>
 
@@ -142,24 +142,21 @@
                     <hr>
 
                     <div class="mb-3">
-                        <div class="section-title">{{ order.items.count }} Items in this Order</div>
-                        
-                        {% for item in order.items.all %}
-                        
+                       <div class="section-title">{{ data.items.all|length }} Items in this Order</div>
+
+                        {% for item in data.items.all %}
                             <div class="d-flex mb-3">
                                 <img src="{{ item.product.image.url }}" alt="Product" class="product-img me-3">
                                 <div>
-                                    <p class="mb-0"> {{ item.product.name }} </p>
+                                    <p class="mb-0">{{ item.product.name }}</p>
                                     <small>{{ item.product.description|default:"No description" }}<br>click on product icon for further details</small>
                                     <p class="mb-0 mt-1">
-                                        <span class="price-new">Rs. {{ item.product.price }}</span>
-                                        {% comment %} <span class="price-old ms-2">Rs. 400.00</span> {% endcomment %}
+                                        <span class="price-new">Rs. {{ item.price }}</span>
                                     </p>
                                 </div>
                             </div>
+                        {% endfor %}
 
-                            {% endfor %}
-                           
 
 
                     </div>

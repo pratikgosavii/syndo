@@ -26,7 +26,7 @@ class CustomUserCreationForm(UserCreationForm):
 class CustomUserChangeForm(UserChangeForm):
     class Meta:
         model = User
-        fields = ('mobile', 'email', 'is_active', 'is_staff', 'is_superuser', 'is_vendor', 'is_customer')
+        fields = ('mobile', 'email', 'is_active', 'is_staff', 'is_superuser', 'is_vendor', 'is_subuser', 'is_customer')
 
 
 from django import forms
@@ -89,4 +89,55 @@ class UserRoleAssignForm(forms.ModelForm):
         if commit:
             user.save()
             user.roles.set(self.cleaned_data['roles'])
+        return user
+    
+
+from .models import *
+
+class UserCreateWithRolesForm(forms.ModelForm):
+    
+    
+    password = forms.CharField(widget=forms.PasswordInput(), label="Password")
+    confirm_password = forms.CharField(widget=forms.PasswordInput(), label="Confirm Password")
+
+    roles = forms.ModelMultipleChoiceField(
+        queryset=Role.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Assign Roles"
+    )
+
+    class Meta:
+        model = User
+        fields = ['mobile', 'email', 'password', 'confirm_password', 'is_customer', 'is_vendor']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, forms.CheckboxSelectMultiple):
+                field.widget.attrs.update({'class': 'form-check-input'})
+            else:
+                field.widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        confirm_password = cleaned_data.get("confirm_password")
+
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', "Passwords do not match.")
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+
+            # Clear old roles if updating
+            UserRole.objects.filter(user=user).delete()
+
+            # Assign new roles via UserRole model
+            for role in self.cleaned_data.get('roles', []):
+                UserRole.objects.create(user=user, role=role)
         return user

@@ -25,6 +25,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'email',
             'is_customer',
             'is_vendor',
+            'is_subuser',
             'password',  # Include this for input only
         ]
         read_only_fields = ['id', 'mobile', 'firebase_uid']

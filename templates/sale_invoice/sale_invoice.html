@@ -7,43 +7,70 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { font-size: 13px; }
-        .table-bordered td, .table-bordered th { border: 1px solid #000 !important; }
-        .logo { width: 60px; height: 60px; background: #ccc; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+
+        .table-bordered {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .table-bordered th,
+        .table-bordered td {
+            border: 1px solid #000 !important;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+
         .text-end { text-align: right; }
-        .border-dark { border: 1px solid black !important; }
+
+        .border-dark {
+            border: 1px solid black !important;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        @media print {
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
+
+            .print-container {
+                margin: 50px !important;
+                padding: 10px !important;
+                width: 90% !important;
+                box-sizing: border-box;
+            }
+        }
+
+        .logo {
+            margin-left: 20px !important;
+        }
+
+        .no-border {
+            border: none !important;
+        }
     </style>
-
-    <style>
-  @page {
-    size: A4;
-    margin: 0;
-  }
-
-  @media print {
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    .print-container {
-      margin: 50px !important;
-      padding: 10px !important; /* control inner spacing here */
-      width: 90% !important;
-      box-sizing: border-box;
-    }
-  }
-</style>
-
-
 </head>
 <body>
 <div class="print-container border border-dark">
 
     <!-- Header -->
-    <div class="row mb-2">
-        <div class="col-2 logo">Logo</div>
+    <div class="row mb-2 border border-dark p-2">
+        <div class="col-2 logo">
+            <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Company Logo" class="img-fluid">
+        </div>
         <div class="col-7">
             <strong>{{ sale_instance.company_profile.name|default:"Company Name" }}</strong><br>
             Address line 1<br>
@@ -63,24 +90,24 @@
     </div>
 
     <!-- Customer / Billing / Delivery -->
-    <div class="row mb-2">
-        <div class="col-4 border-dark p-2">
+    <div class="row mb-2 border border-dark">
+        <div class="col-4 p-2 border-end">
             <strong>Customer Details:</strong><br>
-            {% if sale_instance.party %}
-                <strong>{{ sale_instance.party.name }}</strong><br>
-                GSTIN: {{ sale_instance.party.gstin|default:"-" }}<br>
-                PAN: {{ sale_instance.party.pan|default:"-" }}<br>
-                Aadhar: {{ sale_instance.party.aadhar|default:"-" }}<br>
-                Ph: {{ sale_instance.party.phone|default:"-" }}
+            {% if sale_instance.customer %}
+                <strong>{{ sale_instance.customer.name }}</strong><br>
+                GSTIN: {{ sale_instance.customer.gstin|default:"-" }}<br>
+                PAN: {{ sale_instance.customer.pan|default:"-" }}<br>
+                Aadhar: {{ sale_instance.customer.aadhar|default:"-" }}<br>
+                Ph: {{ sale_instance.customer.phone|default:"-" }}
             {% else %}
                 Walk-in Customer
             {% endif %}
         </div>
-        <div class="col-4 border-dark p-2">
+        <div class="col-4 p-2 border-end">
             <strong>Billing Address :</strong><br>
             Address line 1<br>Address line 2
         </div>
-        <div class="col-4 border-dark p-2">
+        <div class="col-4 p-2">
             <strong>Delivery Address :</strong><br>
             {{ wholesale.dispatch_address|default:"-" }}<br>
             <strong>Delivery City :</strong> {{ wholesale.delivery_city|default:"-" }}
@@ -88,22 +115,22 @@
     </div>
 
     <!-- Shipping Info -->
-    <div class="row mb-2">
-        <div class="col-6 border-dark p-2">
+    <div class="row mb-2 border border-dark">
+        <div class="col-6 p-2 border-end">
             <strong>Reference :</strong> {{ wholesale.references|default:"Preet Collection" }}<br>
             <strong>Due Date :</strong> DD/MM/YYYY<br>
             <strong>Transport :</strong> {{ wholesale.transport_name|default:"-" }}<br>
             <strong>Vehicle No. :</strong> {{ wholesale.vehicle_number|default:"-" }}<br>
             <strong>LR No. :</strong> {{ wholesale.lr_number|default:"-" }}
         </div>
-        <div class="col-6 border-dark p-2">
+        <div class="col-6 p-2">
             <strong>E-way Bill no :</strong> {{ wholesale.eway_bill_number|default:"-" }}<br>
             <strong>No. of Parcels :</strong> {{ wholesale.number_of_parcels|default:"-" }}
         </div>
     </div>
 
     <!-- Item Table -->
-    <table class="table table-bordered text-center">
+    <table class="table table-bordered text-center mb-3">
         <thead>
             <tr>
                 <th>S.No.</th>
@@ -182,5 +209,11 @@
         Page no. 1/1
     </div>
 </div>
+
+<script>
+  window.onload = function() {
+    window.print();
+  };
+</script>
 </body>
 </html>

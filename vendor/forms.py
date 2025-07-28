@@ -369,6 +369,8 @@ class CompanyProfileForm(forms.ModelForm):
             'upi_id': forms.TextInput(attrs={'class': 'form-control'}),
             'website': forms.URLInput(attrs={'class': 'form-control'}),
             'profile_image': forms.FileInput(attrs={'class': 'form-control'}),
+            'signature': forms.FileInput(attrs={'class': 'form-control'}),
+            'payment_qr': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
 
@@ -408,31 +410,40 @@ class PurchaseForm(forms.ModelForm):
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
 
+
     def clean_purchase_code(self):
         purchase_code = self.cleaned_data.get('purchase_code')
 
         if purchase_code:
+            if not purchase_code.startswith("SVIN-PUR-"):
+                raise forms.ValidationError("Purchase code must start with 'SVIN-PUR-'")
+
             qs = Purchase.objects.filter(purchase_code=purchase_code)
             if self.instance.pk:
-                # Exclude current instance when editing
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise forms.ValidationError("This purchase code already exists.")
             return purchase_code
         else:
-            # If empty on submit, generate unique code again (edge case)
             return self.generate_unique_code()
 
+            
     def generate_unique_code(self):
-        prefix = "PUR-"
+        prefix = "SVIN-PUR-"
         last_purchase = Purchase.objects.filter(purchase_code__startswith=prefix).order_by('purchase_code').last()
+
         if not last_purchase:
             new_number = 1
         else:
-            last_number = int(last_purchase.purchase_code.replace(prefix, ''))
+            try:
+                last_number = int(last_purchase.purchase_code.replace(prefix, ''))
+            except (ValueError, AttributeError):
+                last_number = 0
+
             new_number = last_number + 1
-        return f"{prefix}{new_number:05d}"
-    
+
+        return f"{prefix}{new_number:05d}"  # 5-digit number: 00001, 00002, etc.
+        
 
 
 class ExpenseForm(forms.ModelForm):
@@ -471,7 +482,10 @@ class SaleItemForm(forms.ModelForm):
         model = SaleItem
         fields = ['product', 'quantity', 'price']
         widgets = {
-            'product': forms.Select(attrs={'class': 'form-select product-select select2'}),
+            'product': forms.Select(attrs={
+                'class': 'form-select product-select select2',
+                'id': None  # <- This is key
+            }),
             'quantity': forms.NumberInput(attrs={'class': 'form-control quantity-input', 'min': '1'}),
             'price': forms.NumberInput(attrs={'class': 'form-control price-input', 'readonly': 'readonly'}),
         }
@@ -479,10 +493,9 @@ class SaleItemForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super(SaleItemForm, self).__init__(*args, **kwargs)
-        
+
         if user:
             self.fields['product'].queryset = product.objects.filter(user=user)
-
 
 
 class SaleForm(forms.ModelForm):
