@@ -131,7 +131,8 @@ urlpatterns = [
     path('pos/', pos, name='create-sale'),
     path('barcode-lookup/', barcode_lookup, name='barcode_lookup'),
     path('list-sale/', list_sale, name='list_sale'),
-    path('update-sale/', update_sale, name='bill_details_view'),
+    path('update-sale/<sale_id>', update_sale, name='bill_details_view'),
+    path('delete-sale/<sale_id>', delete_sale, name='delete_sale'),
 
     path('sale-bill-details/<sale_id>', sale_bill_details, name='sale_bill_details'),
 

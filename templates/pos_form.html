@@ -106,7 +106,7 @@
 
       <div class="container">
         <div class="form-container">
-          <form method="post" action="{% url 'create-sale' %}" id="pos-form" >
+          <form method="post" action="{% url 'bill_details_view' form.instance.id %}" id="pos-form" >
             {% csrf_token %}
             
             <!-- Billing -->
@@ -145,9 +145,16 @@
             <!-- Add Product Button -->
 
             <div class="mb-3 d-flex justify-content-between align-items-center">
-              <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#productSearchModal">
-                <i class="mdi mdi-magnify"></i> Search &amp; Add Product
-              </button>
+              <div>
+                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#productSearchModal">
+                  <i class="mdi mdi-magnify"></i> Search &amp; Add Product
+                </button>
+
+                <a href="{% url 'add_product' %}"  <button type="button" class="btn btn-primary" >
+                  <i class="mdi mdi-plus-circle-outline"></i> Add Product
+                </button> </a>
+
+              </div>
 
               <div>
                 <label class="switch mb-0">
@@ -161,25 +168,62 @@
 
 
             <!-- Items Table -->
-            <div id="items-container">
-              <div class="row g-2 align-items-center mb-2 item-row">
-                <div class="col-md-4">
-                  {{ saleitemform.product }}
-                </div>
-                <div class="col-md-2">
-                  <input type="number" class="form-control qty-input" name="quantity[]" value="1" placeholder="Qty">
-                </div>
-                <div class="col-md-2">
-                  <input type="number" class="form-control rate-input" name="price[]" placeholder="Price">
-                </div>
-                <div class="col-md-2">
-                  <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
-                </div>
-                <div class="col-md-2 text-center">
-                  <span class="remove-btn">&times;</span>
-                </div>
-              </div>
-            </div>
+<div id="items-container">
+{% for item in existing_items %}
+<div class="row g-2 align-items-center mb-2 item-row" data-item-id="{{ item.id }}">
+  <input type="hidden" name="existing_item_ids[]" value="{{ item.id }}">
+  
+  <div class="col-md-4">
+    <select name="product[]" class="form-select product-select">
+      <option value="">Select product</option>
+      {% for p in products %}
+        <option value="{{ p.id }}" {% if p.id == item.product.id %}selected{% endif %}>
+          {{ p.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <input type="number" class="form-control qty-input" name="quantity[]" value="{{ item.quantity }}" placeholder="Qty" min="1">
+  </div>
+  <div class="col-md-2">
+    <input type="number" class="form-control rate-input" name="price[]" value="{{ item.price }}" placeholder="Price" step="0.01" min="0">
+  </div>
+  <div class="col-md-2">
+    <input type="text" class="form-control amount" name="amount[]" value="{{ item.amount }}" readonly placeholder="Amount">
+  </div>
+  <div class="col-md-2 text-center">
+    <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
+  </div>
+</div>
+{% endfor %}
+
+
+  <!-- Optionally, one empty blank row for adding new item -->
+    <div class="row g-2 align-items-center mb-2 item-row">
+      <div class="col-md-4">
+        <select name="product[]" class="form-select product-select">
+          <option value="">Select product</option>
+          {% for p in products %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control qty-input" name="quantity[]" placeholder="Qty" min="1">
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control rate-input" name="price[]" placeholder="Price" step="0.01" min="0">
+      </div>
+      <div class="col-md-2">
+        <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
+      </div>
+      <div class="col-md-2 text-center">
+        <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
+      </div>
+    </div>
+  </div>
+
 
             <div class="text-end my-2">
 
@@ -737,11 +781,7 @@
     $(select).select2('destroy');
   }
 
-  // Remove attributes to prevent rendering issues
-  select.removeAttribute('data-select2-id');
-  select.removeAttribute('aria-hidden');
-  select.removeAttribute('tabindex');
-  select.setAttribute('id', '');  // optional
+  
 
   // Reinitialize
   $(select).select2({
@@ -786,6 +826,13 @@ document.getElementById('add-item').addEventListener('click', () => {
 
   // Reattach other listeners if needed
   attachListeners(clone);
+  attachRemoveListener(clone);
+
+});
+
+document.querySelectorAll(".item-row").forEach(row => {
+    attachListeners(row);
+    attachRemoveListener(row);
 });
 
 
@@ -806,14 +853,31 @@ document.getElementById('add-item').addEventListener('click', () => {
     recalculateTotals();
   });
 
-  select.addEventListener("change", () => {
-    const selected = select.options[select.selectedIndex];
-    const rate = parseFloat(selected.getAttribute("data-rate")) || 0;
-    rateInput.value = rate.toFixed(2);
-    updateSelectOptions();
-          recalculateAmount(row);
+  function attachListeners(row) {
+    const qtyInput = row.querySelector(".qty-input");
+    const select = row.querySelector(".product-select");
+    const rateInput = row.querySelector(".rate-input");
 
-  });
+    if (!qtyInput || !select || !rateInput) return;
+
+    qtyInput.addEventListener("input", () => {
+        const id = "qty-" + select.value;
+        const dynamicQtyInput = document.getElementById(id);
+        if (dynamicQtyInput) {
+            dynamicQtyInput.value = qtyInput.value;
+        }
+        recalculateTotals();
+    });
+
+    select.addEventListener("change", () => {
+        const selected = select.options[select.selectedIndex];
+        const rate = parseFloat(selected.getAttribute("data-rate")) || 0;
+        rateInput.value = rate.toFixed(2);
+        updateSelectOptions();
+        recalculateAmount(row);
+    });
+}
+
   }
 
   // Payment method selector
@@ -838,6 +902,38 @@ document.getElementById('add-item').addEventListener('click', () => {
     document.getElementById('items-container').addEventListener('input', recalculateTotals);
     document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
   });
+
+
+  // Attach row removal listener
+function attachRemoveListener(row) {
+    const removeBtn = row.querySelector(".remove-btn");
+    if (!removeBtn) return;
+
+    removeBtn.addEventListener("click", () => {
+        const allRows = document.querySelectorAll(".item-row");
+        const itemId = row.getAttribute("data-item-id");
+
+        if (itemId) {
+            // Mark this item for deletion
+            const deleteInput = document.createElement("input");
+            deleteInput.type = "hidden";
+            deleteInput.name = "delete_item_ids[]";
+            deleteInput.value = itemId;
+            document.querySelector("form").appendChild(deleteInput);
+        }
+
+        // Remove row visually
+        if (allRows.length > 1) {
+            row.remove();
+            recalculateTotals();
+        } else {
+            alert("At least one row is required.");
+        }
+    });
+}
+
+
+
 
 
 
@@ -896,24 +992,6 @@ $(document).ready(function () {
 });
 
 
-document.addEventListener('DOMContentLoaded', function () {
-  const igstToggle = document.getElementById('wholesale_selector');
-  const wholesaleSection = document.getElementById('secondform');
-
-  function toggleWholesale() {
-    if (igstToggle.checked) {
-      wholesaleSection.style.display = 'block';
-    } else {
-      wholesaleSection.style.display = 'none';
-    }
-  }
-
-  // Initialize on page load
-  toggleWholesale();
-
-  // Listen for changes
-  igstToggle.addEventListener('change', toggleWholesale);
-});
 
 
 
@@ -958,7 +1036,7 @@ function displaySelectedImages() {
     </script>
 
     <script>
-        const editBtn = document.getElementById('edit_btn');
+        {% comment %} const editBtn = document.getElementById('edit_btn');
         const codeDisplay = document.getElementById('purchase_code_display');
         const codeInput = document.getElementById('purchase_code_input');
       
@@ -980,32 +1058,14 @@ function displaySelectedImages() {
             codeDisplay.style.display = '';
             editBtn.textContent = 'Edit';
           }
-        });
+        }); {% endcomment %}
 
 
-        document.addEventListener('DOMContentLoaded', function () {
-    const paymentType = document.getElementById('payment_type');
-    const bankField = document.getElementById('bank-field');
-
-    function toggleBankField() {
-      if (paymentType.value === 'bank') {
-        bankField.style.display = 'block';
-      } else {
-        bankField.style.display = 'none';
-      }
-    }
-
-    // Initial check
-    toggleBankField();
-
-    // Listen for change
-    paymentType.addEventListener('change', toggleBankField);
-  });
+       
 
 
 
-
-  // Toggle edit/save for purchase code
+  {% comment %} // Toggle edit/save for purchase code
 document.addEventListener('DOMContentLoaded', function () {
   const editBtn = document.getElementById('edit_btn');
   const codeDisplay = document.getElementById('purchase_code_display');
@@ -1026,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', function () {
       editBtn.textContent = 'Edit';
     }
   });
-});
+}); {% endcomment %}
 
 
 
@@ -1155,6 +1215,46 @@ document.addEventListener('DOMContentLoaded', function () {
     updateButtonStyles(initialType);
     updateRequiredFields(initialType);
   });
+
+  
+document.addEventListener('DOMContentLoaded', function () {
+  const igstToggle = document.getElementById('wholesale_selector');
+  const wholesaleSection = document.getElementById('secondform');
+  const wholesaleFields = wholesaleSection.querySelectorAll('input, select, textarea');
+
+  // Store original required state on load
+  wholesaleFields.forEach(field => {
+    field.dataset.originalRequired = field.hasAttribute('required') ? "true" : "false";
+  });
+
+  function toggleWholesale() {
+    if (igstToggle.checked) {
+      wholesaleSection.style.display = 'block';
+      // Restore original required fields
+      wholesaleFields.forEach(field => {
+        if (field.dataset.originalRequired === "true") {
+          field.setAttribute('required', 'required');
+        }
+      });
+    } else {
+      // Remove required to prevent validation errors
+      wholesaleFields.forEach(field => {
+        console.log(field)
+        field.removeAttribute('required');
+      });
+      wholesaleSection.style.display = 'none';
+    }
+  }
+
+  // Run once on page load
+  toggleWholesale();
+
+  // Watch for changes
+  igstToggle.addEventListener('change', toggleWholesale);
+});
+
+
+
 </script>
 
 

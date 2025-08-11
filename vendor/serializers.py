@@ -92,11 +92,44 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['user']  
 
 
+
+class PurchaseItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PurchaseItem
+        fields = ['product']  # exclude 'purchase'
+
+
+
+
 class PurchaseSerializer(serializers.ModelSerializer):
+    items = PurchaseItemSerializer(many=True)  # nested serializer for related items
+
     class Meta:
         model = Purchase
         fields = '__all__'
         read_only_fields = ['user']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', [])
+        purchase = Purchase.objects.create(**validated_data)
+        for item_data in items_data:
+            PurchaseItem.objects.create(purchase=purchase, **item_data)
+        return purchase
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', [])
+        # Update Purchase fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # To keep it simple, clear and recreate all purchase items
+        instance.items.all().delete()
+        for item_data in items_data:
+            PurchaseItem.objects.create(purchase=instance, **item_data)
+
+        return instance
+
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
