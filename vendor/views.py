@@ -1248,6 +1248,8 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+
+
 class ExpenseViewSet(viewsets.ModelViewSet):
     serializer_class = ExpenseSerializer
     permission_classes = [IsAuthenticated]
@@ -1277,29 +1279,42 @@ def generate_unique_code(self):
 @login_required(login_url='login_admin')
 def add_purchase(request):
 
+    data = product.objects.all()
+
     if request.method == 'POST':
 
-        forms = PurchaseForm(request.POST, request.FILES, user=request.user)
-
+        
+        forms = PurchaseForm(request.POST)
         if forms.is_valid():
-          
+
             forms = forms.save(commit=False)
             forms.user = request.user  # assign user here
             forms.save()
-            return redirect('list_purchase')
+            
+            product_ids = request.POST.getlist('products')
+            for pid in product_ids:
+                if pid:
+                    PurchaseItem.objects.create(purchase=forms, product_id=pid)
+
+            return redirect('list_purchase')  # or your desired URL
+   
         else:
             print(forms.errors)
+
             context = {
-                'form': forms
+                'form': forms,
+                'data': data,
             }
             return render(request, 'add_purchase.html', context)
     
     else:
 
+
         forms = PurchaseForm(user=request.user)
 
         context = {
-            'form': forms
+            'form': forms,
+            'data': data,
         }
         return render(request, 'add_purchase.html', context)
 
@@ -1308,27 +1323,43 @@ def add_purchase(request):
 @login_required(login_url='login_admin')
 def update_purchase(request, purchase_id):
 
+    data = product.objects.all()
+    instance = Purchase.objects.get(id=purchase_id)
+
     if request.method == 'POST':
+        form = PurchaseForm(request.POST, request.FILES, instance=instance, user=request.user)
 
-        instance = Purchase.objects.get(id=purchase_id)
+        if form.is_valid():
+            form.save()
 
-        forms = PurchaseForm(request.POST, request.FILES, instance=instance, user=request.user)
+            product_ids = request.POST.getlist('products')
 
-        if forms.is_valid():
-            forms.save()
+            # Clear old purchase items for this purchase only
+            instance.items.all().delete()
+
+            # Add new purchase items
+            for pid in product_ids:
+                if pid:  # skip empty
+                    PurchaseItem.objects.create(
+                        purchase=instance,
+                        product_id=pid
+                    )
+
             return redirect('list_purchase')
         else:
-            print(forms.errors)
-    
+            print(form.errors)
     else:
+        form = PurchaseForm(instance=instance)
 
-        instance = Purchase.objects.get(id=purchase_id)
-        forms = PurchaseForm(instance=instance)
+    existing_product_ids = list(instance.items.values_list('product_id', flat=True))
 
-        context = {
-            'form': forms
-        }
-        return render(request, 'add_purchase.html', context)
+    context = {
+        'form': form,
+        'existing_product_ids': existing_product_ids,
+        'data': data,
+    }
+    return render(request, 'add_purchase.html', context)
+
 
         
 
@@ -1583,7 +1614,9 @@ def pos(request):
         with transaction.atomic():
             try:
                 # Save sale
-                sale_instance = sale_form.save()
+                sale_instance = sale_form.save(commit=False)
+                sale_instance.user = True
+                sale_instance.save()
 
                 # Process Sale Items
                 total_items = 0
@@ -1612,7 +1645,7 @@ def pos(request):
                 invoice.sale = sale_instance
                 invoice.save()
 
-                return redirect("list_sale")
+                return redirect("sale_bill_details", sale_id=sale_instance.id)
 
             except Exception as e:
                 # Catch-all for any errors in atomic block
@@ -1639,63 +1672,134 @@ def pos(request):
 
     
 def update_sale(request, sale_id):
+
     sale_instance = get_object_or_404(Sale, id=sale_id, user=request.user)
-    customer_forms = vendor_customersForm(instance=sale_instance.customer if sale_instance.customer else None)
+    existing_items = SaleItem.objects.filter(sale=sale_instance)
 
-    if request.method == 'POST':
+    # ✅ Prepare dict list with amount calculation
+    items_with_amount = []
+    for item in existing_items:
+        items_with_amount.append({
+            "id": item.id,
+            "product": item.product,
+            "quantity": item.quantity,
+            "price": item.price,
+            "amount": item.quantity * item.price,
+        })
+
+    if request.method == "POST":
+        sale_form = SaleForm(request.POST, instance=sale_instance)
+        customer_form = vendor_customersForm(request.POST)
+        wholesale_instance = getattr(sale_instance, 'pos_wholesale', None)
+        wholesale_form = pos_wholesaleForm(request.POST, request.FILES, instance=wholesale_instance)
+
+        products = request.POST.getlist("product[]")
+        quantities = request.POST.getlist("quantity[]")
+        prices = request.POST.getlist("price[]")
+        existing_item_ids = request.POST.getlist("existing_item_ids[]")
+        delete_item_ids = request.POST.getlist("delete_item_ids[]")
+
+        if not sale_form.is_valid() or not wholesale_form.is_valid():
+            context = {
+                "form": sale_form,
+                "customer_forms": customer_form,
+                "wholesale_forms": wholesale_form,
+                "saleitemform": SaleItemForm(),
+                "products": product.objects.filter(user=request.user),
+                "existing_items": items_with_amount,  # ✅ Use calculated data
+                "error_message": "Please correct the errors below.",
+            }
+            return render(request, "pos_form.html", context)
+
         with transaction.atomic():
-            form = SaleForm(request.POST, instance=sale_instance)
+            try:
+                sale_instance = sale_form.save(commit=False)
+                sale_instance.user = request.user
+                sale_instance.save()
 
-            if form.is_valid():
-                updated_sale = form.save()
-            else:
-                print(form.errors)
-                return render(request, "pos_update_form.html", {
-                    "form": form,
-                    "products": product.objects.filter(user=request.user),
-                    "customer_forms": customer_forms,
-                    "saleitemform": SaleItemForm(),
-                    "sale": sale_instance,
-                    "items": SaleItem.objects.filter(sale=sale_instance),
-                })
+                # 1. Delete marked items
+                if delete_item_ids:
+                    SaleItem.objects.filter(id__in=delete_item_ids, sale=sale_instance).delete()
 
-            # Clear existing items
-            SaleItem.objects.filter(sale=updated_sale).delete()
+                total_items = 0
+                total_amount = Decimal("0.00")
 
-            # Add new/updated items
-            products = request.POST.getlist("product")
-            quantities = request.POST.getlist("quantity")
-            prices = request.POST.getlist("price")
+                # 2. Iterate through rows
+                for idx, (p, q, pr) in enumerate(zip(products, quantities, prices)):
+                    if not (p and q and pr):
+                        continue
 
-            for p, q, pr in zip(products, quantities, prices):
-                if p and q and pr:
                     qty = int(q)
                     price = Decimal(pr)
+                    amount = qty * price
 
-                    SaleItem.objects.create(
-                        user=request.user,
-                        sale=updated_sale,
-                        product_id=p,
-                        quantity=qty,
-                        price=price,
-                    )
+                    if idx < len(existing_item_ids) and existing_item_ids[idx] and existing_item_ids[idx] not in delete_item_ids:
+                        # Update existing
+                        SaleItem.objects.filter(id=existing_item_ids[idx], sale=sale_instance).update(
+                            product_id=p,
+                            quantity=qty,
+                            price=price
+                        )
+                    else:
+                        # Create new
+                        SaleItem.objects.create(
+                            user=request.user,
+                            sale=sale_instance,
+                            product_id=p,
+                            quantity=qty,
+                            price=price,
+                        )
 
-        return redirect('update_sale', sale_id=sale_id)
+                    total_items += qty
+                    total_amount += amount
+
+                # 3. Save wholesale
+                invoice = wholesale_form.save(commit=False)
+                invoice.user = request.user
+                invoice.sale = sale_instance
+                invoice.save()
+
+                return redirect("sale_bill_details", sale_id=sale_instance.id)
+
+            except Exception as e:
+                print("IntegrityError:", e)  # Will show exact DB constraint error
+                messages.error(request, f"Error: {e}")
+                transaction.set_rollback(True)
+                context = {
+                    "form": sale_form,
+                    "customer_forms": customer_form,
+                    "wholesale_forms": wholesale_form,
+                    "saleitemform": SaleItemForm(),
+                    "products": product.objects.filter(user=request.user),
+                    "existing_items": items_with_amount,  # ✅ Keep calculated
+                    "error_message": str(e),
+                }
+                return render(request, "pos_form.html", context)
 
     else:
-        form = SaleForm(instance=sale_instance)
-        items = SaleItem.objects.filter(sale=sale_instance)
+        sale_form = SaleForm(instance=sale_instance)
+        customer_form = vendor_customersForm()
+        wholesale_instance = getattr(sale_instance, 'pos_wholesale', None)
+        wholesale_form = pos_wholesaleForm(instance=wholesale_instance)
 
-    return render(request, "update_sale.html", {
-        "form": form,
-        "products": product.objects.filter(user=request.user),
-        "customer_forms": customer_forms,
-        "saleitemform": SaleItemForm(),
-        "sale": sale_instance,
-        "items": items,
-    })
+        context = {
+            "form": sale_form,
+            "customer_forms": customer_form,
+            "wholesale_forms": wholesale_form,
+            "saleitemform": SaleItemForm(),
+            "products": product.objects.filter(user=request.user),
+            "existing_items": items_with_amount,  # ✅ Use calculated
+        }
+        return render(request, "pos_form.html", context)
+    
 
 
+
+
+def delete_sale(request, sale_id):
+    sale = Sale.objects.get(id = sale_id).delete()
+
+    return redirect('list_sale')
 
 def sale_bill_details(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
@@ -1743,12 +1847,11 @@ def get_product_price(request):
 
 def sale_invoice(request, sale_id):
 
+    
+
     sale = (
         Sale.objects
-        .prefetch_related(
-            Prefetch('items__product'),
-            Prefetch('wholesales', queryset=pos_wholesale.objects.all())
-        )
+        .prefetch_related('items__product')
         .select_related('customer', 'company_profile')
         .get(id=sale_id)
     )
@@ -1758,10 +1861,33 @@ def sale_invoice(request, sale_id):
     packaging = wholesale.packaging_charges or 0 if wholesale else 0
     total_amount = sale.final_amount + delivery + packaging
 
+    # Prepare simple HSN summary dict
+    hsn_summary = {}
+    for item in sale.items.all():
+        hsn = item.product.hsn or "N/A"
+        sgst_rate = item.product.sgst_rate or 9
+        cgst_rate = item.product.cgst_rate or 9
+        taxable_val = float(item.amount)
+
+        if hsn not in hsn_summary:
+            hsn_summary[hsn] = {
+                'taxable_value': 0,
+                'sgst_rate': sgst_rate,
+                'cgst_rate': cgst_rate,
+            }
+        hsn_summary[hsn]['taxable_value'] += taxable_val
+
+    # Calculate tax amounts simply
+    for hsn, data in hsn_summary.items():
+        data['sgst_amount'] = round(data['taxable_value'] * data['sgst_rate'] / 100, 2)
+        data['cgst_amount'] = round(data['taxable_value'] * data['cgst_rate'] / 100, 2)
+        data['total_tax'] = data['sgst_amount'] + data['cgst_amount']
+
     return render(request, 'sale_invoice/sale_invoice.html', {
         'sale_instance': sale,
         'wholesale': wholesale,
         'total_amount': total_amount,
+        'hsn_summary': hsn_summary.items(),  # list of (hsn, data) tuples
     })
 
 

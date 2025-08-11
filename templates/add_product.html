@@ -100,8 +100,6 @@ input:checked + .slider:before {
                         {% csrf_token %}
                         
                         
-                    
-                    
                         <div class="mb-3">
                             <label for="id_product_type" class="form-label">Product Type</label>
                             {{ form.product_type }}
@@ -160,7 +158,7 @@ input:checked + .slider:before {
                     
                         <!-- Pricing -->
                         <hr>
-                        <div style="display:flex; gap : 10px;">
+                        <div style="display:flex; gap : 10px;" class="product-only-field" id="mrp_section">
                                 
                             <div class="mb-3 product-only-field">
                                 <label for="id_wholesale_price" class="form-label">Wholesale Price **</label>
@@ -177,12 +175,14 @@ input:checked + .slider:before {
                                 {{ form.sales_price }}
                             </div>
                         
-                            <div class="mb-3">
+                           
+                        
+                        </div>
+
+                         <div class="mb-3">
                                 <label for="id_mrp" class="form-label">MRP</label>
                                 {{ form.mrp }}
                             </div>
-                        
-                        </div>
                         
                         <div class="mb-3">
                             <label for="id_unit" class="form-label">Unit</label>
@@ -213,26 +213,30 @@ input:checked + .slider:before {
                     
                         <!-- Stock -->
                         <hr class="product-only-field">
-                        <div class="mb-3 form-check ">
-                            {{ form.track_serial_numbers }}
-                            <label class="form-check-label" for="id_track_serial_numbers">Track Serial Numbers</label>
+                        <div class="product-only-field">
+
+                            <div class="mb-3 form-check ">
+                                {{ form.track_serial_numbers }}
+                                <label class="form-check-label" for="id_track_serial_numbers">Track Serial Numbers</label>
+                            </div>
+                        
+                            <div class="mb-3">
+                                <label for="id_opening_stock" class="form-label">Opening Stock</label>
+                                {{ form.opening_stock }}
+                            </div>
+                        
+                            <div class="mb-3 form-check ">
+                                {{ form.low_stock_alert }}
+                                <label class="form-check-label" for="id_low_stock_alert">Low Stock Alert</label>
+                            </div>
+                        
+                            <div class="mb-3 ">
+                                <label for="id_low_stock_quantity" class="form-label">Low Stock Quantity</label>
+                                {{ form.low_stock_quantity }}
+                            </div>
+                            
                         </div>
-                    
-                        <div class="mb-3">
-                            <label for="id_opening_stock" class="form-label">Opening Stock</label>
-                            {{ form.opening_stock }}
-                        </div>
-                    
-                        <div class="mb-3 form-check ">
-                            {{ form.low_stock_alert }}
-                            <label class="form-check-label" for="id_low_stock_alert">Low Stock Alert</label>
-                        </div>
-                    
-                        <div class="mb-3 ">
-                            <label for="id_low_stock_quantity" class="form-label">Low Stock Quantity</label>
-                            {{ form.low_stock_quantity }}
-                        </div>
-                    
+                        
                         <!-- Optional Attributes -->
                         <hr class="product-only-field">
                         <div class="mb-3 product-only-field" id="brand_name_wrapper">
@@ -240,9 +244,9 @@ input:checked + .slider:before {
                             {{ form.brand_name }}
                         </div>
                     
-                        <div class="mb-3" style="display: flex; gap: 10px; align-items: center;" id="color_wrapper">
+                        <div class="mb-3 product-only-field" style="display: flex; gap: 10px; align-items: center;" id="color_wrapper">
                             
-                            <label for="common_colors">Color</label>
+                           <label for="common_colors">Color</label>
                             <!-- Dropdown of common colors -->
                             <select id="common_colors" class="form-control" onchange="updateColorPickerFromDropdown(this)">
                                 <option value="">Select common color</option>
@@ -264,7 +268,6 @@ input:checked + .slider:before {
                             {{ form.color }}
 
                             <!-- Preview -->
-                            <div id="color_preview" style="width: 30px; height: 30px; border: 1px solid #ccc;"></div>
 
                         </div>
                                     
@@ -296,6 +299,93 @@ input:checked + .slider:before {
                         <!-- Delivery & Policies -->
                        
                         <hr>
+
+                        
+                        
+                        {{ variant_formset.management_form }}
+                        <div id="standardPrintWrapper" style="display: none;">
+
+                            <div id="variantSection">
+
+                        
+                                <hr>
+                                <h5 class="form-heading">Variants</h5>
+                                <table class="table table-bordered" id="variant-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Sr No</th>
+                                            <th>Paper</th>
+                                            <th>Color Type</th>
+                                            <th>Min Qty</th>
+                                            <th>Max Qty</th>
+                                            <th>Price</th>
+                                            <th>Sided</th>
+                                            <th>Delete</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="variant-formset">
+                                        {% for form in variant_formset %}
+
+                                            <tr class="variant-form">
+                                                <td class="sr-no">{{ forloop.counter }}</td>
+                                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                                <td>{{ form.paper }}</td>
+                                                <td>{{ form.color_type }}</td>
+                                                <td>{{ form.min_quantity }}</td>
+                                                <td>{{ form.max_quantity }}</td>
+                                                <td>{{ form.price }}</td>
+                                                <td>{{ form.sided }}</td>
+                                                <td>
+                                                    {{ form.DELETE }}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <button type="button" class="btn btn-outline-primary" id="add-variant">Add Another Variant</button>
+                                                        
+                            </div>
+                        </div>
+
+                        <hr>
+                        
+                        {{ customize_print_variant_formset.management_form }}
+
+                        <div id="customPrintWrapper" style="display: none;">
+
+                            <div id="customizevariantSection">
+
+                                <h5 class="form-heading">Customize Print Variants</h5>
+                                <table class="table table-bordered" id="variant-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Sr No</th>
+                                            <th>Name</th>
+                                            <th>Price</th>
+                                            <th>Delete</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="customize-print-variant-formset">
+                                        {% for form in customize_print_variant_formset %}
+                                            <tr class="custimize-print-variant-form">
+                                                <td class="sr-no">{{ forloop.counter }}</td>
+                                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                                <td>{{ form.size }}</td>
+                                                <td>{{ form.price }}</td>
+                                                <td>
+                                                    {{ form.DELETE }}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <button type="button" class="btn btn-outline-primary" id="add-customize-print-variant">Add Another Variant</button>
+                            </div>
+                        </div>
+
+                        <hr>
+                        
+
                         <h5 class="form-heading">Addons</h5>
                         <div >
                             {{ formset.management_form }}
@@ -330,88 +420,7 @@ input:checked + .slider:before {
 
                             <button type="button" class="btn btn-outline-primary" id="add-addon">Add Another Addon</button>
                         </div>
-                        <hr>
                         
-                        
-                        {{ variant_formset.management_form }}
-                        <div id="standardPrintWrapper" style="display: none;">
-
-                            <div id="variantSection">
-
-                        
-                                <hr>
-                                <h5 class="form-heading">Variants</h5>
-                                <table class="table table-bordered" id="variant-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Sr No</th>
-                                            <th>Paper</th>
-                                            <th>Color Type</th>
-                                            <th>Min Qty</th>
-                                            <th>Max Qty</th>
-                                            <th>Price</th>
-                                            <th>Sided</th>
-                                            <th>Delete</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="variant-formset">
-                                        {% for form in variant_formseet %}
-                                            <tr class="variant-form">
-                                                <td class="sr-no">{{ forloop.counter }}</td>
-                                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                                                <td>{{ form.paper }}</td>
-                                                <td>{{ form.color_type }}</td>
-                                                <td>{{ form.min_quantity }}</td>
-                                                <td>{{ form.max_quantity }}</td>
-                                                <td>{{ form.price }}</td>
-                                                <td>{{ form.sided }}</td>
-                                                <td>
-                                                    {{ form.DELETE }}
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                <button type="button" class="btn btn-outline-primary" id="add-variant">Add Another Variant</button>
-                                                        
-                            </div>
-                        </div>
-
-                        
-                        {{ customize_print_variant_formset.management_form }}
-
-                        <div id="customPrintWrapper" style="display: none;">
-
-                            <div id="variantSection">
-
-                                <h5 class="form-heading">Customize Print Variants</h5>
-                                <table class="table table-bordered" id="variant-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Sr No</th>
-                                            <th>Size</th>
-                                            <th>Price</th>
-                                            <th>Delete</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="customize-print-variant-formset">
-                                        {% for form in customize_print_variant_formset %}
-                                            <tr class="custimize-print-variant-form">
-                                                <td class="sr-no">{{ forloop.counter }}</td>
-                                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                                                <td>{{ form.size }}</td>
-                                                <td>{{ form.price }}</td>
-                                                <td>
-                                                    {{ form.DELETE }}
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                <button type="button" class="btn btn-outline-primary" id="add-customize-print-variant">Add Another Variant</button>
-                            </div>
-                        </div>
-
 
                         <hr>
                                 
@@ -682,7 +691,7 @@ input:checked + .slider:before {
 
     const productType = document.getElementById("productType");
     const saleType = document.getElementById("saleType");
-    const variantSection = document.getElementById("variantSection");
+    const variantSection = document.getElementById("customizevariantSection");
     const foodOptionToggleWrapper = document.getElementById('foodOptionToggleWrapper');
     const foodToggle = document.getElementById('foodToggle');
     const foodTypeWrapper = document.getElementById('foodTypeWrapper');
@@ -906,7 +915,20 @@ input:checked + .slider:before {
 
     // Optional: run once on load to ensure state is correct
 
+    function changeMrpLabel(newText) {
+        const mrpLabel = document.querySelector('label[for="id_mrp"]');
+        if (mrpLabel) {
+            mrpLabel.textContent = newText;
+        }
+    }
 
+// Usage:
+changeMrpLabel("Selling Price");
+
+
+
+    // Example usage in your existing logic:
+   
     function handleProductTypeChange() {
         const selectedType = productType?.value;
 
@@ -914,10 +936,12 @@ input:checked + .slider:before {
             setSaleTypeOptionsForPrint();
             
             toggleVariantFormSection(true);
-            toggleProductOnlyFields(false);
-
+            toggleProductOnlyFields(false); 
+        
             console.log('in here')
 
+            changeMrpLabel("Base MRP");
+  
             standardPrintWrapper.style.display = 'block';
 
             foodOptionToggleWrapper.style.display = 'none';
@@ -931,6 +955,10 @@ input:checked + .slider:before {
             setSaleTypeOptionsDefault();
             toggleVariantFormSection(selectedType === 'product');
             toggleProductOnlyFields(selectedType === 'product');
+            
+
+            changeMrpLabel("MRP");
+
             foodOptionToggleWrapper.style.display = selectedType === 'service' ? 'block' : 'none';
 
             if (foodToggle) foodToggle.checked = false;
@@ -1015,7 +1043,7 @@ function handleCustomPrintToggleChange() {
     console.log('sdsdsd')
 
     if (isCustom) {
-        standardPrintWrapper.style.display = 'block';
+        standardPrintWrapper.style.display = 'none';
         customPrintWrapper.style.display = 'block';
 
        customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
@@ -1029,6 +1057,7 @@ function handleCustomPrintToggleChange() {
 
     } else {
         customPrintWrapper.style.display = 'none';
+        standardPrintWrapper.style.display = 'block';
 
         
 
@@ -1060,6 +1089,9 @@ function handleCustomPrintToggleChange() {
 
     colorValue.value = colorPicker.value;
     colorPreview.style.background = colorPicker.value;
+
+    handleProductTypeChange();
+
   });
 
 
@@ -1069,7 +1101,6 @@ function handleCustomPrintToggleChange() {
 
     </script>
     
-
 
 
 

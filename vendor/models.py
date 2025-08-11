@@ -345,6 +345,8 @@ class product(models.Model):
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, null=True, blank=True)
     hsn = models.CharField(max_length=50, null=True, blank=True)
     gst = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    sgst_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    cgst_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # Stock
     track_serial_numbers = models.BooleanField(default=False)
@@ -387,6 +389,14 @@ class product(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        if self.gst is not None:
+            half_gst = round(self.gst / 2, 2)
+            self.sgst_rate = half_gst
+            self.cgst_rate = half_gst
+        super().save(*args, **kwargs)
+
 
     @property
     def current_stock(self):
@@ -529,6 +539,7 @@ import uuid
 
 class Purchase(models.Model):
     
+  
     BANK_CASH_CHOICES = [
         ('bank', 'Bank'),
         ('cash', 'Cash'),
@@ -536,35 +547,64 @@ class Purchase(models.Model):
         ('card', 'Card'),
     ]
 
+    PAYMENT_METHOD_CHOICES = [
+        ('upi', 'UPI'),
+        ('card', 'Card'),
+        ('cash', 'Cash'),
+        ('credit', 'Credit'),
+    ]
+
+    ADVANCE_MODE_CHOICES = [
+        ('bank', 'Bank'),
+        ('cash', 'Cash'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     purchase_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
-    # other fields...
 
-    
     purchase_date = models.DateField()
-    vendor = models.ForeignKey(vendor_vendors, on_delete=models.CASCADE)
-    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
-    product = models.CharField(max_length=255, blank=True, null=True)
+    vendor = models.ForeignKey('vendor_vendors', on_delete=models.CASCADE)
+
     supplier_invoice_date = models.DateField(blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
-    # Optional fields
+
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES)
+
+    advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    advance_mode = models.CharField(max_length=10, choices=ADVANCE_MODE_CHOICES, blank=True, null=True)
+
+    due_date = models.DateField(blank=True, null=True)
+
     dispatch_address = models.CharField(max_length=255, blank=True, null=True)
-    payment_type = models.CharField(
-        max_length=100,
-        choices=BANK_CASH_CHOICES,
-        blank=True,
-        null=True
-    )
     references = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     terms = models.TextField(blank=True, null=True)
-    extra_discount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
     delivery_shipping_charges = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     packaging_charges = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
 
+    # Newly added transport-related fields
+    eway_bill_no = models.CharField(max_length=50, blank=True, null=True)
+    lr_no = models.CharField(max_length=50, blank=True, null=True)
+    vehicle_no = models.CharField(max_length=50, blank=True, null=True)
+    transport_name = models.CharField(max_length=100, blank=True, null=True)
+    no_of_parcels = models.PositiveIntegerField(blank=True, null=True)
+
     def __str__(self):
-        return self.purchase_code
+        return self.purchase_code or f"Purchase #{self.id}"
+
+
+
     
+class PurchaseItem(models.Model):
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(product, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.purchase.id} ({self.product.name})"
 
             
 
@@ -635,12 +675,12 @@ class Sale(models.Model):
         ('credit', 'Credit'),
     ]
 
-    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
-
-    company_profile = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, null=True, blank=True)
-
+    company_profile = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, null=True, blank=True, related_name="company_profile")
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True, related_name="customer")
+
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
+
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     credit_time_days = models.DateTimeField(auto_now_add=True, null=True, blank=True)

@@ -381,24 +381,42 @@ from django.utils import timezone
 class PurchaseForm(forms.ModelForm):
 
     purchase_date = forms.DateField(
-        widget=forms.DateInput(attrs={'type': 'date'}),
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         initial=timezone.now().date()
     )
-     
+
+    due_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=False
+    )
+
     class Meta:
         model = Purchase
-        exclude = ['user']  # Removed fields='__all__'
+        exclude = ['user']  # We don't want the user to manually pick this
         widgets = {
             'purchase_code': forms.TextInput(attrs={'class': 'form-control'}),
             'vendor': forms.Select(attrs={'class': 'form-control'}),
-            'product': forms.TextInput(attrs={'class': 'form-control'}),
+
             'supplier_invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'serial_number': forms.TextInput(attrs={'class': 'form-control'}),
+
+            'discount_percent': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+
+            'payment_method': forms.Select(attrs={'class': 'form-control', 'id': 'payment_method'}),
+
+            'advance_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'advance_mode': forms.Select(attrs={'class': 'form-control'}),
+
             'dispatch_address': forms.TextInput(attrs={'class': 'form-control'}),
-            'payment_type': forms.Select(attrs={'class': 'form-control', 'id': 'payment_type'}),
-            'bank': forms.Select(attrs={'class': 'form-control'}),
-            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+
+            'delivery_shipping_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'packaging_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
+
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # 👈 move this up first
@@ -409,23 +427,6 @@ class PurchaseForm(forms.ModelForm):
 
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
-
-
-    def clean_purchase_code(self):
-        purchase_code = self.cleaned_data.get('purchase_code')
-
-        if purchase_code:
-            if not purchase_code.startswith("SVIN-PUR-"):
-                raise forms.ValidationError("Purchase code must start with 'SVIN-PUR-'")
-
-            qs = Purchase.objects.filter(purchase_code=purchase_code)
-            if self.instance.pk:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise forms.ValidationError("This purchase code already exists.")
-            return purchase_code
-        else:
-            return self.generate_unique_code()
 
             
     def generate_unique_code(self):
@@ -444,6 +445,16 @@ class PurchaseForm(forms.ModelForm):
 
         return f"{prefix}{new_number:05d}"  # 5-digit number: 00001, 00002, etc.
         
+from django.forms import ModelForm, inlineformset_factory
+        
+class PurchaseItemForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseItem
+        fields = ['product']
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-control select2'}),
+        }
+
 
 
 class ExpenseForm(forms.ModelForm):
