@@ -270,26 +270,7 @@ textarea[name="terms"] {
               <!-- Optional Fields -->
               <div class="card mb-3">
                 <div class="card-body">
-                  <div class="mb-3">
-                    <label for="dispatch_address" class="form-label">
-                      <i class="bi bi-geo-alt-fill"></i> Dispatch Address
-                    </label>
-                    {{ form.dispatch_address }}
-                    {% if form.dispatch_address.errors %}
-                      <div class="text-danger">{{ form.dispatch_address.errors.0 }}</div>
-                    {% endif %}
-                  </div>
-
-                  <div class="mb-3" id="bank-field" style="display: none;">
-                    <label class="form-label">
-                      <i class="bi bi-bank"></i> Bank
-                    </label>
-                    {{ form.bank }}
-                    {% if form.bank.errors %}
-                      <div class="text-danger">{{ form.bank.errors.0 }}</div>
-                    {% endif %}
-                  </div>
-
+                 
                   <div class="mb-3">
                     <label for="references" class="form-label">
                       <i class="bi bi-link-45deg"></i> References
@@ -339,6 +320,60 @@ textarea[name="terms"] {
                       <div class="text-danger">{{ form.packaging_charges.errors.0 }}</div>
                     {% endif %}
                   </div>
+
+                  <div class="mb-3">
+                    <label for="packaging_charges" class="form-label">
+                      <i class="bi bi-box2"></i> Eway Bill No
+                    </label>
+                    {{ form.eway_bill_number }}
+                    {% if form.eway_bill_number.errors %}
+                      <div class="text-danger">{{ form.eway_bill_number.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="packaging_charges" class="form-label">
+                      <i class="bi bi-box2"></i>LR Number
+                    </label>
+                    {{ form.lr_number }}
+                    {% if form.lr_number.errors %}
+                      <div class="text-danger">{{ form.lr_number.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="packaging_charges" class="form-label">
+                      <i class="bi bi-box2"></i>Vehicle Number
+                    </label>
+                    {{ form.vehicle_number }}
+                    {% if form.vehicle_number.errors %}
+                      <div class="text-danger">{{ form.vehicle_number.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="packaging_charges" class="form-label">
+                      <i class="bi bi-box2"></i>Transport Number
+                    </label>
+                    {{ form.transport_name }}
+                    {% if form.transport_name.errors %}
+                      <div class="text-danger">{{ form.transport_name.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+                  
+
+                  <div class="mb-3" id="bank-field" style="display: none;">
+                    <label class="form-label">
+                      <i class="bi bi-bank"></i> Bank
+                    </label>
+                    {{ form.bank }}
+                    {% if form.bank.errors %}
+                      <div class="text-danger">{{ form.bank.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+
+
+                  
                 </div>
               </div>
 
