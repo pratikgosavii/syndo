@@ -91,80 +91,196 @@
 
     <h3>Product  Settings</h3> <br><br>
 
- <div class="row">
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="wholesale_price" name="wholesale_price" {% if settings.wholesale_price %}checked{% endif %}>
-        <label class="form-check-label" for="wholesale_price">Wholesale Price</label>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="stock" name="stock" {% if settings.stock %}checked{% endif %}>
-        <label class="form-check-label" for="stock">Stock</label>
-      </div>
-    </div>
-  </div>
+<div class="row">
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="wholesale_price" name="wholesale_price" {% if settings.wholesale_price %}checked{% endif %}>
+                    <label class="form-check-label" for="wholesale_price">Wholesale Price</label>
+                </div>
+            </div>
 
-  <!-- Delivery Details -->
-  <div class="section-title">Delivery Details</div>
-  <div class="row">
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="instant_delivery" name="instant_delivery" {% if settings.instant_delivery %}checked{% endif %}>
-        <label class="form-check-label" for="instant_delivery">Instant Delivery</label>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="self_pickup" name="self_pickup" {% if settings.self_pickup %}checked{% endif %}>
-        <label class="form-check-label" for="self_pickup">Self Pickup</label>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="general_delivery" name="general_delivery" {% if settings.general_delivery %}checked{% endif %}>
-        <label class="form-check-label" for="general_delivery">General Delivery</label>
-      </div>
-    </div>
-  </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="stock" name="stock" {% if settings.stock %}checked{% endif %}>
+                    <label class="form-check-label" for="stock">Stock</label>
+                </div>
+            </div>
 
-  <!-- Policies -->
-  <div class="section-title">Policies</div>
-  <div class="row">
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="return_policy" name="return_policy" {% if settings.return_policy %}checked{% endif %}>
-        <label class="form-check-label" for="return_policy">Return Policy</label>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="cod" name="cod" {% if settings.cod %}checked{% endif %}>
-        <label class="form-check-label" for="cod">Cash on Delivery</label>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="replacement" name="replacement" {% if settings.replacement %}checked{% endif %}>
-        <label class="form-check-label" for="replacement">Replacement</label>
-      </div>
-    </div>
-  </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="imei" name="imei" {% if settings.imei %}checked{% endif %}>
+                    <label class="form-check-label" for="imei">IMEI</label>
+                </div>
+            </div>
 
-  <!-- Online Catalog Only -->
-  <div class="section-title">Online Catalog Only</div>
-  <div class="form-check form-switch">
-    <input class="form-check-input" type="checkbox" id="online_catalog_only" name="online_catalog_only" {% if settings.online_catalog_only %}checked{% endif %}>
-    <label class="form-check-label" for="online_catalog_only">Online Catalog Only</label>
-  </div>
-  <small class="text-muted d-block mt-1">
-    Note: Enabling this option will only post a catalog product to your site, where only images and product description are shown to users.
-  </small>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="low_stock_alert" name="low_stock_alert" {% if settings.low_stock_alert %}checked{% endif %}>
+                    <label class="form-check-label" for="low_stock_alert">Low Stock Alert</label>
+                </div>
+            </div>
 
-    <div class="text-center mt-4">
-      <button type="submit" class="btn btn-primary">Save Settings</button>
-    </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="category" name="category" {% if settings.category %}checked{% endif %}>
+                    <label class="form-check-label" for="category">Category</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="sub_category" name="sub_category" {% if settings.sub_category %}checked{% endif %}>
+                    <label class="form-check-label" for="sub_category">Sub Category</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="brand_name" name="brand_name" {% if settings.brand_name %}checked{% endif %}>
+                    <label class="form-check-label" for="brand_name">Brand Name</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="color" name="color" {% if settings.color %}checked{% endif %}>
+                    <label class="form-check-label" for="color">Color</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="size" name="size" {% if settings.size %}checked{% endif %}>
+                    <label class="form-check-label" for="size">Size</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="batch_number" name="batch_number" {% if settings.batch_number %}checked{% endif %}>
+                    <label class="form-check-label" for="batch_number">Batch Number</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="expiry_date" name="expiry_date" {% if settings.expiry_date %}checked{% endif %}>
+                    <label class="form-check-label" for="expiry_date">Expiry Date</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="description" name="description" {% if settings.description %}checked{% endif %}>
+                    <label class="form-check-label" for="description">Description</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="image" name="image" {% if settings.image %}checked{% endif %}>
+                    <label class="form-check-label" for="image">Image</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="tax" name="tax" {% if settings.tax %}checked{% endif %}>
+                    <label class="form-check-label" for="tax">Tax</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="food" name="food" {% if settings.food %}checked{% endif %}>
+                    <label class="form-check-label" for="food">Food</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery -->
+        <div class="section-title">Delivery Details</div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="instant_delivery" name="instant_delivery" {% if settings.instant_delivery %}checked{% endif %}>
+                    <label class="form-check-label" for="instant_delivery">Instant Delivery</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="self_pickup" name="self_pickup" {% if settings.self_pickup %}checked{% endif %}>
+                    <label class="form-check-label" for="self_pickup">Self Pickup</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="general_delivery" name="general_delivery" {% if settings.general_delivery %}checked{% endif %}>
+                    <label class="form-check-label" for="general_delivery">General Delivery</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="shop_orders" name="shop_orders" {% if settings.shop_orders %}checked{% endif %}>
+                    <label class="form-check-label" for="shop_orders">Shop Orders</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Policies -->
+        <div class="section-title">Policies</div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="return_policy" name="return_policy" {% if settings.return_policy %}checked{% endif %}>
+                    <label class="form-check-label" for="return_policy">Return Policy</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="cod" name="cod" {% if settings.cod %}checked{% endif %}>
+                    <label class="form-check-label" for="cod">Cash on Delivery</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="replacement" name="replacement" {% if settings.replacement %}checked{% endif %}>
+                    <label class="form-check-label" for="replacement">Replacement</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="shop_exchange" name="shop_exchange" {% if settings.shop_exchange %}checked{% endif %}>
+                    <label class="form-check-label" for="shop_exchange">Shop Exchange</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="shop_warranty" name="shop_warranty" {% if settings.shop_warranty %}checked{% endif %}>
+                    <label class="form-check-label" for="shop_warranty">Shop Warranty</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="brand_warranty" name="brand_warranty" {% if settings.brand_warranty %}checked{% endif %}>
+                    <label class="form-check-label" for="brand_warranty">Brand Warranty</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Online Catalog Only -->
+        <div class="section-title">Online Catalog Only</div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="online_catalog_only" name="online_catalog_only" {% if settings.online_catalog_only %}checked{% endif %}>
+            <label class="form-check-label" for="online_catalog_only">Online Catalog Only</label>
+        </div>
+        <small class="text-muted d-block mt-1">
+            Note: Enabling this option will only post a catalog product to your site, where only images and product description are shown to users.
+        </small>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
   </div>
 </div>
 

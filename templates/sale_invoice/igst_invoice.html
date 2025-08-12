@@ -1,0 +1,138 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IGST Retail Invoice - {{ wholesale.invoice_number }}</title>
+<style>
+    body { font-family: Arial, sans-serif; font-size: 13px; margin:0; padding:0; }
+    .invoice-box { width: 800px; margin: 20px auto; border: 1px solid #000; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #000; padding: 5px; vertical-align: top; }
+    .no-border td { border: none !important; }
+    .header-title { color: blue; font-weight: bold; text-align: center; padding: 5px; }
+    .bold { font-weight: bold; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .qr-box { text-align: center; }
+    .terms { height: 60px; vertical-align: top; }
+</style>
+</head>
+<body>
+
+<div class="invoice-box">
+
+    <table class="no-border">
+        <tr><td colspan="3" class="header-title">TAX INVOICE</td></tr>
+    </table>
+
+    <table class="no-border">
+        <tr>
+            <td style="width:60px; text-align:center;">
+                {% if sale_instance.company_profile.profile_image %}
+                    <img src="{{ sale_instance.company_profile.profile_image.url }}" width="50" height="50">
+                {% else %}
+                    <div style="width:50px; height:50px; background:#ccc; border-radius:50%; line-height:50px; text-align:center;">Logo</div>
+                {% endif %}
+            </td>
+            <td>
+                <div class="bold">{{ sale_instance.company_profile.name }}</div>
+                {{ sale_instance.company_profile.address_line1 }}<br>
+                {{ sale_instance.company_profile.address_line2 }}
+            </td>
+            <td class="right">
+                GSTIN - {{ sale_instance.company_profile.gstin }}<br>
+                Invoice Date: {{ wholesale.date|date:"d/m/Y" }}<br>
+                Invoice No: {{ wholesale.invoice_number }}<br>
+                Regular Scheme<br>
+                Due Date: {{ wholesale.date|date:"d/m/Y" }}
+            </td>
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <td><b>Customer Name:</b> {{ sale_instance.customer.name }}</td>
+            <td><b>Mobile No:</b> {{ sale_instance.customer.phone }}</td>
+        </tr>
+    </table>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S.No.</th>
+                <th>Product / Service</th>
+                <th>HSN SAC</th>
+                <th>MRP</th>
+                <th>Dis</th>
+                <th>Qty</th>
+                <th>Taxable Value</th>
+                <th>GST (IGST) %</th>
+                <th>Amount</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in sale_instance.items.all %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.product.hsn_code }}</td>
+                <td>{{ item.price }}</td>
+                <td>{{ item.discount|default:"0" }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.amount }}</td>
+                <td>{{ item.product.igst_rate|default:"18%" }}</td>
+                <td>{{ item.igst_amount }}</td>
+                <td>{{ item.total_amount }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" class="center">No items</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><td colspan="9" class="bold right">Total</td><td class="bold">{{ total_amount }}</td></tr>
+        </tfoot>
+    </table>
+
+    <table>
+        <tr>
+            <td><b>Total value in words:</b> {{ total_in_words }}</td>
+            <td rowspan="2" class="qr-box" style="width:20%;">
+                {% if sale_instance.company_profile.payment_qr %}
+                    <img src="{{ sale_instance.company_profile.payment_qr.url }}" width="80" height="80"><br>
+                {% else %}
+                    <img src="{% static 'qr.png' %}" width="80" height="80"><br>
+                {% endif %}
+                Pay using UPI
+            </td>
+            <td rowspan="2" style="width:30%;">
+                <table style="width:100%; border-collapse: collapse;">
+                    <tr><td>Taxable Amount</td></tr>
+                    <tr><td>Total Tax</td></tr>
+                    <tr><td>Discount ({{ sale_instance.discount_percentage }}%)</td></tr>
+                    <tr><td>Round off</td></tr>
+                    <tr class="bold"><td>Total Amount</td></tr>
+                    <tr><td>Paid</td></tr>
+                    <tr class="bold"><td style="color:red;">Balance</td></tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td class="terms"><b>Terms & Conditions</b><br>{{ wholesale.terms|default:"" }}</td>
+        </tr>
+    </table>
+
+    <table class="no-border">
+        <tr>
+            <td></td>
+            <td class="right">Signature</td>
+        </tr>
+    </table>
+
+</div>
+
+<div class="center">Website - {{ sale_instance.company_profile.website|default:"www.companydomain.com" }}<br>Page no. 1</div>
+
+</body>
+</html>
