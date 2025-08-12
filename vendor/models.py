@@ -339,8 +339,8 @@ class product(models.Model):
 
     # Pricing details
     wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
-    sales_price = models.DecimalField(max_digits=10, decimal_places=2)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sales_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, null=True, blank=True)
     hsn = models.CharField(max_length=50, null=True, blank=True)
@@ -367,6 +367,7 @@ class product(models.Model):
     gallery_images = models.ImageField(upload_to='product_gallery/', null=True, blank=True)
 
     # Delivery & Policies
+    is_customize = models.BooleanField(default=False)
     instant_delivery = models.BooleanField(default=False)
     self_pickup = models.BooleanField(default=False)
     general_delivery = models.BooleanField(default=False)
@@ -484,6 +485,7 @@ class ProductSettings(models.Model):
     instant_delivery = models.BooleanField(default=False)
     self_pickup = models.BooleanField(default=False)
     general_delivery = models.BooleanField(default=False)
+    shop_orders = models.BooleanField(default=False)
 
     # Policies
     return_policy = models.BooleanField(default=False)

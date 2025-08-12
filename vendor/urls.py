@@ -98,6 +98,7 @@ urlpatterns = [
     path('delete_product/<int:product_id>/', delete_product, name='delete_product'),
     path('list-product/', list_product, name='list_product'),
     path('product-setting/', product_setting, name='product_settings'),
+    path('product_defaults/', product_defaults, name='product_defaults'),
 
     path('print-variant/choices/', PrintVariantChoiceAPIView.as_view(), name='print-variant-choices'),
     

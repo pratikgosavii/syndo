@@ -687,7 +687,13 @@ def list_super_catalogue(request):
 def add_product(request):
     AddonFormSet = inlineformset_factory(product, product_addon, form=ProductAddonForm, extra=1, can_delete=True)
     VariantFormSet = inlineformset_factory(product, PrintVariant, form=PrintVariantForm, extra=1, can_delete=True)
-    customize_print_variant_formset = inlineformset_factory(product, CustomizePrintVariant, form=CustomizePrintVariantForm, extra=1, can_delete=True)
+    CustomizePrintVariantFormSet = inlineformset_factory(
+        product,
+        CustomizePrintVariant,
+        form=CustomizePrintVariantForm,
+        extra=1,
+        can_delete=True
+    )
 
     if request.method == 'POST':
         print("POST data:", request.POST)
@@ -703,48 +709,53 @@ def add_product(request):
                 request.POST, request.FILES,
                 instance=product_instance,
                 prefix='addon',
-                form_kwargs={'user': request.user}  # ✅ FIXED
+                form_kwargs={'user': request.user}
             )
             variant_formset = VariantFormSet(
                 request.POST, request.FILES,
                 instance=product_instance,
-                prefix='print_variants'   # And here (must match template)
+                prefix='print_variants'
+            )
+            customize_variant_formset = CustomizePrintVariantFormSet(
+                request.POST, request.FILES,
+                instance=product_instance,
+                prefix='customize_print_variants'
             )
 
-            if addon_formset.is_valid() and variant_formset.is_valid():
+            if addon_formset.is_valid() and variant_formset.is_valid() and customize_variant_formset.is_valid():
                 addon_formset.save()
                 variant_formset.save()
+                customize_variant_formset.save()
                 return redirect('list_product')
             else:
                 print("Addon formset errors:", addon_formset.errors)
                 print("Variant formset errors:", variant_formset.errors)
                 print("Variant formset non-form errors:", variant_formset.non_form_errors())
-
+                print("Customize variant formset errors:", customize_variant_formset.errors)
         else:
             print("Product form errors:", product_form.errors)
-            addon_formset = AddonFormSet(request.POST, request.FILES, prefix='addon')
+            # Fix here: pass instance=None or nothing, but better to create blank formsets for rendering
+            addon_formset = AddonFormSet(request.POST, request.FILES, prefix='addon', form_kwargs={'user': request.user})
             variant_formset = VariantFormSet(request.POST, request.FILES, prefix='print_variants')
+            customize_variant_formset = CustomizePrintVariantFormSet(request.POST, request.FILES, prefix='customize_print_variants')
 
     else:
         product_form = product_Form()
-        addon_formset = AddonFormSet(
-        prefix='addon',
-        form_kwargs={'user': request.user}  # <-- important
-        )
+        addon_formset = AddonFormSet(prefix='addon', form_kwargs={'user': request.user})
         variant_formset = VariantFormSet(prefix='print_variants')
+        customize_variant_formset = CustomizePrintVariantFormSet(prefix='customize_print_variants')
 
-        context = {
-            'form': product_form,
-            'formset': addon_formset,
-            'variant_formset': variant_formset,
-            'customize_print_variant_formset': customize_print_variant_formset,
-        }
-        return render(request, 'add_product.html', context)
-        
+    context = {
+        'form': product_form,
+        'formset': addon_formset,
+        'variant_formset': variant_formset,
+        'customize_print_variant_formset': customize_variant_formset,
+    }
+    return render(request, 'add_product.html', context)
+
 
 @login_required(login_url='login_admin')
 def update_product(request, product_id):
-
     instance = product.objects.get(id=product_id)
 
     AddonFormSet = inlineformset_factory(
@@ -762,8 +773,17 @@ def update_product(request, product_id):
         can_delete=True
     )
 
+    CustomizePrintVariantFormSet = inlineformset_factory(
+        product,
+        CustomizePrintVariant,
+        form=CustomizePrintVariantForm,
+        extra=1,
+        can_delete=True
+    )
+
     if request.method == 'POST':
         product_form = product_Form(request.POST, request.FILES, instance=instance)
+
         addon_formset = AddonFormSet(
             request.POST, request.FILES,
             instance=instance,
@@ -775,38 +795,58 @@ def update_product(request, product_id):
             instance=instance,
             prefix='print_variants'
         )
+        customize_variant_formset = CustomizePrintVariantFormSet(
+            request.POST, request.FILES,
+            instance=instance,
+            prefix='customize_print_variants'
+        )
 
-        if product_form.is_valid() and addon_formset.is_valid() and variant_formset.is_valid():
+        if (
+            product_form.is_valid() and
+            addon_formset.is_valid() and
+            variant_formset.is_valid() and
+            customize_variant_formset.is_valid()
+        ):
             product_instance = product_form.save(commit=False)
             product_instance.user = request.user
             product_instance.save()
 
             addon_formset.save()
             variant_formset.save()
+            customize_variant_formset.save()
+
             return redirect('list_product')
         else:
             print("Product form errors:", product_form.errors)
             print("Addon formset errors:", addon_formset.errors)
             print("Variant formset errors:", variant_formset.errors)
+            print("Customize variant formset errors:", customize_variant_formset.errors)
 
     else:
-        product_form = product_Form(instance=instance)  # ✅ FIXED
+        product_form = product_Form(instance=instance)
         addon_formset = AddonFormSet(
             instance=instance,
             prefix='addon',
-            form_kwargs={'user': request.user}  # ✅ FIXED
+            form_kwargs={'user': request.user}
         )
         variant_formset = VariantFormSet(
             instance=instance,
             prefix='print_variants'
+        )
+        customize_variant_formset = CustomizePrintVariantFormSet(
+            instance=instance,
+            prefix='customize_print_variants'
         )
 
     context = {
         'form': product_form,
         'formset': addon_formset,
         'variant_formset': variant_formset,
+        'customize_print_variant_formset': customize_variant_formset,
     }
     return render(request, 'add_product.html', context)
+
+
         
 
 @login_required(login_url='login_admin')
@@ -837,7 +877,7 @@ def product_setting(request):
         checkbox_fields = [
             'wholesale_price', 'stock', 'imei', 'low_stock_alert', 'category', 'sub_category', 'brand_name', 'color', 'size',
             'batch_number', 'expiry_date', 'description', 'image', 'tax', 'food',
-            'instant_delivery', 'self_pickup', 'general_delivery',
+            'instant_delivery', 'self_pickup', 'general_delivery', 'shop_orders',
             'return_policy', 'cod', 'replacement', 'shop_exchange', 'shop_warranty', 'brand_warranty',
             'online_catalog_only'
         ]
@@ -850,6 +890,48 @@ def product_setting(request):
 
     return render(request, 'product_settings.html', {'settings': settings})
 
+
+
+def product_defaults(request):
+
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
+
+    try:
+        settings = ProductSettings.objects.get(user=request.user)
+        data = {
+            "wholesale_price": settings.wholesale_price,
+            "stock": settings.stock,
+            "imei": settings.imei,
+            "low_stock_alert": settings.low_stock_alert,
+            "category": settings.category,
+            "sub_category": settings.sub_category,
+            "brand_name": settings.brand_name,
+            "color": settings.color,
+            "size": settings.size,
+            "batch_number": settings.batch_number,
+            "expiry_date": settings.expiry_date,
+            "description": settings.description,
+            "image": settings.image,
+            "tax": settings.tax,
+            "food": settings.food,
+            "instant_delivery": settings.instant_delivery,
+            "self_pickup": settings.self_pickup,
+            "general_delivery": settings.general_delivery,
+            "shop_orders": settings.shop_orders,
+            "return_policy": settings.return_policy,
+            "cod": settings.cod,
+            "replacement": settings.replacement,
+            "shop_exchange": settings.shop_exchange,
+            "shop_warranty": settings.shop_warranty,
+            "brand_warranty": settings.brand_warranty,
+            "online_catalog_only": settings.online_catalog_only,
+        }
+        return JsonResponse({"success": True, "data": data})
+
+    except ProductSettings.DoesNotExist:
+        return JsonResponse({"success": False, "error": "No defaults found"})
 
 
 
@@ -1883,7 +1965,7 @@ def sale_invoice(request, sale_id):
         data['cgst_amount'] = round(data['taxable_value'] * data['cgst_rate'] / 100, 2)
         data['total_tax'] = data['sgst_amount'] + data['cgst_amount']
 
-    return render(request, 'sale_invoice/sale_invoice.html', {
+    return render(request, 'sale_invoice/igst_quotation.html', {
         'sale_instance': sale,
         'wholesale': wholesale,
         'total_amount': total_amount,

@@ -325,9 +325,9 @@ textarea[name="terms"] {
                     <label for="packaging_charges" class="form-label">
                       <i class="bi bi-box2"></i> Eway Bill No
                     </label>
-                    {{ form.eway_bill_number }}
-                    {% if form.eway_bill_number.errors %}
-                      <div class="text-danger">{{ form.eway_bill_number.errors.0 }}</div>
+                    {{ form.eway_bill_no }}
+                    {% if form.eway_bill_no.errors %}
+                      <div class="text-danger">{{ form.eway_bill_no.errors.0 }}</div>
                     {% endif %}
                   </div>
 
@@ -335,9 +335,9 @@ textarea[name="terms"] {
                     <label for="packaging_charges" class="form-label">
                       <i class="bi bi-box2"></i>LR Number
                     </label>
-                    {{ form.lr_number }}
-                    {% if form.lr_number.errors %}
-                      <div class="text-danger">{{ form.lr_number.errors.0 }}</div>
+                    {{ form.lr_no }}
+                    {% if form.lr_no.errors %}
+                      <div class="text-danger">{{ form.lr_no.errors.0 }}</div>
                     {% endif %}
                   </div>
 
@@ -345,9 +345,9 @@ textarea[name="terms"] {
                     <label for="packaging_charges" class="form-label">
                       <i class="bi bi-box2"></i>Vehicle Number
                     </label>
-                    {{ form.vehicle_number }}
-                    {% if form.vehicle_number.errors %}
-                      <div class="text-danger">{{ form.vehicle_number.errors.0 }}</div>
+                    {{ form.vehicle_no }}
+                    {% if form.vehicle_no.errors %}
+                      <div class="text-danger">{{ form.vehicle_no.errors.0 }}</div>
                     {% endif %}
                   </div>
 

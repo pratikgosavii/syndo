@@ -99,6 +99,10 @@ input:checked + .slider:before {
                     <form method="POST" enctype="multipart/form-data">
                         {% csrf_token %}
                         
+                        <div style="justify-content: right; display: flex;">
+                        <button type="button" id="use-defaults-btn" class="btn btn-warning">Use Defaults</button>
+                        </div>
+
                         
                         <div class="mb-3">
                             <label for="id_product_type" class="form-label">Product Type</label>
@@ -137,7 +141,7 @@ input:checked + .slider:before {
                         <div id="customizePrintToggleWrapper" style="display: none;">
                             <label>Customize Print?</label><br>
                             <label class="switch">
-                                <input type="checkbox" id="customPrintToggle">
+                                {{ form.is_customize }}
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -188,10 +192,12 @@ input:checked + .slider:before {
                             <label for="id_unit" class="form-label">Unit</label>
                             {{ form.unit }}
                         </div>
-
-                        <div class="mb-3">
-                            <label for="id_size" class="form-label">Size</label>
-                            {{ form.size }}
+                       
+                        <div class="product-only-field">
+                            <div class="mb-3">
+                                <label for="id_size" class="form-label product-only-field">Size</label>
+                                {{ form.size }}
+                            </div>
                         </div>
                     
                         <div class="mb-3">
@@ -209,6 +215,9 @@ input:checked + .slider:before {
                             <label for="id_gst" class="form-label">GST (%)</label>
                             {{ form.gst }}
                             </div>
+
+                            <span style="color:red;">  *  To enable GST details please select as registered business in company settings </span>
+
                         </div>
                     
                         <!-- Stock -->
@@ -503,6 +512,8 @@ input:checked + .slider:before {
                         </div>
                     
                         <!-- Flags -->
+                        
+
                         <hr>
 
                         {% if request.user.is_superuser %}
@@ -558,22 +569,6 @@ input:checked + .slider:before {
 {% block extra_js %}
 <script>
     // Image preview
-    document.getElementById("id_image").addEventListener("change", function () {
-        const file = this.files[0];
-        const preview = document.getElementById("preview");
-
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                preview.src = event.target.result;
-                preview.hidden = false;
-            };
-            reader.readAsDataURL(file);
-        } else {
-            preview.src = "";
-            preview.hidden = true;
-        }
-    });
 </script>
 
 
@@ -711,15 +706,37 @@ input:checked + .slider:before {
         const option = document.createElement('option');
         option.value = value;
         option.text = text;
+        option.selected = true; // <-- mark as selected
         saleType.appendChild(option);
     }
 
     function setSaleTypeOptionsForPrint() {
-        clearSaleTypeOptions();
-        addSaleTypeOption('online', 'Online Only');
-        saleType.value = 'online';
-        saleType.setAttribute('disabled', true);
-    }
+    // Clear old options
+    saleType.innerHTML = '';
+
+    // Create and append new option
+    let option = document.createElement('option');
+    option.value = 'online';
+    option.text = 'Online Only';
+    option.selected = true;
+    saleType.appendChild(option);
+
+    // Set value explicitly
+    saleType.value = 'online';
+
+    // Prevent user from changing it visually
+    saleType.addEventListener('mousedown', function (e) {
+        e.preventDefault(); // stops dropdown from opening
+    });
+
+    // Add a hidden input so value still goes to server
+    let hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'sale_type';
+    hiddenInput.value = saleType.value;
+    saleType.parentNode.appendChild(hiddenInput);
+}
+
 
 
     function setSaleTypeOptionsDefault(productType) {
@@ -1047,8 +1064,8 @@ function handleCustomPrintToggleChange() {
         customPrintWrapper.style.display = 'block';
 
        customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-            el.disabled = true;
-            el.required = true;
+            el.disabled = false;
+            el.required = false;
         });
 
         if (select) {
@@ -1062,8 +1079,8 @@ function handleCustomPrintToggleChange() {
         
 
          customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-            el.disabled = false;
-            el.required = false;
+            el.disabled = true;
+            el.required = true;
         });
 
         if (select) {
@@ -1101,6 +1118,52 @@ function handleCustomPrintToggleChange() {
 
     </script>
     
+
+
+
+<script>
+
+    document.getElementById("use-defaults-btn").addEventListener("click", function () {
+    fetch("{% url 'product_defaults' %}")
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                const data = result.data;
+                for (const field in data) {
+                    console.log(field)
+                    try {
+                        let el = document.querySelector(`[name="${field}"]`);
+                        if (el && data[field] !== null && data[field] !== "") {
+                            if (el.tagName.toLowerCase() === 'select') {
+                                el.value = data[field];
+                            }
+                            else if (el.type === 'file') {
+                                console.warn(`Skipping file input: ${field}`);
+                            }
+                            else if (el.type === 'checkbox') {
+                                el.checked = Boolean(data[field]); // ✅ handle checkboxes
+                            }
+                            else {
+                                el.value = data[field];
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`Error setting field "${field}":`, err);
+                    }
+                }
+            } else {
+                console.warn("No defaults found or failed to fetch.");
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching defaults:", error);
+        });
+    });
+
+
+</script>
+
+
 
 
 

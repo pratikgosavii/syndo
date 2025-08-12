@@ -151,6 +151,7 @@ class product_Form(forms.ModelForm):
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'gallery_images': forms.ClearableFileInput(attrs={'class': 'form-control'}),
 
+            'is_customize': forms.CheckboxInput(attrs={'class': 'form-check-input', "id" : "customPrintToggle"}),
             'instant_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'self_pickup': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'general_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -407,6 +408,11 @@ class PurchaseForm(forms.ModelForm):
 
             'advance_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'advance_mode': forms.Select(attrs={'class': 'form-control'}),
+            
+            'eway_bill_no': forms.TextInput(attrs={'class': 'form-control'}),
+            'lr_no': forms.TextInput(attrs={'class': 'form-control'}),
+            'vehicle_no': forms.TextInput(attrs={'class': 'form-control', 'id' : 'vehicle_number'}),
+            'transport_name': forms.TextInput(attrs={'class': 'form-control', 'id' : 'vehicle_number'}),
 
             'dispatch_address': forms.TextInput(attrs={'class': 'form-control'}),
             'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
