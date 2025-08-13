@@ -677,6 +677,27 @@ class Sale(models.Model):
         ('credit', 'Credit'),
     ]
 
+    DISCOUNT_TYPE_CHOICES = [
+        ('percent', 'Percentage'),
+        ('amount', 'Fixed Amount'),
+    ]
+
+    ADVANCE_PAYMENT_METHOD_CHOICES = [
+        ('bank', 'Bank'),
+        ('cash', 'Cash'),
+    ]
+
+    # existing fields...
+
+    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, null=True, blank=True)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    advance_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    advance_payment_method = models.CharField(max_length=10, choices=ADVANCE_PAYMENT_METHOD_CHOICES, null=True, blank=True)
+
+    due_date = models.DateField(null=True, blank=True)
+    
+
     company_profile = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, null=True, blank=True, related_name="company_profile")
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True, related_name="customer")
