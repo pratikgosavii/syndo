@@ -167,16 +167,30 @@ textarea[name="terms"] {
                   <div class="d-flex justify-content-between align-items-center">
                     <div>
                       <!-- Static purchase code display -->
-                      <strong id="purchase_code_display">{{ form.purchase_code.value }}</strong>
-                      {% if form.purchase_code.errors %}
-                        <div class="text-danger mt-1 small">
-                          {{ form.purchase_code.errors.0 }}
-                        </div>
-                      {% endif %}
-                      <!-- Hidden input for editing purchase code -->
-                      <input type="text" name="purchase_code" id="purchase_code_input"
-                            value="{{ form.purchase_code.value }}"
-                            class="form-control form-control-sm d-none" style="width: 150px;" />
+                  
+
+                      <div class="mb-3">
+                        <label class="form-label">Purchase Code</label>
+
+
+                        {% if form.purchase_code %}
+                            <!-- Add form: show readonly input -->
+                            {{ form.purchase_code }}
+                        {% else %}
+                            <!-- Update form: show static bold text -->
+                            <strong class="fw-bold">{{ form.instance.purchase_code }}</strong>
+                        {% endif %}
+                      </div>
+
+
+
+                      
+
+
+
+
+                      
+                      
                     </div>
 
                     <div class="text-muted">
@@ -216,28 +230,44 @@ textarea[name="terms"] {
                   <h5>Products</h5>
 
                   <div id="products-wrapper">
-                    {% for pid in existing_product_ids %}
-                      <div class="product-row mb-2 d-flex align-items-center">
-                        <select name="products" class="form-control product-select">
-                          {% for p in data %}
-                            <option value="{{ p.id }}" {% if p.id == pid %}selected{% endif %}>{{ p.name }}</option>
-                          {% endfor %}
-                        </select>
+  {% for pid in existing_product_ids %}
+    <div class="product-row row g-2 mb-2 align-items-center">
 
+      <!-- Product Dropdown -->
+      <div class="col-md-4">
+        <select name="products" class="form-control product-select">
+          {% for p in data %}
+            <option value="{{ p.id }}" {% if p.id == pid %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
+      <!-- Quantity -->
+      <div class="col-md-2">
+        <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="1">
+      </div>
 
-                        <button type="button" class="btn btn-danger btn-sm ms-2 remove-row">Remove</button>
-                      </div>
-                    {% empty %}
-                      <!-- Optionally add a default empty row here if no products exist -->
-                    {% endfor %}
-                  </div>
+      <!-- Price -->
+      <div class="col-md-2">
+        <input type="text" name="price" class="form-control price" placeholder="Price" readonly>
+      </div>
 
+      <!-- Total -->
+      <div class="col-md-2">
+        <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly>
+      </div>
 
+      <!-- Remove Button -->
+      <div class="col-md-2">
+        <button type="button" class="btn btn-danger btn-sm w-100 remove-row">Remove</button>
+      </div>
 
-                  
+    </div>
+  {% empty %}
+  {% endfor %}
+</div>
 
-                  <button type="button" id="add-product" class="btn btn-secondary mt-2 mb-3">Add Product</button>
+<button type="button" id="add-product" class="btn btn-secondary mt-2 mb-3">Add Product</button>
 
                   <br>
                 </div>
@@ -553,76 +583,120 @@ function displaySelectedImages() {
 </script>
 
 <script>
-    function createProductSelect() {
+function createProductRow() {
+    const row = document.createElement('div');
+    row.className = 'product-row row g-2 mb-2 align-items-center';
+
+    // Product select
+    const colProduct = document.createElement('div');
+    colProduct.className = 'col-md-4';
     const select = document.createElement('select');
     select.name = 'products';
     select.className = 'form-control product-select';
     select.innerHTML = document.getElementById('product-options').innerHTML;
+    colProduct.appendChild(select);
 
-    // Ensure Select2 works after adding to DOM
-    setTimeout(() => {
-        $(select).select2({
-            placeholder: "Select a product",
-            width: '100%'
-        });
+    // Quantity
+    const colQty = document.createElement('div');
+    colQty.className = 'col-md-2';
+    const qty = document.createElement('input');
+    qty.type = 'number';
+    qty.name = 'quantity';
+    qty.className = 'form-control quantity';
+    qty.value = 1;
+    qty.min = 1;
+    colQty.appendChild(qty);
 
-        // Listen for product change
-        $(select).on('change', function () {
-            const selectedOption = this.options[this.selectedIndex];
-            const price = selectedOption.getAttribute('data-price'); // From HTML attribute
-            if (price) {
-                // Find the price input in the same row
-                const row = $(this).closest('tr');
-                row.find('.price-input').val(price);
-            }
-        });
-    }, 0);
+    // Price
+    const colPrice = document.createElement('div');
+    colPrice.className = 'col-md-2';
+    const price = document.createElement('input');
+    price.type = 'text';
+    price.name = 'price';
+    price.className = 'form-control price';
+    price.placeholder = 'Price';
+    price.readOnly = true;
+    colPrice.appendChild(price);
 
-    return select;
+    // Total
+    const colTotal = document.createElement('div');
+    colTotal.className = 'col-md-2';
+    const total = document.createElement('input');
+    total.type = 'text';
+    total.name = 'total_price';
+    total.className = 'form-control total-price';
+    total.placeholder = 'Total';
+    total.readOnly = true;
+    colTotal.appendChild(total);
+
+    // Remove
+    const colRemove = document.createElement('div');
+    colRemove.className = 'col-md-2';
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-danger btn-sm w-100 remove-row';
+    removeBtn.textContent = 'Remove';
+    colRemove.appendChild(removeBtn);
+
+    // Append all cols to row
+    row.appendChild(colProduct);
+    row.appendChild(colQty);
+    row.appendChild(colPrice);
+    row.appendChild(colTotal);
+    row.appendChild(colRemove);
+
+    return row;
 }
 
+// Add new product row
+document.getElementById('add-product').addEventListener('click', function () {
+    const wrapper = document.getElementById('products-wrapper');
+    const newRow = createProductRow();
+    wrapper.appendChild(newRow);
+    $(newRow).find('.product-select').select2({placeholder:'Select Product', width:'100%'});
+});
 
-    function initSelect2() {
-        $('.product-select').select2({
-            placeholder: 'Select product',
-            allowClear: true,
-            width : "100%",
-            width: 'resolve'
-        });
+// Remove row
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('remove-row')) {
+        const rows = document.querySelectorAll('.product-row');
+        if (rows.length > 1) e.target.closest('.product-row').remove();
     }
+});
 
-    
+// Fetch price on product change
+$(document).on('select2:select', '.product-select', function (e) {
+    const $row = $(this).closest('.product-row');
+    const productId = $(this).val();
+    const qty = parseFloat($row.find('.quantity').val()) || 0;
 
-    // ✅ Add new row
-    document.getElementById('add-product').addEventListener('click', function () {
-        const wrapper = document.getElementById('products-wrapper');
-
-        const row = document.createElement('div');
-        row.className = 'product-row mb-2 d-flex align-items-center';
-
-        const select = createProductSelect();
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'btn btn-danger btn-sm ms-2 remove-row';
-        removeBtn.textContent = 'Remove';
-
-        row.appendChild(select);
-        row.appendChild(removeBtn);
-        wrapper.appendChild(row);
-
-        initSelect2();
-    });
-
-    // ✅ Remove row
-    document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('remove-row')) {
-            const rows = document.querySelectorAll('.product-row');
-            if (rows.length > 1) {
-                e.target.closest('.product-row').remove();
-            }
+    $.ajax({
+        url: "{% url 'get_product_price' %}",
+        data: { product_id: productId },
+        success: function(data){
+            const price = parseFloat(data.price) || 0;
+            $row.find('.price').val(price.toFixed(2));
+            $row.find('.total-price').val((qty*price).toFixed(2));
+        },
+        error: function(){
+            $row.find('.price').val('');
+            $row.find('.total-price').val('');
         }
     });
+});
+
+
+// Update total on quantity change
+document.addEventListener('input', function(e){
+    if(e.target.classList.contains('quantity')){
+        const row = e.target.closest('.product-row');
+        const price = parseFloat(row.querySelector('.price').value) || 0;
+        const qty = parseFloat(e.target.value) || 0;
+        row.querySelector('.total-price').value = (price*qty).toFixed(2);
+    }
+});
 </script>
+
 
 
 

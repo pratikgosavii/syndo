@@ -164,33 +164,6 @@ class PartySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-
-class SaleItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.name', read_only=True)
-    
-    class Meta:
-        model = SaleItem
-        fields = ['id', 'product', 'product_name', 'quantity', 'price', 'amount']
-
-class SaleSerializer(serializers.ModelSerializer):
-    items = SaleItemSerializer(many=True)
-    total_items = serializers.ReadOnlyField()
-    total_amount = serializers.ReadOnlyField()
-    total_tax = serializers.ReadOnlyField()
-    final_amount = serializers.ReadOnlyField()
-
-    class Meta:
-        model = Sale
-        fields = ['id', 'party', 'discount_percentage', 'credit_time_days', 'created_at',
-                  'items', 'total_items', 'total_amount', 'total_tax', 'final_amount']
-
-    def create(self, validated_data):
-        items_data = validated_data.pop('items')
-        sale = Sale.objects.create(user=self.context['request'].user, **validated_data)
-        for item in items_data:
-            SaleItem.objects.create(user=self.context['request'].user, sale=sale, **item)
-        return sale
-
         
 class StoreWorkingHourSerializer(serializers.ModelSerializer):
     class Meta:
@@ -240,52 +213,105 @@ class PosWholesaleSerializer(serializers.ModelSerializer):
             'transport_name', 'number_of_parcels'
         ]
 
-class SaleSerializer(serializers.ModelSerializer):
+from rest_framework.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 
+class SaleItemSerializer(serializers.ModelSerializer):
+    amount = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = SaleItem
+        fields = ['product', 'quantity', 'price', 'amount']
+
+    def get_amount(self, obj):
+        return round(obj.quantity * obj.price, 2)
+
+
+class PosWholesaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = pos_wholesale
+        fields = [
+            'invoice_type', 'invoice_number', 'date',
+            'dispatch_address', 'delivery_city', 'signature',
+            'references', 'notes', 'terms',
+            'delivery_charges', 'packaging_charges', 'reverse_charges',
+            'eway_bill_number', 'lr_number', 'vehicle_number',
+            'transport_name', 'number_of_parcels'
+        ]
+
+
+class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True)
-    wholesale_invoice = PosWholesaleSerializer(required=False)
+    wholesale_invoice_details = serializers.SerializerMethodField(read_only=True)
+
+    # Read-only totals
+    total_items = serializers.IntegerField(read_only=True)
+    total_amount_before_discount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    discount_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    total_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = Sale
         fields = [
             'id', 'payment_method', 'company_profile', 'customer',
-            'discount_percentage', 'credit_time_days', 'is_wholesale_rate',
-            'items', 'wholesale_invoice'
+            'discount_percentage', 'credit_date', 'is_wholesale_rate',
+            'items', 'total_items', 'total_amount_before_discount',
+            'discount_amount', 'total_amount', 'wholesale_invoice_details'
         ]
+
+    def get_wholesale_invoice_details(self, obj):
+        invoice = obj.wholesales.first()  # fetch first linked wholesale invoice
+        if invoice:
+            return PosWholesaleSerializer(invoice).data
+        return None
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         wholesale_data = validated_data.pop('wholesale_invoice', None)
-
-        # Ensure no duplicate 'user'
         validated_data.pop('user', None)
 
-        # Create Sale
-        sale = Sale.objects.create(
-            user=self.context['request'].user,
-            **validated_data
-        )
+        try:
+            with transaction.atomic():
+                # Create Sale
+                sale = Sale.objects.create(
+                    user=self.context['request'].user,
+                    **validated_data
+                )
 
-        # Create Sale Items
-        for item in items_data:
-            SaleItem.objects.create(
-                user=sale.user,
-                sale=sale,
-                **item
-            )
+                # Create Sale Items
+                for item in items_data:
+                    SaleItem.objects.create(
+                        user=sale.user,
+                        sale=sale,
+                        **item
+                    )
 
-        # Create Wholesale Invoice if applicable
-        if sale.is_wholesale_rate and wholesale_data:
-            pos_wholesale.objects.create(
-                user=sale.user,
-                sale=sale,
-                **wholesale_data
-            )
+                # Update totals AFTER items are created
+                total_items = sum(item.quantity for item in sale.items.all())
+                total_amount_before_discount = sum(item.quantity * item.price for item in sale.items.all())
+                discount_amount = total_amount_before_discount * (sale.discount_percentage or 0) / 100
+                total_amount = total_amount_before_discount - discount_amount
 
-        return sale
+                sale.total_items = total_items
+                sale.total_amount_before_discount = total_amount_before_discount
+                sale.discount_amount = discount_amount
+                sale.total_amount = total_amount
+                sale.save()
 
+                # Create Wholesale Invoice if applicable
+                if sale.is_wholesale_rate and wholesale_data:
+                    pos_wholesale.objects.create(
+                        user=sale.user,
+                        sale=sale,
+                        **wholesale_data
+                    )
 
+                return sale
 
+        except IntegrityError as e:
+            raise ValidationError({"detail": str(e)})
+        except Exception as e:
+            raise ValidationError({"detail": f"An unexpected error occurred: {str(e)}"})
 
 
 class DeliverySettingsSerializer(serializers.ModelSerializer):

@@ -1374,9 +1374,19 @@ def add_purchase(request):
             forms.save()
             
             product_ids = request.POST.getlist('products')
-            for pid in product_ids:
-                if pid:
-                    PurchaseItem.objects.create(purchase=forms, product_id=pid)
+            quantity_ids = request.POST.getlist('quantity')
+            price_ids = request.POST.getlist('price')
+            total_price_ids = request.POST.getlist('total_price')
+
+            for product_id, qty, price, total in zip(product_ids, quantity_ids, price_ids, total_price_ids):
+                if product_id:  # make sure it's not empty
+                    PurchaseItem.objects.create(
+                        purchase=forms,
+                        product_id=int(product_id),
+                        quantity=int(qty) if qty else 0,
+                        price=float(price) if price else 0.0,
+                        total=float(total) if total else 0.0
+                    )
 
             return redirect('list_purchase')  # or your desired URL
    
@@ -1404,7 +1414,6 @@ def add_purchase(request):
 
 @login_required(login_url='login_admin')
 def update_purchase(request, purchase_id):
-
     data = product.objects.all()
     instance = Purchase.objects.get(id=purchase_id)
 
@@ -1412,26 +1421,36 @@ def update_purchase(request, purchase_id):
         form = PurchaseForm(request.POST, request.FILES, instance=instance, user=request.user)
 
         if form.is_valid():
-            form.save()
+            purchase = form.save(commit=False)
+            purchase.user = request.user  # Ensure user is set
+            # Do NOT touch purchase_code
+            purchase.save()
 
+            # Get product items from POST
             product_ids = request.POST.getlist('products')
+            quantities = request.POST.getlist('quantity')
+            prices = request.POST.getlist('price')
+            totals = request.POST.getlist('total_price')
 
-            # Clear old purchase items for this purchase only
+            # Delete old items
             instance.items.all().delete()
 
-            # Add new purchase items
-            for pid in product_ids:
-                if pid:  # skip empty
+            # Add new items
+            for pid, qty, price, total in zip(product_ids, quantities, prices, totals):
+                if pid:
                     PurchaseItem.objects.create(
                         purchase=instance,
-                        product_id=pid
+                        product_id=int(pid),
+                        quantity=int(qty) if qty else 0,
+                        price=float(price) if price else 0.0,
+                        total=float(total) if total else 0.0
                     )
 
             return redirect('list_purchase')
         else:
             print(form.errors)
     else:
-        form = PurchaseForm(instance=instance)
+        form = PurchaseForm(instance=instance, user=request.user)
 
     existing_product_ids = list(instance.items.values_list('product_id', flat=True))
 
@@ -1441,6 +1460,8 @@ def update_purchase(request, purchase_id):
         'data': data,
     }
     return render(request, 'add_purchase.html', context)
+
+
 
 
         

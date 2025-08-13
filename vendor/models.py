@@ -604,6 +604,9 @@ class Purchase(models.Model):
 class PurchaseItem(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
 
     def __str__(self):
         return f"{self.purchase.id} ({self.product.name})"
@@ -668,8 +671,8 @@ class Party(models.Model):
 
 from decimal import Decimal
 
-class Sale(models.Model):
 
+class Sale(models.Model):
     PAYMENT_CHOICES = [
         ('upi', 'UPI'),
         ('card', 'Card'),
@@ -677,56 +680,35 @@ class Sale(models.Model):
         ('credit', 'Credit'),
     ]
 
-
     ADVANCE_PAYMENT_METHOD_CHOICES = [
         ('bank', 'Bank'),
         ('cash', 'Cash'),
     ]
 
-    # existing fields...
-
-
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    company_profile = models.ForeignKey('CompanyProfile', on_delete=models.CASCADE, null=True, blank=True)
+    customer = models.ForeignKey('vendor_customers', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
     advance_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     advance_payment_method = models.CharField(max_length=10, choices=ADVANCE_PAYMENT_METHOD_CHOICES, null=True, blank=True)
-
     due_date = models.DateField(null=True, blank=True)
     
-
-    company_profile = models.ForeignKey(CompanyProfile, on_delete=models.CASCADE, null=True, blank=True, related_name="company_profile")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    customer = models.ForeignKey(vendor_customers, on_delete=models.SET_NULL, null=True, blank=True, related_name="customer")
-
-    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
-
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    # Summary fields
+    total_items = models.PositiveIntegerField(default=0)
+    total_amount_before_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
-    credit_time_days = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    credit_date = models.DateTimeField(auto_now_add=False)
     is_wholesale_rate = models.BooleanField(default=False)
-
     created_at = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def total_items(self):
-        return sum(item.quantity for item in self.items.all())
-
-    @property
-    def total_amount(self):
-        return sum(item.amount for item in self.items.all())
-
-    @property
-    def total_discount(self):
-        return round((self.discount_percentage / Decimal("100")) * self.total_amount, 2)
-
-  
-    @property
-    def final_amount(self):
-        return round(self.total_amount - self.total_discount, 2)
 
     def __str__(self):
         return f"Sale #{self.id}"
-    
-    
+
 
 class SaleItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
