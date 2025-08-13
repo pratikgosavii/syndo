@@ -227,24 +227,64 @@ class SaleItemSerializer(serializers.ModelSerializer):
         fields = ['product', 'quantity', 'price']
 
 
+
+class PosWholesaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = pos_wholesale
+        fields = [
+            'invoice_type', 'invoice_number', 'date',
+            'dispatch_address', 'delivery_city', 'signature',
+            'references', 'notes', 'terms',
+            'delivery_charges', 'packaging_charges', 'reverse_charges',
+            'eway_bill_number', 'lr_number', 'vehicle_number',
+            'transport_name', 'number_of_parcels'
+        ]
+
 class SaleSerializer(serializers.ModelSerializer):
+
     items = SaleItemSerializer(many=True)
-    
+    wholesale_invoice = PosWholesaleSerializer(required=False)
+
     class Meta:
         model = Sale
         fields = [
             'id', 'payment_method', 'company_profile', 'customer',
             'discount_percentage', 'credit_time_days', 'is_wholesale_rate',
-            'items'
+            'items', 'wholesale_invoice'
         ]
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
-        sale = Sale.objects.create(**validated_data)
+        wholesale_data = validated_data.pop('wholesale_invoice', None)
 
+        # Ensure no duplicate 'user'
+        validated_data.pop('user', None)
+
+        # Create Sale
+        sale = Sale.objects.create(
+            user=self.context['request'].user,
+            **validated_data
+        )
+
+        # Create Sale Items
         for item in items_data:
-            SaleItem.objects.create(user=sale.user, sale=sale, **item)
+            SaleItem.objects.create(
+                user=sale.user,
+                sale=sale,
+                **item
+            )
+
+        # Create Wholesale Invoice if applicable
+        if sale.is_wholesale_rate and wholesale_data:
+            pos_wholesale.objects.create(
+                user=sale.user,
+                sale=sale,
+                **wholesale_data
+            )
+
         return sale
+
+
 
 
 

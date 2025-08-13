@@ -522,9 +522,21 @@ class SaleForm(forms.ModelForm):
         widgets = {
             'customer': forms.Select(attrs={'class': 'form-select select2'}),
             'sale_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'payment_type': forms.Select(attrs={'class': 'form-select'}),
+
+            # payment type (main payment)
+            'payment_method': forms.Select(attrs={'class': 'form-select'}),
+
             'company_profile': forms.Select(attrs={'class': 'form-select'}),
             'total_amount': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+
+            # new POS-specific fields
+            'discount_type': forms.Select(attrs={'class': 'form-select'}),
+            'discount_value': forms.NumberInput(attrs={'class': 'form-control'}),
+
+            'advance_payment_amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'advance_payment_method': forms.Select(attrs={'class': 'form-select'}),
+
+            'due_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -535,6 +547,7 @@ class SaleForm(forms.ModelForm):
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
 
+            
 
 class pos_wholesaleForm(forms.ModelForm):
     class Meta:
