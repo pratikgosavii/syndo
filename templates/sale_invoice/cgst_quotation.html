@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Quotation - CGST + SGST</title>
+<style>
+    body { font-family: Arial, sans-serif; font-size: 13px; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: auto; border: 1px solid #000; padding: 15px; }
+    .header { display: flex; justify-content: space-between; align-items: center; }
+    .header h2 { margin: 0; }
+    .details { margin-top: 10px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #000; padding: 5px; text-align: left; }
+    th { background: #f0f0f0; }
+    .right { text-align: right; }
+    .total-table td { border: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>QUOTATION</h2>
+        <div>Date: 13/08/2025</div>
+    </div>
+
+    <div class="details">
+        <strong>Customer Name:</strong> John Doe<br>
+        <strong>Address:</strong> 123 Main Street, City, State
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Sr.</th>
+                <th>Description</th>
+                <th class="right">Qty</th>
+                <th class="right">Rate</th>
+                <th class="right">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>Product A</td>
+                <td class="right">2</td>
+                <td class="right">500.00</td>
+                <td class="right">1000.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="total-table" style="margin-top:10px; width:100%;">
+        <tr>
+            <td style="width:70%; text-align:right;">Sub Total:</td>
+            <td class="right">1000.00</td>
+        </tr>
+        <tr>
+            <td style="text-align:right;">CGST @ 9%:</td>
+            <td class="right">90.00</td>
+        </tr>
+        <tr>
+            <td style="text-align:right;">SGST @ 9%:</td>
+            <td class="right">90.00</td>
+        </tr>
+        <tr>
+            <td style="text-align:right; font-weight:bold;">Grand Total:</td>
+            <td class="right"><strong>1180.00</strong></td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

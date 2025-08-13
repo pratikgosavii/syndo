@@ -223,6 +223,9 @@ textarea[name="terms"] {
                             <option value="{{ p.id }}" {% if p.id == pid %}selected{% endif %}>{{ p.name }}</option>
                           {% endfor %}
                         </select>
+
+
+
                         <button type="button" class="btn btn-danger btn-sm ms-2 remove-row">Remove</button>
                       </div>
                     {% empty %}
@@ -551,12 +554,33 @@ function displaySelectedImages() {
 
 <script>
     function createProductSelect() {
-        const select = document.createElement('select');
-        select.name = 'products';
-        select.className = 'form-control product-select';
-        select.innerHTML = document.getElementById('product-options').innerHTML;
-        return select;
-    }
+    const select = document.createElement('select');
+    select.name = 'products';
+    select.className = 'form-control product-select';
+    select.innerHTML = document.getElementById('product-options').innerHTML;
+
+    // Ensure Select2 works after adding to DOM
+    setTimeout(() => {
+        $(select).select2({
+            placeholder: "Select a product",
+            width: '100%'
+        });
+
+        // Listen for product change
+        $(select).on('change', function () {
+            const selectedOption = this.options[this.selectedIndex];
+            const price = selectedOption.getAttribute('data-price'); // From HTML attribute
+            if (price) {
+                // Find the price input in the same row
+                const row = $(this).closest('tr');
+                row.find('.price-input').val(price);
+            }
+        });
+    }, 0);
+
+    return select;
+}
+
 
     function initSelect2() {
         $('.product-select').select2({

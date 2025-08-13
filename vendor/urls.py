@@ -137,7 +137,7 @@ urlpatterns = [
 
     path('sale-bill-details/<sale_id>', sale_bill_details, name='sale_bill_details'),
 
-    path('get_product_price/', get_product_price, name='get_product_price'),
+    path('get_product_price/<producy', get_product_price, name='get_product_price'),
     path('pos-wholesale/<sale_id>', pos_wholesaless, name='pos_wholesale'),
     path('sale-invoice/<sale_id>', sale_invoice, name='sale_invoice'),
 
