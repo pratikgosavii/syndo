@@ -393,48 +393,49 @@ class PurchaseForm(forms.ModelForm):
 
     class Meta:
         model = Purchase
-        exclude = ['user']  # We don't want the user to manually pick this
+        exclude = ['user']  # user will be set in the view
         widgets = {
             'purchase_code': forms.TextInput(attrs={'class': 'form-control'}),
             'vendor': forms.Select(attrs={'class': 'form-control'}),
-
             'supplier_invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'serial_number': forms.TextInput(attrs={'class': 'form-control'}),
-
             'discount_percent': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-
             'payment_method': forms.Select(attrs={'class': 'form-control', 'id': 'payment_method'}),
-
             'advance_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'advance_mode': forms.Select(attrs={'class': 'form-control'}),
-            
             'eway_bill_no': forms.TextInput(attrs={'class': 'form-control'}),
             'lr_no': forms.TextInput(attrs={'class': 'form-control'}),
             'vehicle_no': forms.TextInput(attrs={'class': 'form-control', 'id' : 'vehicle_number'}),
             'transport_name': forms.TextInput(attrs={'class': 'form-control', 'id' : 'vehicle_number'}),
-
             'dispatch_address': forms.TextInput(attrs={'class': 'form-control'}),
             'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-
             'delivery_shipping_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'packaging_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
 
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # 👈 move this up first
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if not self.instance.pk or not self.instance.purchase_code:
+        if self.instance.pk:
+            # Update: remove field from POST handling, just display in template
+            self.fields.pop('purchase_code', None)
+        else:
+            # Add: generate unique code
             self.fields['purchase_code'].initial = self.generate_unique_code()
+            self.fields['purchase_code'].widget.attrs.update({
+                'readonly': True,
+                'class': 'form-control fw-bold'
+            })
 
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
 
-            
+
     def generate_unique_code(self):
         prefix = "SVIN-PUR-"
         last_purchase = Purchase.objects.filter(purchase_code__startswith=prefix).order_by('purchase_code').last()
@@ -446,10 +447,10 @@ class PurchaseForm(forms.ModelForm):
                 last_number = int(last_purchase.purchase_code.replace(prefix, ''))
             except (ValueError, AttributeError):
                 last_number = 0
-
             new_number = last_number + 1
 
-        return f"{prefix}{new_number:05d}"  # 5-digit number: 00001, 00002, etc.
+        return f"{prefix}{new_number:05d}"
+
         
 from django.forms import ModelForm, inlineformset_factory
         
