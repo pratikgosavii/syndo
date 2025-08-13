@@ -530,8 +530,8 @@ class SaleForm(forms.ModelForm):
             'total_amount': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
 
             # new POS-specific fields
-            'discount_type': forms.Select(attrs={'class': 'form-select'}),
-            'discount_value': forms.NumberInput(attrs={'class': 'form-control'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'discount-amount-input'}),
+            'discount_percent': forms.NumberInput(attrs={'class': 'form-control', 'id': 'discount-percentage'}),
 
             'advance_payment_amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'advance_payment_method': forms.Select(attrs={'class': 'form-select'}),
@@ -547,7 +547,7 @@ class SaleForm(forms.ModelForm):
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
 
-            
+
 
 class pos_wholesaleForm(forms.ModelForm):
     class Meta:

@@ -677,10 +677,6 @@ class Sale(models.Model):
         ('credit', 'Credit'),
     ]
 
-    DISCOUNT_TYPE_CHOICES = [
-        ('percent', 'Percentage'),
-        ('amount', 'Fixed Amount'),
-    ]
 
     ADVANCE_PAYMENT_METHOD_CHOICES = [
         ('bank', 'Bank'),
@@ -689,8 +685,6 @@ class Sale(models.Model):
 
     # existing fields...
 
-    discount_type = models.CharField(max_length=10, choices=DISCOUNT_TYPE_CHOICES, null=True, blank=True)
-    discount_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     advance_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     advance_payment_method = models.CharField(max_length=10, choices=ADVANCE_PAYMENT_METHOD_CHOICES, null=True, blank=True)
@@ -705,6 +699,7 @@ class Sale(models.Model):
     payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
 
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     credit_time_days = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     is_wholesale_rate = models.BooleanField(default=False)
@@ -730,6 +725,8 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"Sale #{self.id}"
+    
+    
 
 class SaleItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)

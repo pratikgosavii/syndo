@@ -254,14 +254,15 @@
             <div class="row mb-3">
               <div class="col-md-4">
                 <label class="form-label">Discount (%)</label>
-                <input type="number" class="form-control" name="discount_percentage" id="discount-percentage" step="any" value="0">
+                {{ form.discount_amount }}
 
                 <label class="form-label mt-2">Discount (₹)</label>
-                <input type="number" class="form-control" id="discount-amount-input" step="any" value="0">
+                                {{ form.discount_percent }}
+
               </div>
               <div class="col-md-4" id="credit_time" style="display: none;">
                 <label class="form-label">Credit Time (days)</label>
-                <input type="date" class="form-control" name="credit_time_days" placeholder="e.g. 60">
+                {{ form.due_date }}
               </div>
             </div>
 
