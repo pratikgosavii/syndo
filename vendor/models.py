@@ -538,6 +538,7 @@ class Reel(models.Model):
 
 
 import uuid
+from django.utils.crypto import get_random_string
 
 class Purchase(models.Model):
     
@@ -597,8 +598,6 @@ class Purchase(models.Model):
 
     def __str__(self):
         return self.purchase_code or f"Purchase #{self.id}"
-
-
 
     
 class PurchaseItem(models.Model):
