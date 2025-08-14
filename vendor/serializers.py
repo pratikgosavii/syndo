@@ -111,6 +111,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context['request']
+        validated_data.pop('user', None)  
         user = request.user
         items_data = validated_data.pop('items', [])
 
@@ -125,6 +126,8 @@ class PurchaseSerializer(serializers.ModelSerializer):
             last_number = 0
         prefix = "PUR"
         new_code = f"{prefix}-{last_number + 1:05d}"
+
+        print(new_code)
 
         purchase = Purchase.objects.create(
             user=user,
