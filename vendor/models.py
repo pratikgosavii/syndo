@@ -700,6 +700,9 @@ class Sale(models.Model):
     total_items = models.PositiveIntegerField(default=0)
     total_amount_before_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    advance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     credit_date = models.DateTimeField(auto_now_add=False)
