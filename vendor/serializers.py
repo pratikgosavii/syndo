@@ -98,32 +98,55 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
         model = PurchaseItem
         fields = ['product']  # exclude 'purchase'
 
-
+    
 
 
 class PurchaseSerializer(serializers.ModelSerializer):
-    items = PurchaseItemSerializer(many=True)  # nested serializer for related items
+    items = PurchaseItemSerializer(many=True)
 
     class Meta:
         model = Purchase
         fields = '__all__'
-        read_only_fields = ['user']
+        read_only_fields = ['user', 'purchase_code']  # ignore incoming purchase_code
 
     def create(self, validated_data):
+        request = self.context['request']
+        user = request.user
         items_data = validated_data.pop('items', [])
-        purchase = Purchase.objects.create(**validated_data)
+
+        # Generate sequential purchase_code (global)
+        last_purchase = Purchase.objects.order_by('-id').first()
+        if last_purchase and last_purchase.purchase_code:
+            try:
+                last_number = int(last_purchase.purchase_code.split('-')[-1])
+            except (IndexError, ValueError):
+                last_number = 0
+        else:
+            last_number = 0
+        prefix = "PUR"
+        new_code = f"{prefix}-{last_number + 1:05d}"
+
+        purchase = Purchase.objects.create(
+            user=user,
+            purchase_code=new_code,
+            **validated_data
+        )
+
         for item_data in items_data:
             PurchaseItem.objects.create(purchase=purchase, **item_data)
+
         return purchase
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', [])
-        # Update Purchase fields
+
+        # Update Purchase fields except purchase_code
         for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+            if attr != 'purchase_code':  # prevent manual change
+                setattr(instance, attr, value)
         instance.save()
 
-        # To keep it simple, clear and recreate all purchase items
+        # Replace all purchase items
         instance.items.all().delete()
         for item_data in items_data:
             PurchaseItem.objects.create(purchase=instance, **item_data)

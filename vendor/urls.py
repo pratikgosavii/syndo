@@ -111,6 +111,7 @@ urlpatterns = [
     path('update-purchase/<int:purchase_id>/', update_purchase, name='update_purchase'),
     path('delete_purchase/<int:purchase_id>/', delete_purchase, name='delete_purchase'),
     path('list-purchase/', list_purchase, name='list_purchase'),
+    path("get-next-purchaseeno/", NextPurchaseNumberAPI.as_view(), name="NextPurchaseNumberAPI"),
 
 
     path('add-addon/', add_addon, name='add_addon'),

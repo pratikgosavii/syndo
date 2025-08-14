@@ -1484,6 +1484,27 @@ def list_purchase(request):
     return render(request, 'list_purchase.html', context)
 
 
+class NextPurchaseNumberAPI(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request):
+        
+        user = request.user
+
+        last_purchase = Purchase.objects.order_by('-id').first()
+        if last_purchase and last_purchase.purchase_code:
+            try:
+                last_number = int(last_purchase.purchase_code.split('-')[-1])
+            except (IndexError, ValueError):
+                last_number = 0
+        else:
+            last_number = 0
+        prefix = "PUR"
+        new_code = f"{prefix}-{last_number + 1:05d}"
+
+        return Response({"purchase_number": new_code})
 
 
 
@@ -1686,6 +1707,8 @@ class NextInvoiceNumberAPI(APIView):
 
         invoice_number = f"{prefix}-{last_number + 1}"
         return Response({"invoice_number": invoice_number})
+
+
 
 
 def get_next_invoice_number_api(request):
