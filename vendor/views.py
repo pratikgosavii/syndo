@@ -1649,8 +1649,49 @@ from django.shortcuts import render, redirect
 from .models import Sale, SaleItem, Party, product  # Adjust as per your app structure
 
 
+from rest_framework.authentication import TokenAuthentication
+
+class NextInvoiceNumberAPI(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request):
+        invoice_type = request.GET.get('invoice_type')
+        user = request.user
+
+        type_prefix_map = {
+            'invoice': 'svin-inv',
+            'proforma': 'svin-prof',
+            'quotation': 'svin-quot',
+            'credit_note': 'svin-crednot',
+            'delivery_challan': 'svin-dc',
+        }
+
+        prefix = type_prefix_map.get(invoice_type, 'svin-inv')
+
+        last_invoice = pos_wholesale.objects.filter(
+            user=user,
+            invoice_type=invoice_type,
+            invoice_number__startswith=prefix
+        ).order_by('-id').first()
+
+        if last_invoice:
+            try:
+                last_number = int(last_invoice.invoice_number.split('-')[-1])
+            except (IndexError, ValueError):
+                last_number = 0
+        else:
+            last_number = 0
+
+        invoice_number = f"{prefix}-{last_number + 1}"
+        return Response({"invoice_number": invoice_number})
+
 
 def get_next_invoice_number_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Authentication required"}, status=401)
+
     invoice_type = request.GET.get('invoice_type')
     user = request.user
 

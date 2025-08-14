@@ -127,6 +127,7 @@ urlpatterns = [
     path('store-working-hours/', store_hours_view, name='store_hours'),
     path('online-store-setting/', online_store_setting, name='online_store_setting'),
 
+    path("get-next-invoiceno/", NextInvoiceNumberAPI.as_view(), name="NextInvoiceNumberAPI"),
     path("get_invoice_number/", get_next_invoice_number_api, name="get_invoice_number"),
 
     path('pos/', pos, name='create-sale'),
