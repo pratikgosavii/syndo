@@ -278,7 +278,7 @@ from django.db import IntegrityError, transaction
 
 class SaleItemSerializer(serializers.ModelSerializer):
     amount = serializers.SerializerMethodField(read_only=True)
-    product_details = product_serializer(source = "product")
+    product_details = product_serializer(source = "product", read_only=True)
     class Meta:
         model = SaleItem
         fields = ['product', 'quantity', 'price', 'amount', 'product_details']
@@ -304,8 +304,9 @@ class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True)
     wholesale_invoice_details = serializers.SerializerMethodField(read_only=True)
 
-    company_profile_detials = CompanyProfileSerializer(source="company_profile")
-    customer_detials = vendor_customers_serializer(source="customer")
+    company_profile_detials = CompanyProfileSerializer(source="company_profile", read_only=True)
+    customer_detials = vendor_customers_serializer(source="customer", read_only=True)
+    advance_bank_details = vendor_bank_serializer(source="advance_bank", read_only=True)
 
     # Read-only totals
     total_items = serializers.IntegerField(read_only=True)
@@ -317,7 +318,7 @@ class SaleSerializer(serializers.ModelSerializer):
         model = Sale
         fields = [
             'id', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
-            'discount_percentage', 'credit_date', 'is_wholesale_rate',
+            'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details', 'balance_amount',  'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
             'discount_amount', 'total_amount', 'wholesale_invoice_details', 
         ]
@@ -354,11 +355,14 @@ class SaleSerializer(serializers.ModelSerializer):
                 total_amount_before_discount = sum(item.quantity * item.price for item in sale.items.all())
                 discount_amount = total_amount_before_discount * (sale.discount_percentage or 0) / 100
                 total_amount = total_amount_before_discount - discount_amount
+                advance_amount = validated_data.get('advance_amount', 0)
+                balance_amount = total_amount - advance_amount
 
                 sale.total_items = total_items
                 sale.total_amount_before_discount = total_amount_before_discount
                 sale.discount_amount = discount_amount
                 sale.total_amount = total_amount
+                sale.balance_amount = balance_amount
                 sale.save()
 
                 # Create Wholesale Invoice if applicable
