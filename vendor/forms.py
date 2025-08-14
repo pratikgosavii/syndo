@@ -517,6 +517,10 @@ class SaleItemForm(forms.ModelForm):
 
 
 class SaleForm(forms.ModelForm):
+
+   
+   
+
     class Meta:
         model = Sale
         fields = '__all__'
@@ -532,9 +536,16 @@ class SaleForm(forms.ModelForm):
 
             # new POS-specific fields
             'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'discount-amount-input'}),
-            'discount_percent': forms.NumberInput(attrs={'class': 'form-control', 'id': 'discount-percentage'}),
+            'discount_percentage': forms.NumberInput(attrs={'class': 'form-control', 'id': 'discount-percentage'}),
 
-            'advance_payment_amount': forms.NumberInput(attrs={'class': 'form-control'}),
+            'advance_payment_amount': forms.NumberInput(attrs={
+                'class': 'form-control d-inline-block w-auto me-2',
+                'placeholder': 'Amount',
+                'style': 'max-width: 100px;'
+            }),
+            'advance_bank': forms.Select(attrs={
+                'class': 'd-none'  # hide select, we'll use dropdown instead
+            }),
             'advance_payment_method': forms.Select(attrs={'class': 'form-select'}),
 
             'due_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),

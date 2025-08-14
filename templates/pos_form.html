@@ -246,7 +246,7 @@
                 </div>
 
                 <input type="hidden" name="payment_method" id="payment_method" value="cash" required>
-              </div>
+            </div>
 
 
 
@@ -257,9 +257,36 @@
                 {{ form.discount_amount }}
 
                 <label class="form-label mt-2">Discount (₹)</label>
-                                {{ form.discount_percent }}
+                                {{ form.discount_percentage }}
 
               </div>
+
+              <div class="mb-4"><label class="form-label mt-3">Advance Amount</label>
+                  {{ form.advance_payment_amount }}
+                  <label class="form-label fw-semibold">Advance Payment Mode</label>
+                  <div class="btn-group" role="group" aria-label="Advance Payment Method">
+                      <button type="button" class="btn btn-warning" onclick="selectAdvancePayment('cash', this)">Cash</button>
+                      <button type="button" class="btn btn-outline-dark" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                  </div>
+                  <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
+
+                  <!-- Bank dropdown (hidden by default) -->
+                  <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
+                      <select name="advance_bank" id="advance_bank" class="form-select">
+                          <option value="">Select Bank</option>
+                          {% for bank in banks %}
+                              <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>
+                                  {{ bank.name }}
+                              </option>
+                          {% endfor %}
+                      </select>
+                  </div>
+
+                  <!-- Advance Amount -->
+                  
+              </div>
+
+
               <div class="col-md-4" id="credit_time" style="display: none;">
                 <label class="form-label">Credit Time (days)</label>
                 {{ form.due_date }}
@@ -274,6 +301,15 @@
               <p>Total Amount before Discount: ₹<span id="total-amount-before-discount">0.00</span></p>
               <p>Discount: ₹<span id="discount-amount">0.00</span></p>
               <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
+
+              <hr>
+
+              <p>Advance Payment: ₹<span id="advance-amount">0.00</span></p>
+              <p>Advance Mode: <span id="advance-mode">Cash</span> 
+                  <span id="advance-bank-name" style="display:none;">(Bank Name)</span>
+              </p>
+              <p><strong>Net Payable: ₹<span id="net-payable">0.00</span></strong></p>
+              
             </div>
 
             
@@ -576,66 +612,72 @@
   }
 
   // Recalculate totals
-  function recalculateTotals() {
-  let totalItems = 0;
-  let totalAmount = 0;
+  // Recalculate totals
+function recalculateTotals() {
+    let totalItems = 0;
+    let totalAmount = 0;
 
-  document.querySelectorAll('.item-row').forEach(row => {
-    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-    const price = parseFloat(row.querySelector('.rate-input').value) || 0;
-    const amount = qty * price;
+    document.querySelectorAll('.item-row').forEach(row => {
+        const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+        const price = parseFloat(row.querySelector('.rate-input').value) || 0;
+        const amount = qty * price;
 
-    row.querySelector('.amount').value = amount.toFixed(2);
-    totalItems += qty;
-    totalAmount += amount;
-  });
+        row.querySelector('.amount').value = amount.toFixed(2);
+        totalItems += qty;
+        totalAmount += amount;
+    });
 
-  const discountPercentageField = document.getElementById('discount-percentage');
-  const discountAmountField = document.getElementById('discount-amount-input');
+    const discountPercentageField = document.getElementById('discount-percentage');
+    const discountAmountField = document.getElementById('discount-amount-input');
+    const advanceAmountField = document.getElementById('id_advance_payment_amount');
 
-  let discountAmount = 0;
-  let discountPercentage = 0;
+    let discountAmount = 0;
+    let discountPercentage = 0;
 
-  // Two-way binding logic
-  if (document.activeElement === discountPercentageField) {
-    discountPercentage = parseFloat(discountPercentageField.value) || 0;
-    discountAmount = totalAmount * (discountPercentage / 100);
-    discountAmountField.value = discountAmount.toFixed(2);
-  } else if (document.activeElement === discountAmountField) {
-    discountAmount = parseFloat(discountAmountField.value) || 0;
-    discountPercentage = (totalAmount === 0) ? 0 : (discountAmount / totalAmount) * 100;
-    discountPercentageField.value = discountPercentage.toFixed(2);
-  } else {
-    discountPercentage = parseFloat(discountPercentageField.value) || 0;
-    discountAmount = totalAmount * (discountPercentage / 100);
-    discountAmountField.value = discountAmount.toFixed(2);
-  }
+    // Two-way discount binding
+    if (document.activeElement === discountPercentageField) {
+        discountPercentage = parseFloat(discountPercentageField.value) || 0;
+        discountAmount = totalAmount * (discountPercentage / 100);
+        discountAmountField.value = discountAmount.toFixed(2);
+    } else if (document.activeElement === discountAmountField) {
+        discountAmount = parseFloat(discountAmountField.value) || 0;
+        discountPercentage = (totalAmount === 0) ? 0 : (discountAmount / totalAmount) * 100;
+        discountPercentageField.value = discountPercentage.toFixed(2);
+    } else {
+        discountPercentage = parseFloat(discountPercentageField.value) || 0;
+        discountAmount = totalAmount * (discountPercentage / 100);
+        discountAmountField.value = discountAmount.toFixed(2);
+    }
 
+    const amountAfterDiscount = totalAmount - discountAmount;
+    const advanceAmount = parseFloat(advanceAmountField.value) || 0;
+    const netPayable = amountAfterDiscount - advanceAmount;
 
-  const amountAfterDiscount = totalAmount - discountAmount;
-  const totalAfterTax = amountAfterDiscount;
+    // Update summary
+    document.getElementById('total-items').innerText = totalItems;
+    document.getElementById('total-amount-before-discount').innerText = totalAmount.toFixed(2);
+    document.getElementById('discount-amount').innerText = discountAmount.toFixed(2);
+    document.getElementById('total-amount').innerText = amountAfterDiscount.toFixed(2);
 
-  document.getElementById('total-items').innerText = totalItems;
-  document.getElementById('total-amount-before-discount').innerText = totalAmount.toFixed(2);
-  document.getElementById('discount-amount').innerText = discountAmount.toFixed(2);
-  document.getElementById('total-amount').innerText = totalAfterTax.toFixed(2);
-
+    // New: update advance and net payable
+    document.getElementById('advance-amount').innerText = advanceAmount.toFixed(2);
+    document.getElementById('net-payable').innerText = netPayable.toFixed(2);
 }
 
 
 
   document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
-  document.getElementById('discount-amount-input').addEventListener('input', recalculateTotals);
+  document.getElementById('id_advance_payment_amount').addEventListener('input', recalculateTotals);
   
   
   
-      function getUsedProducts() {
-        const used = [];
-        document.querySelectorAll(".product-select").forEach((sel) => {
-          if (sel.value) used.push(sel.value);
-        });
-        return used;
-      }
+  function getUsedProducts() {
+    const used = [];
+    document.querySelectorAll(".product-select").forEach((sel) => {
+      if (sel.value) used.push(sel.value);
+    });
+    return used;
+  }
 
       
   // Unique ID adjusters
@@ -888,6 +930,37 @@ document.querySelectorAll(".item-row").forEach(row => {
     btn.classList.replace('btn-outline-dark', 'btn-warning');
     document.getElementById('credit_time').style.display = method === 'credit' ? 'block' : 'none';
   }
+
+  //advance choice
+
+function selectAdvancePayment(method, btn) {
+    // Update hidden field
+    document.getElementById('advance_payment_method').value = method;
+
+    // Toggle active button styling
+    btn.closest('.btn-group').querySelectorAll('button').forEach(b => {
+        b.classList.remove('btn-warning');
+        b.classList.add('btn-outline-dark');
+    });
+    btn.classList.remove('btn-outline-dark');
+    btn.classList.add('btn-warning');
+
+    // Show/hide bank dropdown
+    if (method === 'bank') {
+        document.getElementById('advance-bank-dropdown').style.display = 'block';
+    } else {
+        document.getElementById('advance-bank-dropdown').style.display = 'none';
+        document.getElementById('advance_bank').value = ''; // clear bank
+    }
+}
+
+// Auto-run on page load to reflect existing value (for edit)
+document.addEventListener('DOMContentLoaded', function() {
+    const method = document.getElementById('advance_payment_method').value;
+    const btn = document.querySelector(`[onclick="selectAdvancePayment('${method}', this)"]`);
+    if (btn) selectAdvancePayment(method, btn);
+});
+
 
   // Search filter
   document.getElementById('product-search-input').addEventListener('input', function(){
