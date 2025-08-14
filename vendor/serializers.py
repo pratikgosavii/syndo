@@ -302,6 +302,8 @@ class PosWholesaleSerializer(serializers.ModelSerializer):
 
 class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True)
+    wholesale_invoice = PosWholesaleSerializer(write_only=True, required=False)  # Add this line
+
     wholesale_invoice_details = serializers.SerializerMethodField(read_only=True)
 
     company_profile_detials = CompanyProfileSerializer(source="company_profile", read_only=True)
@@ -320,7 +322,7 @@ class SaleSerializer(serializers.ModelSerializer):
             'id', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
             'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details', 'balance_amount',  'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
-            'discount_amount', 'total_amount', 'wholesale_invoice_details', 
+            'discount_amount', 'total_amount', 'wholesale_invoice_details', 'wholesale_invoice'
         ]
 
     def get_wholesale_invoice_details(self, obj):
@@ -364,6 +366,11 @@ class SaleSerializer(serializers.ModelSerializer):
                 sale.total_amount = total_amount
                 sale.balance_amount = balance_amount
                 sale.save()
+
+                if sale.is_wholesale_rate and wholesale_data:
+                    print('-------------------1------------------')
+                else:
+                    print('-------------------2------------------')
 
                 # Create Wholesale Invoice if applicable
                 if sale.is_wholesale_rate and wholesale_data:
