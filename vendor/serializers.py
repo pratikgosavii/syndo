@@ -191,6 +191,66 @@ class CashTransferSerializer(serializers.ModelSerializer):
         
 
 
+class PrintVariantSerializer(serializers.ModelSerializer):
+    color_type_display = serializers.CharField(source='get_color_type_display', read_only=True)
+    sided_display = serializers.CharField(source='get_sided_display', read_only=True)
+    paper_display = serializers.CharField(source='get_paper_display', read_only=True)
+
+    class Meta:
+        model = PrintVariant
+        fields = [
+            'id',
+            'product',
+            'paper',
+            'paper_display',
+            'color_type',
+            'color_type_display',
+            'sided',
+            'sided_display',
+            'min_quantity',
+            'max_quantity',
+            'price',
+        ]
+
+
+class CustomizePrintVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomizePrintVariant
+        exclude = ['product']
+
+
+class product_serializer(serializers.ModelSerializer):
+    addons = ProductAddonSerializer(many=True, required=False)
+    print_variants = PrintVariantSerializer(many=True, required=False)
+    customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
+
+    class Meta:
+        model = product
+        fields = '__all__'  # or list fields + 'addons', 'print_variants', 'customize_print_variants'
+
+    def create(self, validated_data):
+        addons_data = validated_data.pop('addons', [])
+        variants_data = validated_data.pop('print_variants', [])
+        customize_data = validated_data.pop('customize_print_variants', [])
+
+        instance = product.objects.create(**validated_data)
+
+        for addon in addons_data:
+            product_addon.objects.create(product=instance, **addon)
+
+        for variant in variants_data:
+            PrintVariant.objects.create(product=instance, **variant)
+
+        for custom in customize_data:
+            CustomizePrintVariant.objects.create(product=instance, **custom)
+
+        return instance
+
+    def update(self, instance, validated_data):
+        # Optional: handle nested updates (not required for now)
+        return super().update(instance, validated_data)
+
+
 
 from rest_framework import serializers
 
@@ -218,10 +278,10 @@ from django.db import IntegrityError, transaction
 
 class SaleItemSerializer(serializers.ModelSerializer):
     amount = serializers.SerializerMethodField(read_only=True)
-
+    product_details = product_serializer(source = "product")
     class Meta:
         model = SaleItem
-        fields = ['product', 'quantity', 'price', 'amount']
+        fields = ['product', 'quantity', 'price', 'amount', 'product_details']
 
     def get_amount(self, obj):
         return round(obj.quantity * obj.price, 2)
@@ -244,6 +304,9 @@ class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True)
     wholesale_invoice_details = serializers.SerializerMethodField(read_only=True)
 
+    company_profile_detials = CompanyProfileSerializer(source="company_profile")
+    customer_detials = vendor_customers_serializer(source="customer")
+
     # Read-only totals
     total_items = serializers.IntegerField(read_only=True)
     total_amount_before_discount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -253,10 +316,10 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = [
-            'id', 'payment_method', 'company_profile', 'customer',
+            'id', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
             'discount_percentage', 'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
-            'discount_amount', 'total_amount', 'wholesale_invoice_details'
+            'discount_amount', 'total_amount', 'wholesale_invoice_details', 
         ]
 
     def get_wholesale_invoice_details(self, obj):
@@ -357,28 +420,6 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ['user']
 
         
-class PrintVariantSerializer(serializers.ModelSerializer):
-    color_type_display = serializers.CharField(source='get_color_type_display', read_only=True)
-    sided_display = serializers.CharField(source='get_sided_display', read_only=True)
-    paper_display = serializers.CharField(source='get_paper_display', read_only=True)
-
-    class Meta:
-        model = PrintVariant
-        fields = [
-            'id',
-            'product',
-            'paper',
-            'paper_display',
-            'color_type',
-            'color_type_display',
-            'sided',
-            'sided_display',
-            'min_quantity',
-            'max_quantity',
-            'price',
-        ]
-
-
 
 class ReminderSettingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -405,42 +446,4 @@ class InvoiceSettingsSerializer(serializers.ModelSerializer):
         model = InvoiceSettings
         fields = '__all__'
         read_only_fields = ['user']
-
-
-class CustomizePrintVariantSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomizePrintVariant
-        exclude = ['product']
-
-
-class product_serializer(serializers.ModelSerializer):
-    addons = ProductAddonSerializer(many=True, required=False)
-    print_variants = PrintVariantSerializer(many=True, required=False)
-    customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
-
-    class Meta:
-        model = product
-        fields = '__all__'  # or list fields + 'addons', 'print_variants', 'customize_print_variants'
-
-    def create(self, validated_data):
-        addons_data = validated_data.pop('addons', [])
-        variants_data = validated_data.pop('print_variants', [])
-        customize_data = validated_data.pop('customize_print_variants', [])
-
-        instance = product.objects.create(**validated_data)
-
-        for addon in addons_data:
-            product_addon.objects.create(product=instance, **addon)
-
-        for variant in variants_data:
-            PrintVariant.objects.create(product=instance, **variant)
-
-        for custom in customize_data:
-            CustomizePrintVariant.objects.create(product=instance, **custom)
-
-        return instance
-
-    def update(self, instance, validated_data):
-        # Optional: handle nested updates (not required for now)
-        return super().update(instance, validated_data)
 
