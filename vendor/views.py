@@ -683,21 +683,29 @@ def list_super_catalogue(request):
 
 
 
+
 @login_required(login_url='login_admin')
 def add_product(request):
-    AddonFormSet = inlineformset_factory(product, product_addon, form=ProductAddonForm, extra=1, can_delete=True)
-    VariantFormSet = inlineformset_factory(product, PrintVariant, form=PrintVariantForm, extra=1, can_delete=True)
+    AddonFormSet = inlineformset_factory(
+        product, product_addon,
+        form=ProductAddonForm,
+        extra=1,
+        can_delete=True
+    )
+    VariantFormSet = inlineformset_factory(
+        product, PrintVariant,
+        form=PrintVariantForm,
+        extra=1,
+        can_delete=True
+    )
     CustomizePrintVariantFormSet = inlineformset_factory(
-        product,
-        CustomizePrintVariant,
+        product, CustomizePrintVariant,
         form=CustomizePrintVariantForm,
         extra=1,
         can_delete=True
     )
 
     if request.method == 'POST':
-        print("POST data:", request.POST)
-
         product_form = product_Form(request.POST, request.FILES)
 
         if product_form.is_valid():
@@ -728,13 +736,15 @@ def add_product(request):
                 customize_variant_formset.save()
                 return redirect('list_product')
             else:
+                # Print formset errors for debugging
                 print("Addon formset errors:", addon_formset.errors)
                 print("Variant formset errors:", variant_formset.errors)
                 print("Variant formset non-form errors:", variant_formset.non_form_errors())
                 print("Customize variant formset errors:", customize_variant_formset.errors)
         else:
             print("Product form errors:", product_form.errors)
-            # Fix here: pass instance=None or nothing, but better to create blank formsets for rendering
+
+            # Ensure formsets are initialized even if product_form is invalid
             addon_formset = AddonFormSet(request.POST, request.FILES, prefix='addon', form_kwargs={'user': request.user})
             variant_formset = VariantFormSet(request.POST, request.FILES, prefix='print_variants')
             customize_variant_formset = CustomizePrintVariantFormSet(request.POST, request.FILES, prefix='customize_print_variants')
@@ -765,17 +775,14 @@ def update_product(request, product_id):
         extra=1,
         can_delete=True
     )
-
     VariantFormSet = inlineformset_factory(
         product, PrintVariant,
         form=PrintVariantForm,
         extra=1,
         can_delete=True
     )
-
     CustomizePrintVariantFormSet = inlineformset_factory(
-        product,
-        CustomizePrintVariant,
+        product, CustomizePrintVariant,
         form=CustomizePrintVariantForm,
         extra=1,
         can_delete=True
@@ -817,6 +824,7 @@ def update_product(request, product_id):
 
             return redirect('list_product')
         else:
+            # Print errors for debugging
             print("Product form errors:", product_form.errors)
             print("Addon formset errors:", addon_formset.errors)
             print("Variant formset errors:", variant_formset.errors)

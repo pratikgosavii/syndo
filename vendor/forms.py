@@ -163,12 +163,19 @@ class product_Form(forms.ModelForm):
             'shop_exchange': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'shop_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'brand_warranty': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-
+            
+            'is_food': forms.CheckboxInput(attrs={
+                'class': 'switch-input',
+                'id': 'foodToggle'
+            }),
+            
             'tax_inclusive': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_popular': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+        
 
 
 class addon_Form(forms.ModelForm):

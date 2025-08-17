@@ -38,15 +38,45 @@
 
 
     .switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 25px;
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 25px;
 }
+
 .switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 25px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 19px;
+    width: 19px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+.switch input:checked + .slider {
+    background-color: #4caf50;
+}
+
+.switch input:checked + .slider:before {
+    transform: translateX(25px);
 }
 .slider {
   position: absolute;
@@ -130,15 +160,16 @@ input:checked + .slider:before {
                         </div>
 
                     
-                        <div id="foodOptionToggleWrapper" style="display: none;">
+                        <div id="foodOptionToggleWrapper" style="display: block;">
                             <label>Include Food Option?</label><br>
                             <label class="switch">
-                                <input type="checkbox" id="foodToggle">
+                                {{ form.is_food }}
                                 <span class="slider"></span>
                             </label>
                         </div>
 
-                        <div id="customizePrintToggleWrapper" style="display: none;">
+                        <!-- Customize Print Toggle -->
+                        <div id="customizePrintToggleWrapper" style="display: block;">
                             <label>Customize Print?</label><br>
                             <label class="switch">
                                 {{ form.is_customize }}
@@ -316,6 +347,19 @@ input:checked + .slider:before {
 
                             <div id="variantSection">
 
+                                {% for form in variant_formset.forms %}
+                                    {% if form.errors %}
+                                        <div class="alert alert-danger">
+                                            {% for field, errors in form.errors.items %}
+                                                {% for error in errors %}
+                                                    {{ field }}: {{ error }}<br>
+                                                {% endfor %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+
                         
                                 <hr>
                                 <h5 class="form-heading">Variants</h5>
@@ -364,6 +408,19 @@ input:checked + .slider:before {
 
                             <div id="customizevariantSection">
 
+                                {% for form in customize_print_variant_formset.forms %}
+                                    {% if form.errors %}
+                                        <div class="alert alert-danger">
+                                            {% for field, errors in form.errors.items %}
+                                                {% for error in errors %}
+                                                    {{ field }}: {{ error }}<br>
+                                                {% endfor %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+
                                 <h5 class="form-heading">Customize Print Variants</h5>
                                 <table class="table table-bordered" id="variant-table">
                                     <thead>
@@ -397,6 +454,22 @@ input:checked + .slider:before {
 
                         <h5 class="form-heading">Addons</h5>
                         <div >
+                        
+
+                            {% for form in formset.forms %}
+                                {% if form.errors %}
+                                    <div class="alert alert-danger">
+                                        {% for field, errors in form.errors.items %}
+                                            {% for error in errors %}
+                                                {{ field }}: {{ error }}<br>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+
+
+
                             {{ formset.management_form }}
                                                         
                             <table class="table table-bordered" id="addon-table">
@@ -755,13 +828,23 @@ input:checked + .slider:before {
 
     // for hiding/ showing product fields on  product type fields
     function toggleProductOnlyFields(show) {     
+        const exemptIds = ["id_track_serial_numbers", "id_low_stock_alert"];
+
         document.querySelectorAll('.product-only-field').forEach(el => {
             el.style.display = show ? '' : 'none';
             el.querySelectorAll('input, select, textarea').forEach(input => {
+                // disable/enable normally
                 input.disabled = !show;
-                input.required = show;
+
+                // check if this input is in exempt list
+                if (exemptIds.includes(input.id)) {
+                    input.required = false;  // never required
+                } else {
+                    input.required = show;   // follow normal logic
+                }
             });
         });
+
     }
 
     function toggleVariantFormSection(show) {
@@ -978,7 +1061,6 @@ changeMrpLabel("Selling Price");
 
             foodOptionToggleWrapper.style.display = selectedType === 'service' ? 'block' : 'none';
 
-            if (foodToggle) foodToggle.checked = false;
             handleFoodToggleChange();
 
             // Hide all customize print stuff
@@ -1051,6 +1133,23 @@ document.addEventListener("DOMContentLoaded", function () {
     commonColors.value = ""; // Reset dropdown selection
   }
 
+  // Initialize on load
+  window.onload = function() {
+    const initialColor = "{{ form.color.value|default:'' }}";  // <--- wrap in quotes
+    console.log(initialColor);
+    console.log(initialColor)
+    if (initialColor) {
+      colorPicker.value = initialColor;
+      colorPreview.style.background = initialColor;
+
+      for (let i = 0; i < commonColors.options.length; i++) {
+        if (commonColors.options[i].value.toLowerCase() === initialColor.toLowerCase()) {
+          commonColors.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  }
 
   
 function handleCustomPrintToggleChange() {
