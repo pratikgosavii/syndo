@@ -1,159 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>GST Invoice</title>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 13px; margin: 0; padding: 0; }
-    .container { border: 2px solid #007bff; margin: 10px; padding: 10px; }
-    .header { display: flex; justify-content: space-between; border-bottom: 1px solid black; padding-bottom: 5px; }
-    .logo { width: 70px; height: 70px; background: #ccc; border-radius: 50%; text-align: center; line-height: 70px; font-weight: bold; }
-    .company-details { flex-grow: 1; margin-left: 10px; }
-    .company-details h2 { margin: 0; font-size: 16px; }
-    .quotation { text-align: right; font-size: 13px; }
-    .quotation h3 { margin: 0; color: #007bff; }
-    .details, .items, .summary, .tax-summary { width: 100%; border-collapse: collapse; margin-top: 5px; }
-    .details td, .items th, .items td, .tax-summary th, .tax-summary td { border: 1px solid black; padding: 4px; vertical-align: top; }
-    .items th { text-align: center; background: #f2f2f2; }
-    .summary td { border: none; padding: 2px 4px; }
-    .bank-details { border: 1px solid black; padding: 5px; margin-top: 5px; }
-    .qr { float: right; width: 80px; height: 80px; background: #ddd; }
-    .footer { margin-top: 10px; font-size: 12px; }
-    .footer strong { display: block; margin-top: 5px; }
-    .signature { text-align: right; margin-top: 20px; font-weight: bold; }
-    .page-no { text-align: right; font-size: 12px; margin-top: 5px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Tax Invoice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            color: #000;
+            margin: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: left;
+        }
+        .no-border td, .no-border th {
+            border: none;
+        }
+        .header, .footer {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        .qr-box {
+            border: 1px solid #000;
+            width: 120px;
+            height: 120px;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .totals td {
+            border: none;
+            padding: 4px;
+        }
+        .totals strong {
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
+
     <!-- Header -->
     <div class="header">
-      <div class="logo">Logo</div>
-      <div class="company-details">
-        <h2>Company Name</h2>
-        Address line 1<br>
-        Address line 2<br>
-        GSTIN : ADFH123HG55 &nbsp;&nbsp; PAN : ADFH123HG55<br>
-        Mobile : +91 8888888888 &nbsp;&nbsp; Email : Email here<br>
-        <b>Reverse Charge</b>
-      </div>
-      <div class="quotation">
-        <h3>TAX INVOICE (CGST + SGST)</h3>
-        ORIGINAL FOR RECIPIENT<br>
-        Invoice Date: DD/MM/YYYY<br>
-        Invoice No: DD/MM/YYYY
-      </div>
+        <div class="title">TAX INVOICE</div>
+        <p><strong>Your Company Name</strong><br>
+        Address line 1, Address line 2, City, State - Pincode<br>
+        GSTIN: 22AAAAA0000A1Z5</p>
     </div>
 
-    <!-- Customer Details -->
-    <table class="details">
-      <tr>
-        <td width="33%">
-          <b>Customer Details:</b><br>
-          COMPANY NAME<br>
-          GSTIN : ADFH123HG55<br>
-          PAN : ADFH123HG55<br>
-          Aadhar : ADFH123HG55<br>
-          Ph : +91 8888888888
-        </td>
-        <td width="33%">
-          <b>Billing Address :</b><br>
-          Address line 1<br>
-          Address line 2<br>
-          <b>Delivery Address :</b><br>
-          Address line 1<br>
-          Address line 2
-        </td>
-        <td>
-          <b>Reference :</b> Preet Collection
-        </td>
-      </tr>
+    <!-- Customer & Invoice Info -->
+    <table>
+        <tr>
+            <td><strong>Invoice No:</strong> INV-001</td>
+            <td><strong>Date:</strong> 17-Aug-2025</td>
+        </tr>
+        <tr>
+            <td><strong>Billed To:</strong><br>
+                Customer Name<br>
+                Address, City<br>
+                GSTIN: 29BBBBB1111B2Z6
+            </td>
+            <td><strong>Shipped To:</strong><br>
+                Customer Name<br>
+                Address, City
+            </td>
+        </tr>
     </table>
+    <br>
 
-    <!-- Item Table -->
-    <table class="items">
-      <tr>
-        <th>S.No.</th>
-        <th>Item</th>
-        <th>HSN/SAC</th>
-        <th>Rate</th>
-        <th>Qty Unit</th>
-        <th>Taxable Value</th>
-        <th>SGST (%)</th>
-        <th>CGST (%)</th>
-        <th>Total</th>
-      </tr>
-      <tr>
-        <td height="60"></td><td></td><td></td>
-        <td></td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
+    <!-- Items Table -->
+    <table>
+        <thead>
+            <tr>
+                <th>Sr</th>
+                <th>Description</th>
+                <th>HSN</th>
+                <th>Qty</th>
+                <th>Rate</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>Product / Service 1</td>
+                <td>9983</td>
+                <td>2</td>
+                <td>500.00</td>
+                <td>1000.00</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Product / Service 2</td>
+                <td>9983</td>
+                <td>1</td>
+                <td>800.00</td>
+                <td>800.00</td>
+            </tr>
+            <tr>
+                <td colspan="5" style="text-align:right;"><strong>Subtotal</strong></td>
+                <td>1800.00</td>
+            </tr>
+        </tbody>
     </table>
+    <br>
 
-    <!-- Summary -->
-    <table class="summary">
-      <tr>
-        <td width="50%">
-          <b>Total Quantity :</b><br>
-          <b>Total value in words :</b>
-        </td>
-        <td width="50%">
-          <b>Taxable Amount</b><br>
-          SGST<br>
-          CGST<br>
-          Discount (5%)<br>
-          Delivery Charges<br>
-          Package Charges<br>
-          <b>Round off</b><br>
-          <b>Total Amount</b><br>
-          Paid<br>
-          <b>Balance</b>
-        </td>
-      </tr>
+    <!-- Totals + QR Code in same row -->
+    <table>
+        <tr>
+            <!-- Left side totals -->
+            <td style="width:70%; vertical-align:top;">
+                <table class="totals">
+                    <tr><td>Taxable Amount: ₹ 1800.00</td></tr>
+                    <tr><td>SGST (9%): ₹ 162.00</td></tr>
+                    <tr><td>CGST (9%): ₹ 162.00</td></tr>
+                    <tr><td>Discount (5%): ₹ 90.00</td></tr>
+                    <tr><td>Delivery Charges: ₹ 50.00</td></tr>
+                    <tr><td>Package Charges: ₹ 20.00</td></tr>
+                    <tr><td><strong>Round Off: ₹ 0.00</strong></td></tr>
+                    <tr><td><strong>Total Amount: ₹ 2104.00</strong></td></tr>
+                    <tr><td>Paid: ₹ 2000.00</td></tr>
+                    <tr><td><strong>Balance: ₹ 104.00</strong></td></tr>
+                </table>
+            </td>
+            <!-- Right side QR code -->
+            <td style="width:30%; text-align:center; vertical-align:middle;">
+                <div class="qr-box">
+                    QR CODE
+                </div>
+            </td>
+        </tr>
     </table>
-
-    <!-- Bank Details -->
-    <div class="bank-details">
-      <b>Bank Details :</b><br>
-      Bank :<br>
-      Account No :<br>
-      IFSC Code :<br>
-      Branch :<br>
-      UPI Id :
-      <div class="qr">QR</div>
-    </div>
-
-    <!-- Tax Summary -->
-    <table class="tax-summary">
-      <tr>
-        <th>HSN / SAC</th>
-        <th>Taxable Value</th>
-        <th>SGST(%)</th>
-        <th>Amount</th>
-        <th>CGST(%)</th>
-        <th>Amount</th>
-        <th>Total Tax Amount</th>
-      </tr>
-      <tr>
-        <td height="40"></td><td></td><td></td><td></td><td></td><td></td><td></td>
-      </tr>
-      <tr>
-        <td colspan="6" style="text-align:right"><b>Total</b></td>
-        <td></td>
-      </tr>
-    </table>
+    <br>
 
     <!-- Footer -->
     <div class="footer">
-      <strong>Notes:</strong> Note written here
-      <strong>Terms & Conditions:</strong>
-      Terms & Conditions here<br>
-      Terms & Conditions here<br>
-      Terms & Conditions here<br>
-      Terms & Conditions here
+        <p><strong>Terms & Conditions:</strong><br>
+        1. Goods once sold will not be taken back.<br>
+        2. Subject to jurisdiction only.<br>
+        <strong>This is a computer-generated invoice.</strong></p>
     </div>
 
-    <div class="signature">Authorized Signature</div>
-    <div class="page-no">Page no. 1/1</div>
-  </div>
 </body>
 </html>

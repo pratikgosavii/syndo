@@ -380,6 +380,8 @@ class product(models.Model):
     shop_warranty = models.BooleanField(default=False)
     brand_warranty = models.BooleanField(default=False)
 
+    is_food = models.BooleanField(default=False)
+
     # Flags
     tax_inclusive = models.BooleanField(default=False)
     is_popular = models.BooleanField(default=False)
