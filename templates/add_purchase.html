@@ -230,6 +230,16 @@ textarea[name="terms"] {
                   <h5>Products</h5>
 
                   <div id="products-wrapper">
+
+                     <div class="row fw-bold border-bottom pb-2 mb-2">
+    <div class="col-md-4">Product</div>
+    <div class="col-md-2">Quantity</div>
+    <div class="col-md-2">Price</div>
+    <div class="col-md-2">Total</div>
+    <div class="col-md-2">Action</div>
+  </div>
+
+  
   {% for pid in existing_product_ids %}
     <div class="product-row row g-2 mb-2 align-items-center">
 

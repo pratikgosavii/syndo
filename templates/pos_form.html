@@ -251,17 +251,19 @@
 
 
             <!-- Discount & Credit Time -->
-            <div class="row mb-3">
-              <div class="col-md-4">
-                <label class="form-label">Discount (%)</label>
-                {{ form.discount_amount }}
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Discount (%)</label>
+                  {{ form.discount_amount }}
 
-                <label class="form-label mt-2">Discount (₹)</label>
+                  <label class="form-label mt-2">Discount (₹)</label>
                                 {{ form.discount_percentage }}
 
-              </div>
+                </div>
+                </div>
+              <div id="credit_time" style="display: none;">
 
-              <div class="mb-4"><label class="form-label mt-3">Advance Amount</label>
+                <div class="mb-4"><label class="form-label mt-3">Advance Amount</label>
                   {{ form.advance_payment_amount }}
                   <label class="form-label fw-semibold">Advance Payment Mode</label>
                   <div class="btn-group" role="group" aria-label="Advance Payment Method">
@@ -284,12 +286,13 @@
 
                   <!-- Advance Amount -->
                   
-              </div>
+                </div>
 
 
-              <div class="col-md-4" id="credit_time" style="display: none;">
-                <label class="form-label">Credit Time (days)</label>
-                {{ form.due_date }}
+                <div class="col-md-4" >
+                  <label class="form-label">Credit Time (days)</label>
+                  {{ form.due_date }}
+                </div>  
               </div>
             </div>
 
