@@ -259,7 +259,7 @@ textarea[name="terms"] {
 
       <!-- Price -->
       <div class="col-md-2">
-        <input type="text" name="price" class="form-control price" placeholder="Price" readonly>
+        <input type="text" name="price" class="form-control price" placeholder="Price">
       </div>
 
       <!-- Total -->
@@ -625,7 +625,6 @@ function createProductRow() {
     price.name = 'price';
     price.className = 'form-control price';
     price.placeholder = 'Price';
-    price.readOnly = true;
     colPrice.appendChild(price);
 
     // Total
@@ -702,6 +701,16 @@ document.addEventListener('input', function(e){
         const row = e.target.closest('.product-row');
         const price = parseFloat(row.querySelector('.price').value) || 0;
         const qty = parseFloat(e.target.value) || 0;
+        row.querySelector('.total-price').value = (price*qty).toFixed(2);
+    }
+});
+
+// Update total on price change
+document.addEventListener('input', function(e){
+    if(e.target.classList.contains('price')){
+        const row = e.target.closest('.product-row');
+        const qty = parseFloat(row.querySelector('.quantity').value) || 0;
+        const price = parseFloat(e.target.value) || 0;
         row.querySelector('.total-price').value = (price*qty).toFixed(2);
     }
 });
