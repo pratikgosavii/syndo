@@ -1,4 +1,5 @@
 {% load static %}
+{% load num_to_words %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -8,80 +9,76 @@
 <style>
     body {
         font-family: Arial, sans-serif;
-        font-size: 13px;
-        color: #000;
+        font-size: 12px;
         margin: 0;
         padding: 0;
+        color: #000;
     }
-    .invoice-container {
+    .invoice-box {
         width: 800px;
-        margin: 20px auto;
+        margin: auto;
         border: 1px solid #000;
-        padding: 0;
+        padding: 15px;
     }
     table {
-        border-collapse: collapse;
         width: 100%;
+        border-collapse: collapse;
     }
     th, td {
         border: 1px solid #000;
         padding: 6px;
         vertical-align: top;
     }
-    .no-border td, .no-border th {
+    .no-border td {
         border: none !important;
-        padding: 4px;
+        padding: 2px;
     }
-    .header {
+    .header-title {
         text-align: center;
+        font-weight: bold;
+        color: blue;
+        padding: 5px;
     }
     .company-logo {
         width: 50px;
         height: 50px;
         border-radius: 50%;
         background: #ccc;
-        display: inline-block;
+        text-align: center;
         line-height: 50px;
-        text-align: center;
         font-size: 12px;
-    }
-    .title {
-        color: blue;
-        font-weight: bold;
-    }
-    .footer {
-        font-size: 12px;
-        text-align: center;
-        padding: 5px;
-    }
-    .terms {
-        height: 70px;
-        vertical-align: top;
-    }
-    .qr-box {
-        text-align: center;
+        margin-right: 10px;
     }
     .summary td {
+        border: none;
         text-align: right;
+        padding: 3px 6px;
+    }
+    .terms {
+        height: 60px;
+        font-size: 11px;
+    }
+    .footer {
+        text-align: center;
+        font-size: 11px;
+        margin-top: 5px;
     }
     .bold { font-weight: bold; }
 </style>
 </head>
 <body>
 
-<div class="invoice-container">
+<div class="invoice-box">
 
     <!-- Title -->
     <table class="no-border">
-        <tr>
-            <td class="title" colspan="3" style="text-align:center;">INVOICE</td>
-        </tr>
+        <tr><td class="header-title">INVOICE</td></tr>
     </table>
 
     <!-- Company Info -->
     <table class="no-border">
         <tr>
-            <td style="width: 60px; text-align:center;">
+            <td style="width:60px;">
                 {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
                     <img src="{{ sale_instance.company_profile.profile_image.url }}" width="50" height="50">
                 {% else %}
@@ -89,12 +86,11 @@
                 {% endif %}
             </td>
             <td>
-                <div class="bold">{{ sale_instance.company_profile.name }}</div>
-                {{ sale_instance.company_profile.address_line1 }}<br>
-                {{ sale_instance.company_profile.address_line2 }}
+                <div class="bold">{{ sale_instance.company_profile.company_name }}</div>
+                {{ sale_instance.company_profile.address_line_1 }}<br>
+                {{ sale_instance.company_profile.address_line_2 }}<br>
             </td>
             <td style="text-align:right;">
-                GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>
                 <b>Invoice Date:</b> {{ wholesale.date|date:"d/m/Y" }}<br>
                 <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
                 <b>Due Date:</b> {{ wholesale.date|date:"d/m/Y" }}
@@ -105,8 +101,8 @@
     <!-- Customer Info -->
     <table>
         <tr>
-            <td><b>Customer Name:</b> {{ sale_instance.customer.name }}</td>
-            <td><b>Mobile No:</b> {{ sale_instance.customer.phone }}</td>
+            <td><b>Customer Name :</b> {{ sale_instance.customer.name }}</td>
+            <td><b>Mobile No :</b> {{ sale_instance.customer.contact }}</td>
         </tr>
     </table>
 
@@ -129,8 +125,7 @@
                 <td>
                     {{ item.product.name }}<br>
                     size - {{ item.product.size }}, color - {{ item.product.color }},
-                    warranty - {{ item.product.warranty }},
-                    brand - {{ item.product.brand }},
+                    warranty - {{ item.product.warranty }}, brand - {{ item.product.brand }},
                     Serial no - {{ item.product.serial_no }}
                 </td>
                 <td>{{ item.price }}</td>
@@ -150,11 +145,11 @@
         </tfoot>
     </table>
 
-    <!-- Total Value in Words -->
+    <!-- Total Value + QR + Summary -->
     <table>
         <tr>
-            <td style="width:50%;"><b>Total value in words:</b> {{ total_in_words }}</td>
-            <td rowspan="2" style="width:20%; text-align:center;" class="qr-box">
+            <td style="width:40%;"><b>Total value in words :</b> {{ total_amount|in_words }}</td>
+            <td style="width:25%; text-align:center;">
                 {% if sale_instance.company_profile.payment_qr %}
                     <img src="{{ sale_instance.company_profile.payment_qr.url }}" width="80" height="80"><br>
                 {% else %}
@@ -162,7 +157,7 @@
                 {% endif %}
                 Pay using UPI
             </td>
-            <td rowspan="2" style="width:30%;">
+            <td style="width:35%;">
                 <table class="summary" style="width:100%;">
                     <tr><td>Discount ({{ sale_instance.discount_percentage }}%)</td></tr>
                     <tr><td>Round off</td></tr>
@@ -173,17 +168,8 @@
             </td>
         </tr>
         <tr>
-            <td class="terms"><b>Terms & Conditions</b><br>{{ wholesale.terms|default:"" }}</td>
-        </tr>
-    </table>
-
-    <!-- Signature -->
-    <table class="no-border">
-        <tr>
-            <td style="height:50px;"></td>
-            <td style="text-align:right;">
-                Signature
-            </td>
+            <td colspan="2" class="terms"><b>Terms & Conditions</b><br>{{ wholesale.terms|default:"" }}</td>
+            <td style="text-align:right; vertical-align:bottom;">Signature</td>
         </tr>
     </table>
 
