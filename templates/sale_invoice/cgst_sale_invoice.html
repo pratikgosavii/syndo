@@ -1,3 +1,9 @@
+
+
+
+
+
+
 {% load static %}
 
 <!DOCTYPE html>
@@ -95,7 +101,7 @@
                 GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>
                 <b>Invoice Date:</b> {{ wholesale.date|date:"d/m/Y" }}<br>
                 <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
-                <b>Composite Scheme</b><br>
+                <b>Regular Scheme</b><br>
                 <b>Due Date:</b> {{ sale_instance.due_date|date:"d/m/Y" }}
             </td>
         </tr>
@@ -110,30 +116,25 @@
     </table>
 
     <!-- Product Table -->
-    <table border="1" cellspacing="0" cellpadding="4" width="100%">
+    <table border="1" cellspacing="0" cellpadding="5" width="100%" 
+       style="border-collapse: collapse; text-align: center; font-size: 12px;">
     <thead>
         <tr>
-            <th>S.No.</th>
-            <th>Product / Service</th>
-            <th>HSN / SAC</th>
-            <th>MRP</th>
-            <th>Dis</th>
-            <th>Qty</th>
-            <th>Taxable Value</th>
-            <th colspan="2">IGST</th>
-            <th>Total</th>
+            <th rowspan="2">S.No.</th>
+            <th rowspan="2">Product / Service</th>
+            <th rowspan="2">HSN<br>SAC</th>
+            <th rowspan="2">MRP</th>
+            <th rowspan="2">Dis</th>
+            <th rowspan="2">Qty</th>
+            <th rowspan="2">Taxable<br>Value</th>
+            <th colspan="4">GST</th>
+            <th rowspan="2">Total</th>
         </tr>
         <tr>
-            <th></th>
-            <th></th>
-            <th></th>
-            <th></th>
-            <th></th>
-            <th></th>
-            <th></th>
-            <th>%</th>
-            <th>Amt</th>
-            <th></th>
+            <th>SGST %</th>
+            <th>SGST Amt</th>
+            <th>CGST %</th>
+            <th>CGST Amt</th>
         </tr>
     </thead>
     <tbody>
@@ -141,26 +142,32 @@
         <tr>
             <td>{{ forloop.counter }}</td>
             <td>{{ item.product.name }}</td>
-            <td>{{ item.product.hsn|default:"N/A" }}</td>
-            <td>{{ item.product.mrp|default:"0.00" }}</td>
-            <td>{{ sale_instance.discount_percentage }}%</td>
+            <td>{{ item.product.hsn_sac }}</td>
+            <td>{{ item.mrp|floatformat:2 }}</td>
+            <td>{{ item.discount|default:"0" }}%</td>
             <td>{{ item.quantity }}</td>
-            <td>{{ item.amount|floatformat:2 }}</td>
-            <td>{{ item.product.gst|default:"0" }}%</td>
-            <td>{{ item.tax_amount|floatformat:2 }}</td>
-            <td>{{ item.total_with_tax|floatformat:2 }}</td>
+            <td>{{ item.taxable_value|floatformat:2 }}</td>
+            <td>{{ item.sgst_percent }}%</td>
+            <td>{{ item.sgst_amount|floatformat:2 }}</td>
+            <td>{{ item.cgst_percent }}%</td>
+            <td>{{ item.cgst_amount|floatformat:2 }}</td>
+            <td>{{ item.total|floatformat:2 }}</td>
         </tr>
-        {% empty %}
-        <tr><td colspan="10">No items found</td></tr>
         {% endfor %}
     </tbody>
     <tfoot>
         <tr>
-            <td colspan="9" style="text-align:right;"><b>Total</b></td>
-            <td>{{ total_amount|floatformat:2 }}</td>
+            <td colspan="6" style="text-align:right;"><b>Total</b></td>
+            <td><b>{{ sale.total_taxable|floatformat:2 }}</b></td>
+            <td></td>
+            <td><b>{{ sale.total_sgst|floatformat:2 }}</b></td>
+            <td></td>
+            <td><b>{{ sale.total_cgst|floatformat:2 }}</b></td>
+            <td><b>{{ sale.total_amount|floatformat:2 }}</b></td>
         </tr>
     </tfoot>
 </table>
+
 
     <!-- Total + QR + Summary -->
     <table>
@@ -177,7 +184,14 @@
             <td style="width:40%;">
                 <table class="summary" style="width:100%;">
                     <tr><td>Taxable Amount: ₹ {{ sale_instance.total_amount_before_discount|floatformat:2 }}</td></tr>
-                    <tr><td>Total Tax: ₹ {{ total_tax|floatformat:2 }}</td></tr>
+                    <tr><td>Total Tax: ₹ 
+                        {% with 0 as total_tax %}
+                        {% for hsn,data in hsn_summary %}
+                            {% widthratio data.total_tax 1 1 as tax %}
+                            {% if not forloop.first %}+{% endif %}{{ tax }}
+                        {% endfor %}
+                        {% endwith %}
+                    </td></tr>
                     <tr><td>Discount ({{ sale_instance.discount_percentage }}%) : ₹ {{ sale_instance.discount_amount|floatformat:2 }}</td></tr>
                     <tr><td>Round off</td></tr>
                     <tr class="bold"><td>Total Amount: ₹ {{ total_amount|floatformat:2 }}</td></tr>
@@ -201,4 +215,3 @@
 
 </body>
 </html>
-
