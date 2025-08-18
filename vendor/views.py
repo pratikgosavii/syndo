@@ -2040,8 +2040,9 @@ def sale_invoice(request, sale_id):
     rounded_total = round(total_amount)
     round_off_value = round(rounded_total - total_amount, 2)
 
-    # Prepare simple HSN summary dict
+    # Prepare HSN summary
     hsn_summary = {}
+    total_tax = 0
     for item in sale.items.all():
         hsn = item.product.hsn or "N/A"
         sgst_rate = item.product.sgst_rate or 9
@@ -2056,13 +2057,16 @@ def sale_invoice(request, sale_id):
             }
         hsn_summary[hsn]['taxable_value'] += taxable_val
 
-    # Calculate tax amounts
+        # Add tax
+        total_tax += item.tax_amount
+
+    # Calculate tax per HSN
     for hsn, data in hsn_summary.items():
         data['sgst_amount'] = round(data['taxable_value'] * data['sgst_rate'] / 100, 2)
         data['cgst_amount'] = round(data['taxable_value'] * data['cgst_rate'] / 100, 2)
         data['total_tax'] = data['sgst_amount'] + data['cgst_amount']
 
-    # Convert total to words (after round off)
+    # Convert total to words
     total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
 
     return render(request, 'sale_invoice/cgst_sale_invoice.html', {
@@ -2071,10 +2075,10 @@ def sale_invoice(request, sale_id):
         'total_amount': total_amount,
         'rounded_total': rounded_total,
         'round_off_value': round_off_value,
-        'hsn_summary': hsn_summary.items(),  # list of (hsn, data) tuples
+        'hsn_summary': hsn_summary.items(),
         'total_in_words': total_in_words,
+        'total_tax': total_tax,   # ✅ added here
     })
-
 
 
 def pos_wholesaless(request, sale_id):

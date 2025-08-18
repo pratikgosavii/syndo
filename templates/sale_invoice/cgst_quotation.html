@@ -1,216 +1,218 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Quotation</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            margin: 0;
-            padding: 20px;
-            color: #000;
-        }
-        .quotation-box {
-            width: 100%;
-            border: 2px solid #000;
-            padding: 15px;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            border: 1px solid #000;
-            text-align: center;
-            line-height: 80px;
-        }
-        .company-details {
-            flex: 1;
-            padding-left: 10px;
-        }
-        .right-header {
-            text-align: right;
-            font-size: 13px;
-        }
-        .section {
-            border-bottom: 1px solid #000;
-            padding: 5px 0;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 5px;
-        }
-        table, th, td {
-            border: 1px solid #000;
-        }
-        th, td {
-            padding: 5px;
-            text-align: left;
-        }
-        .no-border td {
-            border: none;
-        }
-        .totals {
-            border: 1px solid #000;
-            padding: 5px;
-        }
-        .footer {
-            margin-top: 20px;
-        }
-        .terms {
-            margin-top: 10px;
-        }
-        .signature {
-            text-align: right;
-            font-weight: bold;
-            margin-top: 20px;
-        }
-        .qr {
-            width: 80px;
-            height: 80px;
-            border: 1px solid #000;
-            text-align: center;
-            line-height: 80px;
-            font-size: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Quotation Invoice - {{ quotation.invoice_number }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 5px;
+      text-align: center;
+    }
+    .no-border td, .no-border th {
+      border: none !important;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 5px;
+    }
+    .header-left {
+      text-align: left;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .section {
+      margin-top: 8px;
+      border: 1px solid #000;
+      padding: 4px;
+    }
+    .signature {
+      margin-top: 40px;
+      text-align: right;
+      font-weight: bold;
+    }
+    .small-text {
+      font-size: 11px;
+    }
+  </style>
 </head>
 <body>
-<div class="quotation-box">
 
-    <!-- Header -->
-    <div class="header">
-        <div class="logo">Logo</div>
-        <div class="company-details">
-            <strong>Company Name</strong><br>
-            Address line 1<br>
-            Address line 2<br>
-            GSTIN: ADFH123HG55 &nbsp; PAN: ADFH123HG55<br>
-            Mobile: +91 8888888888 &nbsp; Email: Email here<br>
-            <strong>Reverse Charge</strong>
-        </div>
-        <div class="right-header">
-            <strong style="color:#007bff;">QUOTATION</strong><br>
-            ORIGINAL FOR RECIPIENT<br>
-            Quotation Date: DD/MM/YYYY<br>
-            Invoice No: DD/MM/YYYY
-        </div>
-    </div>
-
-    <!-- Customer & Address -->
-    <table style="margin-top:10px;">
-        <tr>
-            <td width="33%">
-                <strong>Customer Details:</strong><br>
-                COMPANY NAME<br>
-                GSTIN: ADFH123HG55<br>
-                PAN: ADFH123HG55<br>
-                Aadhaar: ADFH123HG55<br>
-                Ph: +91 8888888888
-            </td>
-            <td width="33%">
-                <strong>Billing Address:</strong><br>
-                Address line 1<br>
-                Address line 2<br>
-                Address line 3<br><br>
-                <strong>Delivery Address:</strong><br>
-                Address line 1<br>
-                Address line 2<br>
-                Address line 3
-            </td>
-            <td width="33%">
-                <strong>Reference:</strong> Preet Collection
-            </td>
-        </tr>
-    </table>
-
-    <!-- Items Table -->
-    <table>
-        <tr>
-            <th>S.No.</th>
-            <th>Item</th>
-            <th>HSN/SAC</th>
-            <th>Rate</th>
-            <th>Qty Unit</th>
-            <th>Taxable Value</th>
-            <th>GST<br>SGST(%)</th>
-            <th>GST<br>CGST(%)</th>
-            <th>Total</th>
-        </tr>
-        <tr>
-            <td colspan="9" style="height:100px;"></td>
-        </tr>
-    </table>
-
-    <!-- Totals & Bank -->
-    <table>
-        <tr>
-            <td width="50%">
-                Total Quantity: <br>
-                Total value in words: <br><br>
-                <strong>Bank Details:</strong><br>
-                Bank: <br>
-                Account No: <br>
-                IFSC Code: <br>
-                Branch: <br>
-                UPI Id: 
-            </td>
-            <td width="20%" class="qr">QR</td>
-            <td width="30%">
-                <strong>Taxable Amount</strong><br>
-                SGST<br>
-                CGST<br>
-                Discount (5%)<br>
-                Delivery Charges<br>
-                Package Charges<br>
-                <hr>
-                Round off<br>
-                <strong>Total Amount</strong><br>
-                Paid<br>
-                Balance
-            </td>
-        </tr>
-    </table>
-
-    <!-- Tax Summary -->
-    <table>
-        <tr>
-            <th>HSN / SAC</th>
-            <th>Taxable Value</th>
-            <th>SGST(%)</th>
-            <th>Amount</th>
-            <th>CGST(%)</th>
-            <th>Amount</th>
-            <th>Total Tax Amount</th>
-        </tr>
-        <tr>
-            <td colspan="7" style="height:50px;"></td>
-        </tr>
-        <tr>
-            <td colspan="6" style="text-align:right;"><strong>Total</strong></td>
-            <td></td>
-        </tr>
-    </table>
-
-    <!-- Notes & Terms -->
-    <div class="footer">
-        <strong>Notes:</strong> Note written here<br><br>
-        <strong>Terms & Conditions:</strong><br>
-        Terms & Conditions here<br>
-        Terms & Conditions here<br>
-        Terms & Conditions here<br>
-        Terms & Conditions here
-    </div>
-
-    <div class="signature">
-        Authorized Signature
-    </div>
+<div class="header">
+  <div class="header-left">
+    <img src="{% static 'images/logo.png' %}" width="60"><br>
+    <strong>{{ company.name }}</strong><br>
+    {{ company.address_line1 }}<br>
+    {{ company.address_line2 }}<br>
+    GSTIN : {{ company.gstin }} | PAN : {{ company.pan }}<br>
+    Mobile : {{ company.phone }} | Email : {{ company.email }}
+  </div>
+  <div class="header-right">
+    <h3 style="color:blue; margin:0;">QUOTATION</h3>
+    <p><strong>Original for Recipient</strong></p>
+    Quotation Date : {{ quotation.date|date:"d/m/Y" }} <br>
+    Invoice No. : {{ quotation.invoice_number }}
+  </div>
 </div>
+
+<!-- Customer Details -->
+<table class="section">
+  <tr>
+    <td width="40%">
+      <strong>Customer Details:</strong><br>
+      {{ customer.name }}<br>
+      GSTIN : {{ customer.gstin }}<br>
+      PAN : {{ customer.pan }}<br>
+      Aadhar : {{ customer.aadhar }}<br>
+      Ph : {{ customer.phone }}
+    </td>
+    <td width="30%">
+      <strong>Billing Address :</strong><br>
+      {{ customer.billing_address }}
+      <br><br>
+      <strong>Delivery Address :</strong><br>
+      {{ customer.delivery_address }}
+    </td>
+    <td width="30%">
+      <strong>Reference :</strong> {{ quotation.reference }}
+    </td>
+  </tr>
+</table>
+
+<!-- Items Table -->
+<table>
+  <thead>
+    <tr>
+      <th>S.No.</th>
+      <th>Item</th>
+      <th>HSN/SAC</th>
+      <th>Rate</th>
+      <th>Qty Unit</th>
+      <th>Taxable Value</th>
+      <th colspan="2">GST</th>
+      <th>Total</th>
+    </tr>
+    <tr>
+      <th colspan="6"></th>
+      <th>SGST(%)</th>
+      <th>CGST(%)</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in quotation.items.all %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ item.product.name }}</td>
+      <td>{{ item.product.hsn_sac }}</td>
+      <td>{{ item.rate|floatformat:2 }}</td>
+      <td>{{ item.quantity }}</td>
+      <td>{{ item.taxable_value|floatformat:2 }}</td>
+      <td>{{ item.sgst_rate }}%</td>
+      <td>{{ item.cgst_rate }}%</td>
+      <td>{{ item.total|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Totals Section -->
+<table class="no-border">
+  <tr>
+    <td width="60%">
+      <strong>Total Quantity :</strong> {{ quotation.total_qty }} <br>
+      <strong>Total value in words :</strong> {{ quotation.total_in_words }}
+    </td>
+    <td width="40%">
+      <table>
+        <tr><td>Taxable Amount</td><td>{{ quotation.taxable_amount|floatformat:2 }}</td></tr>
+        <tr><td>SGST</td><td>{{ quotation.sgst_amount|floatformat:2 }}</td></tr>
+        <tr><td>CGST</td><td>{{ quotation.cgst_amount|floatformat:2 }}</td></tr>
+        <tr><td>Discount ({{ quotation.discount_rate }}%)</td><td>{{ quotation.discount_amount|floatformat:2 }}</td></tr>
+        <tr><td>Delivery Charges</td><td>{{ quotation.delivery_charges|floatformat:2 }}</td></tr>
+        <tr><td>Package Charges</td><td>{{ quotation.package_charges|floatformat:2 }}</td></tr>
+        <tr><td>Round off</td><td>{{ quotation.round_off|floatformat:2 }}</td></tr>
+        <tr><td><strong>Total Amount</strong></td><td><strong>{{ quotation.total_amount|floatformat:2 }}</strong></td></tr>
+        <tr><td>Paid</td><td>{{ quotation.paid|floatformat:2 }}</td></tr>
+        <tr><td><strong>Balance</strong></td><td><strong>{{ quotation.balance|floatformat:2 }}</strong></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- Bank + QR -->
+<table>
+  <tr>
+    <td width="60%">
+      <strong>Bank Details :</strong><br>
+      Bank : {{ company.bank_name }}<br>
+      Account No : {{ company.account_no }}<br>
+      IFSC : {{ company.ifsc }}<br>
+      Branch : {{ company.branch }}<br>
+      UPI : {{ company.upi_id }}
+    </td>
+    <td width="40%" align="center">
+      <img src="{% static 'images/qr.png' %}" width="100"><br>
+      <small>Pay using UPI</small>
+    </td>
+  </tr>
+</table>
+
+<!-- HSN Summary -->
+<table>
+  <thead>
+    <tr>
+      <th>HSN / SAC</th>
+      <th>Taxable Value</th>
+      <th>SGST(%)</th>
+      <th>Amount</th>
+      <th>CGST(%)</th>
+      <th>Amount</th>
+      <th>Total Tax Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tax in quotation.hsn_summary %}
+    <tr>
+      <td>{{ tax.hsn }}</td>
+      <td>{{ tax.taxable_value|floatformat:2 }}</td>
+      <td>{{ tax.sgst_rate }}%</td>
+      <td>{{ tax.sgst_amount|floatformat:2 }}</td>
+      <td>{{ tax.cgst_rate }}%</td>
+      <td>{{ tax.cgst_amount|floatformat:2 }}</td>
+      <td>{{ tax.total_tax|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+    <tr>
+      <td colspan="6"><strong>Total</strong></td>
+      <td><strong>{{ quotation.total_tax|floatformat:2 }}</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Notes:</strong> {{ quotation.notes }}</p>
+<p><strong>Terms & Conditions:</strong><br>{{ quotation.terms|linebreaks }}</p>
+
+<div class="signature">Authorized Signature</div>
+
 </body>
 </html>
