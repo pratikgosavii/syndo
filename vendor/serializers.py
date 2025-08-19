@@ -50,6 +50,7 @@ class ProductSettingsSerializer(serializers.ModelSerializer):
 
 
 class AddonSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = addon
         fields = '__all__'

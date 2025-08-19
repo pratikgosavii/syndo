@@ -1200,13 +1200,14 @@ class ProductSettingsViewSet(viewsets.ModelViewSet):
 
 
 class ProductAddonViewSet(viewsets.ModelViewSet):
-    queryset = addon.objects.all()
-    serializer_class = AddonSerializer
+    queryset = product_addon.objects.all()
+    serializer_class = ProductAddonSerializer
 
 
 class AddonViewSet(viewsets.ModelViewSet):
-    queryset = product_addon.objects.all()
-    serializer_class = ProductAddonSerializer
+    
+    queryset = addon.objects.all()
+    serializer_class = AddonSerializer
 
 
 class SpotlightProductViewSet(viewsets.ModelViewSet):

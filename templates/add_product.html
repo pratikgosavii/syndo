@@ -450,59 +450,61 @@ input:checked + .slider:before {
                         </div>
 
                         <hr>
+                                {{ formset.management_form }}
                         
+                        <div id="addon-section" style="display: none;">
+                            <h5 class="form-heading">Addons</h5>
+                            
+                            <div >
+                            
 
-                        <h5 class="form-heading">Addons</h5>
-                        <div >
-                        
-
-                            {% for form in formset.forms %}
-                                {% if form.errors %}
-                                    <div class="alert alert-danger">
-                                        {% for field, errors in form.errors.items %}
-                                            {% for error in errors %}
-                                                {{ field }}: {{ error }}<br>
+                                {% for form in formset.forms %}
+                                    {% if form.errors %}
+                                        <div class="alert alert-danger">
+                                            {% for field, errors in form.errors.items %}
+                                                {% for error in errors %}
+                                                    {{ field }}: {{ error }}<br>
+                                                {% endfor %}
                                             {% endfor %}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            {% endfor %}
-
-
-
-                            {{ formset.management_form }}
-                                                        
-                            <table class="table table-bordered" id="addon-table">
-                                <thead>
-                                    <tr>
-                                        <th>Sr No</th>
-                                        <th>Addon</th>
-                                        <th>Delete</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="addon-formset">
-                                {% for form in formset %}
-                                    <tr class="addon-form">
-                                        <td class="sr-no">{{ forloop.counter }}</td>
-
-                                        <td>
-                                            {{ form.addon }}
-                                            <!-- 🔥 Include hidden fields -->
-                                            {% for hidden in form.hidden_fields %}
-                                                {{ hidden }}
-                                            {% endfor %}
-                                        </td>
-
-                                        <td>{{ form.DELETE }}</td>
-                                    </tr>
+                                        </div>
+                                    {% endif %}
                                 {% endfor %}
 
-                                </tbody>
-                            </table>
 
-                            <button type="button" class="btn btn-outline-primary" id="add-addon">Add Another Addon</button>
+
+                                                            
+                                <table class="table table-bordered" id="addon-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Sr No</th>
+                                            <th>Addon</th>
+                                            <th>Delete</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="addon-formset">
+                                    {% for form in formset %}
+                                        <tr class="addon-form">
+                                            <td class="sr-no">{{ forloop.counter }}</td>
+
+                                            <td>
+                                                {{ form.addon }}
+                                                <!-- 🔥 Include hidden fields -->
+                                                {% for hidden in form.hidden_fields %}
+                                                    {{ hidden }}
+                                                {% endfor %}
+                                            </td>
+
+                                            <td>{{ form.DELETE }}</td>
+                                        </tr>
+                                    {% endfor %}
+
+                                    </tbody>
+                                </table>
+
+                                <button type="button" class="btn btn-outline-primary" id="add-addon">Add Another Addon</button>
+                            </div>
                         </div>
-                        
+                            
 
                         <hr>
                                 
@@ -1001,6 +1003,7 @@ input:checked + .slider:before {
     const customPrintToggle = document.getElementById('customPrintToggle');
     const standardPrintWrapper = document.getElementById('standardPrintWrapper');
     const customPrintWrapper = document.getElementById('customPrintWrapper');
+    const addon_section = document.getElementById('addon-section');
 
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1032,6 +1035,14 @@ changeMrpLabel("Selling Price");
     function handleProductTypeChange() {
         const selectedType = productType?.value;
 
+        if (selectedType === 'product') {
+            addon_section.style.display = 'block';
+
+        }
+        else{
+            addon_section.style.display = 'block';
+
+        }
         if (selectedType === 'print') {
             setSaleTypeOptionsForPrint();
             
