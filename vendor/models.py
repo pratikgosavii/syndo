@@ -917,6 +917,27 @@ class InvoiceSettings(models.Model):
     show_hsn_sac_summary = models.BooleanField(default=False)
 
 
+class BarcodeSettings(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="barcode_settings")
+
+    show_package_date = models.BooleanField(default=False)
+    mrp_label = models.BooleanField(default=False)
+    show_discount = models.BooleanField(default=False)
+    show_price_with_text = models.BooleanField(default=False)
+
+    BARCODE_SIZE_CHOICES = [
+        ("25x50", "25MM * 50MM"),
+        ("50x100", "50MM * 100MM"),
+    ]
+    barcode_size = models.CharField(max_length=10, choices=BARCODE_SIZE_CHOICES, default="25x50")
+
+    show_note = models.BooleanField(default=False)
+    note_label = models.CharField(max_length=20, blank=True, null=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Barcode Settings for {self.user.username}"
 
 
 class ReminderSetting(models.Model):

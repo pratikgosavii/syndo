@@ -115,6 +115,7 @@
                                         <li><a href="{% url 'list_product_subcategory' %}">SubCategory List</a></li>
                                     </ul>
                                 </li>
+                                
 
                                 <!-- Addon -->
                                 <li>
@@ -135,9 +136,21 @@
                                 </li>
 
                                <li>
+                                    <a href="{% url 'generate_barcode' %}">
+                                        <i data-feather="layers"></i>
+                                        <span>Generate Barcode</span>
+                                    </a>
+                                </li>
+                               <li>
                                     <a href="{% url 'product_settings' %}">
                                         <i data-feather="settings"></i>
                                         <span>Product Settings</span>
+                                    </a>
+                                </li>
+                               <li>
+                                    <a href="{% url 'barcode_setting' %}">
+                                        <i data-feather="settings"></i>
+                                        <span>Barcode Settings</span>
                                     </a>
                                 </li>
                             </ul>
