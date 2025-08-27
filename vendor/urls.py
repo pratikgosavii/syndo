@@ -98,7 +98,11 @@ urlpatterns = [
     path('delete_product/<int:product_id>/', delete_product, name='delete_product'),
     path('list-product/', list_product, name='list_product'),
     path('product-setting/', product_setting, name='product_settings'),
+    path('barcode-setting/', barcode_setting, name='barcode_setting'),
     path('product_defaults/', product_defaults, name='product_defaults'),
+    path('product-defaults/', product_default.as_view(), name='product_default'),
+    
+    path('generate-barcode/', generate_barcode, name='generate_barcode'),
 
     path('print-variant/choices/', PrintVariantChoiceAPIView.as_view(), name='print-variant-choices'),
     

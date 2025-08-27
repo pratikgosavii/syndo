@@ -338,13 +338,13 @@ input:checked + .slider:before {
                     
                         <!-- Delivery & Policies -->
                        
-                        <hr>
-
+                        
                         
                         
                         {{ variant_formset.management_form }}
                         <div id="standardPrintWrapper" style="display: none;">
-
+                            
+                            <hr>
                             <div id="variantSection">
 
                                 {% for form in variant_formset.forms %}
@@ -400,11 +400,11 @@ input:checked + .slider:before {
                             </div>
                         </div>
 
-                        <hr>
                         
                         {{ customize_print_variant_formset.management_form }}
-
+                        
                         <div id="customPrintWrapper" style="display: none;">
+                            <hr>
 
                             <div id="customizevariantSection">
 
@@ -449,10 +449,10 @@ input:checked + .slider:before {
                             </div>
                         </div>
 
-                        <hr>
-                                {{ formset.management_form }}
+                        {{ formset.management_form }}
                         
                         <div id="addon-section" style="display: none;">
+                            <hr>
                             <h5 class="form-heading">Addons</h5>
                             
                             <div >
@@ -506,9 +506,9 @@ input:checked + .slider:before {
                         </div>
                             
 
-                        <hr>
-                                
+                        
                         <div id="hide_offline_div">
+                            <hr>
                         <div id="delivery_div" class="p-3 rounded" style="background: #fff;">
 
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -1035,14 +1035,6 @@ changeMrpLabel("Selling Price");
     function handleProductTypeChange() {
         const selectedType = productType?.value;
 
-        if (selectedType === 'product') {
-            addon_section.style.display = 'block';
-
-        }
-        else{
-            addon_section.style.display = 'block';
-
-        }
         if (selectedType === 'print') {
             setSaleTypeOptionsForPrint();
             
@@ -1052,7 +1044,9 @@ changeMrpLabel("Selling Price");
             console.log('in here')
 
             changeMrpLabel("Base MRP");
-  
+            
+            addon_section.style.display = 'block';
+
             standardPrintWrapper.style.display = 'block';
 
             foodOptionToggleWrapper.style.display = 'none';
@@ -1067,6 +1061,7 @@ changeMrpLabel("Selling Price");
             toggleVariantFormSection(selectedType === 'product');
             toggleProductOnlyFields(selectedType === 'product');
             
+            addon_section.style.display = 'none';
 
             changeMrpLabel("MRP");
 
@@ -1183,8 +1178,11 @@ function handleCustomPrintToggleChange() {
         }
 
     } else {
+
         customPrintWrapper.style.display = 'none';
-        standardPrintWrapper.style.display = 'block';
+        if (selectedType === 'print') {
+            standardPrintWrapper.style.display = 'block';
+        }
 
         
 

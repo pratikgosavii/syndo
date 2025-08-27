@@ -1,10 +1,8 @@
-{% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Quotation Invoice - {{ quotation.invoice_number }}</title>
+  <title>Quotation Invoice - INV001</title>
   <style>
     @page {
       size: A4;
@@ -59,18 +57,18 @@
 
 <div class="header">
   <div class="header-left">
-    <img src="{% static 'images/logo.png' %}" width="60"><br>
-    <strong>{{ company.name }}</strong><br>
-    {{ company.address_line1 }}<br>
-    {{ company.address_line2 }}<br>
-    GSTIN : {{ company.gstin }} | PAN : {{ company.pan }}<br>
-    Mobile : {{ company.phone }} | Email : {{ company.email }}
+    <img src="logo.png" width="60"><br>
+    <strong>ABC Pvt Ltd</strong><br>
+    123 Business Street<br>
+    Industrial Area, Pune<br>
+    GSTIN : 27ABCDE1234F1Z5 | PAN : ABCDE1234F<br>
+    Mobile : +91 9876543210 | Email : info@abc.com
   </div>
   <div class="header-right">
     <h3 style="color:blue; margin:0;">QUOTATION</h3>
     <p><strong>Original for Recipient</strong></p>
-    Quotation Date : {{ quotation.date|date:"d/m/Y" }} <br>
-    Invoice No. : {{ quotation.invoice_number }}
+    Quotation Date : 20/08/2025 <br>
+    Invoice No. : INV001
   </div>
 </div>
 
@@ -79,21 +77,20 @@
   <tr>
     <td width="40%">
       <strong>Customer Details:</strong><br>
-      {{ customer.name }}<br>
-      GSTIN : {{ customer.gstin }}<br>
-      PAN : {{ customer.pan }}<br>
-      Aadhar : {{ customer.aadhar }}<br>
-      Ph : {{ customer.phone }}
+      XYZ Enterprises<br>
+      GSTIN : 27XYZDE5678F1Z9<br>
+      PAN : XYZDE5678F<br>
+      Aadhar : 1234 5678 9123<br>
+      Ph : +91 9123456780
     </td>
     <td width="30%">
       <strong>Billing Address :</strong><br>
-      {{ customer.billing_address }}
-      <br><br>
+      456 Market Road, Pune<br><br>
       <strong>Delivery Address :</strong><br>
-      {{ customer.delivery_address }}
+      789 Factory Lane, Pune
     </td>
     <td width="30%">
-      <strong>Reference :</strong> {{ quotation.reference }}
+      <strong>Reference :</strong> REF123
     </td>
   </tr>
 </table>
@@ -119,19 +116,28 @@
     </tr>
   </thead>
   <tbody>
-    {% for item in quotation.items.all %}
     <tr>
-      <td>{{ forloop.counter }}</td>
-      <td>{{ item.product.name }}</td>
-      <td>{{ item.product.hsn_sac }}</td>
-      <td>{{ item.rate|floatformat:2 }}</td>
-      <td>{{ item.quantity }}</td>
-      <td>{{ item.taxable_value|floatformat:2 }}</td>
-      <td>{{ item.sgst_rate }}%</td>
-      <td>{{ item.cgst_rate }}%</td>
-      <td>{{ item.total|floatformat:2 }}</td>
+      <td>1</td>
+      <td>Product A</td>
+      <td>8501</td>
+      <td>500.00</td>
+      <td>10 Nos</td>
+      <td>5000.00</td>
+      <td>9%</td>
+      <td>9%</td>
+      <td>5900.00</td>
     </tr>
-    {% endfor %}
+    <tr>
+      <td>2</td>
+      <td>Product B</td>
+      <td>8502</td>
+      <td>1000.00</td>
+      <td>5 Nos</td>
+      <td>5000.00</td>
+      <td>9%</td>
+      <td>9%</td>
+      <td>5900.00</td>
+    </tr>
   </tbody>
 </table>
 
@@ -139,21 +145,21 @@
 <table class="no-border">
   <tr>
     <td width="60%">
-      <strong>Total Quantity :</strong> {{ quotation.total_qty }} <br>
-      <strong>Total value in words :</strong> {{ quotation.total_in_words }}
+      <strong>Total Quantity :</strong> 15 <br>
+      <strong>Total value in words :</strong> Ten Thousand Eight Hundred Only
     </td>
     <td width="40%">
       <table>
-        <tr><td>Taxable Amount</td><td>{{ quotation.taxable_amount|floatformat:2 }}</td></tr>
-        <tr><td>SGST</td><td>{{ quotation.sgst_amount|floatformat:2 }}</td></tr>
-        <tr><td>CGST</td><td>{{ quotation.cgst_amount|floatformat:2 }}</td></tr>
-        <tr><td>Discount ({{ quotation.discount_rate }}%)</td><td>{{ quotation.discount_amount|floatformat:2 }}</td></tr>
-        <tr><td>Delivery Charges</td><td>{{ quotation.delivery_charges|floatformat:2 }}</td></tr>
-        <tr><td>Package Charges</td><td>{{ quotation.package_charges|floatformat:2 }}</td></tr>
-        <tr><td>Round off</td><td>{{ quotation.round_off|floatformat:2 }}</td></tr>
-        <tr><td><strong>Total Amount</strong></td><td><strong>{{ quotation.total_amount|floatformat:2 }}</strong></td></tr>
-        <tr><td>Paid</td><td>{{ quotation.paid|floatformat:2 }}</td></tr>
-        <tr><td><strong>Balance</strong></td><td><strong>{{ quotation.balance|floatformat:2 }}</strong></td></tr>
+        <tr><td>Taxable Amount</td><td>10000.00</td></tr>
+        <tr><td>SGST</td><td>900.00</td></tr>
+        <tr><td>CGST</td><td>900.00</td></tr>
+        <tr><td>Discount (5%)</td><td>500.00</td></tr>
+        <tr><td>Delivery Charges</td><td>200.00</td></tr>
+        <tr><td>Package Charges</td><td>100.00</td></tr>
+        <tr><td>Round off</td><td>0.00</td></tr>
+        <tr><td><strong>Total Amount</strong></td><td><strong>10600.00</strong></td></tr>
+        <tr><td>Paid</td><td>5000.00</td></tr>
+        <tr><td><strong>Balance</strong></td><td><strong>5600.00</strong></td></tr>
       </table>
     </td>
   </tr>
@@ -164,14 +170,14 @@
   <tr>
     <td width="60%">
       <strong>Bank Details :</strong><br>
-      Bank : {{ company.bank_name }}<br>
-      Account No : {{ company.account_no }}<br>
-      IFSC : {{ company.ifsc }}<br>
-      Branch : {{ company.branch }}<br>
-      UPI : {{ company.upi_id }}
+      Bank : HDFC Bank<br>
+      Account No : 123456789012<br>
+      IFSC : HDFC0001234<br>
+      Branch : Pune Main<br>
+      UPI : abc@upi
     </td>
     <td width="40%" align="center">
-      <img src="{% static 'images/qr.png' %}" width="100"><br>
+      <img src="qr.png" width="100"><br>
       <small>Pay using UPI</small>
     </td>
   </tr>
@@ -191,26 +197,33 @@
     </tr>
   </thead>
   <tbody>
-    {% for tax in quotation.hsn_summary %}
     <tr>
-      <td>{{ tax.hsn }}</td>
-      <td>{{ tax.taxable_value|floatformat:2 }}</td>
-      <td>{{ tax.sgst_rate }}%</td>
-      <td>{{ tax.sgst_amount|floatformat:2 }}</td>
-      <td>{{ tax.cgst_rate }}%</td>
-      <td>{{ tax.cgst_amount|floatformat:2 }}</td>
-      <td>{{ tax.total_tax|floatformat:2 }}</td>
+      <td>8501</td>
+      <td>5000.00</td>
+      <td>9%</td>
+      <td>450.00</td>
+      <td>9%</td>
+      <td>450.00</td>
+      <td>900.00</td>
     </tr>
-    {% endfor %}
+    <tr>
+      <td>8502</td>
+      <td>5000.00</td>
+      <td>9%</td>
+      <td>450.00</td>
+      <td>9%</td>
+      <td>450.00</td>
+      <td>900.00</td>
+    </tr>
     <tr>
       <td colspan="6"><strong>Total</strong></td>
-      <td><strong>{{ quotation.total_tax|floatformat:2 }}</strong></td>
+      <td><strong>1800.00</strong></td>
     </tr>
   </tbody>
 </table>
 
-<p><strong>Notes:</strong> {{ quotation.notes }}</p>
-<p><strong>Terms & Conditions:</strong><br>{{ quotation.terms|linebreaks }}</p>
+<p><strong>Notes:</strong> Delivery within 7 working days.</p>
+<p><strong>Terms & Conditions:</strong><br>1. Payment due within 30 days.<br>2. Goods once sold will not be taken back.</p>
 
 <div class="signature">Authorized Signature</div>
 

@@ -700,6 +700,14 @@ class TaxSettingsForm(forms.ModelForm):
         exclude = ['user']
         widgets = {field: forms.CheckboxInput(attrs={'class': 'form-check-input'}) for field in model._meta.get_fields() if field.name != 'user'}
 
+class BarcodeSettingsForm(forms.ModelForm):
+    class Meta:
+        model = BarcodeSettings
+        fields = '__all__'
+        widgets = {
+            "note_label": forms.TextInput(attrs={"class": "form-control", "placeholder": "Note", "id" : "note-box"}),
+        }
+
 class InvoiceSettingsForm(forms.ModelForm):
     class Meta:
         model = InvoiceSettings

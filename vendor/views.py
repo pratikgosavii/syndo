@@ -876,6 +876,89 @@ def list_product(request):
 
 
 @login_required(login_url='login_admin')
+def barcode_setting(request):
+
+    settings, created = BarcodeSettings.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = BarcodeSettingsForm(request.POST, instance=settings)
+        if form.is_valid():
+            form.save()
+            return redirect("barcode_setting")  # reload page
+    else:
+        form = BarcodeSettingsForm(instance=settings)
+
+    return render(request, "barcode_settings.html", {"form": form})
+
+
+
+from django.http import HttpResponse
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.pagesizes import inch
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+from reportlab.graphics.barcode import code128
+from reportlab.graphics.shapes import Drawing
+
+from io import BytesIO
+
+
+def generate_barcode(request):
+
+    if request.method == "POST":
+        # Example product (in real case fetch from DB)
+        ids = request.POST.getlist("selected_products")  # ✅ get multiple product IDs
+        print(ids)
+        products = product.objects.filter(id__in=ids)
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=(2.5*inch, 1.5*inch))  # label size
+        elements = []
+        styles = getSampleStyleSheet()
+
+        for i in products:
+            # Barcode
+            barcode = code128.Code128(str(i.id), barHeight=20, barWidth=0.5)
+
+            # Table for layout
+            data = [
+                 [Paragraph(f"<b>{i.company_name or 0}</b>", styles['Normal'])],
+                [Paragraph(f"Item: {i.name or 0}", styles['Normal'])],
+                [Paragraph(f"MRP: {i.mrp or 0}", styles['Normal']),
+                Paragraph(f"Discount: {i.discount or 0}", styles['Normal'])],
+                [Paragraph(f"<b>Sale Price: {i.sale_price or 0}</b>", styles['Normal'])],
+                [barcode]
+            ]
+            t = Table(data, colWidths=[2.3*inch])
+            t.setStyle(TableStyle([
+                ("BOX", (0,0), (-1,-1), 0.25, colors.black),
+                ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
+                ("ALIGN", (0,0), (-1,-1), "LEFT"),
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+            ]))
+            elements.append(t)
+            elements.append(Spacer(1, 0.2*inch))
+
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        response = HttpResponse(content_type="application/pdf")
+        response["Content-Disposition"] = "inline; filename=barcodes.pdf"  # 👈 preview
+        response.write(pdf)
+        return response
+
+
+    else:
+
+        data = product.objects.all()
+
+        context = {
+            'data': data
+        }
+        return render(request, 'list_product_barcode.html', context)
+
+@login_required(login_url='login_admin')
 def product_setting(request):
 
 
@@ -941,6 +1024,47 @@ def product_defaults(request):
     except ProductSettings.DoesNotExist:
         return JsonResponse({"success": False, "error": "No defaults found"})
 
+
+
+
+class product_default(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            settings = ProductSettings.objects.get(user=request.user)
+            data = {
+                "wholesale_price": settings.wholesale_price,
+                "stock": settings.stock,
+                "imei": settings.imei,
+                "low_stock_alert": settings.low_stock_alert,
+                "category": settings.category,
+                "sub_category": settings.sub_category,
+                "brand_name": settings.brand_name,
+                "color": settings.color,
+                "size": settings.size,
+                "batch_number": settings.batch_number,
+                "expiry_date": settings.expiry_date,
+                "description": settings.description,
+                "image": settings.image.url if settings.image else None,
+                "tax": settings.tax,
+                "food": settings.food,
+                "instant_delivery": settings.instant_delivery,
+                "self_pickup": settings.self_pickup,
+                "general_delivery": settings.general_delivery,
+                "shop_orders": settings.shop_orders,
+                "return_policy": settings.return_policy,
+                "cod": settings.cod,
+                "replacement": settings.replacement,
+                "shop_exchange": settings.shop_exchange,
+                "shop_warranty": settings.shop_warranty,
+                "brand_warranty": settings.brand_warranty,
+                "online_catalog_only": settings.online_catalog_only,
+            }
+            return Response({"success": True, "data": data})
+        except ProductSettings.DoesNotExist:
+            return Response({"success": False, "error": "No defaults found"}, status=404)
 
 
 
@@ -2070,7 +2194,7 @@ def sale_invoice(request, sale_id):
     # Convert total to words
     total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
 
-    return render(request, 'sale_invoice/cgst_sale_invoice.html', {
+    return render(request, 'sale_invoice/cgst_quotation.html', {
         'sale_instance': sale,
         'wholesale': wholesale,
         'total_amount': total_amount,
