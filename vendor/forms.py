@@ -407,11 +407,12 @@ class PurchaseForm(forms.ModelForm):
             'vendor': forms.Select(attrs={'class': 'form-control'}),
             'supplier_invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'serial_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'discount_percent': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'discount-amount-input'}),
+            'discount_percentage': forms.NumberInput(attrs={'class': 'form-control', 'id': 'discount-percentage'}),
             'payment_method': forms.Select(attrs={'class': 'form-control', 'id': 'payment_method'}),
             'advance_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'advance_mode': forms.Select(attrs={'class': 'form-control'}),
+            'advance_bank': forms.Select(attrs={'class': 'form-control'}),
             'eway_bill_no': forms.TextInput(attrs={'class': 'form-control'}),
             'lr_no': forms.TextInput(attrs={'class': 'form-control'}),
             'vehicle_no': forms.TextInput(attrs={'class': 'form-control', 'id' : 'vehicle_number'}),
@@ -482,6 +483,7 @@ class ExpenseForm(forms.ModelForm):
             'category': forms.Select(attrs={'class': 'form-control'}),
             'is_paid': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'payment_type': forms.Select(attrs={'class': 'form-control'}),
+            'bank': forms.Select(attrs={'class': 'form-control'}),
             'payment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'bank': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control'}),
@@ -686,7 +688,7 @@ class BankTransferForm(forms.Form):
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ['type', 'party', 'party_name', 'amount', 'payment_date', 'payment_type', 'account', 'notes', 'attachment']
+        fields = ['type', 'party', 'party_name', 'amount', 'payment_date', 'payment_type', 'bank', 'notes', 'attachment']
         widgets = {
             'payment_date': forms.DateInput(attrs={'type': 'date'}),
         }
