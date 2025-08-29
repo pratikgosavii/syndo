@@ -2549,17 +2549,39 @@ class SaleViewSet(viewsets.ModelViewSet):
             serializer.save(user=self.request.user)
 
 
+
+class DeliveryBoyViewSet(viewsets.ModelViewSet):
+    serializer_class = DeliveryBoySerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        return DeliveryBoy.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
 class DeliverySettingsViewSet(viewsets.ModelViewSet):
-    queryset = DeliverySettings.objects.all()
     serializer_class = DeliverySettingsSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        return DeliverySettings.objects.filter(user=self.request.user)
 
-class DeliveryBoyViewSet(viewsets.ModelViewSet):
-    queryset = DeliveryBoy.objects.all()
-    serializer_class = DeliveryBoySerializer
-    permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser, JSONParser] 
+    def list(self, request, *args, **kwargs):
+        instance, _ = DeliverySettings.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        instance, _ = DeliverySettings.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
 
 from rest_framework.exceptions import ValidationError
 
