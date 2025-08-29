@@ -797,6 +797,8 @@ class DeliverySettings(models.Model):
     general_delivery_days = models.PositiveIntegerField(default=2)
     delivery_charge_per_km = models.DecimalField(max_digits=6, decimal_places=2, default=10.00)
     minimum_base_fare = models.DecimalField(max_digits=6, decimal_places=2, default=30.00)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE)
+
 
 class DeliveryBoy(models.Model):
     name = models.CharField(max_length=100)
@@ -805,6 +807,7 @@ class DeliveryBoy(models.Model):
     is_active = models.BooleanField(default=True)
     total_deliveries = models.PositiveIntegerField(default=0)
     rating = models.DecimalField(max_digits=2, decimal_places=1, default=5.0)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE)
 
 class Wallet(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
