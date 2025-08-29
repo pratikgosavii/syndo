@@ -419,6 +419,7 @@ class DeliverySettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliverySettings
         fields = '__all__'
+        read_only_fields = ["user"]   # 👈 Important
 
 
 
@@ -426,6 +427,7 @@ class DeliveryBoySerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryBoy
         fields = '__all__'
+        read_only_fields = ["user"]   # 👈 Important
 
 
 class DeliveryModeSerializer(serializers.ModelSerializer):
