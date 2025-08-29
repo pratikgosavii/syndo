@@ -18,6 +18,10 @@ from .serializers import *
 from users.permissions import *
 
 from rest_framework.generics import ListAPIView
+from rest_framework.views import APIView
+from rest_framework import viewsets, permissions
+
+
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -444,6 +448,29 @@ class get_bank(ListAPIView):
 
 
 
+from customer.serializers import *
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.prefetch_related('items__product').all().order_by('-id')
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        """Restrict update to only allowed fields"""
+        instance = self.get_object()
+        allowed_fields = {"status", "delivery_boy", "is_paid"}
+        data = {k: v for k, v in request.data.items() if k in allowed_fields}
+
+        serializer = self.get_serializer(instance, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        """PATCH behaves same as restricted PUT"""
+        return self.update(request, *args, **kwargs)
+
 
 @login_required(login_url='login_admin')
 def add_customer(request):
@@ -551,7 +578,6 @@ def list_customer(request):
 
 from rest_framework.response import Response
 
-from rest_framework.views import APIView
 
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -1332,6 +1358,8 @@ class AddonViewSet(viewsets.ModelViewSet):
     
     queryset = addon.objects.all()
     serializer_class = AddonSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser] 
+
 
 
 class SpotlightProductViewSet(viewsets.ModelViewSet):
@@ -2523,7 +2551,6 @@ class CashTransferViewSet(viewsets.ModelViewSet):
 
 
 
-from rest_framework import viewsets, permissions
 
 class BannerCampaignViewSet(viewsets.ModelViewSet):
     queryset = BannerCampaign.objects.all()

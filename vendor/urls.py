@@ -49,9 +49,11 @@ router.register(r'invoicesettings', InvoiceSettingsViewSet, basename='invoiceset
 router.register(r'payments', PaymentViewSet, basename='payment')
 
 router.register(r'reminder-settings', ReminderSettingViewSet, basename='reminder-settings')
+router.register(r'orders', OrderViewSet, basename='orders')
 
 urlpatterns = [
 
+    
 
     path('add-company-profile/', add_company_profile, name='add_company_profile'),
     path('update-company-profile/<company_profile_id>', update_company_profile, name='update_company_profile'),
