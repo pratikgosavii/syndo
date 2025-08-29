@@ -40,7 +40,7 @@ router.register(r'cash-transfers', CashTransferViewSet, basename='CashTransferVi
 router.register(r'sales', SaleViewSet, basename='sale')
 
 router.register(r'deliverysettings', DeliverySettingsViewSet, basename='deliverysettings')
-router.register(r'deliveryboys', DeliveryBoyViewSet)
+router.register(r'deliveryboys', DeliveryBoyViewSet, basename='deliveryboys')
 router.register(r'deliverymode', DeliveryModeViewSet, basename='delivery-mode')
 
 router.register(r'taxsettings', TaxSettingsViewSet, basename='taxsettings')
