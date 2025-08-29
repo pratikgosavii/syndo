@@ -2671,14 +2671,17 @@ class ReminderSettingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return ReminderSetting.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def create(self, request, *args, **kwargs):
+        instance, _ = ReminderSetting.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
         instance, _ = ReminderSetting.objects.get_or_create(user=request.user)
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-
 
 
 class TaxSettingsViewSet(viewsets.ModelViewSet):
