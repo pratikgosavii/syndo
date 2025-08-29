@@ -1539,6 +1539,8 @@ def add_purchase(request):
 
         context = {
             'form': forms,
+            "banks" : vendor_bank.objects.all(),
+
             'data': data,
         }
         return render(request, 'add_purchase.html', context)
@@ -1666,7 +1668,9 @@ def add_expense(request):
         forms = ExpenseForm()
 
         context = {
-            'form': forms
+            'form': forms,
+            "banks" : vendor_bank.objects.all(),
+
         }
         return render(request, 'add_expense.html', context)
 
@@ -1962,6 +1966,7 @@ def pos(request):
 
     return render(request, "pos_form.html", {
         "form": sale_form,
+        "banks" : vendor_bank.objects.all(),
         "customer_forms": customer_form,
         "wholesale_forms": wholesale_form,
         "saleitemform": SaleItemForm(),
@@ -2138,7 +2143,7 @@ def get_product_price(request):
     product_id = request.GET.get('product_id')
     try:
         product_instance = product.objects.get(id=product_id)
-        return JsonResponse({'price': str(product_instance.sales_price)})
+        return JsonResponse({'price': str(product_instance.purchase_price)})
     except product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
     
@@ -2554,8 +2559,7 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
     queryset = DeliveryBoy.objects.all()
     serializer_class = DeliveryBoySerializer
     permission_classes = [permissions.IsAuthenticated]
-
-
+    parser_classes = [MultiPartParser, FormParser, JSONParser] 
 
 from rest_framework.exceptions import ValidationError
 

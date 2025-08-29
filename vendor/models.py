@@ -342,6 +342,7 @@ class product(models.Model):
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     sales_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+   
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, null=True, blank=True)
     hsn = models.CharField(max_length=50, null=True, blank=True)
     gst = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
@@ -545,13 +546,6 @@ from django.utils.crypto import get_random_string
 class Purchase(models.Model):
     
   
-    BANK_CASH_CHOICES = [
-        ('bank', 'Bank'),
-        ('cash', 'Cash'),
-        ('upi', 'UPI'),
-        ('card', 'Card'),
-    ]
-
     PAYMENT_METHOD_CHOICES = [
         ('upi', 'UPI'),
         ('card', 'Card'),
@@ -573,13 +567,14 @@ class Purchase(models.Model):
     supplier_invoice_date = models.DateField(blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
 
-    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES)
 
-    advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     advance_mode = models.CharField(max_length=10, choices=ADVANCE_MODE_CHOICES, blank=True, null=True)
+    advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
 
     due_date = models.DateField(blank=True, null=True)
 
@@ -638,23 +633,21 @@ class CompanyProfile(models.Model):
 
 
 class Expense(models.Model):
-    PAYMENT_TYPES = [
+    
+    PAYMENT_METHOD_CHOICES = [
         ('upi', 'UPI'),
-        ('cash', 'Cash'),
         ('card', 'Card'),
-        ('cheque', 'Cheque'),
-        ('emi', 'EMI'),
-        ('netbanking', 'Netbanking'),
+        ('cash', 'Cash'),
     ]
 
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     expense_date = models.DateField()
     category = models.ForeignKey("masters.expense_category", on_delete=models.CASCADE)
     is_paid = models.BooleanField(default=False)
-    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     payment_date = models.DateField(null=True, blank=True)
-    bank = models.CharField(max_length=100, blank=True)
     description = models.TextField(blank=True)
     attachment = models.FileField(upload_to='expenses/', null=True, blank=True)
 
@@ -874,12 +867,9 @@ class Payment(models.Model):
     )
 
     PAYMENT_TYPE_CHOICES = (
-        ('upi', 'UPI'),
         ('cash', 'Cash'),
+        ('upi', 'UPI'),
         ('card', 'Card'),
-        ('cheque', 'Cheque'),
-        ('emi', 'EMI'),
-        ('netbanking', 'Netbanking'),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -889,7 +879,8 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateField()
     payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPE_CHOICES)
-    account = models.CharField(max_length=100, blank=True, null=True)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
+
     notes = models.TextField(blank=True, null=True)
     attachment = models.FileField(upload_to='payment_attachments/', blank=True, null=True)
 

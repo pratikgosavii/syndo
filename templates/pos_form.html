@@ -168,66 +168,64 @@
 
 
             <!-- Items Table -->
-<div id="items-container">
-{% for item in existing_items %}
-<div class="row g-2 align-items-center mb-2 item-row" data-item-id="{{ item.id }}">
-  <input type="hidden" name="existing_item_ids[]" value="{{ item.id }}">
-  
-  <div class="col-md-4">
-    <select name="product[]" class="form-select product-select">
-      <option value="">Select product</option>
-      {% for p in products %}
-        <option value="{{ p.id }}" {% if p.id == item.product.id %}selected{% endif %}>
-          {{ p.name }}
-        </option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-md-2">
-    <input type="number" class="form-control qty-input" name="quantity[]" value="{{ item.quantity }}" placeholder="Qty" min="1">
-  </div>
-  <div class="col-md-2">
-    <input type="number" class="form-control rate-input" name="price[]" value="{{ item.price }}" placeholder="Price" step="0.01" min="0">
-  </div>
-  <div class="col-md-2">
-    <input type="text" class="form-control amount" name="amount[]" value="{{ item.amount }}" readonly placeholder="Amount">
-  </div>
-  <div class="col-md-2 text-center">
-    <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
-  </div>
-</div>
-{% endfor %}
+            <div id="items-container">
+              {% for item in existing_items %}
+              <div class="row g-2 align-items-center mb-2 item-row" data-item-id="{{ item.id }}">
+                <input type="hidden" name="existing_item_ids[]" value="{{ item.id }}">
+                
+                <div class="col-md-4">
+                  <select name="product[]" class="form-select product-select">
+                    <option value="">Select product</option>
+                    {% for p in products %}
+                      <option value="{{ p.id }}" {% if p.id == item.product.id %}selected{% endif %}>
+                        {{ p.name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <input type="number" class="form-control qty-input" name="quantity[]" value="{{ item.quantity }}" placeholder="Qty" min="1">
+                </div>
+                <div class="col-md-2">
+                  <input type="number" class="form-control rate-input" name="price[]" value="{{ item.price }}" placeholder="Price" step="0.01" min="0">
+                </div>
+                <div class="col-md-2">
+                  <input type="text" class="form-control amount" name="amount[]" value="{{ item.amount }}" readonly placeholder="Amount">
+                </div>
+                <div class="col-md-2 text-center">
+                  <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
+                </div>
+              </div>
+              {% endfor %}
 
 
-  <!-- Optionally, one empty blank row for adding new item -->
-    <div class="row g-2 align-items-center mb-2 item-row">
-      <div class="col-md-4">
-        <select name="product[]" class="form-select product-select">
-          <option value="">Select product</option>
-          {% for p in products %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <input type="number" class="form-control qty-input" name="quantity[]" placeholder="Qty" min="1">
-      </div>
-      <div class="col-md-2">
-        <input type="number" class="form-control rate-input" name="price[]" placeholder="Price" step="0.01" min="0">
-      </div>
-      <div class="col-md-2">
-        <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
-      </div>
-      <div class="col-md-2 text-center">
-        <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
-      </div>
-    </div>
-  </div>
+              <!-- Optionally, one empty blank row for adding new item -->
+              <div class="row g-2 align-items-center mb-2 item-row">
+                <div class="col-md-4">
+                  <select name="product[]" class="form-select product-select">
+                    <option value="">Select product</option>
+                    {% for p in products %}
+                      <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <input type="number" class="form-control qty-input" name="quantity[]" placeholder="Qty" min="1">
+                </div>
+                <div class="col-md-2">
+                  <input type="number" class="form-control rate-input" name="price[]" placeholder="Price" step="0.01" min="0">
+                </div>
+                <div class="col-md-2">
+                  <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
+                </div>
+                <div class="col-md-2 text-center">
+                  <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
+                </div>
+              </div>
+            </div>
 
 
             <div class="text-end my-2">
-
-
               <button type="button" class="btn btn-primary" id="add-item">
                 <i class="mdi mdi-plus-circle-outline"></i> Add Item
               </button>
@@ -253,10 +251,10 @@
             <!-- Discount & Credit Time -->
               <div class="row mb-3">
                 <div class="col-md-4">
-                  <label class="form-label">Discount (%)</label>
+                  <label class="form-label mt-2">Discount (₹)</label>
                   {{ form.discount_amount }}
 
-                  <label class="form-label mt-2">Discount (₹)</label>
+                  <label class="form-label">Discount (%)</label>
                                 {{ form.discount_percentage }}
 
                 </div>
@@ -273,16 +271,6 @@
                   <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
 
                   <!-- Bank dropdown (hidden by default) -->
-                  <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
-                      <select name="advance_bank" id="advance_bank" class="form-select">
-                          <option value="">Select Bank</option>
-                          {% for bank in banks %}
-                              <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>
-                                  {{ bank.name }}
-                              </option>
-                          {% endfor %}
-                      </select>
-                  </div>
 
                   <!-- Advance Amount -->
                   
@@ -294,6 +282,19 @@
                   {{ form.due_date }}
                 </div>  
               </div>
+
+              <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
+                <select name="advance_bank" id="advance_bank" class="form-select" onchange="recalculateTotals()">
+                    <option value="">Select Bank</option>
+                    {% for bank in banks %}
+                        <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>
+                            {{ bank.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+              </div>
+
+
             </div>
 
 
@@ -307,10 +308,13 @@
 
               <hr>
 
-              <p>Advance Payment: ₹<span id="advance-amount">0.00</span></p>
-              <p>Advance Mode: <span id="advance-mode">Cash</span> 
-                  <span id="advance-bank-name" style="display:none;">(Bank Name)</span>
-              </p>
+              <div id="advance_summary" style="display:none">
+                <p>Advance Payment: ₹<span id="advance-amount">0.00</span></p>
+                <p>Advance Mode: <span id="advance-mode">Cash</span> 
+                    <span id="advance-bank-name" style="display:none;">(Bank Name)</span>
+                </p>
+              </div>
+
               <p><strong>Net Payable: ₹<span id="net-payable">0.00</span></strong></p>
               
             </div>
@@ -664,12 +668,25 @@ function recalculateTotals() {
 
     // New: update advance and net payable
     document.getElementById('advance-amount').innerText = advanceAmount.toFixed(2);
+
+    const mode = document.getElementById('advance_payment_method').value;
+    document.getElementById('advance-mode').innerText = mode.charAt(0).toUpperCase() + mode.slice(1);
+
+    const bankSelect = document.getElementById('advance_bank');
+    if (mode === 'bank' && bankSelect && bankSelect.value) {
+        document.getElementById('advance-bank-name').style.display = 'inline';
+        document.getElementById('advance-bank-name').innerText = `(${bankSelect.options[bankSelect.selectedIndex].text})`;
+    } else {
+        document.getElementById('advance-bank-name').style.display = 'none';
+    }
+
     document.getElementById('net-payable').innerText = netPayable.toFixed(2);
 }
 
 
 
   document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
+  document.getElementById('discount-amount-input').addEventListener('input', recalculateTotals);
   document.getElementById('id_advance_payment_amount').addEventListener('input', recalculateTotals);
   
   
@@ -927,12 +944,48 @@ document.querySelectorAll(".item-row").forEach(row => {
   }
 
   // Payment method selector
-  function selectPayment(method, btn) {
-    document.getElementById('payment_method').value = method;
-    document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.replace('btn-warning', 'btn-outline-dark'));
-    btn.classList.replace('btn-outline-dark', 'btn-warning');
-    document.getElementById('credit_time').style.display = method === 'credit' ? 'block' : 'none';
+  // Payment method selector
+function selectPayment(method, btn) {
+  // set value
+  document.getElementById('payment_method').value = method;
+
+  // reset button styles
+  document.querySelectorAll('.btn-group .btn').forEach(b => 
+    b.classList.replace('btn-warning', 'btn-outline-dark')
+  );
+  btn.classList.replace('btn-outline-dark', 'btn-warning');
+
+  // toggle credit time section
+  document.getElementById('credit_time').style.display = method === 'credit' ? 'block' : 'none';
+
+  // toggle bank dropdown
+  const bankDropdown = document.getElementById('advance-bank-dropdown');
+  const bankSelect = document.getElementById('advance_bank');
+
+  if (method !== 'cash') {
+    bankDropdown.style.display = 'block';
+    bankSelect.setAttribute('required', 'required');
+  } else {
+    bankDropdown.style.display = 'none';
+    bankSelect.removeAttribute('required');
+    bankSelect.value = ""; // reset when hidden
   }
+
+  // if credit is selected, reset advance payment mode to cash
+  if (method === 'credit') {
+    document.getElementById('advance_summary').style.display = "block";
+    const advanceCashBtn = document.querySelector(
+      "[onclick*=\"selectAdvancePayment('cash'\"]"
+    );
+    if (advanceCashBtn) {
+      advanceCashBtn.click(); // trigger JS + UI update
+    }
+  }else{
+    document.getElementById('advance_summary').style.display = "none";
+
+  }
+}
+
 
   //advance choice
 
@@ -951,10 +1004,14 @@ function selectAdvancePayment(method, btn) {
     // Show/hide bank dropdown
     if (method === 'bank') {
         document.getElementById('advance-bank-dropdown').style.display = 'block';
+        
     } else {
         document.getElementById('advance-bank-dropdown').style.display = 'none';
         document.getElementById('advance_bank').value = ''; // clear bank
     }
+
+      recalculateTotals();
+
 }
 
 // Auto-run on page load to reflect existing value (for edit)
@@ -978,6 +1035,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.item-row').forEach(attachListeners);
     document.getElementById('items-container').addEventListener('input', recalculateTotals);
     document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
+    document.getElementById('discount-amount-input').addEventListener('input', recalculateTotals);
   });
 
 
@@ -1385,6 +1443,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 </script>
+
 
 
 
