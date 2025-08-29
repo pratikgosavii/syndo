@@ -435,11 +435,7 @@ class DeliveryModeSerializer(serializers.ModelSerializer):
         model = DeliveryMode
         fields = ['is_auto_assign_enabled', 'is_self_delivery_enabled']
 
-    def validate(self, attrs):
-        user = self.context['request'].user
-        if DeliveryMode.objects.filter(user=user).exists():
-            raise serializers.ValidationError("DeliveryMode for this user already exists.")
-        return attrs
+   
 
     # 👇 This is safe: don't set user again, just return default create
     def create(self, validated_data):

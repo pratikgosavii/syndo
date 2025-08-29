@@ -2637,13 +2637,17 @@ class DeliveryModeViewSet(viewsets.ModelViewSet):
         })
 
     def create(self, request, *args, **kwargs):
-        """POST should update existing DeliveryMode or create one if missing"""
+        """
+        POST will create DeliveryMode if missing,
+        or update the existing record for this user.
+        """
         instance, _ = DeliveryMode.objects.get_or_create(user=request.user)
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+   
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
