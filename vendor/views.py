@@ -2619,19 +2619,14 @@ class DeliveryModeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return DeliveryMode.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
-        if DeliveryMode.objects.filter(user=self.request.user).exists():
-            raise ValidationError("DeliveryMode for this user already exists.")
-        serializer.save(user=self.request.user)  # 👈 user is passed here
-
     def list(self, request, *args, **kwargs):
         user = request.user
 
-        # Get delivery mode
-        delivery_mode = DeliveryMode.objects.filter(user=user).first()
-        delivery_mode_data = DeliveryModeSerializer(delivery_mode).data if delivery_mode else {}
+        # Ensure delivery mode exists
+        delivery_mode, _ = DeliveryMode.objects.get_or_create(user=user)
+        delivery_mode_data = DeliveryModeSerializer(delivery_mode).data
 
-        # Get wallet transactions
+        # Ensure wallet exists
         wallet, _ = Wallet.objects.get_or_create(user=user)
         transactions = WalletTransaction.objects.filter(wallet=wallet).order_by('-date', '-time')
         transactions_data = WalletTransactionSerializer(transactions, many=True).data
@@ -2640,6 +2635,14 @@ class DeliveryModeViewSet(viewsets.ModelViewSet):
             "delivery_mode": delivery_mode_data,
             "wallet_transactions": transactions_data
         })
+
+    def create(self, request, *args, **kwargs):
+        """POST should update existing DeliveryMode or create one if missing"""
+        instance, _ = DeliveryMode.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 
