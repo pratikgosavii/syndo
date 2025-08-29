@@ -1360,7 +1360,13 @@ class AddonViewSet(viewsets.ModelViewSet):
     serializer_class = AddonSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser] 
 
+    def get_queryset(self):
+        # Return only products of logged-in user
+        return SpotlightProduct.objects.filter(user=self.request.user)
 
+    def perform_create(self, serializer):
+        # Automatically assign logged-in user to the product
+        serializer.save(user=self.request.user)
 
 class SpotlightProductViewSet(viewsets.ModelViewSet):
     queryset = SpotlightProduct.objects.all()
