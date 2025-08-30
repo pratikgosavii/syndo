@@ -380,8 +380,17 @@ class CompanyProfileForm(forms.ModelForm):
             'profile_image': forms.FileInput(attrs={'class': 'form-control'}),
             'signature': forms.FileInput(attrs={'class': 'form-control'}),
             'payment_qr': forms.FileInput(attrs={'class': 'form-control'}),
+            
+            'is_default' : forms.BooleanField()
         }
 
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            # set all other profiles of this user to False
+            CompanyProfile.objects.filter(user=self.user, is_default=True).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+        
 
 
 from django.utils import timezone
