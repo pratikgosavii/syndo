@@ -693,7 +693,7 @@ class PaymentForm(forms.ModelForm):
             'payment_date': forms.DateInput(attrs={'type': 'date'}),
             'bank': forms.Select(attrs={'class': 'form-control', 'id': 'id_bank'}),
             'customer': forms.Select(attrs={'class': 'form-control', 'id': 'customer'}),
-            'party': forms.Select(attrs={'class': 'form-control', 'id': 'party'}),
+            'vendor': forms.Select(attrs={'class': 'form-control', 'id': 'vendor'}),
 
         }
 

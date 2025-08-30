@@ -97,13 +97,13 @@
 
                 <!-- Party -->
             <div class="mb-3">
-                <label class="form-label d-block">Party</label>
+                <label class="form-label d-block">Vendor</label>
                 <div class="btn-group" role="group">
-                    <input type="radio" class="btn-check" name="party" id="party-customer" value="customer" checked>
-                    <label class="btn btn-outline-warning" for="party-customer">Customer</label>
+                    <input type="radio" class="btn-check" name="vendor" id="vendor-customer" value="customer" checked>
+                    <label class="btn btn-outline-warning" for="vendor-customer">Customer</label>
 
-                    <input type="radio" class="btn-check" name="party" id="party-vendor" value="vendor">
-                    <label class="btn btn-outline-warning" for="party-vendor">Vendor</label>
+                    <input type="radio" class="btn-check" name="vendor" id="vendor-vendor" value="vendor">
+                    <label class="btn btn-outline-warning" for="vendor-vendor">Vendor</label>
                 </div>
             </div>
 
@@ -115,7 +115,7 @@
 
             <div class="mb-3" id="vendor-dropdown" style="display:none;">
                 <label class="form-label">Select Vendor</label>
-                {{ form.party }}
+                {{ form.vendor }}
                 
             </div>
 
@@ -218,9 +218,9 @@
   document.addEventListener("DOMContentLoaded", function () {
     const customerDropdown = document.getElementById("customer-dropdown");
     const vendorDropdown = document.getElementById("vendor-dropdown");
-    const partyRadios = document.querySelectorAll("input[name='party']");
+    const vendorRadios = document.querySelectorAll("input[name='vendor']");
 
-    partyRadios.forEach(radio => {
+    vendorRadios.forEach(radio => {
       radio.addEventListener("change", function () {
         if (this.value === "customer") {
           customerDropdown.style.display = "block";
