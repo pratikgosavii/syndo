@@ -70,29 +70,29 @@
                                             <tr>
                                                 <th>#</th>
                                                 <th>Type</th>
+                                                <th>Customer</th>
                                                 <th>Party</th>
-                                                <th>Name</th>
                                                 <th>Amount</th>
                                                 <th>Date</th>
                                                 <th>Payment Mode</th>
-                                                <th>Account</th>
+                                                <th>Bank</th>
                                                 <th>Notes</th>
                                                 <th>Attachment</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {% if payments %}
-                                                {% for payment in payments %}
+                                            {% if data %}
+                                                {% for payment in data %}
                                                     <tr>
                                                         <td>{{ forloop.counter }}</td>
                                                         <td>{{ payment.get_type_display }}</td>
-                                                        <td>{{ payment.get_party_display }}</td>
-                                                        <td>{{ payment.party_name }}</td>
+                                                        <td>{{ payment.customer|default:"-" }}</td>
+                                                        <td>{{ payment.vendor|default:"-" }}</td>
                                                         <td>₹{{ payment.amount }}</td>
                                                         <td>{{ payment.payment_date }}</td>
                                                         <td>{{ payment.get_payment_type_display }}</td>
-                                                        <td>{{ payment.account|default:"-" }}</td>
+                                                        <td>{{ payment.bank|default:"-" }}</td>
                                                         <td>{{ payment.notes|default:"-" }}</td>
                                                         <td>
                                                             {% if payment.attachment %}

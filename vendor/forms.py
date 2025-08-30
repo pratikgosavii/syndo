@@ -688,9 +688,13 @@ class BankTransferForm(forms.Form):
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ['type', 'party', 'party_name', 'amount', 'payment_date', 'payment_type', 'bank', 'notes', 'attachment']
+        fields = '__all__'
         widgets = {
             'payment_date': forms.DateInput(attrs={'type': 'date'}),
+            'bank': forms.Select(attrs={'class': 'form-control', 'id': 'id_bank'}),
+            'customer': forms.Select(attrs={'class': 'form-control', 'id': 'customer'}),
+            'party': forms.Select(attrs={'class': 'form-control', 'id': 'party'}),
+
         }
 
 
