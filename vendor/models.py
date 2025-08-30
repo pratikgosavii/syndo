@@ -877,7 +877,7 @@ class Payment(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
-    party = models.ForeignKey("vendor_vendors", on_delete=models.CASCADE, blank=True, null=True)
+    vendor = models.ForeignKey("vendor_vendors", on_delete=models.CASCADE, blank=True, null=True)
     customer = models.ForeignKey("vendor_customers", on_delete=models.CASCADE, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateField()
