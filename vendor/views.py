@@ -2285,7 +2285,7 @@ def pos_wholesaless(request, sale_id):
 def order_details(request, order_id):
 
     order = Order.objects.prefetch_related('items__product').get(id=order_id)
-    delivery_boy_data = delivery_boy.objects.filter(user = request.user)
+    delivery_boy_data = DeliveryBoy.objects.filter(user = request.user)
 
     context = {
         "data" : order,
@@ -2329,7 +2329,7 @@ def assign_delivery_boy(request, order_id):
 
     order = Order.objects.prefetch_related('items__product').get(id=order_id)
     delivery_boy_id = request.POST.get('delivery_boy_id')
-    delivery_boy_instance = delivery_boy.objects.get(id = delivery_boy_id)
+    delivery_boy_instance = DeliveryBoy.objects.get(id = delivery_boy_id)
     order.delivery_boy = delivery_boy_instance
     order.save()
 

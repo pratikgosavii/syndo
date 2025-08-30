@@ -33,7 +33,7 @@ class Order(models.Model):
     customer_mobile = models.CharField(max_length=15)
     customer_address = models.TextField()
     
-    delivery_boy = models.ForeignKey("vendor.delivery_boy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
+    delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
     created_at = models.DateField(auto_now=True)
 
 
