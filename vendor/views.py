@@ -946,9 +946,10 @@ def generate_barcode(request):
             # Barcode
             barcode = code128.Code128(str(i.id), barHeight=20, barWidth=0.5)
 
+            default_company = CompanyProfile.objects.filter(user = request.user, default = True)
             # Table for layout
             data = [
-                 [Paragraph(f"<b>{i.company_name or 0}</b>", styles['Normal'])],
+                 [Paragraph(f"<b>{default_company.company_name or 0}</b>", styles['Normal'])],
                 [Paragraph(f"Item: {i.name or 0}", styles['Normal'])],
                 [Paragraph(f"MRP: {i.mrp or 0}", styles['Normal']),
                 Paragraph(f"Discount: {i.discount or 0}", styles['Normal'])],

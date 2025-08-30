@@ -141,15 +141,6 @@ class vendor_vendors(models.Model):
         return self.name
 
 
-class delivery_boy(models.Model):
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
-    name = models.CharField(max_length=50)
-    email = models.EmailField()
-    contact = models.CharField(max_length=15)
-
-
-    def __str__(self):
-        return self.name
 
 
 class vendor_bank(models.Model):
@@ -611,7 +602,7 @@ class PurchaseItem(models.Model):
 
 class CompanyProfile(models.Model):
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, related_name="user_company_profile")
     company_name = models.CharField(max_length=255)
     brand_name = models.CharField(max_length=255)
     email = models.EmailField(blank=True, null=True)
@@ -627,6 +618,9 @@ class CompanyProfile(models.Model):
     profile_image = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
     signature  = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
     payment_qr  = models.ImageField(upload_to='company_profiles/', blank=True, null=True)
+
+    is_default = models.BooleanField(default=False)
+
 
     def __str__(self):
         return self.company_name
