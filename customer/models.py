@@ -3,6 +3,9 @@ from django.db import models
 # Create your models here.
 
 
+import random
+
+
 class Order(models.Model):
 
 
@@ -36,6 +39,8 @@ class Order(models.Model):
     delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
     created_at = models.DateField(auto_now=True)
 
+    
+    
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
