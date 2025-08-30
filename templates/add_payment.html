@@ -110,22 +110,13 @@
                 <!-- Select Party -->
             <div class="mb-3" id="customer-dropdown">
                 <label class="form-label">Select Customer</label>
-                <select name="customer" class="form-select">
-                    <option value="">Search</option>
-                    {% for c in customers %}
-                    <option value="{{ c.id }}">{{ c.name }}</option>
-                    {% endfor %}
-                </select>
+                {{ form.customer }}
             </div>
 
             <div class="mb-3" id="vendor-dropdown" style="display:none;">
                 <label class="form-label">Select Vendor</label>
-                <select name="vendor" class="form-select">
-                    <option value="">Search</option>
-                    {% for v in vendors %}
-                    <option value="{{ v.id }}">{{ v.name }}</option>
-                    {% endfor %}
-                </select>
+                {{ form.party }}
+                
             </div>
 
                 <!-- Amount -->
@@ -144,15 +135,14 @@
             <div class="mb-3">
                 <label class="form-label d-block">Select Type <span class="text-danger">*</span></label>
                 <div class="btn-group flex-wrap" role="group" aria-label="Payment method">
-                    {% for key, val in form.fields.payment_type.choices %}
-                        {% if key %}  {# skip blank/---- option #}
-                            <button type="button" 
-                                    class="btn {% if form.instance.payment_type == key %}btn-warning{% else %}btn-outline-dark{% endif %} me-1 mb-1"
-                                    onclick="selectPayment('{{ key }}', this)">
-                                {{ val }}
-                            </button>
-                        {% endif %}
-                    {% endfor %}
+                    <div class="btn-group flex-wrap" role="group" aria-label="Payment method">
+
+                       <button type="button" class="btn btn-warning" onclick="selectPayment('cash', this)">Cash</button>
+                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
+                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
+                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
+                  </div>
+
                 </div>
                 <!-- Hidden field to actually submit the value -->
                 <input type="hidden" name="payment_type" id="payment_type" value="{{ form.instance.payment_type|default:'cash' }}">
@@ -160,7 +150,7 @@
 
 
                 <!-- Select Account -->
-            <div class="mb-3" id="bank-dropdown">
+            <div class="mb-3" id="bank-dropdown" style="display:none">
                 <label class="form-label">Select Bank</label>
                  {{ form.bank }}
                     {% if form.bank.errors %}
@@ -198,26 +188,29 @@
 {% block extra_js %}
 <script>
   function selectPayment(method, btn) {
-    document.getElementById("payment_type").value = method;
-    console.log('---------')
-    console.log(method)
-    // reset button styles
-    btn.closest(".btn-group")
-      .querySelectorAll("button")
-      .forEach((b) =>
-        b.classList.replace("btn-warning", "btn-outline-dark")
-      );
-    btn.classList.replace("btn-outline-dark", "btn-warning");
+    document.getElementById('payment_type').value = method;
 
-    const bankDropdown = document.getElementById("bank-dropdown");
-    if (method === "bank") {
-      bankDropdown.style.display = "block";
-      document.getElementById("id_bank").setAttribute("required", "required");
-    } else {
-      bankDropdown.style.display = "none";
-      document.getElementById("id_bank").removeAttribute("required");
-      document.getElementById("id_bank").value = "";
-    }
+  // reset button styles
+  document.querySelectorAll('.btn-group .btn').forEach(b => 
+    b.classList.replace('btn-warning', 'btn-outline-dark')
+  );
+  btn.classList.replace('btn-outline-dark', 'btn-warning');
+
+  // toggle credit time section
+
+  // toggle bank dropdown
+  const bankDropdown = document.getElementById('bank-dropdown');
+  const bankSelect = document.getElementById('id_bank');
+
+  if (method !== 'cash') {
+    bankDropdown.style.display = 'block';
+    bankSelect.setAttribute('required', 'required');
+  } else {
+    bankDropdown.style.display = 'none';
+    bankSelect.removeAttribute('required');
+    bankSelect.value = ""; // reset when hidden
+  }
+
   }
 </script>
 
@@ -238,6 +231,7 @@
         }
       });
     });
+
   });
 </script>
 

@@ -875,20 +875,20 @@ class Payment(models.Model):
         ('card', 'Card'),
     )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
-    party = models.CharField(max_length=10, choices=PARTY_CHOICES)
-    party_name = models.CharField(max_length=100)
+    party = models.ForeignKey("vendor_vendors", on_delete=models.CASCADE, blank=True, null=True)
+    customer = models.ForeignKey("vendor_customers", on_delete=models.CASCADE, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateField()
     payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPE_CHOICES)
-    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
 
     notes = models.TextField(blank=True, null=True)
     attachment = models.FileField(upload_to='payment_attachments/', blank=True, null=True)
 
     def __str__(self):
-        return f"{self.get_type_display()} - {self.party_name} - ₹{self.amount}"
+        return f"{self.get_payment_type_display()} - ₹{self.amount}"
 
 
 

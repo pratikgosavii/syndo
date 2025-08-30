@@ -1196,6 +1196,8 @@ def add_payment(request):
 
     if request.method == 'POST':
 
+        print(request.POST)
+
         forms = PaymentForm(request.POST, request.FILES)
 
         if forms.is_valid():
