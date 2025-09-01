@@ -86,6 +86,8 @@ def update_company_profile(request, company_profile_id):
         forms = CompanyProfileForm(request.POST, request.FILES, instance=instance)
 
         if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
             forms.save()
             return redirect('list_company_profile')
         else:
@@ -946,14 +948,13 @@ def generate_barcode(request):
             # Barcode
             barcode = code128.Code128(str(i.id), barHeight=20, barWidth=0.5)
 
-            default_company = CompanyProfile.objects.filter(user = request.user, default = True)
+            default_company = CompanyProfile.objects.filter(user = request.user, is_default = True).first()
             # Table for layout
             data = [
-                 [Paragraph(f"<b>{default_company.company_name or 0}</b>", styles['Normal'])],
+                [Paragraph(f"<b>{default_company.company_name or 0}</b>", styles['Normal'])],
                 [Paragraph(f"Item: {i.name or 0}", styles['Normal'])],
-                [Paragraph(f"MRP: {i.mrp or 0}", styles['Normal']),
-                Paragraph(f"Discount: {i.discount or 0}", styles['Normal'])],
-                [Paragraph(f"<b>Sale Price: {i.sale_price or 0}</b>", styles['Normal'])],
+                [Paragraph(f"MRP: {i.mrp or 0}", styles['Normal'])],
+                [Paragraph(f"<b>Sale Price: {i.sales_price or 0}</b>", styles['Normal'])],
                 [barcode]
             ]
             t = Table(data, colWidths=[2.3*inch])
@@ -1365,7 +1366,7 @@ class AddonViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Return only products of logged-in user
-        return SpotlightProduct.objects.filter(user=self.request.user)
+        return addon.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         # Automatically assign logged-in user to the product
