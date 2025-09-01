@@ -381,16 +381,23 @@ class CompanyProfileForm(forms.ModelForm):
             'signature': forms.FileInput(attrs={'class': 'form-control'}),
             'payment_qr': forms.FileInput(attrs={'class': 'form-control'}),
             
-            'is_default' : forms.BooleanField()
+            "is_default": forms.CheckboxInput(),
         }
 
-    def save(self, *args, **kwargs):
-        if self.is_default:
-            # set all other profiles of this user to False
-            CompanyProfile.objects.filter(user=self.user, is_default=True).exclude(pk=self.pk).update(is_default=False)
-        super().save(*args, **kwargs)
+    def save(self, commit=True):
+        instance = super().save(commit=False)
 
-        
+        # check is_default from cleaned_data, not from form itself
+        if self.cleaned_data.get("is_default"):
+            CompanyProfile.objects.filter(
+                user=instance.user,
+                is_default=True
+            ).exclude(pk=instance.pk).update(is_default=False)
+
+        if commit:
+            instance.save()
+        return instance
+
 
 
 from django.utils import timezone
