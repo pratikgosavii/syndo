@@ -702,6 +702,9 @@ class BankTransferForm(forms.Form):
 
 
 class PaymentForm(forms.ModelForm):
+    payment_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    )
     class Meta:
         model = Payment
         fields = '__all__'
