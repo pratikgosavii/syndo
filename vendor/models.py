@@ -565,7 +565,7 @@ class Purchase(models.Model):
 
     advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     advance_mode = models.CharField(max_length=10, choices=ADVANCE_MODE_CHOICES, blank=True, null=True)
-    advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
+    advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
 
     due_date = models.DateField(blank=True, null=True)
 
