@@ -151,6 +151,7 @@ class vendor_bank(models.Model):
     account_number = models.CharField(max_length=50, unique=True)
     ifsc_code = models.CharField(max_length=20)
     branch = models.CharField(max_length=100, blank=True, null=True)
+    opening_balance = models.BigIntegerField(default=0)
     balance = models.BigIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

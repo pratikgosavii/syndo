@@ -199,6 +199,7 @@ class VendorBankForm(forms.ModelForm):
             'account_number',
             'ifsc_code',
             'branch',
+            'opening_balance',
             'balance',
             'is_active',
         ]
@@ -211,6 +212,10 @@ class VendorBankForm(forms.ModelForm):
             'balance': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Enter balance'
+            }),
+            'opening_balance': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter Opening Balance'
             }),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
