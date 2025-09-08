@@ -190,36 +190,6 @@ class addon_Form(forms.ModelForm):
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
-class VendorBankForm(forms.ModelForm):
-    class Meta:
-        model = vendor_bank
-        fields = [
-            'name',
-            'account_holder',
-            'account_number',
-            'ifsc_code',
-            'branch',
-            'opening_balance',
-            'balance',
-            'is_active',
-        ]
-        widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Bank Name'}),
-            'account_holder': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Holder Name'}),
-            'account_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Number'}),
-            'ifsc_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'IFSC Code'}),
-            'branch': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Branch Name'}),
-            'balance': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Enter balance'
-            }),
-            'opening_balance': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Enter Opening Balance'
-            }),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-
 class ProductAddonForm(forms.ModelForm):
     class Meta:
         model = product_addon
@@ -303,15 +273,43 @@ class SpotlightProductForm(forms.ModelForm):
         }
 
 
+class VendorBankForm(forms.ModelForm):
+    class Meta:
+        model = vendor_bank
+        fields = [
+            'name',
+            'account_holder',
+            'account_number',
+            'ifsc_code',
+            'branch',
+            'opening_balance',
+            
+            'is_active',
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Bank Name'}),
+            'account_holder': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Holder Name'}),
+            'account_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Number'}),
+            'ifsc_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'IFSC Code'}),
+            'branch': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Branch Name'}),
+            
+            'opening_balance': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter Opening Balance'
+            }),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
 class vendor_vendorsForm(forms.ModelForm):
     
     class Meta:
         model = vendor_vendors
         fields = [
-            'name', 'email', 'contact', 'balance',
+            'name', 'email', 'contact', 
             'company_name', 'gst', 'aadhar', 'pan',
             'address_line_1', 'address_line_2', 'pincode',
-            'city', 'state', 'country'
+            'city', 'state', 'country', 'opening_balance'
         ]
         widgets = {
             field: forms.TextInput(attrs={'class': 'form-control'}) 
@@ -327,7 +325,7 @@ class vendor_customersForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Customer Name'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email ID'}),
             'contact': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Mobile Number'}),
-            'balance': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Balance'}),
+            'opening_balance': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Opening Balance'}),
 
             'company_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Company Name'}),
             'gst_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'GST'}),

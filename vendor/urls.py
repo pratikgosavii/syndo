@@ -81,9 +81,14 @@ urlpatterns = [
     path('delete-bank/<bank_id>', delete_bank, name='delete_bank'),
     path('list-bank/', list_bank, name='list_bank'),
     path('get-bank/', get_bank.as_view(), name='get_bank'),
+
     path('bank/<int:id>/ledger/', BankLedgerAPIView.as_view(), name='BankLedgerAPIView'),
     path("customer/<int:customer_id>/ledger/", CustomerLedgerAPIView.as_view(), name="customer-ledger"),
     path("vendor/<int:vendor_id>/ledger/", VendorLedgerAPIView.as_view(), name="vendor-ledger"),
+
+    path('bank-ledger/<int:bank_id>/', bank_ledger, name='bank-ledger'),
+    path('customer-ledger/<int:customer_id>/', customer_ledger, name='customer-ledger'),
+    path('vendor-ledger/<int:vendor_id>/', vendor_ledger, name='vendor-ledger'),
     
     path('add-customer/', add_customer, name='add_customer'),
     path('add-customer-modal/', add_customer_modal, name='add_customer_modal'),
