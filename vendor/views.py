@@ -449,6 +449,13 @@ class get_bank(ListAPIView):
         return vendor_bank.objects.filter(user=self.request.user)
 
 
+from rest_framework import generics
+
+class BankLedgerAPIView(generics.RetrieveAPIView):
+    queryset = vendor_bank.objects.all()
+    serializer_class = BankWithLedgerSerializer
+    lookup_field = "id"   # /api/banks/<id>/ledger/
+
 
 from customer.serializers import *
 
@@ -1986,6 +1993,7 @@ def pos(request):
                 invoice.user = request.user
                 invoice.sale = sale_instance
                 invoice.save()
+
 
                 return redirect("sale_bill_details", sale_id=sale_instance.id)
 
