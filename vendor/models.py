@@ -764,7 +764,7 @@ class Sale(models.Model):
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     advance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     balance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
+    advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, null=True, blank=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     credit_date = models.DateTimeField(auto_now_add=False)
