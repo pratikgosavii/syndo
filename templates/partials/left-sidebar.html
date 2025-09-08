@@ -44,6 +44,7 @@
                     <!-- Left Menu Start -->
                     <ul class="metismenu list-unstyled" id="side-menu">
 
+                        {% if request.user.is_superuser %}
 
                         <li>
                             <a href="{% url 'dashboard' %}">
@@ -53,7 +54,137 @@
                             </a>
                         </li>
 
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Catalogue</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_super_catalogue' %}">Add Catalogue</a></li>
+                                <li><a href="{% url 'list_super_catalogue' %}">Catalogue List</a></li>
+                            </ul>
+                        </li> 
+
+
+                              
+                        <li>
+                            <li>
+                                <a href="javascript: void(0);" class="has-arrow">
+                                    <i data-feather="layers"></i>
+                                    <span data-key="t-authentication">Coupon</span>
+                                </a>
+                                <ul class="sub-menu" aria-expanded="false">
+                                    <li><a href="{% url 'add_coupon' %}">Add Coupon</a></li>
+                                    <li><a href="{% url 'list_coupon' %}">Coupon List</a></li>
+                                </ul>
+                            </li>
+                        <li>
+
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Event</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_event' %}">Event Add</a></li>
+                                <li><a href="{% url 'list_event' %}">Event List</a></li>
+
+                            </ul>
+                        </li>
+                        <li>
+                            <li>
+                                <a href="javascript: void(0);" class="has-arrow">
+                                    <i data-feather="layers"></i>
+                                    <span data-key="t-authentication">Testimonials</span>
+                                </a>
+                                <ul class="sub-menu" aria-expanded="false">
+                                    <li><a href="{% url 'add_testimonials' %}">Add Testimonials</a></li>
+                                    <li><a href="{% url 'list_testimonials' %}">Testimonials List</a></li>
+                                </ul>
+                            </li>
+                        <li>
+
+                             
+                      <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Banner</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_home_banner' %}">Banner Add</a></li>
+                                <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
+
+                            </ul>
+                        </li>
+
+                         <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">User Management (next phase) </span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                
+                                <!-- Manage Role -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <span>Manage Role</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'role_create' %}">Add Role</a></li>
+                                        <li><a href="{% url 'role_list' %}">Role List</a></li>
+                                    </ul>
+                                </li>
+
+                                <!-- Manage User -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <span>Manage User</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_user_with_roles' %}">Add User</a></li>
+                                        <li><a href="{% url 'role_list' %}">User List</a></li>
+                                    </ul>
+                                </li>
+
+                            </ul>
+                        </li>
+
+                        
+
+                       
+                       
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Payments</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a>Recent Payments</a></li>
+                                <li><a>Initiate Refunds</a></li>
+                                <li><a>Refunds</a></li>
+                                <li><a>Payment Reports</a></li>
+                            </ul>
+                        </li>
+
+
+
+                        {% endif %}
+
                    
+                            <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Company Profile</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_company_profile' %}">Add Company Profile</a></li>
+                                <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                   
+
                         <li>
                             <li>
                                 <a href="javascript: void(0);" class="has-arrow">
@@ -70,28 +201,8 @@
                         <li>
 
                         <li>
-                            <li>
-                                <a href="javascript: void(0);" class="has-arrow">
-                                    <i data-feather="layers"></i>
-                                    <span data-key="t-authentication">Company Profile</span>
-                                </a>
-                                <ul class="sub-menu" aria-expanded="false">
-                                    <li><a href="{% url 'add_company_profile' %}">Add Company Profile</a></li>
-                                    <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li>
-                                </ul>
-                            </li>
-                        <li>
-                   
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Catalogue</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_super_catalogue' %}">Add Catalogue</a></li>
-                                <li><a href="{% url 'list_super_catalogue' %}">Catalogue List</a></li>
-                            </ul>
-                        </li> 
+                       
+                      
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
@@ -338,47 +449,7 @@
                         </li> 
 
 
-                             
-                        <li>
-                            <li>
-                                <a href="javascript: void(0);" class="has-arrow">
-                                    <i data-feather="layers"></i>
-                                    <span data-key="t-authentication">Coupon</span>
-                                </a>
-                                <ul class="sub-menu" aria-expanded="false">
-                                    <li><a href="{% url 'add_coupon' %}">Add Coupon</a></li>
-                                    <li><a href="{% url 'list_coupon' %}">Coupon List</a></li>
-                                </ul>
-                            </li>
-                        <li>
-
-
-
-                        <li>
-                            <li>
-                                <a href="javascript: void(0);" class="has-arrow">
-                                    <i data-feather="layers"></i>
-                                    <span data-key="t-authentication">Testimonials</span>
-                                </a>
-                                <ul class="sub-menu" aria-expanded="false">
-                                    <li><a href="{% url 'add_testimonials' %}">Add Testimonials</a></li>
-                                    <li><a href="{% url 'list_testimonials' %}">Testimonials List</a></li>
-                                </ul>
-                            </li>
-                        <li>
-
-                             
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Event</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_event' %}">Event Add</a></li>
-                                <li><a href="{% url 'list_event' %}">Event List</a></li>
-
-                            </ul>
-                        </li>
+                       
                         
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
@@ -392,67 +463,10 @@
                             </ul>
                         </li>
 
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Banner</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_home_banner' %}">Banner Add</a></li>
-                                <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
-
-                            </ul>
-                        </li>
+                       
 
                     
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">User Management</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                
-                                <!-- Manage Role -->
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <span>Manage Role</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'role_create' %}">Add Role</a></li>
-                                        <li><a href="{% url 'role_list' %}">Role List</a></li>
-                                    </ul>
-                                </li>
-
-                                <!-- Manage User -->
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <span>Manage User</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_user_with_roles' %}">Add User</a></li>
-                                        <li><a href="{% url 'role_list' %}">User List</a></li>
-                                    </ul>
-                                </li>
-
-                            </ul>
-                        </li>
-
-                        
-
                        
-                       
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Payments</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a>Recent Payments</a></li>
-                                <li><a>Initiate Refunds</a></li>
-                                <li><a>Refunds</a></li>
-                                <li><a>Payment Reports</a></li>
-                            </ul>
-                        </li>
                        
                         <div style="margin: 100% 0 0 35%; align-content: center">
                             <form method="POST" action="{% url 'logout' %}">

@@ -694,7 +694,7 @@ class PurchaseItem(models.Model):
 
 class CompanyProfile(models.Model):
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, related_name="user_company_profile")
+    user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True, related_name="user_company_profile")
     company_name = models.CharField(max_length=255)
     brand_name = models.CharField(max_length=255)
     email = models.EmailField(blank=True, null=True)
@@ -934,8 +934,8 @@ class CashBalance(models.Model):
 
 class CashTransfer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    bank_account = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    bank_account = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, default="pending")  # pending, approved, failed
 
