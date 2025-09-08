@@ -486,14 +486,26 @@ class InvoiceSettingsSerializer(serializers.ModelSerializer):
 
 
 
+class BankLedgerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankLedger
+        fields = ["id", "transaction_type", "reference_id", "description", "amount", "created_at"]
+
 class BankWithLedgerSerializer(serializers.ModelSerializer):
-    ledger_entries = vendor_bank_serializer(many=True, read_only=True)
+    ledger_entries = BankLedgerSerializer(many=True, read_only=True)
     current_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = vendor_bank
-        fields = ["id", "name", "account_holder", "account_number",
-                  "opening_balance", "current_balance", "ledger_entries"]
+        fields = [
+            "id",
+            "name",
+            "account_holder",
+            "account_number",
+            "opening_balance",
+            "current_balance",
+            "ledger_entries",
+        ]
 
     def get_current_balance(self, obj):
         return obj.current_balance()
