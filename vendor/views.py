@@ -50,30 +50,27 @@ def online_store_setting(request):
 @login_required(login_url='login_admin')
 def add_company_profile(request):
 
+     # ✅ Check if user already has a company profile
+    if CompanyProfile.objects.filter(user=request.user).exists():
+        messages.error(request, "You already have a company profile. Only one profile is allowed.")
+        return redirect('list_company_profile')
+    
+
     if request.method == 'POST':
-
-        forms = CompanyProfileForm(request.POST, request.FILES)
-
-        if forms.is_valid():
-            forms = forms.save(commit=False)
-            forms.user = request.user  # assign user here
-            forms.save()
+        form = CompanyProfileForm(request.POST, request.FILES)
+        if form.is_valid():
+            company = form.save(commit=False)
+            company.user = request.user
+            company.save()
             return redirect('list_company_profile')
         else:
-            print(forms.errors)
-            context = {
-                'form': forms
-            }
-            return render(request, 'add_company_profile.html', context)
-    
+            return render(request, 'add_company_profile.html', {
+                'form': form,
+                'error': 'Please fix the errors below.'
+            })
     else:
-
-        forms = CompanyProfileForm()
-
-        context = {
-            'form': forms
-        }
-        return render(request, 'add_company_profile.html', context)
+        form = CompanyProfileForm()
+        return render(request, 'add_company_profile.html', {'form': form})
 
         
 
@@ -116,7 +113,7 @@ def delete_company_profile(request, company_profile_id):
 
 @login_required(login_url='login_admin')
 def list_company_profile(request):
-
+    
     data = CompanyProfile.objects.filter(user = request.user)
     context = {
         'data': data
@@ -1269,7 +1266,7 @@ def delete_addon(request, addon_id):
 @login_required(login_url='login_admin')
 def list_addon(request):
 
-    data = addon.objects.all()
+    data = addon.objects.filter(user = request.user)
     context = {
         'data': data
     }
@@ -1356,7 +1353,7 @@ def delete_payment(request, payment_id):
 @login_required(login_url='login_admin')
 def list_payment(request):
 
-    data = Payment.objects.all()
+    data = Payment.objects.filter(user = request.user)
     context = {
         'data': data
     }
@@ -2238,7 +2235,7 @@ def delete_sale(request, sale_id):
 
 def sale_bill_details(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
-    wholesale = pos_wholesale.objects.filter(sale=sale).first()  # get wholesale data if exists
+    wholesale = pos_wholesale.objects.filter(sale=sale, user= request.user).first()  # get wholesale data if exists
 
     context = {
         'sale': sale,
@@ -2254,7 +2251,7 @@ def list_sale(request):
     data = Sale.objects.prefetch_related(
         'items__product',
         Prefetch('wholesales', queryset=pos_wholesale.objects.all())
-    ).all().order_by('-id')
+    ).filter(request.user).order_by('-id')
 
     context = {
         'data': data
@@ -2440,7 +2437,7 @@ def delivery_management(request):
 
 def manage_delivery_boy(request):
     form = DeliveryBoyForm()
-    delivery_boys = DeliveryBoy.objects.all()
+    delivery_boys = DeliveryBoy.objects.filter(user = request.user)
     if request.method == 'POST':
         form = DeliveryBoyForm(request.POST, request.FILES)
         if form.is_valid():
@@ -2449,7 +2446,7 @@ def manage_delivery_boy(request):
     return render(request, 'delivery/delivery_boy.html', {'form': form, 'delivery_boys': delivery_boys})
 
 def delivery_settings_view(request):
-    settings, _ = DeliverySettings.objects.get_or_create(id=1)
+    settings, _ = DeliverySettings.objects.get_or_create(user=request.user)
     form = DeliverySettingsForm(instance=settings)
     if request.method == 'POST':
         form = DeliverySettingsForm(request.POST, instance=settings)
@@ -2634,23 +2631,27 @@ class CashTransferViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Only show transfers belonging to the logged-in user
         return CashTransfer.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        amount = serializer.validated_data['amount']
-        bank = serializer.validated_data['bank_account']
         user = self.request.user
+        amount = serializer.validated_data.get('amount')
+        bank_account = serializer.validated_data.get('bank_account')
 
+        # Get or create balance record
         balance_obj, _ = CashBalance.objects.get_or_create(user=user)
 
+        # Validation
         if amount > balance_obj.balance:
-            raise serializers.ValidationError("Insufficient balance.")
+            raise serializers.ValidationError({"amount": "Insufficient balance."})
 
-        balance_obj.balance -= amount
+        # Deduct balance
+        balance_obj.balance -= Decimal(amount)
         balance_obj.save()
 
-        serializer.save(user=user)
-
+        # Save transfer record
+        serializer.save(user=user, bank_account=bank_account)
 
 
 

@@ -211,11 +211,19 @@ class vendor_bank_serializer(serializers.ModelSerializer):
 
 
 class CashTransferSerializer(serializers.ModelSerializer):
+   
+    current_balance = serializers.SerializerMethodField()  # <-- FIX
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    
     class Meta:
         model = CashTransfer
-        fields = ['id', 'bank_account', 'amount', 'created_at', 'status']
-        read_only_fields = ['created_at', 'status']
-        
+        fields = ['id', 'bank_account', 'amount', 'created_at', 'status', 'current_balance']
+        read_only_fields = ['created_at', 'status', 'current_balance']
+
+    def get_current_balance(self, obj):
+        balance_obj, _ = CashBalance.objects.get_or_create(user=obj.user)
+        return str(balance_obj.balance)
 
 
 class PrintVariantSerializer(serializers.ModelSerializer):
