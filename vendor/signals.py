@@ -52,7 +52,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from decimal import Decimal
-from .models import Sale, Expense, Purchase, BankLedger
+from .models import *
 
 
 @receiver(post_save, sender=Sale)
@@ -95,4 +95,85 @@ def create_bank_ledger(sender, instance, created, **kwargs):
                 reference_id=instance.id,
                 description=f"Purchase #{instance.id}",
                 amount=-Decimal(instance.advance_amount)  # outflow (–)
+            )
+
+
+
+
+
+
+# ---- SALE → Customer Ledger ----
+@receiver(post_save, sender=Sale)
+def create_sale_customer_ledger(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    if instance.customer:
+        CustomerLedger.objects.create(
+            customer=instance.customer,
+            transaction_type="sale",
+            reference_id=instance.id,
+            description=f"Sale #{instance.id}",
+            amount=Decimal(instance.total_amount),
+        )
+
+
+# ---- PURCHASE → Vendor Ledger ----
+@receiver(post_save, sender=Purchase)
+def create_purchase_vendor_ledger(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    if instance.vendor:
+        VendorLedger.objects.create(
+            vendor=instance.vendor,
+            transaction_type="purchase",
+            reference_id=instance.id,
+            description=f"Purchase #{instance.id}",
+            amount=Decimal(instance.discount_amount or 0) + Decimal(instance.advance_amount or 0),
+        )
+
+
+# ---- PAYMENT → Customer Ledger / Vendor Ledger ----
+@receiver(post_save, sender=Payment)
+def create_payment_ledger(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    # Customer Payments
+    if instance.customer:
+        if instance.type == "received":
+            CustomerLedger.objects.create(
+                customer=instance.customer,
+                transaction_type="payment_received",
+                reference_id=instance.id,
+                description=f"Payment Received (#{instance.id})",
+                amount=Decimal(instance.amount),
+            )
+        elif instance.type == "gave":
+            CustomerLedger.objects.create(
+                customer=instance.customer,
+                transaction_type="refund_given",
+                reference_id=instance.id,
+                description=f"Refund Given (#{instance.id})",
+                amount=-Decimal(instance.amount),
+            )
+
+    # Vendor Payments
+    if instance.vendor:
+        if instance.type == "gave":
+            VendorLedger.objects.create(
+                vendor=instance.vendor,
+                transaction_type="payment_given",
+                reference_id=instance.id,
+                description=f"Payment Given (#{instance.id})",
+                amount=-Decimal(instance.amount),
+            )
+        elif instance.type == "received":
+            VendorLedger.objects.create(
+                vendor=instance.vendor,
+                transaction_type="refund_received",
+                reference_id=instance.id,
+                description=f"Refund Received (#{instance.id})",
+                amount=Decimal(instance.amount),
             )
