@@ -16,6 +16,7 @@ from django.http.response import HttpResponseRedirect
 from .serializers import *
 
 from users.permissions import *
+from django.db.models import Sum
 
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
@@ -451,11 +452,20 @@ class get_bank(ListAPIView):
 
 from rest_framework import generics
 
-class BankLedgerAPIView(generics.RetrieveAPIView):
-    queryset = vendor_bank.objects.all()
-    serializer_class = BankWithLedgerSerializer
-    lookup_field = "id"   # /api/banks/<id>/ledger/
 
+class BankLedgerAPIView(APIView):
+    def get(self, request, id):
+        ledger_entries = BankLedger.objects.filter(bank_id=id).order_by("created_at")
+
+        # Calculate running balance
+        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+        serializer = BankWithLedgerSerializer(ledger_entries, many=True)
+        return Response({
+            "bank_id": id,
+            "balance": balance,
+            "ledger": serializer.data
+        })
 
 from customer.serializers import *
 
@@ -615,7 +625,7 @@ class VendorLedgerAPIView(APIView):
             "ledger": serializer.data
         })
     
-    
+
 
 
 from rest_framework.response import Response
