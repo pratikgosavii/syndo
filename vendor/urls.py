@@ -81,6 +81,7 @@ urlpatterns = [
     path('delete-bank/<bank_id>', delete_bank, name='delete_bank'),
     path('list-bank/', list_bank, name='list_bank'),
     path('get-bank/', get_bank.as_view(), name='get_bank'),
+    path('bank-ledger/', BankLedgerAPIView.as_view(), name='BankLedgerAPIView'),
 
     
     path('add-customer/', add_customer, name='add_customer'),

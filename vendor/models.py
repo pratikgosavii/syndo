@@ -156,8 +156,39 @@ class vendor_bank(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def current_balance(self):
+        total_transactions = self.ledger_entries.aggregate(total=models.Sum("amount"))["total"] or 0
+        return self.opening_balance + total_transactions
+    
+
     def __str__(self):
         return f"{self.name} - {self.account_holder}"
+
+
+class BankLedger(models.Model):
+    bank = models.ForeignKey(vendor_bank, related_name="ledger_entries", on_delete=models.CASCADE)
+    
+    TRANSACTION_TYPES = [
+        ("sale", "Sale (POS)"),
+        ("purchase", "Purchase"),
+        ("expense", "Expense"),
+        ("deposit", "Manual Deposit"),
+        ("withdrawal", "Manual Withdrawal"),
+    ]
+
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    reference_id = models.PositiveIntegerField(blank=True, null=True, help_text="ID of Sale/Purchase/Expense if linked")
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+    # Positive for inflow, Negative for outflow
+    amount = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.bank.name} - {self.transaction_type} - {self.amount}"
 
 
 class vendor_customers(models.Model):
