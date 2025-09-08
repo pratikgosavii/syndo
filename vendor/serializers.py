@@ -497,3 +497,17 @@ class BankWithLedgerSerializer(serializers.ModelSerializer):
 
     def get_current_balance(self, obj):
         return obj.current_balance()
+    
+    
+class CustomerLedgerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerLedger
+        fields = ["id", "customer", "transaction_type", "reference_id",
+                  "description", "amount", "created_at"]
+
+
+class VendorLedgerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorLedger
+        fields = ["id", "vendor", "transaction_type", "reference_id",
+                  "description", "amount", "created_at"]

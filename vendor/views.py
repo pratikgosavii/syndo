@@ -584,6 +584,39 @@ def list_customer(request):
 
 
 
+# ---- Customer Ledger ----
+class CustomerLedgerAPIView(APIView):
+    def get(self, request, customer_id):
+        ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
+
+        # Running balance
+        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+        serializer = CustomerLedgerSerializer(ledger_entries, many=True)
+        return Response({
+            "customer_id": customer_id,
+            "balance": balance,
+            "ledger": serializer.data
+        })
+
+
+# ---- Vendor Ledger ----
+class VendorLedgerAPIView(APIView):
+    def get(self, request, vendor_id):
+        ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id).order_by("created_at")
+
+        # Running balance
+        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+        serializer = VendorLedgerSerializer(ledger_entries, many=True)
+        return Response({
+            "vendor_id": vendor_id,
+            "balance": balance,
+            "ledger": serializer.data
+        })
+    
+    
+
 
 from rest_framework.response import Response
 
