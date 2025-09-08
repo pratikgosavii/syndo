@@ -462,6 +462,8 @@ class PurchaseForm(forms.ModelForm):
 
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
+            self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
+            self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
 
 
     def generate_unique_code(self):
@@ -508,6 +510,15 @@ class ExpenseForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'class': 'form-control'}),
             'attachment': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super(ExpenseForm, self).__init__(*args, **kwargs)
+        
+        if user:
+            self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
+            self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
+
 
 
 
@@ -587,6 +598,7 @@ class SaleForm(forms.ModelForm):
         if user:
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
+            self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
 
 
 
@@ -719,6 +731,14 @@ class PaymentForm(forms.ModelForm):
 
         }
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super(PaymentForm, self).__init__(*args, **kwargs)
+        
+        if user:
+            self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
+            self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
+            self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
 
 
         
