@@ -1,179 +1,139 @@
-from django.db.models.signals import post_save, pre_save, post_delete
+import os
+from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
-from decimal import Decimal
-from .models import Sale, Expense, Purchase, Payment, BankLedger, CustomerLedger, VendorLedger
+from django.apps import apps
+from django.db.models import FileField, ImageField
 
-# -------------------------------
-# HELPER
-# -------------------------------
-def update_ledger_on_change(instance, old_instance, ledger_model, amount_field, transaction_type):
-    """Update ledger entry if amount or reference changes"""
-    try:
-        ledger = ledger_model.objects.get(reference_id=instance.id)
-    except ledger_model.DoesNotExist:
-        # ledger entry doesn't exist, create new
-        ledger_model.objects.create(
-            customer=getattr(instance, "customer", None),
-            vendor=getattr(instance, "vendor", None),
-            bank=getattr(instance, "advance_bank", None) or getattr(instance, "bank", None),
-            transaction_type=transaction_type,
-            reference_id=instance.id,
-            description=f"{transaction_type.capitalize()} #{instance.id}",
-            amount=getattr(instance, amount_field),
-        )
+
+def delete_file(path):
+    """Delete file from filesystem."""
+    if path and os.path.isfile(path):
+        os.remove(path)
+
+
+@receiver(pre_save)
+def auto_delete_file_on_change(sender, instance, **kwargs):
+    """
+    Deletes old file from filesystem when updating with new file.
+    Applies to all models with FileField/ImageField.
+    """
+    if not instance.pk:  # new object, skip
         return
 
-    # update ledger if amount changed
-    old_amount = getattr(old_instance, amount_field)
-    new_amount = getattr(instance, amount_field)
-    if old_amount != new_amount:
-        ledger.amount = new_amount if transaction_type != "expense" else -new_amount
-        ledger.save()
+    try:
+        old_instance = sender.objects.get(pk=instance.pk)
+    except sender.DoesNotExist:
+        return
+
+    for field in sender._meta.get_fields():
+        if isinstance(field, (FileField, ImageField)):
+            old_file = getattr(old_instance, field.name)
+            new_file = getattr(instance, field.name)
+            if old_file and old_file != new_file:
+                delete_file(old_file.path)
+
+
+@receiver(post_delete)
+def auto_delete_file_on_delete(sender, instance, **kwargs):
+    """
+    Deletes file from filesystem when model is deleted.
+    Applies to all models with FileField/ImageField.
+    """
+    for field in sender._meta.get_fields():
+        if isinstance(field, (FileField, ImageField)):
+            file_field = getattr(instance, field.name)
+            if file_field:
+                delete_file(file_field.path)
+
+
+
+
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from decimal import Decimal
+from .models import Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
+
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from decimal import Decimal
+from .models import Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
+
+def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, description=""):
+    opening_balance = parent.balance or 0
+    balance_after = opening_balance + amount
+    ledger_model.objects.create(
+        **{
+            ledger_model.__name__.replace("Ledger", "").lower(): parent,
+            "transaction_type": transaction_type,
+            "reference_id": reference_id,
+            "description": description,
+            "opening_balance": opening_balance,
+            "amount": amount,
+            "balance_after": balance_after,
+        }
+    )
+    # Update parent balance
+    parent.balance = balance_after
+    parent.save()
+
 
 # -------------------------------
 # SALE → Customer & Bank Ledger
 # -------------------------------
 @receiver(post_save, sender=Sale)
 def sale_ledger(sender, instance, created, **kwargs):
-    if created:
-        # Customer Ledger
-        if instance.customer:
-            CustomerLedger.objects.create(
-                customer=instance.customer,
-                transaction_type="sale",
-                reference_id=instance.id,
-                description=f"Sale #{instance.id}",
-                amount=Decimal(instance.total_amount),
-            )
-        # Bank Ledger
-        if instance.advance_bank:
-            BankLedger.objects.create(
-                bank=instance.advance_bank,
-                transaction_type="sale",
-                reference_id=instance.id,
-                description=f"Sale #{instance.id}",
-                amount=Decimal(instance.total_amount)
-            )
-    else:
-        # update existing ledger entries
-        old_instance = sender.objects.get(pk=instance.pk)
-        if instance.customer:
-            update_ledger_on_change(instance, old_instance, CustomerLedger, "total_amount", "sale")
-        if instance.advance_bank:
-            update_ledger_on_change(instance, old_instance, BankLedger, "total_amount", "sale")
+    if not created:
+        return
+    # Customer ledger
+    if instance.customer:
+        create_ledger(instance.customer, CustomerLedger, "sale", instance.id, int(instance.total_amount), f"Sale #{instance.id}")
+    # Bank ledger
+    if instance.advance_bank:
+        create_ledger(instance.advance_bank, BankLedger, "sale", instance.id, int(instance.total_amount), f"Sale #{instance.id}")
 
-@receiver(post_delete, sender=Sale)
-def delete_sale_ledger(sender, instance, **kwargs):
-    CustomerLedger.objects.filter(reference_id=instance.id).delete()
-    BankLedger.objects.filter(reference_id=instance.id).delete()
 
 # -------------------------------
 # PURCHASE → Vendor & Bank Ledger
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
-    if created:
-        if instance.vendor:
-            VendorLedger.objects.create(
-                vendor=instance.vendor,
-                transaction_type="purchase",
-                reference_id=instance.id,
-                description=f"Purchase #{instance.id}",
-                amount=Decimal(instance.discount_amount or 0) + Decimal(instance.advance_amount or 0),
-            )
-        if instance.advance_bank and instance.advance_amount:
-            BankLedger.objects.create(
-                bank=instance.advance_bank,
-                transaction_type="purchase",
-                reference_id=instance.id,
-                description=f"Purchase #{instance.id}",
-                amount=-Decimal(instance.advance_amount),
-            )
-    else:
-        old_instance = sender.objects.get(pk=instance.pk)
-        if instance.vendor:
-            update_ledger_on_change(instance, old_instance, VendorLedger, "advance_amount", "purchase")
-        if instance.advance_bank and instance.advance_amount:
-            update_ledger_on_change(instance, old_instance, BankLedger, "advance_amount", "purchase")
+    if not created:
+        return
+    if instance.vendor:
+        amt = int(instance.discount_amount or 0) + int(instance.advance_amount or 0)
+        create_ledger(instance.vendor, VendorLedger, "purchase", instance.id, amt, f"Purchase #{instance.id}")
+    if instance.advance_bank and instance.advance_amount:
+        create_ledger(instance.advance_bank, BankLedger, "purchase", instance.id, -int(instance.advance_amount), f"Purchase #{instance.id}")
 
-@receiver(post_delete, sender=Purchase)
-def delete_purchase_ledger(sender, instance, **kwargs):
-    VendorLedger.objects.filter(reference_id=instance.id).delete()
-    BankLedger.objects.filter(reference_id=instance.id).delete()
 
 # -------------------------------
 # EXPENSE → Bank Ledger
 # -------------------------------
 @receiver(post_save, sender=Expense)
 def expense_ledger(sender, instance, created, **kwargs):
-    if created:
-        if instance.bank:
-            BankLedger.objects.create(
-                bank=instance.bank,
-                transaction_type="expense",
-                reference_id=instance.id,
-                description=f"Expense #{instance.id}",
-                amount=-Decimal(instance.amount)
-            )
-    else:
-        old_instance = sender.objects.get(pk=instance.pk)
-        if instance.bank:
-            update_ledger_on_change(instance, old_instance, BankLedger, "amount", "expense")
+    if not created:
+        return
+    if instance.bank:
+        create_ledger(instance.bank, BankLedger, "expense", instance.id, -int(instance.amount), f"Expense #{instance.id}")
 
-@receiver(post_delete, sender=Expense)
-def delete_expense_ledger(sender, instance, **kwargs):
-    BankLedger.objects.filter(reference_id=instance.id).delete()
 
 # -------------------------------
 # PAYMENT → Customer / Vendor Ledger
 # -------------------------------
 @receiver(post_save, sender=Payment)
 def payment_ledger(sender, instance, created, **kwargs):
-    if created:
-        # Customer
-        if instance.customer:
-            if instance.type == "received":
-                CustomerLedger.objects.create(
-                    customer=instance.customer,
-                    transaction_type="payment_received",
-                    reference_id=instance.id,
-                    description=f"Payment Received (#{instance.id})",
-                    amount=Decimal(instance.amount),
-                )
-            elif instance.type == "gave":
-                CustomerLedger.objects.create(
-                    customer=instance.customer,
-                    transaction_type="refund_given",
-                    reference_id=instance.id,
-                    description=f"Refund Given (#{instance.id})",
-                    amount=-Decimal(instance.amount),
-                )
-        # Vendor
-        if instance.vendor:
-            if instance.type == "gave":
-                VendorLedger.objects.create(
-                    vendor=instance.vendor,
-                    transaction_type="payment_given",
-                    reference_id=instance.id,
-                    description=f"Payment Given (#{instance.id})",
-                    amount=-Decimal(instance.amount),
-                )
-            elif instance.type == "received":
-                VendorLedger.objects.create(
-                    vendor=instance.vendor,
-                    transaction_type="refund_received",
-                    reference_id=instance.id,
-                    description=f"Refund Received (#{instance.id})",
-                    amount=Decimal(instance.amount),
-                )
-    else:
-        old_instance = sender.objects.get(pk=instance.pk)
-        if instance.customer:
-            update_ledger_on_change(instance, old_instance, CustomerLedger, "amount", "payment")
-        if instance.vendor:
-            update_ledger_on_change(instance, old_instance, VendorLedger, "amount", "payment")
-
-@receiver(post_delete, sender=Payment)
-def delete_payment_ledger(sender, instance, **kwargs):
-    CustomerLedger.objects.filter(reference_id=instance.id).delete()
-    VendorLedger.objects.filter(reference_id=instance.id).delete()
+    if not created:
+        return
+    amt = int(instance.amount)
+    if instance.customer:
+        if instance.type == "received":
+            create_ledger(instance.customer, CustomerLedger, "payment", instance.id, amt, f"Payment Received #{instance.id}")
+        elif instance.type == "gave":
+            create_ledger(instance.customer, CustomerLedger, "payment", instance.id, -amt, f"Refund Given #{instance.id}")
+    if instance.vendor:
+        if instance.type == "gave":
+            create_ledger(instance.vendor, VendorLedger, "payment", instance.id, -amt, f"Payment Given #{instance.id}")
+        elif instance.type == "received":
+            create_ledger(instance.vendor, VendorLedger, "payment", instance.id, amt, f"Refund Received #{instance.id}")

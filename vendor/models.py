@@ -113,20 +113,90 @@ class StoreWorkingHour(models.Model):
         return f"{self.day.title()} - {'Open' if self.is_open else 'Closed'}"
 
 
-class vendor_vendors(models.Model):
-    
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
+
+# -------------------------------
+# Vendor Bank
+# -------------------------------
+class vendor_bank(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
+    name = models.CharField(max_length=100)
+    account_holder = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=50, unique=True)
+    ifsc_code = models.CharField(max_length=20)
+    branch = models.CharField(max_length=100, blank=True, null=True)
+    opening_balance = models.BigIntegerField(default=0)
+    balance = models.BigIntegerField(default=0, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # On creation, set balance = opening_balance if balance is None
+        if self._state.adding and (self.balance is None):
+            self.balance = self.opening_balance
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} - {self.account_holder}"
+
+
+# -------------------------------
+# Vendor Customers
+# -------------------------------
+class vendor_customers(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
+    # Basic
     name = models.CharField(max_length=50)
     email = models.EmailField()
     contact = models.CharField(max_length=15)
-    balance = models.BigIntegerField()
+    opening_balance = models.BigIntegerField(default=0)
+    balance = models.BigIntegerField(default=0, blank=True, null=True)
+    # Business Details
+    company_name = models.CharField(max_length=100, blank=True, null=True)
+    gst_number = models.CharField(max_length=20, blank=True, null=True)
+    aadhar_number = models.CharField(max_length=20, blank=True, null=True)
+    pan_number = models.CharField(max_length=20, blank=True, null=True)
+    # Billing Address
+    billing_address_line1 = models.CharField(max_length=255, blank=True, null=True)
+    billing_address_line2 = models.CharField(max_length=255, blank=True, null=True)
+    billing_pincode = models.CharField(max_length=10, blank=True, null=True)
+    billing_city = models.CharField(max_length=50, blank=True, null=True)
+    billing_state = models.CharField(max_length=50, blank=True, null=True)
+    billing_country = models.CharField(max_length=50, blank=True, null=True)
+    # Dispatch Address
+    dispatch_address_line1 = models.CharField(max_length=255, blank=True, null=True)
+    dispatch_address_line2 = models.CharField(max_length=255, blank=True, null=True)
+    dispatch_pincode = models.CharField(max_length=10, blank=True, null=True)
+    dispatch_city = models.CharField(max_length=50, blank=True, null=True)
+    dispatch_state = models.CharField(max_length=50, blank=True, null=True)
+    dispatch_country = models.CharField(max_length=50, blank=True, null=True)
+    # Transport
+    transport_name = models.CharField(max_length=100, blank=True, null=True)
 
+    def save(self, *args, **kwargs):
+        # On creation, set balance = opening_balance if balance is None
+        if self._state.adding and (self.balance is None):
+            self.balance = self.opening_balance
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+# -------------------------------
+# Vendor Vendors
+# -------------------------------
+class vendor_vendors(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
+    name = models.CharField(max_length=50)
+    email = models.EmailField()
+    contact = models.CharField(max_length=15)
+    opening_balance = models.BigIntegerField(default=0)
+    balance = models.BigIntegerField(default=0)
     # Business Details
     company_name = models.CharField(max_length=100, blank=True, null=True)
     gst = models.CharField(max_length=20, blank=True, null=True)
     aadhar = models.CharField(max_length=20, blank=True, null=True)
     pan = models.CharField(max_length=20, blank=True, null=True)
-
     # Address
     address_line_1 = models.CharField(max_length=255, blank=True, null=True)
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
@@ -135,39 +205,21 @@ class vendor_vendors(models.Model):
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
 
-
+    def save(self, *args, **kwargs):
+        # On creation, set balance = opening_balance if balance is None
+        if self._state.adding and (self.balance is None):
+            self.balance = self.opening_balance
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
 
 
-
-
-class vendor_bank(models.Model):
-    
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
-    name = models.CharField(max_length=100)
-    account_holder = models.CharField(max_length=100)
-    account_number = models.CharField(max_length=50, unique=True)
-    ifsc_code = models.CharField(max_length=20)
-    branch = models.CharField(max_length=100, blank=True, null=True)
-    opening_balance = models.BigIntegerField(default=0)
-    balance = models.BigIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def current_balance(self):
-        total_transactions = self.ledger_entries.aggregate(total=models.Sum("amount"))["total"] or 0
-        return self.opening_balance + total_transactions
-    
-
-    def __str__(self):
-        return f"{self.name} - {self.account_holder}"
-
-
+# -------------------------------
+# Bank Ledger
+# -------------------------------
 class BankLedger(models.Model):
     bank = models.ForeignKey(vendor_bank, related_name="ledger_entries", on_delete=models.CASCADE)
-    
     TRANSACTION_TYPES = [
         ("sale", "Sale (POS)"),
         ("purchase", "Purchase"),
@@ -175,13 +227,12 @@ class BankLedger(models.Model):
         ("deposit", "Manual Deposit"),
         ("withdrawal", "Manual Withdrawal"),
     ]
-
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    reference_id = models.PositiveIntegerField(blank=True, null=True, help_text="ID of Sale/Purchase/Expense if linked")
+    reference_id = models.PositiveIntegerField(blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
-
-    # Positive for inflow, Negative for outflow
+    opening_balance = models.BigIntegerField(default=0)
     amount = models.BigIntegerField()
+    balance_after = models.BigIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -191,56 +242,21 @@ class BankLedger(models.Model):
         return f"{self.bank.name} - {self.transaction_type} - {self.amount}"
 
 
-class vendor_customers(models.Model):
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, blank=True, null=True)
-    
-    # Basic
-    name = models.CharField(max_length=50)
-    email = models.EmailField()
-    contact = models.CharField(max_length=15)
-    balance = models.BigIntegerField(default=0)
-
-    # Business Details
-    company_name = models.CharField(max_length=100, blank=True, null=True)
-    gst_number = models.CharField(max_length=20, blank=True, null=True)
-    aadhar_number = models.CharField(max_length=20, blank=True, null=True)
-    pan_number = models.CharField(max_length=20, blank=True, null=True)
-
-    # Billing Address
-    billing_address_line1 = models.CharField(max_length=255, blank=True, null=True)
-    billing_address_line2 = models.CharField(max_length=255, blank=True, null=True)
-    billing_pincode = models.CharField(max_length=10, blank=True, null=True)
-    billing_city = models.CharField(max_length=50, blank=True, null=True)
-    billing_state = models.CharField(max_length=50, blank=True, null=True)
-    billing_country = models.CharField(max_length=50, blank=True, null=True)
-
-    # Dispatch Address
-    dispatch_address_line1 = models.CharField(max_length=255, blank=True, null=True)
-    dispatch_address_line2 = models.CharField(max_length=255, blank=True, null=True)
-    dispatch_pincode = models.CharField(max_length=10, blank=True, null=True)
-    dispatch_city = models.CharField(max_length=50, blank=True, null=True)
-    dispatch_state = models.CharField(max_length=50, blank=True, null=True)
-    dispatch_country = models.CharField(max_length=50, blank=True, null=True)
-
-    # Transport
-    transport_name = models.CharField(max_length=100, blank=True, null=True)
-
-    def __str__(self):
-        return self.name
-
-
+# -------------------------------
+# Customer Ledger
+# -------------------------------
 class CustomerLedger(models.Model):
-    customer = models.ForeignKey("vendor_customers", related_name="ledger_entries", on_delete=models.CASCADE)
-
+    customer = models.ForeignKey(vendor_customers, related_name="ledger_entries", on_delete=models.CASCADE)
     TRANSACTION_TYPES = [
         ("sale", "Sale (POS)"),
         ("payment", "Payment Received"),
     ]
-
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)  # Sale = -, Payment = +
+    opening_balance = models.BigIntegerField(default=0)
+    amount = models.BigIntegerField()
+    balance_after = models.BigIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -250,18 +266,21 @@ class CustomerLedger(models.Model):
         return f"{self.customer} | {self.transaction_type} | {self.amount}"
 
 
+# -------------------------------
+# Vendor Ledger
+# -------------------------------
 class VendorLedger(models.Model):
-    vendor = models.ForeignKey("vendor_vendors", related_name="ledger_entries", on_delete=models.CASCADE)
-
+    vendor = models.ForeignKey(vendor_vendors, related_name="ledger_entries", on_delete=models.CASCADE)
     TRANSACTION_TYPES = [
         ("purchase", "Purchase"),
         ("payment", "Payment Made"),
     ]
-
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)  # Purchase = -, Payment = +
+    opening_balance = models.BigIntegerField(default=0)
+    amount = models.BigIntegerField()
+    balance_after = models.BigIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

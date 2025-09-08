@@ -90,7 +90,7 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 class="mb-sm-0 font-size-18">List Expense</h4>
+                            <h4 class="mb-sm-0 font-size-18">List Customer</h4>
                         </div>
                     </div>
                 </div>
@@ -148,6 +148,10 @@
             </td>
             <td>{{ i.transport_name }}</td>
             <td>
+                <a href="{% url 'customer-ledger' i.id %}">
+                    <i class="bi bi-journal-text text-primary" title="ledger"></i>
+                </a>
+
                 <a href="{% url 'update_customer' i.id %}">
                     <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
                 </a>

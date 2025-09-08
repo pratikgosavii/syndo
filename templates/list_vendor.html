@@ -144,6 +144,11 @@
             <td>{{ i.country }}</td>
             <td>₹ {{ i.balance|floatformat:2 }}</td>
             <td>
+
+                <a href="{% url 'vendor-ledger' i.id %}">
+                    <i class="bi bi-journal-text text-primary" title="ledger"></i>
+                </a>
+
                 <a href="{% url 'update_vendor' i.id %}">
                     <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
                 </a>

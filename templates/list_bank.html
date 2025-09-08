@@ -85,6 +85,10 @@
                                                         <td>{{ i.opening_balance }}</td>
                                                         <td>{{ i.balance }}</td>
                                                         <td>
+                                                            <a href="{% url 'bank-ledger' i.id %}">
+                                                                <i class="bi bi-journal-text text-primary" title="ledger"></i>
+                                                            </a>
+
                                                             <a href="{% url 'update_bank' i.id %}">
                                                                 <i class="bi bi-pencil-square text-primary" title="Edit"></i>
                                                             </a>

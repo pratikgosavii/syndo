@@ -632,6 +632,41 @@ class VendorLedgerAPIView(APIView):
         })
     
 
+def bank_ledger(request, bank_id):
+    bank = get_object_or_404(vendor_bank, id=bank_id)
+    ledger_entries = bank.ledger_entries.order_by("created_at")
+
+    ledger_total = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+    balance = (bank.opening_balance or 0) + ledger_total
+
+    return render(request, "bank_ledger.html", {
+        "bank": bank,
+        "balance": balance,
+        "ledger": ledger_entries,
+    })
+
+
+def customer_ledger(request, customer_id):
+    ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
+    balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+    return render(request, "customer_ledger.html", {
+        "customer_id": customer_id,
+        "balance": balance,
+        "ledger": ledger_entries,
+    })
+
+
+def vendor_ledger(request, vendor_id):
+    ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id).order_by("created_at")
+    balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+    return render(request, "vendor_ledger.html", {
+        "vendor_id": vendor_id,
+        "balance": balance,
+        "ledger": ledger_entries,
+    })
+
 
 
 from rest_framework.response import Response
