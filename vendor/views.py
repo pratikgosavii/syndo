@@ -455,17 +455,23 @@ from rest_framework import generics
 
 class BankLedgerAPIView(APIView):
     def get(self, request, id):
-        ledger_entries = BankLedger.objects.filter(bank_id=id).order_by("created_at")
+        try:
+            bank = vendor_bank.objects.get(id=id)
+        except vendor_bank.DoesNotExist:
+            return Response({"error": "Bank not found"}, status=404)
 
-        # Calculate running balance
-        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+        serializer = BankWithLedgerSerializer(bank)
 
-        serializer = BankWithLedgerSerializer(ledger_entries, many=True)
+        # Optional: also include current total of ledger entries
+        ledger_total = bank.ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
         return Response({
-            "bank_id": id,
-            "balance": balance,
-            "ledger": serializer.data
+            "bank_id": bank.id,
+            "bank_name": bank.name,
+            "balance": bank.opening_balance + ledger_total,
+            "ledger": serializer.data.get("ledger_entries", [])
         })
+    
 
 from customer.serializers import *
 
