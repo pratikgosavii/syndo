@@ -161,6 +161,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
 
 
+
 class vendor_serializer(serializers.ModelSerializer):
     class Meta:
         model = vendor_vendors
@@ -331,6 +332,8 @@ class PosWholesaleSerializer(serializers.ModelSerializer):
 class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True)
     wholesale_invoice = PosWholesaleSerializer(write_only=True, required=False)  # Add this line
+    bank_details = vendor_bank_serializer(source="bank", read_only=True)
+    customer_details = vendor_customers_serializer(source="customer", read_only=True)
 
     wholesale_invoice_details = serializers.SerializerMethodField(read_only=True)
 
@@ -350,7 +353,7 @@ class SaleSerializer(serializers.ModelSerializer):
             'id', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
             'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details', 'balance_amount',  'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
-            'discount_amount', 'total_amount', 'wholesale_invoice_details', 'wholesale_invoice'
+            'discount_amount', 'total_amount', 'wholesale_invoice_details', 'wholesale_invoice', 'bank_details', 'customer_details'
         ]
 
     def get_wholesale_invoice_details(self, obj):
@@ -525,10 +528,12 @@ class VendorLedgerSerializer(serializers.ModelSerializer):
         fields = ["id", "vendor", "transaction_type", "reference_id",
                   "description", "amount", "created_at"]
         
+
         
 class ExpenseSerializer(serializers.ModelSerializer):
     bank_details = vendor_bank_serializer(source="bank", read_only=True)
     category_details = expense_category_serializer(source="category", read_only=True)
+
 
     class Meta:
         model = Expense
@@ -540,5 +545,4 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "payment_date", "description", "attachment"
         ]
         read_only_fields = ["user"]
-
 
