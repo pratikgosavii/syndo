@@ -806,13 +806,21 @@ class SaleItem(models.Model):
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)       # GST amount
     total_with_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # final total incl tax
 
+    from decimal import Decimal, ROUND_HALF_UP
+
     def save(self, *args, **kwargs):
-        # Auto calculate on save
-        self.amount = round(self.quantity * self.price, 2)
-        gst_rate = self.product.gst or 0
-        self.tax_amount = round(self.amount * (gst_rate / 100), 2)
-        self.total_with_tax = round(self.amount + self.tax_amount, 2)
+        # Ensure Decimal math
+        quantity = Decimal(self.quantity or 0)
+        price = Decimal(self.price or 0)
+        gst_rate = Decimal(self.product.gst or 0)
+
+        # Calculate values safely
+        self.amount = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.tax_amount = (self.amount * gst_rate / Decimal(100)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.total_with_tax = (self.amount + self.tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
         super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
