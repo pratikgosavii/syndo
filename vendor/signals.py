@@ -60,9 +60,19 @@ from django.dispatch import receiver
 from decimal import Decimal
 from .models import Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
 
+from decimal import Decimal
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, description=""):
-    opening_balance = parent.balance or 0
+    """
+    Generic ledger creation function that ensures all balances and amounts are handled as Decimal.
+    """
+    # Ensure Decimal everywhere
+    opening_balance = Decimal(parent.balance or 0)
+    amount = Decimal(amount or 0)
     balance_after = opening_balance + amount
+
     ledger_model.objects.create(
         **{
             ledger_model.__name__.replace("Ledger", "").lower(): parent,
@@ -74,6 +84,7 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
             "balance_after": balance_after,
         }
     )
+
     # Update parent balance
     parent.balance = balance_after
     parent.save()
@@ -86,12 +97,28 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
 def sale_ledger(sender, instance, created, **kwargs):
     if not created:
         return
+
     # Customer ledger
     if instance.customer:
-        create_ledger(instance.customer, CustomerLedger, "sale", instance.id, int(instance.total_amount), f"Sale #{instance.id}")
+        create_ledger(
+            instance.customer,
+            CustomerLedger,
+            "sale",
+            instance.id,
+            instance.total_amount,   # keep as Decimal
+            f"Sale #{instance.id}"
+        )
+
     # Bank ledger
     if instance.advance_bank:
-        create_ledger(instance.advance_bank, BankLedger, "sale", instance.id, int(instance.total_amount), f"Sale #{instance.id}")
+        create_ledger(
+            instance.advance_bank,
+            BankLedger,
+            "sale",
+            instance.id,
+            instance.total_amount,   # keep as Decimal
+            f"Sale #{instance.id}"
+        )
 
 
 # -------------------------------
@@ -101,11 +128,27 @@ def sale_ledger(sender, instance, created, **kwargs):
 def purchase_ledger(sender, instance, created, **kwargs):
     if not created:
         return
+
     if instance.vendor:
-        amt = int(instance.discount_amount or 0) + int(instance.advance_amount or 0)
-        create_ledger(instance.vendor, VendorLedger, "purchase", instance.id, amt, f"Purchase #{instance.id}")
+        amt = (instance.discount_amount or Decimal(0)) + (instance.advance_amount or Decimal(0))
+        create_ledger(
+            instance.vendor,
+            VendorLedger,
+            "purchase",
+            instance.id,
+            amt,
+            f"Purchase #{instance.id}"
+        )
+
     if instance.advance_bank and instance.advance_amount:
-        create_ledger(instance.advance_bank, BankLedger, "purchase", instance.id, -int(instance.advance_amount), f"Purchase #{instance.id}")
+        create_ledger(
+            instance.advance_bank,
+            BankLedger,
+            "purchase",
+            instance.id,
+            -(instance.advance_amount or Decimal(0)),
+            f"Purchase #{instance.id}"
+        )
 
 
 # -------------------------------
@@ -115,8 +158,16 @@ def purchase_ledger(sender, instance, created, **kwargs):
 def expense_ledger(sender, instance, created, **kwargs):
     if not created:
         return
+
     if instance.bank:
-        create_ledger(instance.bank, BankLedger, "expense", instance.id, -int(instance.amount), f"Expense #{instance.id}")
+        create_ledger(
+            instance.bank,
+            BankLedger,
+            "expense",
+            instance.id,
+            -(instance.amount or Decimal(0)),
+            f"Expense #{instance.id}"
+        )
 
 
 # -------------------------------
@@ -126,14 +177,45 @@ def expense_ledger(sender, instance, created, **kwargs):
 def payment_ledger(sender, instance, created, **kwargs):
     if not created:
         return
-    amt = int(instance.amount)
+
+    amt = Decimal(instance.amount or 0)
+
     if instance.customer:
         if instance.type == "received":
-            create_ledger(instance.customer, CustomerLedger, "payment", instance.id, amt, f"Payment Received #{instance.id}")
+            create_ledger(
+                instance.customer,
+                CustomerLedger,
+                "payment",
+                instance.id,
+                amt,
+                f"Payment Received #{instance.id}"
+            )
         elif instance.type == "gave":
-            create_ledger(instance.customer, CustomerLedger, "payment", instance.id, -amt, f"Refund Given #{instance.id}")
+            create_ledger(
+                instance.customer,
+                CustomerLedger,
+                "payment",
+                instance.id,
+                -amt,
+                f"Refund Given #{instance.id}"
+            )
+
     if instance.vendor:
         if instance.type == "gave":
-            create_ledger(instance.vendor, VendorLedger, "payment", instance.id, -amt, f"Payment Given #{instance.id}")
+            create_ledger(
+                instance.vendor,
+                VendorLedger,
+                "payment",
+                instance.id,
+                -amt,
+                f"Payment Given #{instance.id}"
+            )
         elif instance.type == "received":
-            create_ledger(instance.vendor, VendorLedger, "payment", instance.id, amt, f"Refund Received #{instance.id}")
+            create_ledger(
+                instance.vendor,
+                VendorLedger,
+                "payment",
+                instance.id,
+                amt,
+                f"Refund Received #{instance.id}"
+            )
