@@ -959,6 +959,7 @@ class Payment(models.Model):
         ('cash', 'Cash'),
         ('upi', 'UPI'),
         ('card', 'Card'),
+        ('credit', 'Credit'),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
