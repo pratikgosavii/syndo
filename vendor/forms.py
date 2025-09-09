@@ -463,7 +463,7 @@ class PurchaseForm(forms.ModelForm):
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
-            self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
+            self.fields['advance_bank'].queryset = vendor_bank.objects.filter(user=user)
 
 
     def generate_unique_code(self):
