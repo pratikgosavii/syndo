@@ -646,6 +646,7 @@ class Purchase(models.Model):
 
     purchase_date = models.DateField()
     vendor = models.ForeignKey('vendor_vendors', on_delete=models.CASCADE)
+    customer = models.ForeignKey('vendor_customers', on_delete=models.CASCADE)
 
     supplier_invoice_date = models.DateField(blank=True, null=True)
     serial_number = models.CharField(max_length=100, blank=True, null=True)
