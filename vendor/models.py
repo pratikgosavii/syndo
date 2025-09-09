@@ -50,6 +50,80 @@ class coupon(models.Model):
     def __str__(self):
         return self.code
 
+
+class OnlineStoreSetting(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    store_page_visible = models.BooleanField(default=True)
+    store_location_visible = models.BooleanField(default=True)
+    display_as_catalog = models.BooleanField(default=False)
+    private_catalog = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.username}'s Store Settings"
+
+
+class vendor_store(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="vendor_store", blank=True, null=True)
+    
+DAYS_OF_WEEK = [
+    ('sunday', 'Sunday'),
+    ('monday', 'Monday'),
+    ('tuesday', 'Tuesday'),
+    ('wednesday', 'Wednesday'),
+    ('thursday', 'Thursday'),
+    ('friday', 'Friday'),
+    ('saturday', 'Saturday'),
+]
+
+class StoreWorkingHour(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='working_hours')
+    day = models.CharField(max_length=10, choices=DAYS_OF_WEEK)
+    open_time = models.TimeField(null=True, blank=True)
+    close_time = models.TimeField(null=True, blank=True)
+    is_open = models.BooleanField(default=True)
+    
+    
+
+    def __str__(self):
+        return f"{self.day.title()} - {'Open' if self.is_open else 'Closed'}"
+
+
+
+class SpotlightProduct(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
+    discount_tag = models.CharField(max_length=255, blank=True, null=True)
+    boost = models.BooleanField(default=False)
+    budget = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return self.product.name
+    
+
+class Post(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # user who created post
+    media = models.FileField(upload_to='posts/')  # upload media
+    description = models.TextField(blank=True)
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+    boost_post = models.BooleanField(default=False)
+    budget = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Reel(models.Model):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # user who created post
+    media = models.FileField(upload_to='posts/')  # upload media
+    description = models.TextField(blank=True)
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+    boost_post = models.BooleanField(default=False)
+    budget = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+
 class BannerCampaign(models.Model):
     REDIRECT_CHOICES = [
         ('store', 'Store'),
@@ -73,44 +147,6 @@ class BannerCampaign(models.Model):
     def __str__(self):
         return self.campaign_name
     
-
-class OnlineStoreSetting(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    store_page_visible = models.BooleanField(default=True)
-    store_location_visible = models.BooleanField(default=True)
-    display_as_catalog = models.BooleanField(default=False)
-    private_catalog = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"{self.user.username}'s Store Settings"
-
-
-class vendor_store(models.Model):
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="vendor_store", blank=True, null=True)
-
-DAYS_OF_WEEK = [
-    ('sunday', 'Sunday'),
-    ('monday', 'Monday'),
-    ('tuesday', 'Tuesday'),
-    ('wednesday', 'Wednesday'),
-    ('thursday', 'Thursday'),
-    ('friday', 'Friday'),
-    ('saturday', 'Saturday'),
-]
-
-class StoreWorkingHour(models.Model):
-    
-    store = models.ForeignKey(vendor_store, on_delete=models.CASCADE, related_name='working_hours')
-    day = models.CharField(max_length=10, choices=DAYS_OF_WEEK)
-    open_time = models.TimeField(null=True, blank=True)
-    close_time = models.TimeField(null=True, blank=True)
-    is_open = models.BooleanField(default=True)
-    
-    class Meta:
-        unique_together = ('store', 'day')
-
-    def __str__(self):
-        return f"{self.day.title()} - {'Open' if self.is_open else 'Closed'}"
 
 
 
@@ -589,38 +625,6 @@ class ProductSettings(models.Model):
     
 
 
-class SpotlightProduct(models.Model):
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    product = models.ForeignKey(product, on_delete=models.CASCADE)
-    discount_tag = models.CharField(max_length=255, blank=True, null=True)
-    boost = models.BooleanField(default=False)
-    budget = models.DecimalField(max_digits=10, decimal_places=2)
-
-    def __str__(self):
-        return self.product.name
-
-
-class Post(models.Model):
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # user who created post
-    media = models.FileField(upload_to='posts/')  # upload media
-    description = models.TextField(blank=True)
-    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
-    boost_post = models.BooleanField(default=False)
-    budget = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-class Reel(models.Model):
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # user who created post
-    media = models.FileField(upload_to='posts/')  # upload media
-    description = models.TextField(blank=True)
-    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
-    boost_post = models.BooleanField(default=False)
-    budget = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-
 
 
 import uuid
@@ -961,6 +965,24 @@ class CashTransfer(models.Model):
 
 
 
+class BankTransfer(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    from_bank = models.ForeignKey(
+        vendor_bank, related_name="outgoing_transfers", on_delete=models.CASCADE
+    )
+    to_bank = models.ForeignKey(
+        vendor_bank, related_name="incoming_transfers", on_delete=models.CASCADE
+    )
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    date = models.DateTimeField(auto_now_add=True)
+    
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Transfer {self.amount} from {self.from_bank} to {self.to_bank}"
+
+        
+
 class Payment(models.Model):
     TYPE_CHOICES = (
         ('gave', 'You Gave'),
@@ -1053,3 +1075,37 @@ class ReminderSetting(models.Model):
 
     def __str__(self):
         return f"ReminderSettings for {self.user.username}"
+    
+
+
+
+class NotificationCampaign(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("active", "Active"),
+        ("ended", "Ended"),
+        ("rejected", "Rejected"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    campaign_name = models.CharField(max_length=255)
+    redirect_to = models.CharField(max_length=50, choices=[("store", "Store"), ("product", "Product"), ("custom", "Custom")])
+    description = models.CharField(max_length=90)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, null=True)
+
+    views = models.PositiveIntegerField(default=0)
+    clicks = models.PositiveIntegerField(default=0)
+
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.campaign_name} ({self.status})"
+    
+
+
+    

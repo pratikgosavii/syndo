@@ -52,7 +52,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from decimal import Decimal
-from .models import Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
+from .models import BankTransfer, CashTransfer, Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
 
 
 from django.db.models.signals import post_save
@@ -219,3 +219,55 @@ def payment_ledger(sender, instance, created, **kwargs):
                 amt,
                 f"Refund Received #{instance.id}"
             )
+
+
+# -------------------------------
+# CASH TRANSFER → Bank Ledger
+# -------------------------------
+@receiver(post_save, sender=CashTransfer)
+def cash_transfer_ledger(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    if instance.bank_account and instance.amount:
+        create_ledger(
+            instance.bank_account,
+            BankLedger,
+            "cash_transfer",
+            instance.id,
+            instance.amount,
+            f"Cash deposited to {instance.bank_account.bank_name}"
+        )
+
+
+        # -------------------------------
+# BANK TRANSFER → Bank Ledger   ✅ NEWLY ADDED
+# -------------------------------
+@receiver(post_save, sender=BankTransfer)
+def bank_transfer_ledger(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    amt = Decimal(instance.amount or 0)
+
+    # Deduct from source bank
+    if instance.from_bank:
+        create_ledger(
+            instance.from_bank,
+            BankLedger,
+            "bank_transfer_out",
+            instance.id,
+            -amt,
+            f"Transfer to {instance.to_bank.name}"
+        )
+
+    # Add to destination bank
+    if instance.to_bank:
+        create_ledger(
+            instance.to_bank,
+            BankLedger,
+            "bank_transfer_in",
+            instance.id,
+            amt,
+            f"Transfer from {instance.from_bank.name}"
+        )
