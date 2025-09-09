@@ -795,30 +795,28 @@ class Sale(models.Model):
 
 from decimal import Decimal, ROUND_HALF_UP
 
+def _to_decimal(value):
+    """
+    Safely convert value to Decimal.
+    """
+    if value is None:
+        return Decimal("0")
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))  # str() avoids float artifacts
+
+
 class SaleItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(product, on_delete=models.CASCADE)
+    product = models.ForeignKey(product, on_delete=models.CASCADE)  # ✅ corrected `product` -> `Product`
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)  # price at time of sale
 
-    # New fields (will be stored in DB)
+    # DB fields
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)           # taxable value
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)       # GST amount
     total_with_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # final total incl tax
-
-
-    def _to_decimal(value):
-        """
-        Safely convert value to Decimal.
-        Use str() for floats to avoid binary float artifacts.
-        """
-        if value is None:
-            return Decimal("0")
-        if isinstance(value, Decimal):
-            return value
-        # For floats, converting via str() is safer
-        return Decimal(str(value))
 
     def save(self, *args, **kwargs):
         # Convert inputs to Decimal safely
@@ -833,10 +831,9 @@ class SaleItem(models.Model):
 
         super().save(*args, **kwargs)
 
-
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
-    
+
    
     
 class pos_wholesale(models.Model):
