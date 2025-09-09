@@ -3,6 +3,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 
+from vendor.models import vendor_store
+
 
 from .forms import *
 
@@ -154,6 +156,7 @@ class LoginAPIView(APIView):
                     mobile=mobile,
                     firebase_uid=uid,
                 )
+                vendor_store.objects.create(user = user)
                 created = True
 
                 # Set user type flags based on frontend
@@ -184,6 +187,20 @@ class LoginAPIView(APIView):
             print(f"Login failed: {e}")
             return Response({"error": "Invalid or expired Firebase token."}, status=400)
 
+
+from rest_framework.permissions import IsAuthenticated
+
+class DeleteUserAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        user.delete()
+        return Response(
+            {"detail": "User deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    
 
 from .permissions import *
 
@@ -387,3 +404,16 @@ def create_user_with_roles(request):
     else:
         print(form.errors)
     return render(request, 'add_user_with_roles.html', {'form': form})
+
+
+from .models import DeviceToken
+
+class RegisterDeviceTokenAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get("token")
+        if not token:
+            return Response({"error": "Token required"}, status=400)
+        DeviceToken.objects.update_or_create(user=request.user, defaults={"token": token})
+        return Response({"success": True})

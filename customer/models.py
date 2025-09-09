@@ -52,3 +52,18 @@ class OrderItem(models.Model):
 
     def total_price(self):
         return self.quantity * self.mrp
+
+
+from users.models import User
+
+
+class Follower(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="following")
+    follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name="followers")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'follower')  # Prevent duplicate follows
+
+    def __str__(self):
+        return f"{self.follower.username} follows {self.user.username}"

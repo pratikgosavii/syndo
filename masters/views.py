@@ -114,6 +114,88 @@ class get_event(ListAPIView):
         return event.objects.filter(start_date__gte=now()).order_by('start_date')
 
 
+
+
+
+
+@login_required(login_url='login_admin')
+def list_notification_campaigns(request):
+
+    data = NotificationCampaign.objects.all()
+    context = {
+        'data': data
+    }
+    return render(request, 'list_notification_campaigns.html', context)
+
+
+
+import requests
+from django.conf import settings
+
+FCM_SERVER_KEY = settings.FCM_SERVER_KEY
+
+def send_push_notification(user, title, body, campaign_id):
+    if not hasattr(user, "device_token") or not user.device_token:
+        return
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"key={FCM_SERVER_KEY}",
+    }
+
+    payload = {
+        "to": user.device_token,
+        "notification": {
+            "title": title,
+            "body": body,
+        },
+        "data": {
+            "campaign_id": campaign_id,
+        }
+    }
+
+    requests.post("https://fcm.googleapis.com/fcm/send", headers=headers, json=payload)
+
+
+
+from django.contrib import messages
+from django.utils import timezone
+from datetime import timedelta
+
+
+def approve_notification_campaign(request, pk):
+    campaign = get_object_or_404(NotificationCampaign, pk=pk)
+    campaign.status = "approved"
+    campaign.start_time = timezone.now()
+    campaign.end_time = timezone.now() + timedelta(days=7)
+    campaign.save()
+
+    # send push notifications to all followers
+    followers = campaign.user.followers.all()  # adjust as per your relation
+    for follower_relation in followers:
+        follower = follower_relation.follower
+        send_push_notification(
+            user=follower,
+            title=campaign.campaign_name,
+            body=campaign.description,
+            campaign_id=campaign.id
+        )
+
+    messages.success(request, "Campaign approved and notification sent.")
+    return redirect("dashboard_campaign_list")
+
+
+def reject_notification_campaign(request, pk):
+    campaign = get_object_or_404(NotificationCampaign, pk=pk)
+    campaign.status = "rejected"
+    campaign.rejection_reason = request.POST.get("reason", "Not approved")
+    campaign.save()
+
+    messages.error(request, "Campaign rejected.")
+    return redirect("list_notification_campaigns")
+
+
+
 def add_testimonials(request):
     
     if request.method == "POST":

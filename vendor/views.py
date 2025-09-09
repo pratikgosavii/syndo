@@ -1525,11 +1525,13 @@ class CompanyProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsVendor]
 
     def get_queryset(self):
-        # Return only products of logged-in user
+        # Return only company profile of logged-in user
         return CompanyProfile.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        # Automatically assign logged-in user to the product
+        # Check if profile already exists
+        if CompanyProfile.objects.filter(user=self.request.user).exists():
+            raise ValidationError({"detail": "Company profile already exists for this user."})
         serializer.save(user=self.request.user)
 
 
@@ -1859,7 +1861,6 @@ StoreWorkingHourFormSet = modelformset_factory(
 
 def store_hours_view(request):
     
-    store_instance = vendor_store.objects.get(user=request.user)
     # Days of the week
     days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
@@ -1876,7 +1877,7 @@ def store_hours_view(request):
             open_time = datetime.strptime(open_time_str, "%H:%M").time() if open_time_str else None
             close_time = datetime.strptime(close_time_str, "%H:%M").time() if close_time_str else None
 
-            obj, created = StoreWorkingHour.objects.get_or_create(store=store_instance, day=day)
+            obj, created = StoreWorkingHour.objects.get_or_create(user=request.user, day=day)
 
             if created:
                 obj.day = day
@@ -1893,7 +1894,7 @@ def store_hours_view(request):
         return redirect("store_hours")  # make sure this name matches your urlpattern
 
     # Load existing hours into a dict
-    hours_qs = StoreWorkingHour.objects.filter(store=store_instance)
+    hours_qs = StoreWorkingHour.objects.filter(user=request.user)
     hours = {hour.day: hour for hour in hours_qs}
 
     return render(request, "store_hours.html", {
@@ -2557,7 +2558,7 @@ class StoreWorkingHourViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         store, _ = vendor_store.objects.get_or_create(user=self.request.user)
-        return StoreWorkingHour.objects.filter(store=store)
+        return StoreWorkingHour.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         store, _ = vendor_store.objects.get_or_create(user=self.request.user)
@@ -2575,7 +2576,7 @@ class StoreWorkingHourViewSet(viewsets.ModelViewSet):
             entry['store'] = store.id
             try:
                 obj, created = StoreWorkingHour.objects.update_or_create(
-                    store=store,
+                    user=request.user,
                     day=entry['day'],
                     defaults={
                         'open_time': entry.get('open_time'),
@@ -2655,6 +2656,19 @@ class CashTransferViewSet(viewsets.ModelViewSet):
 
 
 
+class BankTransferViewSet(viewsets.ModelViewSet):
+    serializer_class = BankTransferSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # User can only see their own transfers
+        return BankTransfer.objects.filter(user=self.request.user).order_by("-date")
+
+    def perform_create(self, serializer):
+        # Auto-assign logged-in user
+        serializer.save(user=self.request.user)
+
+
 class BannerCampaignViewSet(viewsets.ModelViewSet):
     queryset = BannerCampaign.objects.all()
     serializer_class = BannerCampaignSerializer
@@ -2665,6 +2679,26 @@ class BannerCampaignViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+
+
+class NotificationCampaignViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationCampaignSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return NotificationCampaign.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        # check monthly quota (e.g., max 3 notifications per month)
+        user = self.request.user
+        month_count = NotificationCampaign.objects.filter(
+            user=user, created_at__month=self.request.user.date_joined.month
+        ).count()
+        if month_count >= 3:
+            raise serializers.ValidationError("You have reached your monthly limit.")
+        serializer.save(user=user)
 
 
 
@@ -2885,3 +2919,4 @@ def barcode_lookup(request):
         return JsonResponse({'success': True, 'id': product_instance.id, 'name': product_instance.name, 'price': product_instance.sales_price})
     except product.DoesNotExist:
         return JsonResponse({'success': False})
+    

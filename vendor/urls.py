@@ -36,6 +36,9 @@ router.register(r'product-addon', ProductAddonViewSet, basename='ProductAddonVie
 router.register(r'vendor-bank', bankViewSet, basename='bankViewSet')
 router.register(r'cash-balance', CashBalanceViewSet, basename='CashBalanceViewSet')
 router.register(r'cash-transfers', CashTransferViewSet, basename='CashTransferViewSet')
+router.register(r'bank-to-bank-transfers', BankTransferViewSet, basename='BankTransferViewSet')
+
+router.register(r'notifcation-campaign', NotificationCampaignViewSet, basename='NotificationCampaignViewSet')
 
 router.register(r'sales', SaleViewSet, basename='sale')
 

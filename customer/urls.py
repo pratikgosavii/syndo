@@ -17,7 +17,9 @@ router.register(r'customer-order', CustomerOrderViewSet, basename='CustomerOrder
 
 urlpatterns = [
 
-
+path('stores/', VendorStoreListAPIView.as_view(), name='vendor-store-list'),
+path('follow/<int:user_id>/', FollowUserAPIView.as_view(), name='follow-user'),
+path('unfollow/<int:user_id>/', UnfollowUserAPIView.as_view(), name='unfollow-user'),
  
 
 ]  + router.urls

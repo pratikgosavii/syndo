@@ -12,20 +12,6 @@ class coupon_serializer(serializers.ModelSerializer):
 
 
 
-class BannerCampaignSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BannerCampaign
-        fields = '__all__'
-        read_only_fields = ['user', 'is_approved', 'created_at']
-
-    def validate(self, data):
-        if data.get('boost_post') and not data.get('budget'):
-            raise serializers.ValidationError({"budget": "Budget is required when boost post is enabled."})
-        if data.get('budget') and data.get('budget') < 10:
-            raise serializers.ValidationError({"budget": "Minimum budget is 10 Rupees."})
-        return data
-        
-
 class vendor_customers_serializer(serializers.ModelSerializer):
     
     class Meta:
@@ -62,23 +48,6 @@ class ProductAddonSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class SpotlightProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SpotlightProduct
-        fields = '__all__'
-        read_only_fields = ['user']  
-
-class PostSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Post
-        fields = '__all__'
-        read_only_fields = ['user']  
-
-class ReelSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Reel
-        fields = '__all__'
-        read_only_fields = ['user']  
 
 class OnlineStoreSettingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -121,19 +90,65 @@ class StoreWorkingHourSerializer(serializers.ModelSerializer):
         fields = ['day', 'open_time', 'close_time', 'is_open']
 
 
+class SpotlightProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpotlightProduct
+        fields = '__all__'
+        read_only_fields = ['user']  
 
+class PostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = '__all__'
+        read_only_fields = ['user']  
+
+class ReelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reel
+        fields = '__all__'
+        read_only_fields = ['user']  
+
+
+class BannerCampaignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BannerCampaign
+        fields = '__all__'
+        read_only_fields = ['user', 'is_approved', 'created_at']
+
+    def validate(self, data):
+        if data.get('boost_post') and not data.get('budget'):
+            raise serializers.ValidationError({"budget": "Budget is required when boost post is enabled."})
+        if data.get('budget') and data.get('budget') < 10:
+            raise serializers.ValidationError({"budget": "Minimum budget is 10 Rupees."})
+        return data
+
+
+
+class VendorStoreSerializer(serializers.ModelSerializer):
+    # Nested child serializers
+    working_hours = StoreWorkingHourSerializer(source='user.working_hours', many=True, read_only=True)
+    spotlight_products = SpotlightProductSerializer(source='user.spotlightproduct_set', many=True, read_only=True)
+    posts = PostSerializer(source='user.post_set', many=True, read_only=True)
+    reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
+    banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
+
+    class Meta:
+        model = vendor_store
+        fields = [
+            'id', 'user',
+            'working_hours',
+            'spotlight_products',
+            'posts',
+            'reels',
+            'banners',
+        ]
+
+        
 
 class PartySerializer(serializers.ModelSerializer):
     class Meta:
         model = Party
         fields = '__all__'
-
-
-        
-class StoreWorkingHourSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StoreWorkingHour
-        fields = ['id', 'day', 'open_time', 'close_time', 'is_open']
 
 
 
@@ -156,14 +171,46 @@ class CashTransferSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CashTransfer
-        fields = ['id', 'bank_account', 'amount', 'created_at', 'status', 'current_balance']
-        read_only_fields = ['created_at', 'status', 'current_balance']
+        fields = ['id', 'bank_account', 'amount', 'created_at', 'current_balance']
+        read_only_fields = ['created_at', 'current_balance']
 
     def get_current_balance(self, obj):
         balance_obj, _ = CashBalance.objects.get_or_create(user=obj.user)
         return str(balance_obj.balance)
 
 
+
+class BankTransferSerializer(serializers.ModelSerializer):
+    from_bank = vendor_bank_serializer(read_only=True)
+    to_bank = vendor_bank_serializer(read_only=True)
+
+    from_bank_id = serializers.PrimaryKeyRelatedField(
+        queryset=vendor_bank.objects.all(), source="from_bank", write_only=True
+    )
+    to_bank_id = serializers.PrimaryKeyRelatedField(
+        queryset=vendor_bank.objects.all(), source="to_bank", write_only=True
+    )
+
+    class Meta:
+        model = BankTransfer
+        fields = [
+            "id",
+            "user",
+            "from_bank",
+            "to_bank",
+            "from_bank_id",
+            "to_bank_id",
+            "amount",
+            "date",
+            "notes",
+        ]
+        read_only_fields = ["id", "date", "user", "from_bank", "to_bank"]
+
+    def create(self, validated_data):
+        validated_data["user"] = self.context["request"].user
+        return super().create(validated_data)
+    
+    
 class PrintVariantSerializer(serializers.ModelSerializer):
     color_type_display = serializers.CharField(source='get_color_type_display', read_only=True)
     sided_display = serializers.CharField(source='get_sided_display', read_only=True)
@@ -398,7 +445,7 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
 
         
 class PaymentSerializer(serializers.ModelSerializer):
-    
+
     customer_details = vendor_customers_serializer(source="customer", read_only=True)
     vendor_details = vendor_vendors_serializer(source="vendor", read_only=True)
 
@@ -557,3 +604,16 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
         return instance
 
+
+
+class NotificationCampaignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationCampaign
+        fields = "__all__"
+        read_only_fields = ["user", "status", "views", "clicks", "created_at"]
+
+    def create(self, validated_data):
+        validated_data["user"] = self.context["request"].user
+        return super().create(validated_data)
+    
+    

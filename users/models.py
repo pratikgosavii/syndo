@@ -71,3 +71,10 @@ class RoleMenuPermission(models.Model):
 
     class Meta:
         unique_together = ('role', 'menu_module')
+
+
+
+class DeviceToken(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    token = models.CharField(max_length=255)  # FCM token
+    updated_at = models.DateTimeField(auto_now=True)
