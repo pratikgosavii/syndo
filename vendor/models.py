@@ -726,7 +726,7 @@ class Expense(models.Model):
         ('cash', 'Cash'),
     ]
 
-    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     expense_date = models.DateField()

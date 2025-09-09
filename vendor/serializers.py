@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import *
+from masters.serializers import *
 
 
 
@@ -156,14 +157,6 @@ class PurchaseSerializer(serializers.ModelSerializer):
             PurchaseItem.objects.create(purchase=instance, **item_data)
 
         return instance
-
-
-
-class ExpenseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Expense
-        fields = '__all__'
-        read_only_fields = ['user']
 
 
 
@@ -531,3 +524,21 @@ class VendorLedgerSerializer(serializers.ModelSerializer):
         model = VendorLedger
         fields = ["id", "vendor", "transaction_type", "reference_id",
                   "description", "amount", "created_at"]
+        
+        
+class ExpenseSerializer(serializers.ModelSerializer):
+    bank_details = vendor_bank_serializer(source="bank", read_only=True)
+    category_details = expense_category_serializer(source="category", read_only=True)
+
+    class Meta:
+        model = Expense
+        fields = [
+            "id", "bank", "bank_details", 
+            "user", "amount", "expense_date", 
+            "category", "category_details", 
+            "is_paid", "payment_method", 
+            "payment_date", "description", "attachment"
+        ]
+        read_only_fields = ["user"]
+
+
