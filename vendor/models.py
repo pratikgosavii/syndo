@@ -793,6 +793,7 @@ class Sale(models.Model):
     def __str__(self):
         return f"Sale #{self.id}"
 
+from decimal import Decimal, ROUND_HALF_UP
 
 class SaleItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -806,17 +807,28 @@ class SaleItem(models.Model):
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)       # GST amount
     total_with_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # final total incl tax
 
-    from decimal import Decimal, ROUND_HALF_UP
+
+    def _to_decimal(value):
+        """
+        Safely convert value to Decimal.
+        Use str() for floats to avoid binary float artifacts.
+        """
+        if value is None:
+            return Decimal("0")
+        if isinstance(value, Decimal):
+            return value
+        # For floats, converting via str() is safer
+        return Decimal(str(value))
 
     def save(self, *args, **kwargs):
-        # Ensure Decimal math
-        quantity = Decimal(self.quantity or 0)
-        price = Decimal(self.price or 0)
-        gst_rate = Decimal(self.product.gst or 0)
+        # Convert inputs to Decimal safely
+        quantity = _to_decimal(self.quantity)
+        price = _to_decimal(self.price)
+        gst_rate = _to_decimal(getattr(self.product, "gst", 0))
 
-        # Calculate values safely
+        # Calculations (kept in Decimal)
         self.amount = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.tax_amount = (self.amount * gst_rate / Decimal(100)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.tax_amount = (self.amount * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         self.total_with_tax = (self.amount + self.tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         super().save(*args, **kwargs)
