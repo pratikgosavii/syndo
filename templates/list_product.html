@@ -84,6 +84,7 @@
                                         <thead>
                                             <tr>
                                                 <th>#</th>
+                                                <th>Parent product ID</th>
                                                 <th>Image</th>
                                                 <th>Name</th>
                                                 <th>Category</th>
@@ -125,6 +126,7 @@
                                                 {% for i in data %}
                                                 <tr>
                                                     <td>{{ forloop.counter }}</td>
+                                                    <td>{{ i.parents }}</td>
                                                     <td>
                                                         {% if i.image %}
                                                             <img src="{{ i.image.url }}" class="product-img" alt="product image">
@@ -180,6 +182,12 @@
                                                         <a href="{% url 'delete_product' i.id %}">
                                                             <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
                                                         </a>
+
+                                                        <a href="{% url 'add_variant' i.id %}" class="text-decoration-none ms-2" title="Add Variant">
+                                                            <i class="bi bi-plus-square text-primary action-icons"></i>
+                                                        </a>
+
+
                                                     </td>
                                                 </tr>
                                                 {% endfor %}

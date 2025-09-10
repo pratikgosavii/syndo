@@ -800,8 +800,12 @@ def list_super_catalogue(request):
 
 
 
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+
 @login_required(login_url='login_admin')
-def add_product(request):
+@transaction.atomic
+def add_product(request, parent_id=None):
     AddonFormSet = inlineformset_factory(
         product, product_addon,
         form=ProductAddonForm,
@@ -821,12 +825,21 @@ def add_product(request):
         can_delete=True
     )
 
+    parent_instance = None
+    if parent_id:
+        parent_instance = get_object_or_404(product, id=parent_id)
+
     if request.method == 'POST':
         product_form = product_Form(request.POST, request.FILES)
 
         if product_form.is_valid():
             product_instance = product_form.save(commit=False)
             product_instance.user = request.user
+
+            # 🔑 Assign parent automatically if parent_id passed
+            if parent_instance:
+                product_instance.parent = parent_instance
+
             product_instance.save()
 
             addon_formset = AddonFormSet(
@@ -852,15 +865,14 @@ def add_product(request):
                 customize_variant_formset.save()
                 return redirect('list_product')
             else:
-                # Print formset errors for debugging
+                # Debug errors
                 print("Addon formset errors:", addon_formset.errors)
                 print("Variant formset errors:", variant_formset.errors)
-                print("Variant formset non-form errors:", variant_formset.non_form_errors())
                 print("Customize variant formset errors:", customize_variant_formset.errors)
         else:
             print("Product form errors:", product_form.errors)
 
-            # Ensure formsets are initialized even if product_form is invalid
+            # keep formsets so template doesn’t break
             addon_formset = AddonFormSet(request.POST, request.FILES, prefix='addon', form_kwargs={'user': request.user})
             variant_formset = VariantFormSet(request.POST, request.FILES, prefix='print_variants')
             customize_variant_formset = CustomizePrintVariantFormSet(request.POST, request.FILES, prefix='customize_print_variants')
@@ -876,13 +888,15 @@ def add_product(request):
         'formset': addon_formset,
         'variant_formset': variant_formset,
         'customize_print_variant_formset': customize_variant_formset,
+        'parent_instance': parent_instance,  # useful for template if variant
     }
     return render(request, 'add_product.html', context)
 
 
 @login_required(login_url='login_admin')
+@transaction.atomic
 def update_product(request, product_id):
-    instance = product.objects.get(id=product_id)
+    instance = get_object_or_404(product, id=product_id)
 
     AddonFormSet = inlineformset_factory(
         product, product_addon,
@@ -907,29 +921,11 @@ def update_product(request, product_id):
     if request.method == 'POST':
         product_form = product_Form(request.POST, request.FILES, instance=instance)
 
-        addon_formset = AddonFormSet(
-            request.POST, request.FILES,
-            instance=instance,
-            prefix='addon',
-            form_kwargs={'user': request.user}
-        )
-        variant_formset = VariantFormSet(
-            request.POST, request.FILES,
-            instance=instance,
-            prefix='print_variants'
-        )
-        customize_variant_formset = CustomizePrintVariantFormSet(
-            request.POST, request.FILES,
-            instance=instance,
-            prefix='customize_print_variants'
-        )
+        addon_formset = AddonFormSet(request.POST, request.FILES, instance=instance, prefix='addon', form_kwargs={'user': request.user})
+        variant_formset = VariantFormSet(request.POST, request.FILES, instance=instance, prefix='print_variants')
+        customize_variant_formset = CustomizePrintVariantFormSet(request.POST, request.FILES, instance=instance, prefix='customize_print_variants')
 
-        if (
-            product_form.is_valid() and
-            addon_formset.is_valid() and
-            variant_formset.is_valid() and
-            customize_variant_formset.is_valid()
-        ):
+        if product_form.is_valid() and addon_formset.is_valid() and variant_formset.is_valid() and customize_variant_formset.is_valid():
             product_instance = product_form.save(commit=False)
             product_instance.user = request.user
             product_instance.save()
@@ -940,7 +936,6 @@ def update_product(request, product_id):
 
             return redirect('list_product')
         else:
-            # Print errors for debugging
             print("Product form errors:", product_form.errors)
             print("Addon formset errors:", addon_formset.errors)
             print("Variant formset errors:", variant_formset.errors)
@@ -948,25 +943,16 @@ def update_product(request, product_id):
 
     else:
         product_form = product_Form(instance=instance)
-        addon_formset = AddonFormSet(
-            instance=instance,
-            prefix='addon',
-            form_kwargs={'user': request.user}
-        )
-        variant_formset = VariantFormSet(
-            instance=instance,
-            prefix='print_variants'
-        )
-        customize_variant_formset = CustomizePrintVariantFormSet(
-            instance=instance,
-            prefix='customize_print_variants'
-        )
+        addon_formset = AddonFormSet(instance=instance, prefix='addon', form_kwargs={'user': request.user})
+        variant_formset = VariantFormSet(instance=instance, prefix='print_variants')
+        customize_variant_formset = CustomizePrintVariantFormSet(instance=instance, prefix='customize_print_variants')
 
     context = {
         'form': product_form,
         'formset': addon_formset,
         'variant_formset': variant_formset,
         'customize_print_variant_formset': customize_variant_formset,
+        'instance': instance,
     }
     return render(request, 'add_product.html', context)
 
@@ -1021,46 +1007,113 @@ from io import BytesIO
 
 def generate_barcode(request):
 
+    from io import BytesIO
+from django.http import HttpResponse
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from reportlab.lib.pagesizes import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.graphics.barcode import code128
+from reportlab.graphics import renderPM
+
+from .models import product, CompanyProfile
+
+
+@login_required(login_url='login_admin')
+def generate_barcode(request):
+    
+    
+    from io import BytesIO
+from django.http import HttpResponse
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from reportlab.lib.pagesizes import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.graphics.barcode import code128
+
+from .models import product, CompanyProfile
+
+from reportlab.platypus import KeepInFrame
+
+
+@login_required(login_url='login_admin')
+def generate_barcode(request):
+    
+    from io import BytesIO
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, KeepInFrame
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4   # normal page size
+from reportlab.graphics.barcode import code128
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from .models import product, CompanyProfile
+
+
+@login_required(login_url='login_admin')
+def generate_barcode(request):
     if request.method == "POST":
-        # Example product (in real case fetch from DB)
-        ids = request.POST.getlist("selected_products")  # ✅ get multiple product IDs
-        print(ids)
+        ids = request.POST.getlist("selected_products")  # multiple product IDs
         products = product.objects.filter(id__in=ids)
 
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=(2.5*inch, 1.5*inch))  # label size
+        # Use A4 page so multiple labels fit
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
 
+        default_company = CompanyProfile.objects.get(user=request.user)
+
         for i in products:
-            # Barcode
-            barcode = code128.Code128(str(i.id), barHeight=20, barWidth=0.5)
+            # ✅ Debug output
+            print("---- BARCODE DATA ----")
+            print("Company:", default_company.company_name)
+            print("Item:", i.name)
+            print("MRP:", i.mrp)
+            print("Sale Price:", i.sales_price)
+            print("----------------------")
 
-            default_company = CompanyProfile.objects.filter(user = request.user, is_default = True).first()
-            # Table for layout
-            data = [
-                [Paragraph(f"<b>{default_company.company_name or 0}</b>", styles['Normal'])],
-                [Paragraph(f"Item: {i.name or 0}", styles['Normal'])],
-                [Paragraph(f"MRP: {i.mrp or 0}", styles['Normal'])],
-                [Paragraph(f"<b>Sale Price: {i.sales_price or 0}</b>", styles['Normal'])],
-                [barcode]
-            ]
-            t = Table(data, colWidths=[2.3*inch])
-            t.setStyle(TableStyle([
-                ("BOX", (0,0), (-1,-1), 0.25, colors.black),
-                ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-                ("ALIGN", (0,0), (-1,-1), "LEFT"),
-                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-            ]))
-            elements.append(t)
-            elements.append(Spacer(1, 0.2*inch))
+            # ✅ Generate barcode (fixed height, scalable width)
+            barcode = code128.Code128(
+                str(i.id),
+                barHeight=25 * mm,
+                barWidth=2   # smaller width for less bulk
+            )
 
+            # Add text first
+            elements.append(Paragraph(f"<b>{default_company.company_name or ''}</b>", styles['Normal']))
+            elements.append(Paragraph(f"Item: {i.name or ''}", styles['Normal']))
+            elements.append(Paragraph(f"MRP: {i.mrp or ''}", styles['Normal']))
+            elements.append(Paragraph(f"<b>Sale Price: {i.sales_price or ''}</b>", styles['Normal']))
+
+            # Add barcode right below text, same left start
+            elements.append(barcode)
+
+            # Add some spacing before next item
+            elements.append(Spacer(1, 15))
+
+       
+       
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            leftMargin=5 * mm,
+            rightMargin=5 * mm,
+            topMargin=5 * mm,
+            bottomMargin=5 * mm,
+        )
+        # ✅ Build final PDF
         doc.build(elements)
         pdf = buffer.getvalue()
         buffer.close()
 
         response = HttpResponse(content_type="application/pdf")
-        response["Content-Disposition"] = "inline; filename=barcodes.pdf"  # 👈 preview
+        response["Content-Disposition"] = "inline; filename=barcodes.pdf"
         response.write(pdf)
         return response
 
@@ -2910,7 +2963,12 @@ class InvoiceSettingsViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-        
+
+
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
 def barcode_lookup(request):
     barcode = request.GET.get('barcode')
     print(barcode)
