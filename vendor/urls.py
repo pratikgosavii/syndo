@@ -106,6 +106,8 @@ urlpatterns = [
     path('list-super-catalogue/', list_super_catalogue, name='list_super_catalogue'),
     
     path('add-product/', add_product, name='add_product'),
+    path('add-products/<int:parent_id>/variant/', add_product, name='add_variant'),
+    path('update-products/<int:parent_id>/variant/', add_product, name='update_variant'),
     path('update-product/<int:product_id>/', update_product, name='update_product'),
     path('delete_product/<int:product_id>/', delete_product, name='delete_product'),
     path('list-product/', list_product, name='list_product'),

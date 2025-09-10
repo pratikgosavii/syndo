@@ -448,6 +448,8 @@ class product(models.Model):
 
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='productssdsdsd', null=True, blank=True)
 
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="variants")
+    
     product_type  = models.CharField(max_length=10, choices=TYPE_CHOICES, default='product')
     sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES, default='offline')
     food_type = models.CharField(max_length=10, choices=FOOD_TYPE_CHOICES, null=True, blank=True)

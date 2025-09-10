@@ -1,4 +1,41 @@
 {% load static %}
+
+
+{% block extra_css %}
+
+<style>
+.search-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+#sidebar-search {
+    width: 100%;
+    padding-right: 30px; /* space for clear button */
+}
+
+.clear-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    display: none; /* hidden until typing */
+}
+</style>
+
+
+
+
+
+
+{% endblock extra_css %}
+
+
 {% block left_sidebar %}
         <!-- ========== Left Sidebar Start ========== -->
         <div class="vertical-menu">
@@ -43,6 +80,12 @@
                 <div id="sidebar-menu">
                     <!-- Left Menu Start -->
                     <ul class="metismenu list-unstyled" id="side-menu">
+
+                        <div class="search-container px-3 py-2">
+                            <input type="text" id="sidebar-search" class="form-control"  onkeyup="filterSidebar()" placeholder="Search menu...">
+                            <button class="clear-btn" onclick="clearSidebarSearch()">×</button>
+                        </div>
+                        
 
                         {% if request.user.is_superuser %}
 
@@ -487,3 +530,49 @@
         </div>
         <!-- Left Sidebar End -->
 {% endblock left_sidebar %}
+
+{% block extra_js %}
+
+
+<script>
+
+
+function filterSidebar() {
+    var input = document.getElementById("sidebar-search");
+    var filter = input.value.toLowerCase();
+    var ul = document.getElementById("side-menu");
+    var li = ul.getElementsByTagName("li");
+    var clearBtn = document.querySelector(".clear-btn");
+
+    // toggle clear button
+    clearBtn.style.display = filter ? "block" : "none";
+
+    for (var i = 0; i < li.length; i++) {
+        var aTags = li[i].getElementsByTagName("a");
+        var matchFound = false;
+
+        for (var j = 0; j < aTags.length; j++) {
+            var txtValue = aTags[j].textContent || aTags[j].innerText;
+            if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                matchFound = true;
+                break;
+            }
+        }
+
+        li[i].style.display = matchFound ? "" : "none";
+    }
+}
+
+function clearSidebarSearch() {
+    var input = document.getElementById("sidebar-search");
+    input.value = "";
+    document.querySelector(".clear-btn").style.display = "none";
+    filterSidebar(); // reset menu
+}
+
+
+</script>
+
+
+
+{% endblock extra_js %}
