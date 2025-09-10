@@ -150,6 +150,8 @@ class LoginAPIView(APIView):
                     user.is_active = True
                 if user.firebase_uid != uid:
                     user.firebase_uid = uid
+                    print('--------------------------------------------')
+                    print(user)
                 user.save()
             else:
                 user = User.objects.create(
