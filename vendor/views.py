@@ -2305,7 +2305,7 @@ def list_sale(request):
     data = Sale.objects.prefetch_related(
         'items__product',
         Prefetch('wholesales', queryset=pos_wholesale.objects.all())
-    ).filter(request.user).order_by('-id')
+    ).filter(user = request.user).order_by('-id')
 
     context = {
         'data': data
