@@ -493,7 +493,6 @@ class BankLedgerSerializer(serializers.ModelSerializer):
 
 class BankWithLedgerSerializer(serializers.ModelSerializer):
     ledger_entries = BankLedgerSerializer(many=True, read_only=True)
-    current_balance = serializers.SerializerMethodField()
 
     class Meta:
         model = vendor_bank
@@ -503,12 +502,12 @@ class BankWithLedgerSerializer(serializers.ModelSerializer):
             "account_holder",
             "account_number",
             "opening_balance",
-            "current_balance",
+            "balance",
             "ledger_entries",
         ]
 
     def get_current_balance(self, obj):
-        return obj.current_balance()
+        return obj.balance()
     
     
 class CustomerLedgerSerializer(serializers.ModelSerializer):
