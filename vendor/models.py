@@ -963,7 +963,7 @@ class CashTransfer(models.Model):
     status = models.CharField(max_length=20, default="pending")  # pending, approved, failed
 
     def __str__(self):
-        return f"{self.user.username} → ₹{self.amount} to {self.bank_account.bank_name}"
+        return f"{self.user.username} → ₹{self.amount} to {self.bank_account.bank_account}"
 
 
 
