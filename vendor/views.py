@@ -494,6 +494,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         return self.update(request, *args, **kwargs)
 
 
+    
+
 @login_required(login_url='login_admin')
 def add_customer(request):
 
@@ -2978,3 +2980,13 @@ def barcode_lookup(request):
     except product.DoesNotExist:
         return JsonResponse({'success': False})
     
+
+
+
+class VendorStoreListAPIView(generics.ListAPIView):
+    serializer_class = VendorStoreSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return vendor_store.objects.filter(user=user)

@@ -267,8 +267,36 @@ class product_serializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        # Optional: handle nested updates (not required for now)
-        return super().update(instance, validated_data)
+        ## Pop nested data
+        addons_data = validated_data.pop('addons', [])
+        variants_data = validated_data.pop('print_variants', [])
+        customize_data = validated_data.pop('customize_print_variants', [])
+
+        # Update basic fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Handle addons: clear old and add new
+        if addons_data:
+            product_addon.objects.filter(product=instance).delete()
+            for addon in addons_data:
+                product_addon.objects.create(product=instance, **addon)
+
+        # Handle print variants
+        if variants_data:
+            PrintVariant.objects.filter(product=instance).delete()
+            for variant in variants_data:
+                PrintVariant.objects.create(product=instance, **variant)
+
+        # Handle customize print variants
+        if customize_data:
+            CustomizePrintVariant.objects.filter(product=instance).delete()
+            for custom in customize_data:
+                CustomizePrintVariant.objects.create(product=instance, **custom)
+
+        return instance
+
 
 
 

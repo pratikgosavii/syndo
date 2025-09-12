@@ -12,7 +12,7 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'customer-address', customer_address_ViewSet, basename='pet-test-booking')
-router.register(r'company', CompanyViewSet, basename='company')
+router.register(r'company', CompanyViewSet, basename='bann')
 
 
 
