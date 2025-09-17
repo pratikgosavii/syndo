@@ -122,6 +122,38 @@ def list_company_profile(request):
 
 
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from .models import vendor_store
+from .serializers import VendorStoreSerializer
+
+class VendorStoreAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        print(request.user)
+        """Get the logged-in vendor's store"""
+        try:
+            store = vendor_store.objects.get(user=request.user)
+            serializer = VendorStoreSerializer(store)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except vendor_store.DoesNotExist:
+            return Response({"detail": "Store not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request):
+        """Update the logged-in vendor's store"""
+        try:
+            store = vendor_store.objects.get(user=request.user)
+            serializer = VendorStoreSerializer(store, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save(user=request.user)  # make sure store stays linked to vendor
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except vendor_store.DoesNotExist:
+            return Response({"detail": "Store not found."}, status=status.HTTP_404_NOT_FOUND)      
+
 @login_required(login_url='login_admin')
 def add_coupon(request):
 
@@ -2734,6 +2766,7 @@ class BannerCampaignViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
 
 
 
