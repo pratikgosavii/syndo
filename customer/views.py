@@ -42,6 +42,7 @@ class VendorStoreListAPIView(generics.ListAPIView):
 
 
     
+from rest_framework import status
 
 
 class FollowUserAPIView(APIView):
