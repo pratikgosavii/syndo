@@ -64,7 +64,10 @@ class OnlineStoreSetting(models.Model):
 
 class vendor_store(models.Model):
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="vendor_store", blank=True, null=True)
-    
+    name = models.CharField(max_length=50)
+    image = models.ImageField(upload_to='store/', blank=True, null=True)
+
+
 DAYS_OF_WEEK = [
     ('sunday', 'Sunday'),
     ('monday', 'Monday'),
