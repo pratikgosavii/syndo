@@ -20,7 +20,9 @@ urlpatterns = [
 path('stores/', VendorStoreListAPIView.as_view(), name='vendor-store-list'),
 path('follow/<int:user_id>/', FollowUserAPIView.as_view(), name='follow-user'),
 path('unfollow/<int:user_id>/', UnfollowUserAPIView.as_view(), name='unfollow-user'),
- 
+path('follow/', FollowUserAPIView.as_view(), name='following-list'),      # GET = who I'm following
+path('unfollow/', UnfollowUserAPIView.as_view(), name='followers-list'),  # GET = who follows me
+
 
 ]  + router.urls
 

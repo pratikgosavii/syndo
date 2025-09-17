@@ -42,6 +42,8 @@ class VendorStoreListAPIView(generics.ListAPIView):
 
 
     
+
+
 class FollowUserAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -59,6 +61,12 @@ class FollowUserAPIView(APIView):
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    def get(self, request):
+        """Get list of users the current user is following"""
+        following = Follower.objects.filter(follower=request.user).select_related("user")
+        data = [{"id": f.user.id, "username": f.user.username} for f in following]
+        return Response({"following": data})
+
 
 class UnfollowUserAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -74,3 +82,8 @@ class UnfollowUserAPIView(APIView):
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    def get(self, request):
+        """Get list of users who follow the current user"""
+        followers = Follower.objects.filter(user=request.user).select_related("follower")
+        data = [{"id": f.follower.id, "username": f.follower.username} for f in followers]
+        return Response({"followers": data})
