@@ -63,7 +63,7 @@ urlpatterns = [
     path('delete-company-profile/<company_profile_id>', delete_company_profile, name='delete_company_profile'),
     path('list-company-profile/', list_company_profile, name='list_company_profile'),
     
-    path("vendor-stores/", VendorStoreListAPIView.as_view(), name="vendor-store-list"),
+    path("vendor-stores/", VendorStoreAPIView.as_view(), name="vendor-store-list"),
 
     path('add-coupon/', add_coupon, name='add_coupon'),
     path('update-coupon/<coupon_id>', update_coupon, name='update_coupon'),
