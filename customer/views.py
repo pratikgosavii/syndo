@@ -49,13 +49,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from vendor.filters import ProductFilter
 
 
-class list_products(APIView):
+class list_products(ListAPIView):
     queryset = product.objects.all()
     serializer_class = product_serializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
-    
+
     
 from rest_framework import status
 
