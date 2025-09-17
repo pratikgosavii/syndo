@@ -158,7 +158,10 @@ class LoginAPIView(APIView):
                     mobile=mobile,
                     firebase_uid=uid,
                 )
-                vendor_store.objects.create(user = user)
+
+                if user_type == "vendor":   
+                    vendor_store.objects.create(user = user)
+                    
                 created = True
 
                 # Set user type flags based on frontend
