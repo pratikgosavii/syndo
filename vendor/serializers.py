@@ -131,36 +131,6 @@ class VendorStoreSerializer(serializers.ModelSerializer):
         read_only_fields = ["user"]
 
   
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from .models import vendor_store
-from .serializers import VendorStoreSerializer
-
-class VendorStoreAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        """Get the logged-in vendor's store"""
-        try:
-            store = vendor_store.objects.get(user=request.user)
-            serializer = VendorStoreSerializer(store)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except vendor_store.DoesNotExist:
-            return Response({"detail": "Store not found."}, status=status.HTTP_404_NOT_FOUND)
-
-    def put(self, request):
-        """Update the logged-in vendor's store"""
-        try:
-            store = vendor_store.objects.get(user=request.user)
-            serializer = VendorStoreSerializer(store, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save(user=request.user)  # make sure store stays linked to vendor
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except vendor_store.DoesNotExist:
-            return Response({"detail": "Store not found."}, status=status.HTTP_404_NOT_FOUND)      
 
 class VendorStoreSerializer(serializers.ModelSerializer):
     # Nested child serializers
@@ -176,6 +146,9 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'id', 'user',
             'working_hours',
             'spotlight_products',
+            'name',
+            'profile_image',
+            'banner_image',
             'posts',
             'reels',
             'banners',
