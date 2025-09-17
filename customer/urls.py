@@ -18,6 +18,7 @@ router.register(r'customer-order', CustomerOrderViewSet, basename='CustomerOrder
 urlpatterns = [
 
 path('stores/', VendorStoreListAPIView.as_view(), name='vendor-store-list'),
+path('list-products/', list_products.as_view(), name='list_products'),
 path('follow/<int:user_id>/', FollowUserAPIView.as_view(), name='follow-user'),
 path('unfollow/<int:user_id>/', UnfollowUserAPIView.as_view(), name='unfollow-user'),
 path('follow/', FollowUserAPIView.as_view(), name='following-list'),      # GET = who I'm following

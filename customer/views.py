@@ -41,6 +41,21 @@ class VendorStoreListAPIView(generics.ListAPIView):
     search_fields = ['user__first_name', 'user__last_name', 'user__username']  # search by user fields
 
 
+from vendor.models import product
+from vendor.serializers import product_serializer
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
+from vendor.filters import ProductFilter
+
+
+class list_products(APIView):
+    queryset = product.objects.all()
+    serializer_class = product_serializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ProductFilter
+    
     
 from rest_framework import status
 
