@@ -549,6 +549,11 @@ class BankWithLedgerSerializer(serializers.ModelSerializer):
         return obj.balance()
     
     
+class CashLedgerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CashLedger
+        fields = ["id", "transaction_type", "reference_id", "description", "amount", "balance_after", "created_at"]
+    
 class CustomerLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerLedger
@@ -559,7 +564,7 @@ class CustomerLedgerSerializer(serializers.ModelSerializer):
 class VendorLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = VendorLedger
-        fields = ["id", "vendor", "transaction_type", "reference_id",
+        fields = ["id", "user", "vendor", "transaction_type", "reference_id",
                   "description", "amount", "created_at"]
         
 
