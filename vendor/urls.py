@@ -88,6 +88,7 @@ urlpatterns = [
     path('get-bank/', get_bank.as_view(), name='get_bank'),
 
     path('bank/<int:id>/ledger/', BankLedgerAPIView.as_view(), name='BankLedgerAPIView'),
+    path('cash/ledger/', CashLedgerAPIView.as_view(), name='CashLedgerAPIView'),
     path("customer/<int:customer_id>/ledger/", CustomerLedgerAPIView.as_view(), name="customer-ledger"),
     path("vendor/<int:vendor_id>/ledger/", VendorLedgerAPIView.as_view(), name="vendor-ledger"),
 

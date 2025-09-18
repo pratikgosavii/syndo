@@ -502,6 +502,24 @@ class BankLedgerAPIView(APIView):
         })
     
 
+class CashLedgerAPIView(APIView):
+    """
+    Returns all cash ledger entries and current cash balance.
+    """
+    def get(self, request):
+        # All cash ledger entries ordered by latest
+        ledger_entries = CashLedger.objects.filter(user=request.user).order_by("-created_at")
+        serializer = CashLedgerSerializer(ledger_entries, many=True)
+
+        # Current cash balance (last balance_after or sum of all amounts)
+        cash_balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+        return Response({
+            "cash_balance": cash_balance,
+            "ledger": serializer.data
+        })
+    
+
 from customer.serializers import *
 
 

@@ -286,6 +286,8 @@ class BankLedger(models.Model):
 # Cash Ledger
 # -------------------------------
 class CashLedger(models.Model):
+    user = models.ForeignKey('users.User', related_name="cash_user", on_delete=models.CASCADE)
+
     TRANSACTION_TYPES = [
         ("sale", "Sale (POS)"),
         ("purchase", "Purchase"),

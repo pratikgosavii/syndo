@@ -67,7 +67,7 @@ from django.dispatch import receiver
 # -------------------------------
 # LEDGER CREATION HELPER
 # -------------------------------
-def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, description=""):
+def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, description="", user=None):
     """
     Generic ledger creation function that ensures all balances and amounts are handled as Decimal.
     """
@@ -78,6 +78,7 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
     # >>> NEW : Special case for CashLedger (no FK field)
     if ledger_model.__name__ == "CashLedger":
         ledger_model.objects.create(
+            user=user,
             transaction_type=transaction_type,
             reference_id=reference_id,
             description=description,
@@ -141,7 +142,8 @@ def sale_ledger(sender, instance, created, **kwargs):
             "sale",
             instance.id,
             instance.total_amount,
-            f"Cash Sale #{instance.id}"
+            f"Cash Sale #{instance.id}",
+            user=instance.user  # >>> NEW
         )
 
 
@@ -182,7 +184,8 @@ def purchase_ledger(sender, instance, created, **kwargs):
             "purchase",
             instance.id,
             -(instance.advance_amount or Decimal(0)),
-            f"Cash Purchase #{instance.id}"
+            f"Cash Purchase #{instance.id}",
+            user=instance.user  # >>> NEW
         )
 
 
@@ -212,7 +215,8 @@ def expense_ledger(sender, instance, created, **kwargs):
             "expense",
             instance.id,
             -(instance.amount or Decimal(0)),
-            f"Cash Expense #{instance.id}"
+            f"Cash Expense #{instance.id}",
+            user=instance.user  # >>> NEW
         )
 
 
