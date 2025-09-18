@@ -52,7 +52,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from decimal import Decimal
-from .models import BankTransfer, CashTransfer, Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
+from .models import BankTransfer, CashTransfer, Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger,   CashLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
 
 
 from django.db.models.signals import post_save
@@ -64,34 +64,47 @@ from decimal import Decimal
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+# -------------------------------
+# LEDGER CREATION HELPER
+# -------------------------------
 def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, description=""):
     """
     Generic ledger creation function that ensures all balances and amounts are handled as Decimal.
     """
-    # Ensure Decimal everywhere
-    opening_balance = Decimal(parent.balance or 0)
+    opening_balance = Decimal(parent.balance or 0) if parent else Decimal(0)   # >>> updated to support CashLedger
     amount = Decimal(amount or 0)
     balance_after = opening_balance + amount
 
-    ledger_model.objects.create(
-        **{
-            ledger_model.__name__.replace("Ledger", "").lower(): parent,
-            "transaction_type": transaction_type,
-            "reference_id": reference_id,
-            "description": description,
-            "opening_balance": opening_balance,
-            "amount": amount,
-            "balance_after": balance_after,
-        }
-    )
+    # >>> NEW : Special case for CashLedger (no FK field)
+    if ledger_model.__name__ == "CashLedger":
+        ledger_model.objects.create(
+            transaction_type=transaction_type,
+            reference_id=reference_id,
+            description=description,
+            opening_balance=opening_balance,
+            amount=amount,
+            balance_after=balance_after,
+        )
+    else:
+        ledger_model.objects.create(
+            **{
+                ledger_model.__name__.replace("Ledger", "").lower(): parent,
+                "transaction_type": transaction_type,
+                "reference_id": reference_id,
+                "description": description,
+                "opening_balance": opening_balance,
+                "amount": amount,
+                "balance_after": balance_after,
+            }
+        )
 
-    # Update parent balance
-    parent.balance = balance_after
-    parent.save()
+        # Update parent balance (bank, customer, vendor)
+        parent.balance = balance_after
+        parent.save()
 
 
 # -------------------------------
-# SALE → Customer & Bank Ledger
+# SALE → Customer & Bank Ledger (+ CashLedger)
 # -------------------------------
 @receiver(post_save, sender=Sale)
 def sale_ledger(sender, instance, created, **kwargs):
@@ -105,7 +118,7 @@ def sale_ledger(sender, instance, created, **kwargs):
             CustomerLedger,
             "sale",
             instance.id,
-            instance.total_amount,   # keep as Decimal
+            instance.total_amount,
             f"Sale #{instance.id}"
         )
 
@@ -116,13 +129,24 @@ def sale_ledger(sender, instance, created, **kwargs):
             BankLedger,
             "sale",
             instance.id,
-            instance.total_amount,   # keep as Decimal
+            instance.total_amount,
             f"Sale #{instance.id}"
+        )
+
+    # >>> NEW : Cash ledger
+    if getattr(instance, "is_cash", False):
+        create_ledger(
+            None,
+            CashLedger,
+            "sale",
+            instance.id,
+            instance.total_amount,
+            f"Cash Sale #{instance.id}"
         )
 
 
 # -------------------------------
-# PURCHASE → Vendor & Bank Ledger
+# PURCHASE → Vendor & Bank Ledger (+ CashLedger)
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
@@ -150,9 +174,20 @@ def purchase_ledger(sender, instance, created, **kwargs):
             f"Purchase #{instance.id}"
         )
 
+    # >>> NEW : Cash ledger
+    if getattr(instance, "is_cash", False) and instance.advance_amount:
+        create_ledger(
+            None,
+            CashLedger,
+            "purchase",
+            instance.id,
+            -(instance.advance_amount or Decimal(0)),
+            f"Cash Purchase #{instance.id}"
+        )
+
 
 # -------------------------------
-# EXPENSE → Bank Ledger
+# EXPENSE → Bank Ledger (+ CashLedger)
 # -------------------------------
 @receiver(post_save, sender=Expense)
 def expense_ledger(sender, instance, created, **kwargs):
@@ -167,6 +202,17 @@ def expense_ledger(sender, instance, created, **kwargs):
             instance.id,
             -(instance.amount or Decimal(0)),
             f"Expense #{instance.id}"
+        )
+
+    # >>> NEW : Cash ledger
+    if getattr(instance, "is_cash", False):
+        create_ledger(
+            None,
+            CashLedger,
+            "expense",
+            instance.id,
+            -(instance.amount or Decimal(0)),
+            f"Cash Expense #{instance.id}"
         )
 
 
@@ -222,7 +268,7 @@ def payment_ledger(sender, instance, created, **kwargs):
 
 
 # -------------------------------
-# CASH TRANSFER → Bank Ledger
+# CASH TRANSFER → Bank Ledger (+ CashLedger)
 # -------------------------------
 @receiver(post_save, sender=CashTransfer)
 def cash_transfer_ledger(sender, instance, created, **kwargs):
@@ -230,6 +276,17 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
         return
 
     if instance.bank_account and instance.amount:
+        # >>> NEW : Deduct from Cash
+        create_ledger(
+            None,
+            CashLedger,
+            "withdrawal",
+            instance.id,
+            -(instance.amount or Decimal(0)),
+            f"Cash to {instance.bank_account.bank_name}"
+        )
+
+        # Bank ledger (already in your code)
         create_ledger(
             instance.bank_account,
             BankLedger,
@@ -240,8 +297,8 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
         )
 
 
-        # -------------------------------
-# BANK TRANSFER → Bank Ledger   ✅ NEWLY ADDED
+# -------------------------------
+# BANK TRANSFER → Bank Ledger
 # -------------------------------
 @receiver(post_save, sender=BankTransfer)
 def bank_transfer_ledger(sender, instance, created, **kwargs):

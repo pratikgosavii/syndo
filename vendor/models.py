@@ -283,6 +283,36 @@ class BankLedger(models.Model):
 
 
 # -------------------------------
+# Cash Ledger
+# -------------------------------
+class CashLedger(models.Model):
+    TRANSACTION_TYPES = [
+        ("sale", "Sale (POS)"),
+        ("purchase", "Purchase"),
+        ("expense", "Expense"),
+        ("deposit", "Cash Deposit"),
+        ("withdrawal", "Cash Withdrawal"),
+        ("transfer_in", "Cash Transfer In"),
+        ("transfer_out", "Cash Transfer Out"),
+    ]
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    reference_id = models.PositiveIntegerField(blank=True, null=True)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    opening_balance = models.BigIntegerField(default=0)
+    amount = models.BigIntegerField()
+    balance_after = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Cash | {self.transaction_type} | {self.amount}"
+
+
+
+
+# -------------------------------
 # Customer Ledger
 # -------------------------------
 class CustomerLedger(models.Model):
