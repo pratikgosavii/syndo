@@ -132,29 +132,31 @@ def list_notification_campaigns(request):
 import requests
 from django.conf import settings
 
-FCM_SERVER_KEY = settings.FCM_SERVER_KEY
+
+
+from firebase_admin import messaging
 
 def send_push_notification(user, title, body, campaign_id):
     if not hasattr(user, "device_token") or not user.device_token:
         return
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"key={FCM_SERVER_KEY}",
-    }
-
-    payload = {
-        "to": user.device_token,
-        "notification": {
-            "title": title,
-            "body": body,
+    message = messaging.Message(
+        notification=messaging.Notification(
+            title=title,
+            body=body,
+        ),
+        data={
+            "campaign_id": str(campaign_id),
         },
-        "data": {
-            "campaign_id": campaign_id,
-        }
-    }
+        token=user.device_token,
+    )
 
-    requests.post("https://fcm.googleapis.com/fcm/send", headers=headers, json=payload)
+    try:
+        response = messaging.send(message)
+        print("✅ Successfully sent message:", response)
+    except Exception as e:
+        print("❌ Error sending message:", e)
+
 
 
 

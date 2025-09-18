@@ -82,7 +82,6 @@ firebase_key_path = os.path.join(BASE_DIR, 'syndo', 'svindovender-71cf8-firebase
 cred = credentials.Certificate(firebase_key_path)
 initialize_app(cred)
 
-FCM_SERVER_KEY  = "AIzaSyBoAFm8ZF90cTZVr8Ek5il4bT8IvwwzL0c"
 
 from datetime import timedelta
 
