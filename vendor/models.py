@@ -740,7 +740,7 @@ class Expense(models.Model):
     expense_date = models.DateField()
     category = models.ForeignKey("masters.expense_category", on_delete=models.CASCADE)
     is_paid = models.BooleanField(default=False)
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True, null=True)
     payment_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True)
     attachment = models.FileField(upload_to='expenses/', null=True, blank=True)

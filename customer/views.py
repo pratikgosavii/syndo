@@ -34,11 +34,23 @@ from rest_framework import generics
 from rest_framework import filters
 
        
-class VendorStoreListAPIView(generics.ListAPIView):
+from rest_framework import generics, mixins, filters
+
+
+class VendorStoreListAPIView(mixins.ListModelMixin,
+                             mixins.RetrieveModelMixin,
+                             generics.GenericAPIView):
     queryset = vendor_store.objects.all()
     serializer_class = VendorStoreSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['user__first_name', 'user__last_name', 'user__username']  # search by user fields
+    lookup_field = "id"   # so /stores/<id>/ works
+
+    def get(self, request, *args, **kwargs):
+        if "id" in kwargs:
+            return self.retrieve(request, *args, **kwargs)  # GET /stores/<id>/
+        return self.list(request, *args, **kwargs)          # GET /stores/
+ 
 
 
 from vendor.models import product
