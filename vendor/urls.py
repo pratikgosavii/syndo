@@ -95,6 +95,7 @@ urlpatterns = [
     path('bank-ledger/<int:bank_id>/', bank_ledger, name='bank-ledger'),
     path('customer-ledger/<int:customer_id>/', customer_ledger, name='customer-ledger'),
     path('vendor-ledger/<int:vendor_id>/', vendor_ledger, name='vendor-ledger'),
+    path('cash-ledger/', cash_ledger, name='cash-ledger'),
     
     path('add-customer/', add_customer, name='add_customer'),
     path('add-customer-modal/', add_customer_modal, name='add_customer_modal'),

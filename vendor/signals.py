@@ -135,7 +135,7 @@ def sale_ledger(sender, instance, created, **kwargs):
         )
 
     # >>> NEW : Cash ledger
-    if getattr(instance, "is_cash", False):
+    if instance.cash:
         create_ledger(
             None,
             CashLedger,
@@ -177,7 +177,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
         )
 
     # >>> NEW : Cash ledger
-    if getattr(instance, "is_cash", False) and instance.advance_amount:
+    if getattr(instance, "cash", False) and instance.advance_amount:
         create_ledger(
             None,
             CashLedger,
@@ -208,7 +208,7 @@ def expense_ledger(sender, instance, created, **kwargs):
         )
 
     # >>> NEW : Cash ledger
-    if getattr(instance, "is_cash", False):
+    if instance.cash:
         create_ledger(
             None,
             CashLedger,
