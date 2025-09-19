@@ -35,13 +35,24 @@
                 <div class="form-container">
 
 
-                <div style="border: 1px solid orange; background: #fff9ec; border-radius: 10px; padding: 15px; display: flex; align-items: center;">
-                    <img src="{% static 'images\money 1.png' %}" alt="cash" width="40" class="me-3" />
+                <div style="border: 1px solid orange; background: #fff9ec; border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        <img src="{% static 'images/money 1.png' %}" alt="cash" width="40" class="me-3" />
+                        <div>
+                            <div><strong>Current Cash Balance</strong></div>
+                            <div style="color: green; font-size: 20px;">₹ {{ balance.balance }}</div>
+                        </div>
+                    </div>
+
                     <div>
-                    <div><strong>Current Cash Balance</strong></div>
-                    <div style="color: green; font-size: 20px;">₹ {{ balance.balance }}</div>
+                        <a href="{% url 'cash-ledger' %}">
+                            <button class="btn btn-outline-warning" style="color: black; border: 2px solid #ffcc5a;">
+                                Cash Ledger
+                            </button>
+                        </a>
                     </div>
                 </div>
+
 
                 <form method="POST" action="{% url 'adjust_cash' %}" class="mt-4 text-center">
                     {% csrf_token %}
@@ -86,7 +97,7 @@
                             <tr>
                                 <td>{{ forloop.counter }}</td>
                                 <td>₹{{ txn.amount }}</td>
-                                <td>{{ txn.bank_account.bank_name }}</td>
+                                <td>{{ txn.bank_account.name }}</td>
                                 <td>{{ txn.bank_account.account_number }}</td>
                                 <td>
                                     {% if txn.status == "pending" %}

@@ -716,6 +716,15 @@ def vendor_ledger(request, vendor_id):
         "ledger": ledger_entries,
     })
 
+def cash_ledger(request):
+    ledger_entries = CashLedger.objects.filter(user = request.user).order_by("created_at")
+    balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+    return render(request, "cash_ledger.html", {
+        "balance": balance,
+        "ledger": ledger_entries,
+    })
+
 
 
 from rest_framework.response import Response
@@ -2151,7 +2160,7 @@ def pos(request):
             try:
                 # Save sale
                 sale_instance = sale_form.save(commit=False)
-                sale_instance.user = True
+                sale_instance.user = request.user
                 sale_instance.save()
 
                 # Process Sale Items
@@ -2633,6 +2642,9 @@ def bank_transfer(request):
     if request.method == 'POST':
         amount = request.POST.get('amount')
         bank_id = request.POST.get('bank_account')
+
+        print('bank_id')
+        print(bank_id)
 
         try:
             amount = float(amount)

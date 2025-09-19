@@ -818,13 +818,13 @@ class Sale(models.Model):
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     
     # Summary fields
-    total_items = models.PositiveIntegerField(default=0)
-    total_amount_before_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    advance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    balance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_items = models.PositiveIntegerField(default=0, null=True, blank=True)
+    total_amount_before_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
+    advance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
+    balance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
     advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, null=True, blank=True)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
 
     credit_date = models.DateTimeField(auto_now_add=False, null=True, blank=True)
     is_wholesale_rate = models.BooleanField(default=False)
