@@ -360,7 +360,7 @@ class PosWholesaleSerializer(serializers.ModelSerializer):
 
 
 class SaleSerializer(serializers.ModelSerializer):
-    items = SaleItemSerializer(many=True)
+    items = SaleItemSerializer(many=True, required=False)
     wholesale_invoice = PosWholesaleSerializer(write_only=True, required=False)  # Add this line
     bank_details = vendor_bank_serializer(source="bank", read_only=True)
     customer_details = vendor_customers_serializer(source="customer", read_only=True)
@@ -447,6 +447,56 @@ class SaleSerializer(serializers.ModelSerializer):
             raise ValidationError({"detail": str(e)})
         except Exception as e:
             raise ValidationError({"detail": f"An unexpected error occurred: {str(e)}"})
+
+    def update(self, instance, validated_data):
+        """Support partial updates; replace items only if provided; update wholesale if provided."""
+        items_data = validated_data.pop('items', None)
+        wholesale_data = validated_data.pop('wholesale_invoice', None)
+
+        # Update basic fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Replace items only if client sent them
+        if items_data is not None:
+            instance.items.all().delete()
+            for item in items_data:
+                SaleItem.objects.create(
+                    user=instance.user,
+                    sale=instance,
+                    **item
+                )
+
+        # Recompute totals from current items and discount
+        total_items = sum(item.quantity for item in instance.items.all())
+        total_amount_before_discount = sum(item.quantity * item.price for item in instance.items.all())
+        discount_amount = total_amount_before_discount * (instance.discount_percentage or 0) / 100
+        total_amount = total_amount_before_discount - discount_amount
+        advance_amount = instance.advance_amount or 0
+
+        instance.total_items = total_items
+        instance.total_amount_before_discount = total_amount_before_discount
+        instance.discount_amount = discount_amount
+        instance.total_amount = total_amount
+        instance.balance_amount = total_amount - advance_amount
+        instance.save()
+
+        # Update or create wholesale invoice if provided
+        if instance.is_wholesale_rate and wholesale_data is not None:
+            try:
+                invoice = pos_wholesale.objects.get(sale=instance)
+                for attr, value in wholesale_data.items():
+                    setattr(invoice, attr, value)
+                invoice.save()
+            except pos_wholesale.DoesNotExist:
+                pos_wholesale.objects.create(
+                    user=instance.user,
+                    sale=instance,
+                    **wholesale_data
+                )
+
+        return instance
 
 
 class DeliverySettingsSerializer(serializers.ModelSerializer):
@@ -632,7 +682,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
         return purchase
 
     def update(self, instance, validated_data):
-        items_data = validated_data.pop('items', [])
+        items_data = validated_data.pop('items', None)
 
         # Update Purchase fields except purchase_code
         for attr, value in validated_data.items():
@@ -640,10 +690,11 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 setattr(instance, attr, value)
         instance.save()
 
-        # Replace all purchase items
-        instance.items.all().delete()
-        for item_data in items_data:
-            PurchaseItem.objects.create(purchase=instance, **item_data)
+        # Replace items only if provided
+        if items_data is not None:
+            instance.items.all().delete()
+            for item_data in items_data:
+                PurchaseItem.objects.create(purchase=instance, **item_data)
 
         return instance
 

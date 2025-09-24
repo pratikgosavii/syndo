@@ -265,7 +265,6 @@ class BankLedger(models.Model):
         ("purchase", "Purchase"),
         ("expense", "Expense"),
         ("deposit", "Manual Deposit"),
-        ("withdrawal", "Manual Withdrawal"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
@@ -294,8 +293,7 @@ class CashLedger(models.Model):
         ("expense", "Expense"),
         ("deposit", "Cash Deposit"),
         ("withdrawal", "Cash Withdrawal"),
-        ("transfer_in", "Cash Transfer In"),
-        ("transfer_out", "Cash Transfer Out"),
+        
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)

@@ -424,9 +424,18 @@ def delete_product_subcategory(request, product_subcategory_id):
 
 
 
+
 class get_product_subcategory(ListAPIView):
-    queryset = product_subcategory.objects.all()
     serializer_class = product_subcategory_serializer
+
+    def get_queryset(self):
+        queryset = product_subcategory.objects.all()
+        category_id = self.request.query_params.get("category_id")  # ?category_id=1
+
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        return queryset
 
 
 
