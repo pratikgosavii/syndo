@@ -106,3 +106,13 @@ class FollowerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follower
         fields = ['user', 'follower', 'created_at']
+
+
+
+class CartSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product.name", read_only=True)
+
+    class Meta:
+        model = Cart
+        fields = ["id", "user", "product", "product_name", "quantity", "updated_at"]
+        read_only_fields = ["user", "updated_at"]

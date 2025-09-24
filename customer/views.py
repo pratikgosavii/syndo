@@ -9,7 +9,7 @@ from rest_framework import viewsets, permissions
 from vendor.models import vendor_store
 from vendor.serializers import VendorStoreSerializer
 from .models import *
-from .serializers import OrderSerializer
+from .serializers import CartSerializer, OrderSerializer
 
 class CustomerOrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.prefetch_related('items').all()
@@ -115,3 +115,30 @@ class UnfollowUserAPIView(APIView):
         followers = Follower.objects.filter(user=request.user).select_related("follower")
         data = [{"id": f.follower.id, "username": f.follower.username} for f in followers]
         return Response({"followers": data})
+
+
+
+class CartViewSet(viewsets.ModelViewSet):
+    serializer_class = CartSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Cart.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        product = serializer.validated_data["product"]
+        quantity = serializer.validated_data.get("quantity", 1)
+
+        # if product already in cart -> update quantity
+        cart_item, created = Cart.objects.get_or_create(
+            user=self.request.user,
+            product=product,
+            defaults={"quantity": quantity}
+        )
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+        return cart_item
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
