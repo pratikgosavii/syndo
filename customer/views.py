@@ -9,7 +9,7 @@ from rest_framework import viewsets, permissions
 from vendor.models import vendor_store
 from vendor.serializers import VendorStoreSerializer
 from .models import *
-from .serializers import CartSerializer, OrderSerializer
+from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 
 class CustomerOrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.prefetch_related('items').all()
@@ -117,6 +117,15 @@ class UnfollowUserAPIView(APIView):
         return Response({"followers": data})
 
 
+class AddressViewSet(viewsets.ModelViewSet):
+    serializer_class = AddressSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Address.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer

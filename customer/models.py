@@ -6,69 +6,76 @@ from django.db import models
 import random
 
 
-class Order(models.Model):
-
-
-    ORDER_STATUS = [
-        ('not_accepted', 'Not Accepted'),
-        ('accepted', 'Accepted'),
-        ('cancelled', 'Cancelled'),
-        ('completed', 'Completed'),
-    ]
-
-    order_id = models.CharField(max_length=100, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=ORDER_STATUS, default='not_accepted')
-    payment_mode = models.CharField(max_length=50, default='COD')
-    is_paid = models.BooleanField(default=False)
-    delivery_type = models.CharField(max_length=50, default='Self Pickup')
-
-    # Financials
-    item_total = models.DecimalField(max_digits=10, decimal_places=2)
-    shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    wallet_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    cashback = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    coupon = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-
-    # Delivery details
-    customer_name = models.CharField(max_length=255)
-    customer_mobile = models.CharField(max_length=15)
-    customer_address = models.TextField()
-    
-    delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
-    created_at = models.DateField(auto_now=True)
-
-    
-    
-
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="items")
-    quantity = models.IntegerField(default=1)
-    price = models.IntegerField()
-    
-
-
-    def total_price(self):
-        return self.quantity * self.mrp
-
 
 from users.models import User
 
+from django.db import models
+from django.contrib.auth.models import User
 
-class Follower(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="following")
-    follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name="followers")
+class Address(models.Model):
+    STATE_CHOICES = [
+        ("Andhra Pradesh", "Andhra Pradesh"),
+        ("Arunachal Pradesh", "Arunachal Pradesh"),
+        ("Assam", "Assam"),
+        ("Bihar", "Bihar"),
+        ("Chhattisgarh", "Chhattisgarh"),
+        ("Goa", "Goa"),
+        ("Gujarat", "Gujarat"),
+        ("Haryana", "Haryana"),
+        ("Himachal Pradesh", "Himachal Pradesh"),
+        ("Jharkhand", "Jharkhand"),
+        ("Karnataka", "Karnataka"),
+        ("Kerala", "Kerala"),
+        ("Madhya Pradesh", "Madhya Pradesh"),
+        ("Maharashtra", "Maharashtra"),
+        ("Manipur", "Manipur"),
+        ("Meghalaya", "Meghalaya"),
+        ("Mizoram", "Mizoram"),
+        ("Nagaland", "Nagaland"),
+        ("Odisha", "Odisha"),
+        ("Punjab", "Punjab"),
+        ("Rajasthan", "Rajasthan"),
+        ("Sikkim", "Sikkim"),
+        ("Tamil Nadu", "Tamil Nadu"),
+        ("Telangana", "Telangana"),
+        ("Tripura", "Tripura"),
+        ("Uttar Pradesh", "Uttar Pradesh"),
+        ("Uttarakhand", "Uttarakhand"),
+        ("West Bengal", "West Bengal"),
+        ("Andaman and Nicobar Islands", "Andaman and Nicobar Islands"),
+        ("Chandigarh", "Chandigarh"),
+        ("Dadra and Nagar Haveli and Daman and Diu", "Dadra and Nagar Haveli and Daman and Diu"),
+        ("Delhi", "Delhi"),
+        ("Jammu and Kashmir", "Jammu and Kashmir"),
+        ("Ladakh", "Ladakh"),
+        ("Lakshadweep", "Lakshadweep"),
+        ("Puducherry", "Puducherry"),
+    ]
+
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="addresses")
+    
+    full_name = models.CharField(max_length=255)
+    mobile_number = models.CharField(max_length=15)
+    pincode = models.CharField(max_length=6)
+    flat_building = models.CharField(max_length=255)
+    area_street = models.CharField(max_length=255)
+    landmark = models.CharField(max_length=255, blank=True, null=True)
+    town_city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100, choices=STATE_CHOICES)  # 🔽 dropdown
+    
+    is_default = models.BooleanField(default=False)
+    delivery_instructions = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        unique_together = ('user', 'follower')  # Prevent duplicate follows
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            Address.objects.filter(user=self.user, is_default=True).update(is_default=False)
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.follower.username} follows {self.user.username}"
-    
-
+        return f"{self.full_name} - {self.town_city}, {self.state}"
 
     
 class Cart(models.Model):
@@ -90,3 +97,79 @@ class Cart(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.product.name} x {self.quantity}"
+    
+
+
+class Order(models.Model):
+
+
+    ORDER_STATUS = [
+        ('not_accepted', 'Not Accepted'),
+        ('accepted', 'Accepted'),
+        ('cancelled', 'Cancelled'),
+        ('completed', 'Completed'),
+    ]
+
+    DELIVERY_TYPES = [
+        ('instant_delivery', 'Instant Delivery'),
+        ('general_delivery', 'General Delivery'),
+        ('self_pickup', 'Self Pickup'),
+        ('on_shop_order', 'On-shop Order'),
+    ]
+
+    order_id = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=ORDER_STATUS, default='not_accepted')
+    payment_mode = models.CharField(max_length=50, default='COD')
+    is_paid = models.BooleanField(default=False)
+      
+
+    delivery_type = models.CharField(
+        max_length=50,
+        choices=DELIVERY_TYPES,
+        default='self_pickup'
+    )
+
+    # Financials
+    item_total = models.DecimalField(max_digits=10, decimal_places=2)
+    shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    wallet_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cashback = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    coupon = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # Delivery details
+    address = models.ForeignKey(Address, on_delete=models.CASCADE)
+    
+    delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
+    created_at = models.DateField(auto_now=True)
+
+    
+    
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="items")
+    quantity = models.IntegerField(default=1)
+    price = models.IntegerField()
+    
+
+
+    def total_price(self):
+        return self.quantity * self.mrp
+
+
+
+    
+
+class Follower(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="following")
+    follower = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="followers")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'follower')  # Prevent duplicate follows
+
+    def __str__(self):
+        return f"{self.follower.username} follows {self.user.username}"
+    
