@@ -1054,139 +1054,122 @@ def barcode_setting(request):
     return render(request, "barcode_settings.html", {"form": form})
 
 
-
-from django.http import HttpResponse
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-from reportlab.lib.pagesizes import inch
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
-from reportlab.graphics.barcode import code128
-from reportlab.graphics.shapes import Drawing
-
 from io import BytesIO
-
-
-def generate_barcode(request):
-
-    from io import BytesIO
 from django.http import HttpResponse
-from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from reportlab.lib.pagesizes import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.graphics.barcode import code128
-from reportlab.graphics import renderPM
-
-from .models import product, CompanyProfile
-
-
-@login_required(login_url='login_admin')
-def generate_barcode(request):
-    
-    
-    from io import BytesIO
-from django.http import HttpResponse
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from reportlab.lib.pagesizes import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.graphics.barcode import code128
-
-from .models import product, CompanyProfile
-
-from reportlab.platypus import KeepInFrame
-
-
-@login_required(login_url='login_admin')
-def generate_barcode(request):
-    
-    from io import BytesIO
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, KeepInFrame
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.pagesizes import A4   # normal page size
-from reportlab.graphics.barcode import code128
-from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.graphics.barcode import createBarcodeDrawing
 from reportlab.lib.units import mm
+from reportlab.lib import colors
 from .models import product, CompanyProfile
 
 
 @login_required(login_url='login_admin')
 def generate_barcode(request):
     if request.method == "POST":
-        ids = request.POST.getlist("selected_products")  # multiple product IDs
+        ids = request.POST.getlist("selected_products")
         products = product.objects.filter(id__in=ids)
 
+        # Sticker size = 100mm (height) × 200mm (width)
+        PAGE_WIDTH = 200 * mm
+        PAGE_HEIGHT = 100 * mm
         buffer = BytesIO()
-        # Use A4 page so multiple labels fit
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        elements = []
-        styles = getSampleStyleSheet()
 
-        default_company = CompanyProfile.objects.get(user=request.user)
-
-        for i in products:
-            # ✅ Debug output
-            print("---- BARCODE DATA ----")
-            print("Company:", default_company.company_name)
-            print("Item:", i.name)
-            print("MRP:", i.mrp)
-            print("Sale Price:", i.sales_price)
-            print("----------------------")
-
-            # ✅ Generate barcode (fixed height, scalable width)
-            barcode = code128.Code128(
-                str(i.id),
-                barHeight=25 * mm,
-                barWidth=2   # smaller width for less bulk
-            )
-
-            # Add text first
-            elements.append(Paragraph(f"<b>{default_company.company_name or ''}</b>", styles['Normal']))
-            elements.append(Paragraph(f"Item: {i.name or ''}", styles['Normal']))
-            elements.append(Paragraph(f"MRP: {i.mrp or ''}", styles['Normal']))
-            elements.append(Paragraph(f"<b>Sale Price: {i.sales_price or ''}</b>", styles['Normal']))
-
-            # Add barcode right below text, same left start
-            elements.append(barcode)
-
-            # Add some spacing before next item
-            elements.append(Spacer(1, 15))
-
-       
-       
         doc = SimpleDocTemplate(
             buffer,
-            pagesize=A4,
+            pagesize=(PAGE_WIDTH, PAGE_HEIGHT),
             leftMargin=5 * mm,
             rightMargin=5 * mm,
             topMargin=5 * mm,
             bottomMargin=5 * mm,
         )
-        # ✅ Build final PDF
+
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Custom styles
+        title_style = ParagraphStyle('title_style', parent=styles['Heading1'], alignment=1, fontSize=16, spaceAfter=6)
+        bold_style = ParagraphStyle('bold_style', parent=styles['Normal'], fontSize=11, leading=13, spaceAfter=3)
+        normal_style = ParagraphStyle('normal_style', parent=styles['Normal'], fontSize=10, leading=12, spaceAfter=2)
+        price_style = ParagraphStyle('price_style', parent=styles['Heading1'], alignment=1, fontSize=16, textColor=colors.black)
+
+        default_company = CompanyProfile.objects.get(user=request.user)
+
+        for i in products:
+            # ✅ Barcode as Drawing (safe for Platypus)
+            barcode = createBarcodeDrawing(
+                'Code128',
+                value=str(i.id),
+                barHeight=25 * mm,
+                barWidth=0.6,
+                humanReadable=True
+            )
+
+            # --- Layout ---
+            # Top row: Company Name (centered full width)
+            top_row = [Paragraph(f"<b>{default_company.company_name}</b>", title_style)]
+
+            # Middle row: Left side product info, right side barcode + package date
+            info_left = [
+                Paragraph(f"<b>Item:</b> {i.name}", bold_style),
+                Paragraph(f"<b>MRP :</b> {i.mrp}", bold_style),
+                Paragraph(f"<b>Discount :</b> 0", bold_style),
+                Paragraph(f"<b>Note :</b> ----", normal_style),
+            ]
+            info_right = [
+                Paragraph("Package Date - DD/MM/YYYY", normal_style),
+                Spacer(1, 6),
+                barcode
+            ]
+
+            middle_row = [info_left, info_right]
+
+            # Bottom rows: Sale Price + text
+            bottom_row = [Paragraph(f"<b>Sale Price : {i.sales_price}</b>", price_style)]
+            bottom_text = [Paragraph("price in text here", normal_style)]
+
+            # ✅ Build full table layout
+            table = Table(
+                [
+                    top_row,
+                    middle_row,
+                    bottom_row,
+                    bottom_text
+                ],
+                colWidths=[(PAGE_WIDTH - 20 * mm) / 2, (PAGE_WIDTH - 20 * mm) / 2],
+            )
+
+            table.setStyle(TableStyle([
+                ('SPAN', (0, 0), (-1, 0)),  # Company name full width
+                ('SPAN', (0, 2), (-1, 2)),  # Sale price full width
+                ('SPAN', (0, 3), (-1, 3)),  # price text full width
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),  # company
+                ('ALIGN', (0, 1), (0, 1), 'LEFT'),     # product info
+                ('ALIGN', (1, 1), (1, 1), 'CENTER'),   # barcode
+                ('ALIGN', (0, 2), (-1, 2), 'CENTER'),  # sale price
+                ('ALIGN', (0, 3), (-1, 3), 'CENTER'),  # price text
+                ('VALIGN', (0, 1), (0, 1), 'TOP'),
+                ('VALIGN', (1, 1), (1, 1), 'TOP'),
+                ('BOX', (0, 0), (-1, -1), 1, colors.black),
+                ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ]))
+
+            elements.append(table)
+
+        # Build PDF
         doc.build(elements)
+
         pdf = buffer.getvalue()
         buffer.close()
 
         response = HttpResponse(content_type="application/pdf")
-        response["Content-Disposition"] = "inline; filename=barcodes.pdf"
+        response["Content-Disposition"] = "inline; filename=barcode_sticker.pdf"
         response.write(pdf)
         return response
 
 
-    else:
 
-        data = product.objects.all()
-
-        context = {
-            'data': data
-        }
-        return render(request, 'list_product_barcode.html', context)
 
 @login_required(login_url='login_admin')
 def product_setting(request):
@@ -1703,6 +1686,33 @@ class PurchaseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Custom partial update method for Purchase"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        
+        with transaction.atomic():
+            # Update the purchase
+            self.perform_update(serializer)
+            
+            # Handle purchase items if provided
+            if 'items' in request.data:
+                # Delete existing items
+                PurchaseItem.objects.filter(purchase=instance).delete()
+                
+                # Create new items
+                for item_data in request.data['items']:
+                    PurchaseItem.objects.create(
+                        purchase=instance,
+                        product_id=item_data['product'],
+                        quantity=item_data['quantity'],
+                        price=item_data['price'],
+                        total=item_data['quantity'] * item_data['price'],
+                    )
+        
+        return Response(serializer.data)
 
 
 
@@ -1716,6 +1726,17 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Custom partial update method for Expense"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        
+        # Update the expense
+        self.perform_update(serializer)
+        
+        return Response(serializer.data)
 
 
 def generate_unique_code(self):
@@ -2037,6 +2058,33 @@ class SaleViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Custom partial update method for Sale"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        
+        with transaction.atomic():
+            # Update the sale
+            self.perform_update(serializer)
+            
+            # Handle sale items if provided
+            if 'items' in request.data:
+                # Delete existing items
+                SaleItem.objects.filter(sale=instance).delete()
+                
+                # Create new items
+                for item_data in request.data['items']:
+                    SaleItem.objects.create(
+                        user=request.user,
+                        sale=instance,
+                        product_id=item_data['product'],
+                        quantity=item_data['quantity'],
+                        price=item_data['price'],
+                    )
+        
+        return Response(serializer.data)
 
 
 from django.db import transaction
