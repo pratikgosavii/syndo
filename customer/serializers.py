@@ -109,6 +109,14 @@ class FollowerSerializer(serializers.ModelSerializer):
 
 
 
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = "__all__"
+        read_only_fields = ["user", "created_at", "updated_at"]
+
+
+
 class CartSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
 
