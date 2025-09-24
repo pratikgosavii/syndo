@@ -67,3 +67,26 @@ class Follower(models.Model):
 
     def __str__(self):
         return f"{self.follower.username} follows {self.user.username}"
+    
+
+
+    
+class Cart(models.Model):
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="carts"
+    )
+    product = models.ForeignKey(
+        "vendor.product",  # or Product model
+        on_delete=models.CASCADE,
+        related_name="carts"
+    )
+    quantity = models.PositiveIntegerField(default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'product')  # one product per user cart
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product.name} x {self.quantity}"

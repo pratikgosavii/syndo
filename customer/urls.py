@@ -12,7 +12,7 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'customer-order', CustomerOrderViewSet, basename='CustomerOrderViewSet')
-
+router.register(r'cart', CartViewSet, basename='cart')
 
 
 urlpatterns = [
