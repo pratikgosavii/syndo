@@ -28,9 +28,7 @@
                         <div class="mb-3">
                             {{ form.mobile.label_tag }} {{ form.mobile }}
                         </div>
-                        <div class="mb-3">
-                            {{ form.rating.label_tag }} {{ form.rating }}
-                        </div>
+                        
                         <div class="mb-3">
                             {{ form.photo.label_tag }} {{ form.photo }}
                         </div>
@@ -49,7 +47,6 @@
                                     <h6 class="card-title">{{ boy.name }}</h6>
                                     <p class="card-text mb-1">Mobile: {{ boy.mobile }}</p>
                                     <p class="card-text mb-1">Deliveries: {{ boy.total_deliveries }}</p>
-                                    <p class="card-text">Rating: ⭐ {{ boy.rating }}</p>
                                     <span class="badge bg-{{ boy.is_active|yesno:'success,danger' }}">{{ boy.is_active|yesno:'Active,Inactive' }}</span>
                                 </div>
                             </div>

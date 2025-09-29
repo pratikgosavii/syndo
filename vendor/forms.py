@@ -663,11 +663,10 @@ from django import forms
 class DeliveryBoyForm(forms.ModelForm):
     class Meta:
         model = DeliveryBoy
-        fields = ['name', 'mobile', 'photo', 'rating']
+        fields = ['name', 'mobile', 'photo']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'mobile': forms.TextInput(attrs={'class': 'form-control'}),
-            'rating': forms.NumberInput(attrs={'class': 'form-control'}),
             'photo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
