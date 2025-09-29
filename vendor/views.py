@@ -2785,7 +2785,7 @@ class CashBalanceViewSet(viewsets.ViewSet):
             amount = Decimal(request.data.get('amount', 0))
             print(amount)
             balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
-            balance_obj.balance += amount
+            balance_obj.balance = amount
             balance_obj.save()
             return Response({'message': 'Balance updated'}, status=status.HTTP_200_OK)
         except Exception as e:

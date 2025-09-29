@@ -947,7 +947,6 @@ class DeliveryBoy(models.Model):
     photo = models.ImageField(upload_to='delivery_boys/', null=True, blank=True)
     is_active = models.BooleanField(default=True)
     total_deliveries = models.PositiveIntegerField(default=0)
-    rating = models.DecimalField(max_digits=2, decimal_places=1, default=5.0)
     user = models.ForeignKey("users.User", on_delete=models.CASCADE)
 
 class Wallet(models.Model):
