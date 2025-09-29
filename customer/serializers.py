@@ -3,11 +3,12 @@ from .models import *
 
 
 
-
+from vendor.serializers import product_serializer
 class OrderItemSerializer(serializers.ModelSerializer):
+    product_details = product_serializer(source="product", read_only=True)
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity']
+        fields = ['id', 'product', 'quantity', "product_details"]
 
     
 
