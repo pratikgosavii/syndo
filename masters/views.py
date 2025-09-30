@@ -165,6 +165,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+
 def approve_notification_campaign(request, pk):
     campaign = get_object_or_404(NotificationCampaign, pk=pk)
     campaign.status = "approved"
@@ -174,17 +175,24 @@ def approve_notification_campaign(request, pk):
 
     # send push notifications to all followers
     followers = campaign.user.followers.all()  # adjust as per your relation
+    print(f"🔔 Starting notification sending for campaign={campaign.id}, followers={followers.count()}")
+
     for follower_relation in followers:
-        follower = follower_relation.follower
-        send_push_notification(
-            user=follower,
-            title=campaign.campaign_name,
-            body=campaign.description,
-            campaign_id=campaign.id
-        )
+        follower = follower_relation.follower  # get actual user object
+        try:
+            response = send_push_notification(
+                user=follower,
+                title=campaign.campaign_name,
+                body=campaign.description,
+                campaign_id=campaign.id
+            )
+            print(f"✅ Notification sent to user_id={follower.id}, username={follower.username}, response={response}")
+        except Exception as e:
+            print(f"❌ Failed to send notification to user_id={follower.id}, username={follower.username}, error={e}")
 
     messages.success(request, "Campaign approved and notification sent.")
     return redirect("list_notification_campaigns")
+
 
 
 def reject_notification_campaign(request, pk):
