@@ -184,7 +184,7 @@ def approve_notification_campaign(request, pk):
         )
 
     messages.success(request, "Campaign approved and notification sent.")
-    return redirect("dashboard_campaign_list")
+    return redirect("list_notification_campaigns")
 
 
 def reject_notification_campaign(request, pk):
