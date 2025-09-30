@@ -596,7 +596,7 @@ class CustomerLedgerSerializer(serializers.ModelSerializer):
 class VendorLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = VendorLedger
-        fields = ["id", "user", "vendor", "transaction_type", "reference_id",
+        fields = ["id", "vendor", "transaction_type", "reference_id",
                   "description", "amount", "created_at"]
         
 

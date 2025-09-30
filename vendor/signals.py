@@ -405,7 +405,7 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
             "withdrawal",
             instance.id,
             -(instance.amount or Decimal(0)),
-            f"Cash to {instance.bank_account.bank_name}",
+            f"Cash to {instance.bank_account.name}",
             user=instance.user
         )
 
@@ -416,7 +416,7 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
             "deposit",
             instance.id,
             (instance.amount or Decimal(0)),
-            f"Cash deposited to {instance.bank_account.bank_name}"
+            f"Cash deposited to {instance.bank_account.name}"
         )
 
 
