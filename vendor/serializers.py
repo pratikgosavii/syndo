@@ -362,17 +362,15 @@ class PosWholesaleSerializer(serializers.ModelSerializer):
 
 class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True, required=False)
-    wholesale_invoice = PosWholesaleSerializer(write_only=True, required=False)  # Add this line
+    wholesale_invoice = PosWholesaleSerializer(write_only=True, required=False)
     bank_details = vendor_bank_serializer(source="bank", read_only=True)
     customer_details = vendor_customers_serializer(source="customer", read_only=True)
 
     wholesale_invoice_details = serializers.SerializerMethodField(read_only=True)
-
     company_profile_detials = CompanyProfileSerializer(source="company_profile", read_only=True)
     customer_detials = vendor_customers_serializer(source="customer", read_only=True)
     advance_bank_details = vendor_bank_serializer(source="advance_bank", read_only=True)
 
-    # Read-only totals
     total_items = serializers.IntegerField(read_only=True)
     total_amount_before_discount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     discount_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -382,84 +380,68 @@ class SaleSerializer(serializers.ModelSerializer):
         model = Sale
         fields = [
             'id', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
-            'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details', 'balance_amount',  'credit_date', 'is_wholesale_rate',
+            'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details',
+            'balance_amount', 'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
-            'discount_amount', 'total_amount', 'wholesale_invoice_details', 'wholesale_invoice', 'bank_details', 'customer_details'
+            'discount_amount', 'total_amount', 'wholesale_invoice_details',
+            'wholesale_invoice', 'bank_details', 'customer_details'
         ]
 
     def get_wholesale_invoice_details(self, obj):
-        invoice = obj.wholesales.first()  # fetch first linked wholesale invoice
-        if invoice:
-            return PosWholesaleSerializer(invoice).data
-        return None
+        invoice = obj.wholesales.first()
+        return PosWholesaleSerializer(invoice).data if invoice else None
+
+    def _normalize(self, data):
+        """Convert empty strings to None for nullable fields."""
+        for k, v in list(data.items()):
+            if v == "":
+                data[k] = None
+        return data
 
     def create(self, validated_data):
-        items_data = validated_data.pop('items')
+        validated_data = self._normalize(validated_data)
+        items_data = validated_data.pop('items', [])
         wholesale_data = validated_data.pop('wholesale_invoice', None)
         validated_data.pop('user', None)
 
-        try:
-            with transaction.atomic():
-                # Create Sale
-                sale = Sale.objects.create(
-                    user=self.context['request'].user,
-                    **validated_data
+        with transaction.atomic():
+            sale = Sale.objects.create(
+                user=self.context['request'].user,
+                **validated_data
+            )
+
+            # Create Sale Items
+            for item in items_data:
+                SaleItem.objects.create(
+                    user=sale.user,
+                    sale=sale,
+                    **item
                 )
 
-                # Create Sale Items
-                for item in items_data:
-                    SaleItem.objects.create(
-                        user=sale.user,
-                        sale=sale,
-                        **item
-                    )
+            # Totals
+            self._recalculate_totals(sale)
 
-                # Update totals AFTER items are created
-                total_items = sum(item.quantity for item in sale.items.all())
-                total_amount_before_discount = sum(item.quantity * item.price for item in sale.items.all())
-                discount_amount = total_amount_before_discount * (sale.discount_percentage or 0) / 100
-                total_amount = total_amount_before_discount - discount_amount
-                advance_amount = validated_data.get('advance_amount', 0)
-                balance_amount = total_amount - advance_amount
+            # Wholesale
+            if sale.is_wholesale_rate and wholesale_data:
+                pos_wholesale.objects.create(
+                    user=sale.user,
+                    sale=sale,
+                    **wholesale_data
+                )
 
-                sale.total_items = total_items
-                sale.total_amount_before_discount = total_amount_before_discount
-                sale.discount_amount = discount_amount
-                sale.total_amount = total_amount
-                sale.balance_amount = balance_amount
-                sale.save()
-
-                if sale.is_wholesale_rate and wholesale_data:
-                    print('-------------------1------------------')
-                else:
-                    print('-------------------2------------------')
-
-                # Create Wholesale Invoice if applicable
-                if sale.is_wholesale_rate and wholesale_data:
-                    pos_wholesale.objects.create(
-                        user=sale.user,
-                        sale=sale,
-                        **wholesale_data
-                    )
-
-                return sale
-
-        except IntegrityError as e:
-            raise ValidationError({"detail": str(e)})
-        except Exception as e:
-            raise ValidationError({"detail": f"An unexpected error occurred: {str(e)}"})
+        return sale
 
     def update(self, instance, validated_data):
-        """Support partial updates; replace items only if provided; update wholesale if provided."""
+        validated_data = self._normalize(validated_data)
         items_data = validated_data.pop('items', None)
         wholesale_data = validated_data.pop('wholesale_invoice', None)
 
-        # Update basic fields
+        # Update base fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Replace items only if client sent them
+        # Replace items if sent
         if items_data is not None:
             instance.items.all().delete()
             for item in items_data:
@@ -469,35 +451,34 @@ class SaleSerializer(serializers.ModelSerializer):
                     **item
                 )
 
-        # Recompute totals from current items and discount
-        total_items = sum(item.quantity for item in instance.items.all())
-        total_amount_before_discount = sum(item.quantity * item.price for item in instance.items.all())
-        discount_amount = total_amount_before_discount * (instance.discount_percentage or 0) / 100
-        total_amount = total_amount_before_discount - discount_amount
-        advance_amount = instance.advance_amount or 0
+        # Recalculate totals
+        self._recalculate_totals(instance)
 
-        instance.total_items = total_items
-        instance.total_amount_before_discount = total_amount_before_discount
-        instance.discount_amount = discount_amount
-        instance.total_amount = total_amount
-        instance.balance_amount = total_amount - advance_amount
-        instance.save()
-
-        # Update or create wholesale invoice if provided
+        # Wholesale
         if instance.is_wholesale_rate and wholesale_data is not None:
-            try:
-                invoice = pos_wholesale.objects.get(sale=instance)
-                for attr, value in wholesale_data.items():
-                    setattr(invoice, attr, value)
-                invoice.save()
-            except pos_wholesale.DoesNotExist:
-                pos_wholesale.objects.create(
-                    user=instance.user,
-                    sale=instance,
-                    **wholesale_data
-                )
+            invoice, _ = pos_wholesale.objects.get_or_create(
+                user=instance.user, sale=instance
+            )
+            for attr, value in wholesale_data.items():
+                setattr(invoice, attr, value)
+            invoice.save()
 
         return instance
+
+    def _recalculate_totals(self, sale):
+        total_items = sum(item.quantity for item in sale.items.all())
+        total_amount_before_discount = sum(item.quantity * item.price for item in sale.items.all())
+        discount_amount = total_amount_before_discount * (sale.discount_percentage or 0) / 100
+        total_amount = total_amount_before_discount - discount_amount
+        advance_amount = sale.advance_amount or 0
+
+        sale.total_items = total_items
+        sale.total_amount_before_discount = total_amount_before_discount
+        sale.discount_amount = discount_amount
+        sale.total_amount = total_amount
+        sale.balance_amount = total_amount - advance_amount
+        sale.save()
+
 
 
 class DeliverySettingsSerializer(serializers.ModelSerializer):
