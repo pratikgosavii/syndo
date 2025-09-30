@@ -147,6 +147,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'working_hours',
             'spotlight_products',
             'name',
+            'about',
             'profile_image',
             'banner_image',
             'posts',

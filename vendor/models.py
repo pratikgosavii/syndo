@@ -67,7 +67,7 @@ class vendor_store(models.Model):
     name = models.CharField(max_length=50)
     banner_image = models.ImageField(upload_to='store/', blank=True, null=True)
     profile_image = models.ImageField(upload_to='store/', blank=True, null=True)
-
+    about = models.CharField(max_length=500, blank=True, null=True)
 
 DAYS_OF_WEEK = [
     ('sunday', 'Sunday'),
