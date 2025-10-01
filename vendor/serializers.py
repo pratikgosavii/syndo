@@ -255,7 +255,7 @@ class product_serializer(serializers.ModelSerializer):
     addons = ProductAddonSerializer(many=True, required=False)
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
-
+    is_favourite = serializers.BooleanField(read_only=True)
     class Meta:
         model = product
         fields = '__all__'  # or list fields + 'addons', 'print_variants', 'customize_print_variants'
