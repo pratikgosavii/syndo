@@ -6,8 +6,8 @@ from django.shortcuts import render
 from users.models import *
 
 from rest_framework import viewsets, permissions
-from vendor.models import vendor_store
-from vendor.serializers import VendorStoreSerializer
+from vendor.models import BannerCampaign, Reel, SpotlightProduct, vendor_store
+from vendor.serializers import BannerCampaignSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer
 from .models import *
 from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 
@@ -61,12 +61,26 @@ from django_filters.rest_framework import DjangoFilterBackend
 from vendor.filters import ProductFilter
 
 
+from django.db.models import Exists, OuterRef, Value, BooleanField
+
+
 class list_products(ListAPIView):
-    queryset = product.objects.all()
     serializer_class = product_serializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = product.objects.all()
+
+        if user.is_authenticated:
+            favs = Favourite.objects.filter(user=user, product=OuterRef('pk'))
+            qs = qs.annotate(is_favourite=Exists(favs))
+        else:
+            qs = qs.annotate(is_favourite=Value(False, output_field=BooleanField()))
+
+        return qs
 
     
 from rest_framework import status
@@ -151,3 +165,93 @@ class CartViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+import random
+
+
+
+class RandomBannerAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = BannerCampaign.objects.all()
+        count = qs.count()
+
+        if count == 0:
+            return Response({"detail": "No banners available."}, status=404)
+
+        ids = list(qs.values_list("id", flat=True))
+        random_ids = random.sample(ids, min(10, len(ids)))
+        banners = qs.filter(id__in=random_ids)
+
+        serializer = BannerCampaignSerializer(banners, many=True)
+        return Response(serializer.data)
+
+
+
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+class FavouriteViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["post"])
+    def add(self, request):
+        product_id = request.data.get("product_id")
+        user = request.user
+
+        fav, created = Favourite.objects.get_or_create(user=user, product_id=product_id)
+        if created:
+            return Response({"status": "added"}, status=status.HTTP_201_CREATED)
+        return Response({"status": "already exists"}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"])
+    def remove(self, request):
+        product_id = request.data.get("product_id")
+        user = request.user
+        Favourite.objects.filter(user=user, product_id=product_id).delete()
+        return Response({"status": "removed"}, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["get"])
+    def my_favourites(self, request):
+        favourites = Favourite.objects.filter(user=request.user).select_related('product')
+        products = [fav.product for fav in favourites]
+        serializer = product_serializer(products, many=True)
+        return Response(serializer.data)
+    
+
+
+
+
+class SpotlightProductView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        products = SpotlightProduct.objects.all()
+        serializer = SpotlightProductSerializer(products, many=True)
+        return Response(serializer.data)
+
+
+class reelsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        products = Reel.objects.all()
+        serializer = ReelSerializer(products, many=True)
+        return Response(serializer.data)
+
+
+class offersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        products = Reel.objects.all()
+        serializer = ReelSerializer(products, many=True)
+        return Response(serializer.data)

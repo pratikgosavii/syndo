@@ -173,3 +173,14 @@ class Follower(models.Model):
     def __str__(self):
         return f"{self.follower.username} follows {self.user.username}"
     
+
+
+from vendor.models import product
+
+class Favourite(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="favourites")
+    product = models.ForeignKey(product, on_delete=models.CASCADE, related_name="favourited_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "product")
