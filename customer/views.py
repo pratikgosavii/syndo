@@ -141,6 +141,12 @@ class AddressViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+
+
+from rest_framework.decorators import action
+from rest_framework import serializers
+
+
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -149,10 +155,23 @@ class CartViewSet(viewsets.ModelViewSet):
         return Cart.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        """
+        Add product to cart (or update quantity).
+        Restricts user to products from only one store.
+        """
         product = serializer.validated_data["product"]
         quantity = serializer.validated_data.get("quantity", 1)
 
-        # if product already in cart -> update quantity
+        # Check existing cart store restriction
+        existing_cart_items = Cart.objects.filter(user=self.request.user)
+        if existing_cart_items.exists():
+            existing_store = existing_cart_items.first().product.user
+            if product.user != existing_store:
+                raise serializers.ValidationError(
+                    {"error": "You can only add products from one store at a time."}
+                )
+
+        # Add/update product in cart
         cart_item, created = Cart.objects.get_or_create(
             user=self.request.user,
             product=product,
@@ -162,10 +181,54 @@ class CartViewSet(viewsets.ModelViewSet):
             cart_item.quantity += quantity
             cart_item.save()
         return cart_item
+    
 
-    def perform_update(self, serializer):
-        serializer.save(user=self.request.user)
+    @action(detail=False, methods=["post"])
+    def clear_and_add(self, request):
+        """
+        Clears the user's cart and adds one new product with quantity.
+        Restricts user to only 1 store's products in cart.
+        Example payload:
+        {
+            "product": 5,
+            "quantity": 3
+        }
+        """
+        product_id = request.data.get("product")
+        quantity = request.data.get("quantity", 1)
 
+        if not product_id:
+            return Response({"error": "product is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product_instance = product.objects.get(pk=product_id)
+        except product.DoesNotExist:
+            return Response({"error": "Invalid product id."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check store restriction
+        existing_cart_items = Cart.objects.filter(user=request.user)
+        if existing_cart_items.exists():
+            existing_store = existing_cart_items.first().product.user
+            if product_instance.user != existing_store:
+                return Response(
+                    {"error": "You can only add products from one store at a time."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Clear cart
+        existing_cart_items.delete()
+
+        # Add new product
+        cart_item = Cart.objects.create(
+            user=request.user,
+            product=product_instance,
+            quantity=quantity
+        )
+
+        serializer = self.get_serializer(cart_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        
 
 
 from rest_framework.views import APIView
