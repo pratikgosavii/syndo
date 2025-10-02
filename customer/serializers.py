@@ -119,9 +119,8 @@ class AddressSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="product.name", read_only=True)
-
+    product = serializers.PrimaryKeyRelatedField(queryset=product.objects.all())
     class Meta:
         model = Cart
-        fields = ["id", "user", "product", "product_name", "quantity", "updated_at"]
+        fields = ["id", "user", "product", "quantity", "updated_at"]
         read_only_fields = ["user", "updated_at"]
