@@ -6,8 +6,8 @@ from django.shortcuts import render
 from users.models import *
 
 from rest_framework import viewsets, permissions
-from vendor.models import BannerCampaign, Reel, SpotlightProduct, vendor_store
-from vendor.serializers import BannerCampaignSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer
+from vendor.models import BannerCampaign, Reel, SpotlightProduct, coupon, vendor_store
+from vendor.serializers import BannerCampaignSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer
 from .models import *
 from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 
@@ -318,3 +318,63 @@ class offersView(APIView):
         products = Reel.objects.all()
         serializer = ReelSerializer(products, many=True)
         return Response(serializer.data)
+    
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+
+
+class CartCouponAPIView(APIView):
+    """
+    GET: List all active coupons for the store of products in the user's cart.
+    POST: Apply a coupon to the cart (send "coupon_code" in body).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_cart_store(self, user):
+        cart_items = Cart.objects.filter(user=user)
+        if not cart_items.exists():
+            return None, cart_items
+        return cart_items.first().product.user, cart_items
+
+    def get(self, request):
+        store, cart_items = self.get_cart_store(request.user)
+        if not store:
+            return Response({"coupons": []}, status=200)
+
+        coupons = coupon.objects.filter(user=store, is_active=True)
+        serializer = coupon_serializer(coupons, many=True)
+        return Response({"coupons": serializer.data}, status=200)
+
+    def post(self, request):
+        coupon_code = request.data.get("coupon_code")
+        if not coupon_code:
+            return Response({"error": "coupon_code is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        store, cart_items = self.get_cart_store(request.user)
+        if not cart_items.exists():
+            return Response({"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            coupon_instance = coupon.objects.get(store=store, code=coupon_code, is_active=True)
+        except coupon.DoesNotExist:
+            return Response({"error": "Invalid or inactive coupon"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Optional: check min purchase
+        total_cart_amount = sum(item.product.sales_price * item.quantity for item in cart_items)
+        if coupon_instance.min_purchase and total_cart_amount < coupon_instance.min_purchase:
+            return Response({"error": f"Cart total must be at least {coupon_instance.min_purchase} to use this coupon."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Save applied coupon to cart items if needed
+        cart_items.update(applied_coupon=coupon_instance)  # requires applied_coupon FK in Cart
+
+        return Response({
+            "detail": f"Coupon '{coupon_instance.code}' applied successfully",
+            "discount": coupon_instance.discount
+        }, status=status.HTTP_200_OK)

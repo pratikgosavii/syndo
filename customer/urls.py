@@ -33,6 +33,8 @@ path('spotlight-product/', SpotlightProductView.as_view(), name='SpotlightProduc
 path('reels/', reelsView.as_view(), name='reelsView'),  # GET = who follows me
 path('offers/', offersView.as_view(), name='offersView'),  # GET = who follows me
 
+path('coupons/', CartCouponAPIView.as_view(), name='CartCouponAPIView'),  # GET = who follows me
+
 
 ]  + router.urls
 
