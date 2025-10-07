@@ -11,15 +11,20 @@ from vendor.serializers import BannerCampaignSerializer, ReelSerializer, Spotlig
 from .models import *
 from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 
+from rest_framework import viewsets, permissions
+
 class CustomerOrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.prefetch_related('items').all()
     serializer_class = OrderSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return orders for the logged-in user
+        user = self.request.user
+        return Order.objects.prefetch_related('items').filter(user=user)
 
     def perform_create(self, serializer):
-        # serializer.save(user=self.request.user) 
-
-        serializer.save() 
+        # Automatically set the user when saving
+        serializer.save(user=self.request.user)
 
 
 
@@ -291,6 +296,35 @@ class FavouriteViewSet(viewsets.ViewSet):
     
 
 
+class FavouriteStoreViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["post"])
+    def add(self, request):
+        store_id = request.data.get("store_id")
+        user = request.user
+
+        fav, created = FavouriteStore.objects.get_or_create(user=user, store_id=store_id)
+        if created:
+            return Response({"status": "added"}, status=status.HTTP_201_CREATED)
+        return Response({"status": "already exists"}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"])
+    def remove(self, request):
+        store_id = request.data.get("store_id")
+        user = request.user
+        FavouriteStore.objects.filter(user=user, store_id=store_id).delete()
+        return Response({"status": "removed"}, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["get"])
+    def my_favourites(self, request):
+        favourites = FavouriteStore.objects.filter(user=request.user).select_related('store')
+        stores = [fav.store for fav in favourites]
+        serializer = VendorStoreSerializer(stores, many=True)
+        return Response(serializer.data)
+    
+
+
 
 
 class SpotlightProductView(APIView):
@@ -327,6 +361,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from django.utils import timezone
 
 
 class CartCouponAPIView(APIView):
@@ -336,18 +371,26 @@ class CartCouponAPIView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get_cart_store(self, user):
+    def get_cart_user(self, user):
         cart_items = Cart.objects.filter(user=user)
         if not cart_items.exists():
             return None, cart_items
         return cart_items.first().product.user, cart_items
 
+
     def get(self, request):
-        store, cart_items = self.get_cart_store(request.user)
-        if not store:
+        user, cart_items = self.get_cart_user(request.user)
+        if not user:
             return Response({"coupons": []}, status=200)
 
-        coupons = coupon.objects.filter(user=store, is_active=True)
+        now = timezone.now()
+        coupons = coupon.objects.filter(
+            user=user,
+            is_active=True,
+            start_date__lte=now,
+            end_date__gte=now
+        )
+
         serializer = coupon_serializer(coupons, many=True)
         return Response({"coupons": serializer.data}, status=200)
 
@@ -356,25 +399,121 @@ class CartCouponAPIView(APIView):
         if not coupon_code:
             return Response({"error": "coupon_code is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        store, cart_items = self.get_cart_store(request.user)
+        user, cart_items = self.get_cart_user(request.user)
         if not cart_items.exists():
             return Response({"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            coupon_instance = coupon.objects.get(store=store, code=coupon_code, is_active=True)
+            coupon_instance = coupon.objects.get(user=user, code=coupon_code, is_active=True)
         except coupon.DoesNotExist:
             return Response({"error": "Invalid or inactive coupon"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Optional: check min purchase
-        total_cart_amount = sum(item.product.sales_price * item.quantity for item in cart_items)
-        if coupon_instance.min_purchase and total_cart_amount < coupon_instance.min_purchase:
-            return Response({"error": f"Cart total must be at least {coupon_instance.min_purchase} to use this coupon."},
-                            status=status.HTTP_400_BAD_REQUEST)
+        # Check validity dates
+        if coupon_instance.start_date > timezone.now() or coupon_instance.end_date < timezone.now():
+            return Response({"error": "Coupon is not valid at this time."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save applied coupon to cart items if needed
-        cart_items.update(applied_coupon=coupon_instance)  # requires applied_coupon FK in Cart
+        # Only apply discount-type coupons
+        if coupon_instance.coupon_type != "discount":
+            return Response({"error": "This coupon cannot be applied to cart total."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Calculate total cart value
+        total_cart_amount = sum(item.product.sales_price * item.quantity for item in cart_items)
+
+        # Check minimum purchase condition
+        if coupon_instance.min_purchase and total_cart_amount < coupon_instance.min_purchase:
+            return Response({
+                "error": f"Cart total must be at least {coupon_instance.min_purchase} to use this coupon."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Calculate discount
+        discount_amount = 0
+        if coupon_instance.type == "percent" and coupon_instance.discount_percentage:
+            discount_amount = (total_cart_amount * coupon_instance.discount_percentage) / 100
+            if coupon_instance.max_discount:
+                discount_amount = min(discount_amount, coupon_instance.max_discount)
+        elif coupon_instance.type == "amount" and coupon_instance.discount_amount:
+            discount_amount = coupon_instance.discount_amount
+
+        # Ensure discount does not exceed total
+        discount_amount = min(discount_amount, total_cart_amount)
+        final_total = total_cart_amount - discount_amount
+
+        # Round amounts
+        discount_amount = round(discount_amount, 2)
+        final_total = round(final_total, 2)
 
         return Response({
-            "detail": f"Coupon '{coupon_instance.code}' applied successfully",
-            "discount": coupon_instance.discount
+            "detail": f"Coupon '{coupon_instance.code}' applied successfully.",
+            "total_cart_amount": total_cart_amount,
+            "discount_amount": discount_amount,
+            "final_total": final_total,
+            "coupon_type": coupon_instance.coupon_type,
+            "discount_method": coupon_instance.type,
+            "discount_percentage": coupon_instance.discount_percentage,
+            "discount_amount_field": coupon_instance.discount_amount,
+            "max_discount": coupon_instance.max_discount,
         }, status=status.HTTP_200_OK)
+    
+
+
+
+
+from .serializers import *
+
+class SupportTicketViewSet(viewsets.ModelViewSet):
+    serializer_class = SupportTicketSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:  # Admin can see all tickets
+            return SupportTicket.objects.all().order_by("-created_at")
+        return SupportTicket.objects.filter(user=user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    
+
+    @action(detail=True, methods=["get", "post"], url_path="messages")
+    def messages(self, request, pk=None):
+        """Handle GET (list) and POST (send) messages for a ticket"""
+        ticket = self.get_object()
+
+        if request.method == "GET":
+            msgs = ticket.messages.all().order_by("created_at")
+            serializer = TicketMessageSerializer(msgs, many=True)
+            return Response(serializer.data)
+
+        if request.method == "POST":
+            serializer = TicketMessageSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(ticket=ticket, sender=request.user)
+            return Response(serializer.data, status=201)
+
+
+
+
+from django.db.models import Q
+from .models import product
+from .serializers import product_serializer
+
+class ProductSearchAPIView(ListAPIView):
+    serializer_class = product_serializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        search_term = self.request.query_params.get("q")  # use ?q=shirt
+        qs = product.objects.all()
+
+        if search_term:
+            qs = qs.filter(
+                Q(name__icontains=search_term) |
+                Q(brand_name__icontains=search_term) |
+                Q(description__icontains=search_term) |
+                Q(color__icontains=search_term) |
+                Q(size__icontains=search_term) |
+                Q(category__name__icontains=search_term) |
+                Q(sub_category__name__icontains=search_term)
+            )
+        return qs

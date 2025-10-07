@@ -18,15 +18,16 @@ from django.db.models import Max
 
 
 from decimal import Decimal
-
+from users.serializer import UserProfileSerializer
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    user_details = UserProfileSerializer(source = 'user', read_only=True)
 
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "total_amount", "order_id"]
+        read_only_fields = ["id", "created_at", "items", "item_total", "total_amount", "order_id", 'user_details']
     
     def generate_order_id(self):
         """Generate sequential order_id like SVIND0001, SVIND0002..."""
@@ -125,3 +126,25 @@ class CartSerializer(serializers.ModelSerializer):
         model = Cart
         fields = ["id", "user", "product", "quantity", "updated_at", "product_details"]
         read_only_fields = ["user", "updated_at", "product_details"]
+
+
+
+class TicketMessageSerializer(serializers.ModelSerializer):
+    sender = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = TicketMessage
+        fields = "__all__"
+        read_only_fields = ["id", "sender", "created_at"]
+
+
+class SupportTicketSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+    messages = TicketMessageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SupportTicket
+        fields = "__all__"
+        read_only_fields = ["id", "is_admin", "user", "status", "created_at", "updated_at"]
+
+

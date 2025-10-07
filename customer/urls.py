@@ -16,6 +16,10 @@ router.register(r'address', AddressViewSet, basename='address')
 router.register(r'cart', CartViewSet, basename='cart')
 
 router.register(r'favourites', FavouriteViewSet, basename='favourites')
+router.register(r'favourites-store', FavouriteStoreViewSet, basename='favourites_store')
+
+router.register(r'support/tickets', SupportTicketViewSet, basename='support-ticket')
+
 
 urlpatterns = [
     
@@ -35,6 +39,7 @@ path('offers/', offersView.as_view(), name='offersView'),  # GET = who follows m
 
 path('coupons/', CartCouponAPIView.as_view(), name='CartCouponAPIView'),  # GET = who follows me
 
+path('products/search/', ProductSearchAPIView.as_view(), name='search-products'),
 
 ]  + router.urls
 
