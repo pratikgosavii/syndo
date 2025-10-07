@@ -23,6 +23,8 @@ from masters.models import product_category, product_subcategory
 
 
 class ProductFilter(django_filters.FilterSet):
+
+   
     # Text fields with icontains
     name = django_filters.CharFilter(lookup_expr="icontains")
     brand_name = django_filters.CharFilter(lookup_expr="icontains")

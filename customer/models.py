@@ -10,7 +10,6 @@ import random
 from users.models import User
 
 from django.db import models
-from django.contrib.auth.models import User
 
 class Address(models.Model):
     STATE_CHOICES = [
@@ -102,6 +101,11 @@ class Cart(models.Model):
 
 class Order(models.Model):
 
+    user = models.ForeignKey(
+            "users.User",
+            on_delete=models.CASCADE,
+            related_name="orders", blank=True, null=True
+    )
 
     ORDER_STATUS = [
         ('not_accepted', 'Not Accepted'),
@@ -184,3 +188,60 @@ class Favourite(models.Model):
 
     class Meta:
         unique_together = ("user", "product")
+
+class FavouriteStore(models.Model):
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="favourites_user")
+    store = models.ForeignKey("vendor.vendor_store", on_delete=models.CASCADE, related_name="favourited_store")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "store")
+
+
+
+        
+class SupportTicket(models.Model):
+    ROLE_CHOICES = [
+        ("vendor", "Vendor"),
+        ("customer", "Customer"),
+        ("admin", "Admin"),
+    ]
+   
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("in_progress", "In Progress"),
+        ("resolved", "Resolved"),
+        ("closed", "Closed"),
+    ]
+
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="support_tickets")
+    
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)  # who created ticket
+    subject = models.CharField(max_length=255)
+    order = models.ForeignKey(
+        "customer.Order",   # replace with your actual Appointment model
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="support_tickets"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Ticket #{self.id} - {self.subject}"
+
+
+
+class TicketMessage(models.Model):
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name="messages", blank=True, null=True)
+    sender = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="sent_support_messages")
+    message = models.TextField()
+    is_admin = models.BooleanField(default=False)
+    attachment = models.FileField(upload_to="support/attachments/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Msg by {self.sender.username} in Ticket {self.ticket.id}"
+
+
