@@ -212,14 +212,7 @@ class CartViewSet(viewsets.ModelViewSet):
 
         # Check store restriction
         existing_cart_items = Cart.objects.filter(user=request.user)
-        if existing_cart_items.exists():
-            existing_store = existing_cart_items.first().product.user
-            if product_instance.user != existing_store:
-                return Response(
-                    {"error": "You can only add products from one store at a time."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
+       
         # Clear cart
         existing_cart_items.delete()
 
