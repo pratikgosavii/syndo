@@ -90,11 +90,6 @@ class StoreWorkingHourSerializer(serializers.ModelSerializer):
         fields = ['day', 'open_time', 'close_time', 'is_open']
 
 
-class SpotlightProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SpotlightProduct
-        fields = '__all__'
-        read_only_fields = ['user']  
 
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
@@ -693,3 +688,15 @@ class NotificationCampaignSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
     
+
+    
+class SpotlightProductSerializer(serializers.ModelSerializer):
+
+    product_details = product_serializer(source = "product", read_only=True)
+
+    class Meta:
+        model = SpotlightProduct
+        fields = '__all__'
+        read_only_fields = ['user', 'product_details']  
+
+        
