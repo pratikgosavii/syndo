@@ -260,6 +260,14 @@
 
                                 <!-- Product Category -->
                                 <li>
+                                    <a href="javascript: void(0);" class="has-arrow">Main Category</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_product_main_category' %}">Add Main Category</a></li>
+                                        <li><a href="{% url 'list_product_main_category' %}">Main Category List</a></li>
+                                    </ul>
+                                </li>
+
+                                <li>
                                     <a href="javascript: void(0);" class="has-arrow">Category</a>
                                     <ul class="sub-menu" aria-expanded="false">
                                         <li><a href="{% url 'add_product_category' %}">Add Category</a></li>

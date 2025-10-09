@@ -25,10 +25,21 @@ class testimonials_serializer(serializers.ModelSerializer):
 
 
 
+
 class product_category_serializer(serializers.ModelSerializer):
     class Meta:
         model = product_category
         fields = '__all__'
+
+
+
+class product_main_category_serializer(serializers.ModelSerializer):
+    category_details = product_category_serializer(source='categories', many=True, read_only=True)
+
+    class Meta:
+        model = MainCategory
+        fields = ['id', 'name', 'categories', 'category_details']
+
 
 
 class product_subcategory_serializer(serializers.ModelSerializer):

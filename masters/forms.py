@@ -4,6 +4,13 @@ from .models import *
 from django.contrib.admin.widgets import  AdminDateWidget, AdminTimeWidget, AdminSplitDateTime
 
 
+class MainCategoryForm(forms.ModelForm):
+    class Meta:
+        model = MainCategory
+        fields = ['name', 'categories']
+        widgets = {
+            'categories': forms.CheckboxSelectMultiple(),
+        }
 
 
 class testimonials_Form(forms.ModelForm):
