@@ -292,7 +292,7 @@ def add_product_main_category(request):
         form = MainCategoryForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('main_category_list')  # redirect to your list page or wherever needed
+            return redirect('list_product_main_category')  # redirect to your list page or wherever needed
     else:
         form = MainCategoryForm()
     return render(request, 'main_category_form.html', {'form': form, 'title': 'Add Main Category'})
@@ -304,7 +304,7 @@ def update_product_main_category(request, pk):
         form = MainCategoryForm(request.POST, instance=main_category)
         if form.is_valid():
             form.save()
-            return redirect('main_category_list')
+            return redirect('list_product_main_category')
     else:
         form = MainCategoryForm(instance=main_category)
     return render(request, 'main_category_form.html', {'form': form, 'title': 'Update Main Category'})
