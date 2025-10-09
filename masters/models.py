@@ -67,6 +67,15 @@ class product_category(models.Model):
     def __str__(self):
         return self.name
 
+
+class MainCategory(models.Model):
+    name = models.CharField(max_length=255)
+    categories = models.ManyToManyField(product_category, related_name='main_categories')
+
+    def __str__(self):
+        return self.name
+
+
 class product_subcategory(models.Model):
     category = models.ForeignKey("masters.product_category", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)

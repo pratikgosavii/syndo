@@ -287,6 +287,50 @@ class get_testimonials(ListAPIView):
     filterset_fields = '__all__'  # enables filtering on all fields
 
 
+def add_product_main_category(request):
+    if request.method == 'POST':
+        form = MainCategoryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('main_category_list')  # redirect to your list page or wherever needed
+    else:
+        form = MainCategoryForm()
+    return render(request, 'main_category_form.html', {'form': form, 'title': 'Add Main Category'})
+
+
+def update_product_main_category(request, pk):
+    main_category = get_object_or_404(MainCategory, pk=pk)
+    if request.method == 'POST':
+        form = MainCategoryForm(request.POST, instance=main_category)
+        if form.is_valid():
+            form.save()
+            return redirect('main_category_list')
+    else:
+        form = MainCategoryForm(instance=main_category)
+    return render(request, 'main_category_form.html', {'form': form, 'title': 'Update Main Category'})
+
+
+
+def list_product_main_category(request):
+
+    data = MainCategory.objects.all()
+
+    return render(request, 'main_category_list.html', {'data' : data})
+
+
+def delete_product_main_category(request, product_category_id):
+
+    data = MainCategory.objects.get(id = product_category_id).delete()
+
+    return redirect('list_product_category')
+
+
+
+class get_product_main_category(ListAPIView):
+    queryset = MainCategory.objects.all()
+    serializer_class = product_main_category_serializer
+
+
 
 
 def add_product_category(request):
