@@ -298,8 +298,8 @@ def add_product_main_category(request):
     return render(request, 'main_category_form.html', {'form': form, 'title': 'Add Main Category'})
 
 
-def update_product_main_category(request, pk):
-    main_category = get_object_or_404(MainCategory, pk=pk)
+def update_product_main_category(request, product_main_category_id):
+    main_category = get_object_or_404(MainCategory, pk=product_main_category_id)
     if request.method == 'POST':
         form = MainCategoryForm(request.POST, instance=main_category)
         if form.is_valid():
@@ -318,9 +318,9 @@ def list_product_main_category(request):
     return render(request, 'main_category_list.html', {'data' : data})
 
 
-def delete_product_main_category(request, product_category_id):
+def delete_product_main_category(request, product_main_category_id):
 
-    data = MainCategory.objects.get(id = product_category_id).delete()
+    data = MainCategory.objects.get(id = product_main_category_id).delete()
 
     return redirect('list_product_category')
 
