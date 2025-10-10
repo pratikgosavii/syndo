@@ -118,37 +118,7 @@ class BannerCampaignSerializer(serializers.ModelSerializer):
         return data
 
 
-
-class VendorStoreSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = vendor_store
-        fields = "__all__"
-        read_only_fields = ["user"]
-
   
-
-class VendorStoreSerializer(serializers.ModelSerializer):
-    # Nested child serializers
-    working_hours = StoreWorkingHourSerializer(source='user.working_hours', many=True, read_only=True)
-    spotlight_products = SpotlightProductSerializer(source='user.spotlightproduct_set', many=True, read_only=True)
-    posts = PostSerializer(source='user.post_set', many=True, read_only=True)
-    reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
-    banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
-
-    class Meta:
-        model = vendor_store
-        fields = [
-            'id', 'user',
-            'working_hours',
-            'spotlight_products',
-            'name',
-            'about',
-            'profile_image',
-            'banner_image',
-            'posts',
-            'reels',
-            'banners',
-        ]
 
         
 
@@ -305,6 +275,42 @@ class product_serializer(serializers.ModelSerializer):
         return instance
 
 
+
+    
+class SpotlightProductSerializer(serializers.ModelSerializer):
+
+    product_details = product_serializer(source = "product", read_only=True)
+
+    class Meta:
+        model = SpotlightProduct
+        fields = '__all__'
+        read_only_fields = ['user', 'product_details']  
+
+        
+    
+class VendorStoreSerializer(serializers.ModelSerializer):
+    # Nested child serializers
+    working_hours = StoreWorkingHourSerializer(source='user.working_hours', many=True, read_only=True)
+    spotlight_products = SpotlightProductSerializer(source='user.spotlightproduct_set', many=True, read_only=True)
+    posts = PostSerializer(source='user.post_set', many=True, read_only=True)
+    reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
+    banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
+
+    class Meta:
+        model = vendor_store
+        fields = [
+            'id', 'user',
+            'working_hours',
+            'spotlight_products',
+            'name',
+            'about',
+            'profile_image',
+            'banner_image',
+            'posts',
+            'reels',
+            'banners',
+        ]
+    
 
 
 from rest_framework import serializers
@@ -688,15 +694,3 @@ class NotificationCampaignSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
     
-
-    
-class SpotlightProductSerializer(serializers.ModelSerializer):
-
-    product_details = product_serializer(source = "product", read_only=True)
-
-    class Meta:
-        model = SpotlightProduct
-        fields = '__all__'
-        read_only_fields = ['user', 'product_details']  
-
-        
