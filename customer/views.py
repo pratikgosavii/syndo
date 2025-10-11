@@ -564,3 +564,33 @@ class StoreBySubCategoryView(APIView):
 
         serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+    
+class StoreByCategoryView(APIView):
+    """
+    Get all vendor stores that have products in a given subcategory.
+    """
+
+    def get(self, request, *args, **kwargs):
+        category_id = request.query_params.get('category_id')
+
+        if not category_id:
+            return Response(
+                {"error": "category_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get distinct user IDs who have products in this category
+        user_ids = (
+            product.objects.filter(category_id=category_id)
+            .values_list('user_id', flat=True)
+            .distinct()
+        )
+
+        # Get all vendor stores of those users
+        stores = vendor_store.objects.filter(user_id__in=user_ids).distinct()
+
+        serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
