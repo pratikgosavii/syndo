@@ -26,6 +26,7 @@ urlpatterns = [
 path('stores/', VendorStoreListAPIView.as_view(), name='vendor-store-list'),
 path('stores/<int:id>/', VendorStoreListAPIView.as_view(), name='vendor-store-detail'),
 
+
 path('list-products/', list_products.as_view(), name='list_products'),
 path('follow/<int:user_id>/', FollowUserAPIView.as_view(), name='follow-user'),
 path('unfollow/<int:user_id>/', UnfollowUserAPIView.as_view(), name='unfollow-user'),
@@ -40,6 +41,9 @@ path('offers/', offersView.as_view(), name='offersView'),  # GET = who follows m
 path('coupons/', CartCouponAPIView.as_view(), name='CartCouponAPIView'),  # GET = who follows me
 
 path('products/search/', ProductSearchAPIView.as_view(), name='search-products'),
+
+path('stores-by-subcategory/', StoreBySubCategoryView.as_view(), name='stores-by-subcategory'),
+
 
 ]  + router.urls
 

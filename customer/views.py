@@ -510,3 +510,32 @@ class ProductSearchAPIView(ListAPIView):
                 Q(sub_category__name__icontains=search_term)
             )
         return qs
+
+
+
+class StoreBySubCategoryView(APIView):
+    """
+    Get all vendor stores that have products in a given subcategory.
+    """
+
+    def get(self, request, *args, **kwargs):
+        subcategory_id = request.query_params.get('subcategory_id')
+
+        if not subcategory_id:
+            return Response(
+                {"error": "subcategory_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get distinct user IDs who have products in this subcategory
+        user_ids = (
+            product.objects.filter(sub_category_id=subcategory_id)
+            .values_list('user_id', flat=True)
+            .distinct()
+        )
+
+        # Get all vendor stores of those users
+        stores = vendor_store.objects.filter(user_id__in=user_ids).distinct()
+
+        serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
