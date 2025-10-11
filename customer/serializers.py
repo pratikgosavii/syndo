@@ -119,13 +119,22 @@ class AddressSerializer(serializers.ModelSerializer):
 
 
 
+
+class PrintAttributesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrintAttributes
+        fields = "__all__"
+
+
+
 class CartSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=product.objects.all())
     product_details = product_serializer(source = "product", read_only=True)
+    print_attributes = PrintAttributesSerializer(read_only=True)
     class Meta:
         model = Cart
-        fields = ["id", "user", "product", "quantity", "updated_at", "product_details"]
-        read_only_fields = ["user", "updated_at", "product_details"]
+        fields = ["id", "user", "product", "quantity", "updated_at", "product_details", "print_attributes"]
+        read_only_fields = ["user", "updated_at", "product_details", "print_attributes"]
 
 
 

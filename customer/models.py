@@ -106,7 +106,7 @@ class PrintAttributes(models.Model):
     page_numbers = models.CharField(max_length=255, blank=True, null=True)
     instructions = models.TextField(blank=True, null=True)
     print_type = models.CharField(max_length=20, choices=[("single", "Single Side"), ("double", "Both Side")])
-    add_ons = models.JSONField(default=dict, blank=True)  # store add-ons like {"spiral": 25, "lamination": 30}
+    add_ons = models.ManyToManyField("vendor.addon", blank=True, related_name="print_attributes_addon")
 
 
 

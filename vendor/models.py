@@ -489,8 +489,8 @@ class product(models.Model):
     food_type = models.CharField(max_length=10, choices=FOOD_TYPE_CHOICES, null=True, blank=True)
 
     name = models.CharField(max_length=255)
-    category = models.ForeignKey("masters.product_category", on_delete=models.SET_NULL, null=True, blank=True)
-    sub_category = models.ForeignKey("masters.product_subcategory", related_name='sdfdsz', on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.ForeignKey("masters.product_category", on_delete=models.CASCADE)
+    sub_category = models.ForeignKey("masters.product_subcategory", related_name='sdfdsz', on_delete=models.CASCADE)
 
     # Pricing details
     wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
