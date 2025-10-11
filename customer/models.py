@@ -98,6 +98,17 @@ class Cart(models.Model):
         return f"{self.user.username} - {self.product.name} x {self.quantity}"
     
 
+class PrintAttributes(models.Model):
+    cart = models.OneToOneField("Cart", on_delete=models.CASCADE, related_name="print_attributes")
+    file_name = models.CharField(max_length=255)
+    number_of_copies = models.PositiveIntegerField(default=1)
+    page_count = models.PositiveIntegerField(default=0)
+    page_numbers = models.CharField(max_length=255, blank=True, null=True)
+    instructions = models.TextField(blank=True, null=True)
+    print_type = models.CharField(max_length=20, choices=[("single", "Single Side"), ("double", "Both Side")])
+    add_ons = models.JSONField(default=dict, blank=True)  # store add-ons like {"spiral": 25, "lamination": 30}
+
+
 
 class Order(models.Model):
 
@@ -243,5 +254,7 @@ class TicketMessage(models.Model):
 
     def __str__(self):
         return f"Msg by {self.sender.username} in Ticket {self.ticket.id}"
+
+
 
 
