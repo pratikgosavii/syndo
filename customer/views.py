@@ -157,17 +157,18 @@ class CartViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Cart.objects.filter(user=self.request.user)
+        return Cart.objects.filter(user=self.request.user).select_related("product").prefetch_related("print_attributes__add_ons")
 
     def perform_create(self, serializer):
         """
         Add product to cart (or update quantity).
         Restricts user to products from only one store.
+        Handles print product attributes if provided.
         """
         product = serializer.validated_data["product"]
         quantity = serializer.validated_data.get("quantity", 1)
 
-        # Check existing cart store restriction
+        # Restrict to one store
         existing_cart_items = Cart.objects.filter(user=self.request.user)
         if existing_cart_items.exists():
             existing_store = existing_cart_items.first().product.user
@@ -176,7 +177,7 @@ class CartViewSet(viewsets.ModelViewSet):
                     {"error": "You can only add products from one store at a time."}
                 )
 
-        # Add/update product in cart
+        # Create or update cart item
         cart_item, created = Cart.objects.get_or_create(
             user=self.request.user,
             product=product,
@@ -185,19 +186,30 @@ class CartViewSet(viewsets.ModelViewSet):
         if not created:
             cart_item.quantity += quantity
             cart_item.save()
+
+        # ✅ Handle print product attributes
+        if getattr(product, "type", None) == "print":
+            attrs_data = self.request.data.get("print_attributes")
+            if attrs_data:
+                from .models import PrintAttributes  # import inside to avoid circular ref
+
+                # Extract add_on IDs if present
+                add_ons = attrs_data.pop("add_ons", [])
+                print_attrs, _ = PrintAttributes.objects.update_or_create(
+                    cart=cart_item, defaults=attrs_data
+                )
+
+                # Update ManyToMany add_ons
+                if add_ons:
+                    print_attrs.add_ons.set(add_ons)
+
         return cart_item
-    
 
     @action(detail=False, methods=["post"])
     def clear_and_add(self, request):
         """
-        Clears the user's cart and adds one new product with quantity.
-        Restricts user to only 1 store's products in cart.
-        Example payload:
-        {
-            "product": 5,
-            "quantity": 3
-        }
+        Clears user's cart and adds a new product with quantity.
+        Supports print attributes.
         """
         product_id = request.data.get("product")
         quantity = request.data.get("quantity", 1)
@@ -205,26 +217,39 @@ class CartViewSet(viewsets.ModelViewSet):
         if not product_id:
             return Response({"error": "product is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        from vendor.models import Product  # adjust import to your app
         try:
-            product_instance = product.objects.get(pk=product_id)
-        except product.DoesNotExist:
+            product_instance = Product.objects.get(pk=product_id)
+        except Product.DoesNotExist:
             return Response({"error": "Invalid product id."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check store restriction
-        existing_cart_items = Cart.objects.filter(user=request.user)
-       
-        # Clear cart
-        existing_cart_items.delete()
+        # Clear user's cart
+        Cart.objects.filter(user=request.user).delete()
 
-        # Add new product
+        # Create new cart item
         cart_item = Cart.objects.create(
             user=request.user,
             product=product_instance,
             quantity=quantity
         )
 
+        # ✅ Handle print attributes again
+        if getattr(product_instance, "type", None) == "print":
+            attrs_data = request.data.get("print_attributes")
+            if attrs_data:
+                from .models import PrintAttributes
+
+                add_ons = attrs_data.pop("add_ons", [])
+                print_attrs = PrintAttributes.objects.create(
+                    cart=cart_item, **attrs_data
+                )
+                if add_ons:
+                    print_attrs.add_ons.set(add_ons)
+
         serializer = self.get_serializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 
         
 
