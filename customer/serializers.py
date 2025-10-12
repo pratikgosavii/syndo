@@ -120,21 +120,69 @@ class AddressSerializer(serializers.ModelSerializer):
 
 
 
-class PrintAttributesSerializer(serializers.ModelSerializer):
+
+# ---------- Print File ----------
+class PrintFileSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PrintAttributes
-        fields = "__all__"
+        model = PrintFile
+        fields = ["id", "file", "number_of_copies", "page_count", "page_numbers"]
+
+
+# ---------- Print Job ----------
+class PrintJobSerializer(serializers.ModelSerializer):
+
+    from vendor.models import addon
+    files = PrintFileSerializer(many=True)
+    add_ons = serializers.PrimaryKeyRelatedField(queryset=addon.objects.all(), many=True)
+
+    class Meta:
+        model = PrintJob
+        fields = ["instructions", "print_type", "add_ons", "files"]
+
+    def create(self, validated_data):
+        files_data = validated_data.pop("files", [])
+        add_ons = validated_data.pop("add_ons", [])
+        print_job = PrintJob.objects.create(**validated_data)
+        print_job.add_ons.set(add_ons)
+        for file_data in files_data:
+            PrintFile.objects.create(print_job=print_job, **file_data)
+        return print_job
 
 
 
+# ---------- Cart ----------
 class CartSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=product.objects.all())
-    product_details = product_serializer(source = "product", read_only=True)
-    print_attributes = PrintAttributesSerializer(read_only=True)
+    product_details = product_serializer(source="product", read_only=True)
+    print_job = PrintJobSerializer(required=False)
+
     class Meta:
         model = Cart
-        fields = ["id", "user", "product", "quantity", "updated_at", "product_details", "print_attributes"]
-        read_only_fields = ["user", "updated_at", "product_details", "print_attributes"]
+        fields = ["id", "product", "quantity", "product_details", "print_job"]
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        product_instance = validated_data["product"]
+        quantity = validated_data.get("quantity", 1)
+        print_job_data = validated_data.pop("print_job", None)
+
+        cart_item, created = Cart.objects.get_or_create(
+            user=user,
+            product=product_instance,
+            defaults={"quantity": quantity}
+        )
+
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+
+        # Handle print job if it's a print product
+        if product_instance.type == "print" and print_job_data:
+            if hasattr(cart_item, "print_job"):
+                cart_item.print_job.delete()  # replace old job
+            PrintJobSerializer().create({**print_job_data, "cart": cart_item})
+
+        return cart_item
 
 
 

@@ -87,6 +87,27 @@ class list_products(ListAPIView):
 
         return qs
 
+
+# class products_details(APIView):
+#     """
+#     Get details of a single product by ID.
+#     """
+
+#     def get(self, request, product_id):
+#         try:
+#             # Fetch the product by ID
+#             product_obj = product.objects.get(id=product_id)
+
+#         except product.DoesNotExist:
+#             return Response(
+#                 {"error": "Product not found"},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+#         # Serialize and return product data
+#         serializer = product_serializer(product_obj, context={'request': request})
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+    
     
 from rest_framework import status
 
@@ -151,106 +172,148 @@ class AddressViewSet(viewsets.ModelViewSet):
 from rest_framework.decorators import action
 from rest_framework import serializers
 
+from django.db import transaction
+import json
+
 
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Cart.objects.filter(user=self.request.user).select_related("product").prefetch_related("print_attributes__add_ons")
+        return (
+            Cart.objects.filter(user=self.request.user)
+            .select_related("product")
+            .prefetch_related("print_job__add_ons", "print_job__files")
+        )
 
+    @transaction.atomic
     def perform_create(self, serializer):
-        """
-        Add product to cart (or update quantity).
-        Restricts user to products from only one store.
-        Handles print product attributes if provided.
-        """
-        product = serializer.validated_data["product"]
+        product_instance = serializer.validated_data["product"]
         quantity = serializer.validated_data.get("quantity", 1)
 
-        # Restrict to one store
+        # Restrict user to one store
         existing_cart_items = Cart.objects.filter(user=self.request.user)
         if existing_cart_items.exists():
             existing_store = existing_cart_items.first().product.user
-            if product.user != existing_store:
+            if product_instance.user != existing_store:
                 raise serializers.ValidationError(
                     {"error": "You can only add products from one store at a time."}
                 )
 
-        # Create or update cart item
+        # Add or update cart item
         cart_item, created = Cart.objects.get_or_create(
             user=self.request.user,
-            product=product,
+            product=product_instance,
             defaults={"quantity": quantity}
         )
         if not created:
             cart_item.quantity += quantity
             cart_item.save()
 
-        # ✅ Handle print product attributes
-        if getattr(product, "type", None) == "print":
-            attrs_data = self.request.data.get("print_attributes")
-            if attrs_data:
-                from .models import PrintAttributes  # import inside to avoid circular ref
+        # ✅ Handle print jobs (JSON or multipart)
+        print_job_data = self.request.data.get("print_job")
+        if print_job_data and getattr(product_instance, "product_type", None) == "print":
+            # Parse JSON string if necessary
+            if isinstance(print_job_data, str):
+                try:
+                    print_job_data = json.loads(print_job_data)
+                except json.JSONDecodeError:
+                    raise serializers.ValidationError({"print_job": "Invalid JSON format."})
 
-                # Extract add_on IDs if present
-                add_ons = attrs_data.pop("add_ons", [])
-                print_attrs, _ = PrintAttributes.objects.update_or_create(
-                    cart=cart_item, defaults=attrs_data
+            add_ons = print_job_data.pop("add_ons", [])
+            files_data = print_job_data.pop("files", [])
+
+            # Create or update print job
+            print_job, _ = PrintJob.objects.update_or_create(
+                cart=cart_item, defaults=print_job_data
+            )
+
+            if add_ons:
+                print_job.add_ons.set(add_ons)
+
+            # Delete previous files
+            print_job.files.all().delete()
+
+            # ✅ Option A: Handle inline JSON files (no actual uploads)
+            for file_data in files_data:
+                PrintFile.objects.create(print_job=print_job, **file_data)
+
+            # ✅ Option B: Handle actual uploaded files (multipart/form-data)
+            index = 0
+            while True:
+                uploaded_file = self.request.FILES.get(f"files[{index}].file")
+                if not uploaded_file:
+                    break
+                PrintFile.objects.create(
+                    print_job=print_job,
+                    file=uploaded_file,
+                    number_of_copies=self.request.data.get(f"files[{index}].number_of_copies", 1),
+                    page_count=self.request.data.get(f"files[{index}].page_count", 0),
+                    page_numbers=self.request.data.get(f"files[{index}].page_numbers", ""),
                 )
-
-                # Update ManyToMany add_ons
-                if add_ons:
-                    print_attrs.add_ons.set(add_ons)
+                index += 1
 
         return cart_item
 
     @action(detail=False, methods=["post"])
+    @transaction.atomic
     def clear_and_add(self, request):
-        """
-        Clears user's cart and adds a new product with quantity.
-        Supports print attributes.
-        """
+        """Clears cart and adds new product (supports print job & file uploads)."""
         product_id = request.data.get("product")
         quantity = request.data.get("quantity", 1)
 
         if not product_id:
             return Response({"error": "product is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        from vendor.models import Product  # adjust import to your app
         try:
-            product_instance = Product.objects.get(pk=product_id)
-        except Product.DoesNotExist:
+            product_instance = product.objects.get(pk=product_id)
+        except product.DoesNotExist:
             return Response({"error": "Invalid product id."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Clear user's cart
+        # Clear user's existing cart
         Cart.objects.filter(user=request.user).delete()
 
         # Create new cart item
-        cart_item = Cart.objects.create(
-            user=request.user,
-            product=product_instance,
-            quantity=quantity
-        )
+        cart_item = Cart.objects.create(user=request.user, product=product_instance, quantity=quantity)
 
-        # ✅ Handle print attributes again
-        if getattr(product_instance, "type", None) == "print":
-            attrs_data = request.data.get("print_attributes")
-            if attrs_data:
-                from .models import PrintAttributes
+        # ✅ Handle print job and file uploads
+        print_job_data = request.data.get("print_job")
+        if print_job_data and getattr(product_instance, "product_type", None) == "print":
+            if isinstance(print_job_data, str):
+                try:
+                    print_job_data = json.loads(print_job_data)
+                except json.JSONDecodeError:
+                    raise serializers.ValidationError({"print_job": "Invalid JSON format."})
 
-                add_ons = attrs_data.pop("add_ons", [])
-                print_attrs = PrintAttributes.objects.create(
-                    cart=cart_item, **attrs_data
+            add_ons = print_job_data.pop("add_ons", [])
+            files_data = print_job_data.pop("files", [])
+
+            print_job = PrintJob.objects.create(cart=cart_item, **print_job_data)
+            if add_ons:
+                print_job.add_ons.set(add_ons)
+
+            # JSON-style file data
+            for file_data in files_data:
+                PrintFile.objects.create(print_job=print_job, **file_data)
+
+            # Multipart-style file data
+            index = 0
+            while True:
+                uploaded_file = request.FILES.get(f"files[{index}].file")
+                if not uploaded_file:
+                    break
+                PrintFile.objects.create(
+                    print_job=print_job,
+                    file=uploaded_file,
+                    number_of_copies=request.data.get(f"files[{index}].number_of_copies", 1),
+                    page_count=request.data.get(f"files[{index}].page_count", 0),
+                    page_numbers=request.data.get(f"files[{index}].page_numbers", ""),
                 )
-                if add_ons:
-                    print_attrs.add_ons.set(add_ons)
+                index += 1
 
         serializer = self.get_serializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-
         
 
 

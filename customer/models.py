@@ -98,16 +98,29 @@ class Cart(models.Model):
         return f"{self.user.username} - {self.product.name} x {self.quantity}"
     
 
-class PrintAttributes(models.Model):
-    cart = models.OneToOneField("Cart", on_delete=models.CASCADE, related_name="print_attributes")
-    file_name = models.CharField(max_length=255)
+class PrintJob(models.Model):
+    cart = models.OneToOneField(Cart, on_delete=models.CASCADE, related_name="print_job")
+    instructions = models.TextField(blank=True, null=True)
+    print_type = models.CharField(
+        max_length=20,
+        choices=[("single", "Single Side"), ("double", "Double Side")],
+        default="single",
+    )
+    add_ons = models.ManyToManyField("vendor.addon", blank=True, related_name="print_jobs")
+
+    def __str__(self):
+        return f"Print Job for {self.cart.product.name}"
+
+
+class PrintFile(models.Model):
+    print_job = models.ForeignKey(PrintJob, on_delete=models.CASCADE, related_name="files")
+    file = models.FileField(upload_to="print_jobs/files/")
     number_of_copies = models.PositiveIntegerField(default=1)
     page_count = models.PositiveIntegerField(default=0)
     page_numbers = models.CharField(max_length=255, blank=True, null=True)
-    instructions = models.TextField(blank=True, null=True)
-    print_type = models.CharField(max_length=20, choices=[("single", "Single Side"), ("double", "Both Side")])
-    add_ons = models.ManyToManyField("vendor.addon", blank=True, related_name="print_attributes_addon")
 
+    def __str__(self):
+        return f"{self.file_name} ({self.number_of_copies} copies)"
 
 
 class Order(models.Model):
