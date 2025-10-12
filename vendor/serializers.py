@@ -215,12 +215,30 @@ class CustomizePrintVariantSerializer(serializers.ModelSerializer):
         model = CustomizePrintVariant
         exclude = ['product']
 
+class ProductVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = product
+        fields = [
+            "id",
+            "name",
+            "sales_price",
+            "color",
+            "size",
+            "stock",
+            "image",
+        ]
+        
 
 class product_serializer(serializers.ModelSerializer):
     addons = ProductAddonSerializer(many=True, required=False)
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
     is_favourite = serializers.BooleanField(read_only=True)
+
+     # 👇 Added new fields
+    variants = ProductVariantSerializer(many=True, read_only=True)  # All child variants
+    parent = ProductVariantSerializer(read_only=True)  # Parent info if this is a variant
+
     class Meta:
         model = product
         fields = '__all__'  # or list fields + 'addons', 'print_variants', 'customize_print_variants'
