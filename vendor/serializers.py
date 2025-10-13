@@ -229,25 +229,39 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         ]
 
 
+import json
+from rest_framework import serializers
+
 class product_serializer(serializers.ModelSerializer):
-    size_details = size_serializer(read_only=True, source='size')  
+    size_details = size_serializer(read_only=True, source='size')
     addons = ProductAddonSerializer(many=True, required=False)
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
     is_favourite = serializers.BooleanField(read_only=True)
-
-     # 👇 Added new fields
-    variants = ProductVariantSerializer(many=True, read_only=True)  # All child variants
-    parent = ProductVariantSerializer(read_only=True)  # Parent info if this is a variant
+    variants = ProductVariantSerializer(many=True, read_only=True)
+    parent = ProductVariantSerializer(read_only=True)
 
     class Meta:
         model = product
-        fields = '__all__'  # or list fields + 'addons', 'print_variants', 'customize_print_variants'
+        fields = '__all__'
+
+    def _parse_json_field(self, data, key):
+        """Safely parse a JSON string from multipart form-data."""
+        value = data.get(key)
+        if not value:
+            return []
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return []  # fallback to empty list if malformed JSON
 
     def create(self, validated_data):
-        addons_data = validated_data.pop('addons', [])
-        variants_data = validated_data.pop('print_variants', [])
-        customize_data = validated_data.pop('customize_print_variants', [])
+        request = self.context.get('request')
+        data = request.data
+
+        addons_data = self._parse_json_field(data, 'addons')
+        variants_data = self._parse_json_field(data, 'print_variants')
+        customize_data = self._parse_json_field(data, 'customize_print_variants')
 
         instance = product.objects.create(**validated_data)
 
@@ -263,35 +277,36 @@ class product_serializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        ## Pop nested data
-        addons_data = validated_data.pop('addons', [])
-        variants_data = validated_data.pop('print_variants', [])
-        customize_data = validated_data.pop('customize_print_variants', [])
+        request = self.context.get('request')
+        data = request.data
+
+        addons_data = self._parse_json_field(data, 'addons')
+        variants_data = self._parse_json_field(data, 'print_variants')
+        customize_data = self._parse_json_field(data, 'customize_print_variants')
 
         # Update basic fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Handle addons: clear old and add new
+        # Handle related nested data
         if addons_data:
             product_addon.objects.filter(product=instance).delete()
             for addon in addons_data:
                 product_addon.objects.create(product=instance, **addon)
 
-        # Handle print variants
         if variants_data:
             PrintVariant.objects.filter(product=instance).delete()
             for variant in variants_data:
                 PrintVariant.objects.create(product=instance, **variant)
 
-        # Handle customize print variants
         if customize_data:
             CustomizePrintVariant.objects.filter(product=instance).delete()
             for custom in customize_data:
                 CustomizePrintVariant.objects.create(product=instance, **custom)
 
         return instance
+
 
 
 
