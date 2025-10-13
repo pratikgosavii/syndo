@@ -230,6 +230,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
 
 class product_serializer(serializers.ModelSerializer):
+    size_details = size_serializer(read_only=True, source='size')  
     addons = ProductAddonSerializer(many=True, required=False)
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
@@ -303,6 +304,13 @@ class SpotlightProductSerializer(serializers.ModelSerializer):
         model = SpotlightProduct
         fields = '__all__'
         read_only_fields = ['user', 'product_details']  
+    
+class VendorStoreSerializer2(serializers.ModelSerializer):
+
+
+    class Meta:
+        model = vendor_store
+        fields = '__all__'
 
         
     

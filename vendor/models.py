@@ -514,7 +514,7 @@ class product(models.Model):
     # Optional
     brand_name = models.CharField(max_length=255, null=True, blank=True)
     color = models.CharField(max_length=50, null=True, blank=True)
-    size = models.CharField(max_length=50, null=True, blank=True)
+    size = models.ForeignKey("masters.size", on_delete=models.CASCADE, null=True, blank=True)
     batch_number = models.CharField(max_length=100, null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
 
