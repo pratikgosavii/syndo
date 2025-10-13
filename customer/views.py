@@ -310,6 +310,7 @@ class CartViewSet(viewsets.ModelViewSet):
 
         return cart_item
 
+
     @action(detail=False, methods=["post"])
     @transaction.atomic
     def clear_and_add(self, request):
@@ -368,7 +369,20 @@ class CartViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+    @action(detail=False, methods=["post"])
+    def clear_cart(self, request):
+
+        # Clear user's existing cart
+        Cart.objects.filter(user=request.user).delete()
         
+        return Response(
+            {"message": "Cart cleared successfully ✅"},
+            status=status.HTTP_200_OK
+        )
+    
+    
 
 
 from rest_framework.views import APIView
