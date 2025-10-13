@@ -1,3 +1,4 @@
+from datetime import timezone
 from django.db import models
 
 # Create your models here.
@@ -176,17 +177,73 @@ class Order(models.Model):
     
 
 class OrderItem(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('delivered', 'Delivered'),
+        ('returned', 'Returned'),
+        ('cancelled', 'Cancelled'),
+    ]
+
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="items")
     quantity = models.IntegerField(default=1)
     price = models.IntegerField()
-    
-
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     def total_price(self):
-        return self.quantity * self.mrp
+        return self.quantity * self.price
+
+    def __str__(self):
+        return f"{self.product} × {self.quantity} ({self.status})"
 
 
+
+
+class ReturnExchange(models.Model):
+    RETURN_TYPES = [
+        ('return', 'Return'),
+        ('exchange', 'Exchange'),
+    ]
+
+    STATUS_CHOICES = [
+        ('requested', 'Requested'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    ]
+
+    order_item = models.ForeignKey("OrderItem", on_delete=models.CASCADE, related_name="return_exchanges")
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="return_exchanges")
+
+    type = models.CharField(max_length=10, choices=RETURN_TYPES)
+    reason = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def is_allowed(self):
+        """
+        Checks if return/exchange is allowed:
+        - Product must have return_policy or replacement enabled
+        - Within 7 days of delivery
+        """
+        product = self.order_item.product
+        order_date = self.order_item.order.created_at
+
+        within_7_days = (timezone.now().date() - order_date).days <= 7
+        if not within_7_days:
+            return False
+
+        if self.type == 'return' and not product.return_policy:
+            return False
+        if self.type == 'exchange' and not product.replacement:
+            return False
+
+        return True
+
+    def __str__(self):
+        return f"{self.get_type_display()} - {self.order_item.product.name} ({self.status})"
 
     
 

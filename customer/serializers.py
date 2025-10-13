@@ -104,6 +104,32 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 
+
+class ReturnExchangeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReturnExchange
+        fields = ['id', 'order_item', 'type', 'reason', 'status', 'created_at']
+
+    def validate(self, data):
+        user = self.context['request'].user
+        order_item = data['order_item']
+        req_type = data['type']
+
+        instance = ReturnExchange(
+            order_item=order_item,
+            user=user,
+            type=req_type
+        )
+        if not instance.is_allowed():
+            raise serializers.ValidationError("Return/Exchange not allowed. Product not eligible or 7-day window expired.")
+        return data
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+    
+    
+
 class FollowerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follower

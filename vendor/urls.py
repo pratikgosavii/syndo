@@ -57,7 +57,8 @@ router.register(r'orders', OrderViewSet, basename='orders')
 urlpatterns = [
 
     
-
+    path('return-exchange/', VendorReturnManageAPIView.as_view(), name='vendor-return-manage'),
+    
     path('add-company-profile/', add_company_profile, name='add_company_profile'),
     path('update-company-profile/<company_profile_id>', update_company_profile, name='update_company_profile'),
     path('delete-company-profile/<company_profile_id>', delete_company_profile, name='delete_company_profile'),

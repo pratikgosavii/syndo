@@ -227,7 +227,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             "stock",
             "image",
         ]
-        
+
 
 class product_serializer(serializers.ModelSerializer):
     addons = ProductAddonSerializer(many=True, required=False)
@@ -712,3 +712,14 @@ class NotificationCampaignSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
     
+
+
+from customer.models import ReturnExchange
+
+class ReturnExchangeVendorSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='order_item.product.name', read_only=True)
+    customer_name = serializers.CharField(source='user.first_name', read_only=True)
+
+    class Meta:
+        model = ReturnExchange
+        fields = ['id', 'product_name', 'customer_name', 'type', 'reason', 'status', 'created_at']
