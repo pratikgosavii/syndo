@@ -3101,3 +3101,65 @@ class VendorStoreListAPIView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         return vendor_store.objects.filter(user=user)
+
+
+
+        
+class VendorReturnManageAPIView(APIView):
+    """
+    Vendor can view, approve, reject, or complete return/exchange requests
+    """
+    permission_classes = [permissions.IsAuthenticated, IsVendor]
+
+    def get(self, request):
+        """
+        List all return/exchange requests related to vendor's products
+        """
+        vendor_user = request.user
+        queryset = ReturnExchange.objects.filter(order_item__product__user=vendor_user).order_by('-created_at')
+        serializer = ReturnExchangeVendorSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        """
+        Update status of a return/exchange request
+        Example JSON:
+        {
+            "id": 12,
+            "action": "approve"  # or "reject" / "complete"
+        }
+        """
+        req_id = request.data.get("id")
+        action = request.data.get("action")
+
+        if not req_id or not action:
+            return Response({"error": "Both 'id' and 'action' are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            instance = ReturnExchange.objects.get(id=req_id, order_item__product__user=request.user)
+        except ReturnExchange.DoesNotExist:
+            return Response({"error": "Return/Exchange request not found or not related to your products."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        valid_actions = {
+            "approve": "approved",
+            "reject": "rejected",
+            "complete": "completed",
+        }
+
+        if action not in valid_actions:
+            return Response({"error": "Invalid action. Use 'approve', 'reject', or 'complete'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Prevent status changes if already completed/rejected
+        if instance.status in ['rejected', 'completed']:
+            return Response({"error": "This request has already been processed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.status = valid_actions[action]
+        instance.save()
+
+        return Response({
+            "success": f"Request {action}d successfully.",
+            "id": instance.id,
+            "status": instance.status
+        }, status=status.HTTP_200_OK)

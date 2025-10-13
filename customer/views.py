@@ -28,6 +28,60 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
 
 
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, permissions
+
+class ReturnExchangeAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Get all Return/Exchange requests of logged-in user
+        """
+        queryset = ReturnExchange.objects.filter(user=request.user).order_by('-created_at')
+        serializer = ReturnExchangeSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        """
+        Create a new Return/Exchange request
+        """
+        serializer = ReturnExchangeSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"success": f"{serializer.validated_data['type'].capitalize()} request created successfully."},
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        """
+        Cancel an existing Return/Exchange request (if still pending/requested)
+        Example JSON:
+        {
+            "id": 5
+        }
+        """
+        return_id = request.data.get("id")
+        if not return_id:
+            return Response({"error": "Request ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            instance = ReturnExchange.objects.get(id=return_id, user=request.user)
+        except ReturnExchange.DoesNotExist:
+            return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if instance.status not in ['requested', 'approved']:
+            return Response({"error": "Cannot cancel. Request already processed or completed."}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.status = 'rejected'
+        instance.save()
+
+        return Response({"success": "Return/Exchange request cancelled successfully."}, status=status.HTTP_200_OK)
+
+
 
 
 from rest_framework.views import APIView

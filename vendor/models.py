@@ -544,6 +544,9 @@ class product(models.Model):
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
+    stock_cached = models.IntegerField(default=0)
+
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -1142,3 +1145,19 @@ class NotificationCampaign(models.Model):
 
 
     
+
+class StockTransaction(models.Model):
+    TRANSACTION_TYPE = [
+        ('purchase', 'Purchase'),
+        ('return', 'Return'),
+        ('sale', 'Sale'),
+    ]
+
+    product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="stock_transactions")
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE)
+    quantity = models.IntegerField()  # positive or negative
+    reference_id = models.CharField(max_length=50, null=True, blank=True)  # purchase_id / order_id
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
