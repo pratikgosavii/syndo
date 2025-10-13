@@ -13,6 +13,17 @@ class MainCategoryForm(forms.ModelForm):
         }
 
 
+class size_Form(forms.ModelForm):
+    class Meta:
+        model = size
+        fields = ['name', ]
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control', 'id': 'name'
+            }),
+        }
+
+
 class testimonials_Form(forms.ModelForm):
     class Meta:
         model = testimonials

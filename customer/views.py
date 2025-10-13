@@ -519,6 +519,7 @@ class CartCouponAPIView(APIView):
             return Response({"coupons": []}, status=200)
 
         now = timezone.now()
+        
         coupons = coupon.objects.filter(
             user=user,
             is_active=True,

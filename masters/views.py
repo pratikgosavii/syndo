@@ -572,6 +572,80 @@ class get_expense_category(ListAPIView):
     filterset_fields = '__all__'  # enables filtering on all fields
 
 
+def add_size(request):
+    
+    if request.method == "POST":
+
+        forms = size_Form(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_size')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_size.html', context)
+
+
+    else:
+
+        # create first row using admin then editing only
+
+        
+
+        return render(request, 'add_size.html', { 'form' : size_Form()})
+
+def update_size(request, size_id):
+    
+    instance = size.objects.get(id = size_id)
+
+    if request.method == "POST":
+
+        forms = size_Form(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_size')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_size.html', context)
+    
+    else:
+
+        # create first row using admin then editing only
+
+        forms = size_Form(instance=instance)
+
+        return render(request, 'add_size.html', {'form' : forms})
+
+
+def list_size(request):
+
+    data = size.objects.all()
+
+    return render(request, 'list_size.html', {'data' : data})
+
+
+def delete_size(request, size_id):
+
+    data = size.objects.get(id = size_id).delete()
+
+    return redirect('list_size')
+
+
+
+class get_size(ListAPIView):
+    queryset = size.objects.all()
+    serializer_class = size_serializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = '__all__'  # enables filtering on all fields
+
+
 
 
 

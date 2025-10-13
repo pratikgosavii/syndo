@@ -33,6 +33,13 @@ class product_category_serializer(serializers.ModelSerializer):
 
 
 
+class size_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = size
+        fields = '__all__'
+
+
+
 class product_main_category_serializer(serializers.ModelSerializer):
     category_details = product_category_serializer(source='categories', many=True, read_only=True)
 
