@@ -167,7 +167,7 @@ class PrintJobSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PrintJob
-        fields = ["instructions", "print_type", "add_ons", "files"]
+        fields = ["instructions", "print_type", "add_ons", "files", "total_amount"]
 
     def create(self, validated_data):
         files_data = validated_data.pop("files", [])
