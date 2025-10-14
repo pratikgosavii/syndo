@@ -228,6 +228,8 @@ from rest_framework import serializers
 
 from django.db import transaction
 import json
+from vendor.models import PrintVariant, CustomizePrintVariant, addon
+
 
 
 class CartViewSet(viewsets.ModelViewSet):
@@ -241,32 +243,23 @@ class CartViewSet(viewsets.ModelViewSet):
             .prefetch_related("print_job__add_ons", "print_job__files")
         )
 
-    @transaction.atomic
     def perform_create(self, serializer):
         product_instance = serializer.validated_data["product"]
         quantity = serializer.validated_data.get("quantity", 1)
 
-        # Restrict user to one store
-        existing_cart_items = Cart.objects.filter(user=self.request.user)
-        if existing_cart_items.exists():
-            existing_store = existing_cart_items.first().product.user
-            if product_instance.user != existing_store:
-                raise serializers.ValidationError(
-                    {"error": "You can only add products from one store at a time."}
-                )
-
-        # Add or update cart item
+        # ✅ Create or update cart item
         cart_item, created = Cart.objects.get_or_create(
             user=self.request.user,
             product=product_instance,
-            defaults={"quantity": quantity}
+            defaults={"quantity": quantity},
         )
         if not created:
             cart_item.quantity += quantity
             cart_item.save()
 
-        # ✅ Handle print jobs (JSON or multipart)
+        # ✅ Handle print jobs
         print_job_data = self.request.data.get("print_job")
+
         if print_job_data and getattr(product_instance, "product_type", None) == "print":
             # Parse JSON string if necessary
             if isinstance(print_job_data, str):
@@ -275,25 +268,44 @@ class CartViewSet(viewsets.ModelViewSet):
                 except json.JSONDecodeError:
                     raise serializers.ValidationError({"print_job": "Invalid JSON format."})
 
+            # Extract related data
             add_ons = print_job_data.pop("add_ons", [])
             files_data = print_job_data.pop("files", [])
 
-            # Create or update print job
+            # 🔧 Convert FK IDs to model instances
+            print_variant_id = print_job_data.get("print_variant")
+            customize_variant_id = print_job_data.get("customize_variant")
+
+            if print_variant_id:
+                try:
+                    print_job_data["print_variant"] = PrintVariant.objects.get(id=print_variant_id)
+                except PrintVariant.DoesNotExist:
+                    raise serializers.ValidationError({"print_variant": "Invalid ID."})
+
+            if customize_variant_id:
+                try:
+                    print_job_data["customize_variant"] = CustomizePrintVariant.objects.get(id=customize_variant_id)
+                except CustomizePrintVariant.DoesNotExist:
+                    raise serializers.ValidationError({"customize_variant": "Invalid ID."})
+
+            # ✅ Create or update print job
             print_job, _ = PrintJob.objects.update_or_create(
                 cart=cart_item, defaults=print_job_data
             )
 
+            # Handle add-ons (many-to-many)
             if add_ons:
-                print_job.add_ons.set(add_ons)
+                valid_addons = addon.objects.filter(id__in=add_ons)
+                print_job.add_ons.set(valid_addons)
 
-            # Delete previous files
+            # Delete old files and recreate
             print_job.files.all().delete()
 
-            # ✅ Option A: Handle inline JSON files (no actual uploads)
+            # ✅ Handle JSON inline files
             for file_data in files_data:
                 PrintFile.objects.create(print_job=print_job, **file_data)
 
-            # ✅ Option B: Handle actual uploaded files (multipart/form-data)
+            # ✅ Handle actual uploaded files
             index = 0
             while True:
                 uploaded_file = self.request.FILES.get(f"files[{index}].file")
@@ -310,7 +322,7 @@ class CartViewSet(viewsets.ModelViewSet):
 
         return cart_item
 
-
+    # ✅ Clear cart and add new product
     @action(detail=False, methods=["post"])
     @transaction.atomic
     def clear_and_add(self, request):
@@ -322,8 +334,8 @@ class CartViewSet(viewsets.ModelViewSet):
             return Response({"error": "product is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            product_instance = product.objects.get(pk=product_id)
-        except product.DoesNotExist:
+            product_instance = Product.objects.get(pk=product_id)
+        except Product.DoesNotExist:
             return Response({"error": "Invalid product id."}, status=status.HTTP_404_NOT_FOUND)
 
         # Clear user's existing cart
@@ -344,9 +356,27 @@ class CartViewSet(viewsets.ModelViewSet):
             add_ons = print_job_data.pop("add_ons", [])
             files_data = print_job_data.pop("files", [])
 
+            # 🔧 Convert FK IDs to model instances
+            print_variant_id = print_job_data.get("print_variant")
+            customize_variant_id = print_job_data.get("customize_variant")
+
+            if print_variant_id:
+                try:
+                    print_job_data["print_variant"] = PrintVariant.objects.get(id=print_variant_id)
+                except PrintVariant.DoesNotExist:
+                    raise serializers.ValidationError({"print_variant": "Invalid ID."})
+
+            if customize_variant_id:
+                try:
+                    print_job_data["customize_variant"] = CustomizePrintVariant.objects.get(id=customize_variant_id)
+                except CustomizePrintVariant.DoesNotExist:
+                    raise serializers.ValidationError({"customize_variant": "Invalid ID."})
+
             print_job = PrintJob.objects.create(cart=cart_item, **print_job_data)
+
             if add_ons:
-                print_job.add_ons.set(add_ons)
+                valid_addons = AddOn.objects.filter(id__in=add_ons)
+                print_job.add_ons.set(valid_addons)
 
             # JSON-style file data
             for file_data in files_data:
@@ -370,19 +400,14 @@ class CartViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
+    # ✅ Clear entire cart
     @action(detail=False, methods=["post"])
     def clear_cart(self, request):
-
-        # Clear user's existing cart
         Cart.objects.filter(user=request.user).delete()
-        
         return Response(
             {"message": "Cart cleared successfully ✅"},
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
-    
-    
 
 
 from rest_framework.views import APIView
