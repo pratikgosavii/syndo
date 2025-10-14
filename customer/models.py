@@ -103,6 +103,7 @@ class Cart(models.Model):
 class PrintJob(models.Model):
     cart = models.OneToOneField(Cart, on_delete=models.CASCADE, related_name="print_job")
     instructions = models.TextField(blank=True, null=True)
+    total_amount = models.IntegerField(default=0)
     print_type = models.CharField(
         max_length=20,
         choices=[("single", "Single Side"), ("double", "Double Side")],
