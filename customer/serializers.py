@@ -12,6 +12,15 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     
 
+    
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = "__all__"
+        read_only_fields = ["user", "created_at", "updated_at"]
+
+
+
 from vendor.models import product
 import random, string
 from django.db.models import Max
@@ -23,11 +32,12 @@ from users.serializer import UserProfileSerializer
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     user_details = UserProfileSerializer(source = 'user', read_only=True)
+    address_details = AddressSerializer(source="address", read_only = True)
 
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "total_amount", "order_id", 'user_details']
+        read_only_fields = ["id", "created_at", "items", "item_total", "total_amount", "order_id", 'user_details', 'address_details']
     
     def generate_order_id(self):
         """Generate sequential order_id like SVIND0001, SVIND0002..."""
@@ -128,7 +138,7 @@ class ReturnExchangeSerializer(serializers.ModelSerializer):
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
     
-    
+
 
 class FollowerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -136,12 +146,6 @@ class FollowerSerializer(serializers.ModelSerializer):
         fields = ['user', 'follower', 'created_at']
 
 
-
-class AddressSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Address
-        fields = "__all__"
-        read_only_fields = ["user", "created_at", "updated_at"]
 
 
 

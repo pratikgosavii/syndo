@@ -110,8 +110,17 @@ class PrintJob(models.Model):
     )
     add_ons = models.ManyToManyField("vendor.addon", blank=True, related_name="print_jobs")
 
+    # 🆕 New fields
+    print_variant = models.ForeignKey(
+        "vendor.PrintVariant", on_delete=models.SET_NULL, null=True, blank=True, related_name="print_jobs"
+    )
+    customize_variant = models.ForeignKey(
+        "vendor.CustomizePrintVariant", on_delete=models.SET_NULL, null=True, blank=True, related_name="print_jobs"
+    )
+
     def __str__(self):
         return f"Print Job for {self.cart.product.name}"
+
 
 
 class PrintFile(models.Model):
