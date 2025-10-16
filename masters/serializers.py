@@ -25,6 +25,14 @@ class testimonials_serializer(serializers.ModelSerializer):
 
 
 
+    
+class Pincode_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pincode
+        fields = '__all__'
+
+
+
 
 class product_category_serializer(serializers.ModelSerializer):
     class Meta:

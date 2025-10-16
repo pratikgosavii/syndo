@@ -3168,3 +3168,31 @@ class VendorReturnManageAPIView(APIView):
 
 
     
+
+class VendorCoverageViewSet(viewsets.ModelViewSet):
+    serializer_class = VendorCoverageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return VendorCoverage.objects.filter(user=self.request.user).select_related("pincode")
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        pincode_ids = request.data.get("pincode_ids", [])
+        
+        if not isinstance(pincode_ids, list) or not all(isinstance(pid, int) for pid in pincode_ids):
+            return Response(
+                {"detail": "Invalid format. 'pincode_ids' must be a list of integers."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Delete old coverage and add new
+        VendorCoverage.objects.filter(user=user).delete()
+        pincodes = Pincode.objects.filter(id__in=pincode_ids)
+        VendorCoverage.objects.bulk_create([
+            VendorCoverage(user=user, pincode=p) for p in pincodes
+        ])
+
+        serializer = self.get_serializer(VendorCoverage.objects.filter(user=user), many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

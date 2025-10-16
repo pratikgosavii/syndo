@@ -287,6 +287,93 @@ class get_testimonials(ListAPIView):
     filterset_fields = '__all__'  # enables filtering on all fields
 
 
+def add_pincode(request):
+    
+    if request.method == "POST":
+
+        forms = PincodeForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_pincode')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_pincode.html', context)
+    
+    else:
+
+        # create first row using admin then editing only
+
+        
+
+        return render(request, 'add_pincode.html', { 'form' : PincodeForm()})
+
+def update_pincode(request, pincode_id):
+    
+    instance = Pincode.objects.get(id = pincode_id)
+
+    if request.method == "POST":
+
+        forms = PincodeForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_pincode')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_pincode.html', context)
+
+    
+    else:
+
+        # create first row using admin then editing only
+
+        forms = PincodeForm(instance=instance)
+                
+        context = {
+            'form': forms
+        }
+        
+        return render(request, 'add_pincode.html', context)
+
+
+def list_pincode(request):
+
+    data = Pincode.objects.all()
+
+    return render(request, 'list_pincode.html', {'data' : data})
+
+
+def delete_pincode(request, pincode_id):
+
+    data = Pincode.objects.get(id = pincode_id).delete()
+
+    return redirect('list_pincode')
+
+
+class get_pincode(ListAPIView):
+    queryset = Pincode.objects.all()
+    serializer_class = Pincode_serializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = '__all__'  # enables filtering on all fields
+
+
+from django.views import View
+
+
+class get_testimonials(ListAPIView):
+    queryset = testimonials.objects.all()
+    serializer_class = testimonials_serializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = '__all__'  # enables filtering on all fields
+
+
 def add_product_main_category(request):
     if request.method == 'POST':
         form = MainCategoryForm(request.POST)

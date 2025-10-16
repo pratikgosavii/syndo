@@ -785,3 +785,15 @@ class ReturnExchangeVendorSerializer(serializers.ModelSerializer):
 
 
         
+
+        
+class VendorCoverageSerializer(serializers.ModelSerializer):
+    # Instead of single FK input, allow multiple pincodes
+    
+    pincode_details = Pincode_serializer(source="pincode")
+
+    class Meta:
+        model = VendorCoverage
+        fields = ["id", "user", "pincode", "pincode_details"]
+
+    

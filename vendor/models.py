@@ -1168,3 +1168,15 @@ class StockTransaction(models.Model):
 
 
 
+
+
+
+class VendorCoverage(models.Model):
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='coverages')
+    pincode = models.ForeignKey('masters.Pincode', on_delete=models.CASCADE, related_name='vendors')
+
+    class Meta:
+        unique_together = ('user', 'pincode')  # prevent duplicate entries
+
+    def __str__(self):
+        return f"{self.user} covers {self.pincode.code} ({self.pincode.city})"

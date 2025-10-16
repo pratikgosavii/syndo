@@ -12,6 +12,19 @@ class MainCategoryForm(forms.ModelForm):
             'categories': forms.CheckboxSelectMultiple(),
         }
 
+class PincodeForm(forms.ModelForm):
+    class Meta:
+        model = Pincode
+        fields = ['code', 'city']
+        widgets = {
+             'code': forms.TextInput(attrs={
+                'class': 'form-control', 'id': 'code'
+            }),
+             'city': forms.TextInput(attrs={
+                'class': 'form-control', 'id': 'city'
+            }),
+        }
+
 
 class size_Form(forms.ModelForm):
     class Meta:

@@ -35,6 +35,12 @@ urlpatterns = [
     path('delete-testimonials/<testimonials_id>', delete_testimonials, name='delete_testimonials'),  # create or fetch list of admins
     path('get-testimonials/', get_testimonials.as_view(), name='get_testimonials'), 
 
+    path('add-pincode/', add_pincode, name='add_pincode'),  # create or fetch list of admins
+    path('update-pincode/<pincode_id>', update_pincode, name='update_pincode'),  # create or fetch list of admins
+    path('list-pincode/', list_pincode, name='list_pincode'),  # create or fetch list of admins
+    path('delete-pincode/<pincode_id>', delete_pincode, name='delete_pincode'),  # create or fetch list of admins
+    path('get-pincode/', get_pincode.as_view(), name='get_pincode'), 
+
     path('add-product-main-category/', add_product_main_category, name='add_product_main_category'),  # create or fetch list of admins
     path('update-product-main-category/<product_main_category_id>', update_product_main_category, name='update_product_main_category'),  # create or fetch list of admins
     path('list-product-main-category/', list_product_main_category, name='list_product_main_category'),  # create or fetch list of admins

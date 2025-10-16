@@ -31,7 +31,7 @@ path('stores/', VendorStoreListAPIView.as_view(), name='vendor-store-list'),
 path('stores/<int:id>/', VendorStoreListAPIView.as_view(), name='vendor-store-detail'),
 
 
-path('list-products/', list_products.as_view(), name='list_products'),
+path('list-products/', ListProducts.as_view(), name='list_products'),
 # path('products-details/<product_id>/', products_details.as_view(), name='products_details'),
 path('follow/<int:user_id>/', FollowUserAPIView.as_view(), name='follow-user'),
 path('unfollow/<int:user_id>/', UnfollowUserAPIView.as_view(), name='unfollow-user'),

@@ -54,6 +54,10 @@ router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'reminder-settings', ReminderSettingViewSet, basename='reminder-settings')
 router.register(r'orders', OrderViewSet, basename='orders')
 
+
+router.register(r'coverage', VendorCoverageViewSet, basename='vendor-coverage')
+
+
 urlpatterns = [
 
     

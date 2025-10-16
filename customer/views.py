@@ -124,7 +124,7 @@ from vendor.filters import ProductFilter
 from django.db.models import Exists, OuterRef, Value, BooleanField
 
 
-class list_products(ListAPIView):
+class ListProducts(ListAPIView):
     serializer_class = product_serializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
@@ -132,15 +132,21 @@ class list_products(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = product.objects.all()
+        qs = product.objects.filter(is_active=True)
 
+        # Filter by customer pincode
+        if user.pincode:
+            qs = qs.filter(vendor__coverages__pincode=user.pincode)
+
+        # Annotate favourites
         if user.is_authenticated:
             favs = Favourite.objects.filter(user=user, product=OuterRef('pk'))
             qs = qs.annotate(is_favourite=Exists(favs))
         else:
             qs = qs.annotate(is_favourite=Value(False, output_field=BooleanField()))
 
-        return qs
+        return qs.distinct()
+    
 
 
 # class products_details(APIView):

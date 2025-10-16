@@ -131,3 +131,11 @@ class home_banner(models.Model):
 
 
 
+
+class Pincode(models.Model):
+    code = models.CharField(max_length=10, unique=True)
+    city = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f"{self.code} - {self.city}"
+
