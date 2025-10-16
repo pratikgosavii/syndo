@@ -121,7 +121,7 @@ class ReelSerializer(serializers.ModelSerializer):
     def get_is_following(self, obj):
 
         from customer.models import Follower
-        
+
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             # Check if request.user is following obj.user
@@ -266,6 +266,9 @@ class product_serializer(serializers.ModelSerializer):
     variants = ProductVariantSerializer(many=True, read_only=True)
     parent = ProductVariantSerializer(read_only=True)
 
+    # Add reviews as nested read-only field
+    reviews = serializers.SerializerMethodField()
+
     class Meta:
         model = product
         fields = '__all__'
@@ -331,6 +334,12 @@ class product_serializer(serializers.ModelSerializer):
                 CustomizePrintVariant.objects.create(product=instance, **custom)
 
         return instance
+
+        
+    def get_reviews(self, obj):
+        from customer.serializers import ReviewSerializer  # import here to avoid circular import
+        reviews = obj.product_reviews.all()  # make sure related_name='reviews'
+        return ReviewSerializer(reviews, many=True).data
 
 
 
@@ -771,3 +780,8 @@ class ReturnExchangeVendorSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReturnExchange
         fields = ['id', 'product_name', 'customer_name', 'type', 'reason', 'status', 'created_at']
+
+
+
+
+        

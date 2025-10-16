@@ -1,3 +1,4 @@
+from django.forms import ValidationError
 from django.shortcuts import render
 
 # Create your views here.
@@ -751,3 +752,24 @@ class StoreByCategoryView(APIView):
 
         serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    
+class CustomerProductReviewViewSet(viewsets.ModelViewSet):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        product = serializer.validated_data['product']
+        user = self.request.user
+
+        # Check if user already reviewed this product
+        if Review.objects.filter(product=product, user=user).exists():
+            raise ValidationError("You have already reviewed this product.")
+
+        # Check if user has purchased this product in any past order
+        if not OrderItem.objects.filter(order__user=user, product=product).exists():
+            raise ValidationError("You can only review products you have purchased.")
+
+        serializer.save(user=user)
