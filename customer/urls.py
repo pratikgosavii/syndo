@@ -15,6 +15,8 @@ router.register(r'customer-order', CustomerOrderViewSet, basename='CustomerOrder
 router.register(r'address', AddressViewSet, basename='address')
 router.register(r'cart', CartViewSet, basename='cart')
 
+router.register(r'customer-product-review', CustomerProductReviewViewSet, basename='customer_review')
+
 router.register(r'favourites', FavouriteViewSet, basename='favourites')
 router.register(r'favourites-store', FavouriteStoreViewSet, basename='favourites_store')
 

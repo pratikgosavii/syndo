@@ -339,3 +339,20 @@ class TicketMessage(models.Model):
 
 
 
+
+
+
+class Review(models.Model):
+    product = models.ForeignKey(product, on_delete=models.CASCADE, related_name='product_reviews')
+    user = models.ForeignKey("users.user", on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveSmallIntegerField()  # 1 to 5 stars
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('product', 'user')  # ensures 1 review per user per product
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} review on {self.product.name}"
