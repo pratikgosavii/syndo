@@ -77,6 +77,26 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.full_name} - {self.town_city}, {self.state}"
+    
+    @property
+    def full_address(self):
+        parts = [
+            self.flat_building,
+            self.area_street,
+            self.landmark if self.landmark else "",
+            f"{self.town_city}, {self.state} - {self.pincode}"
+        ]
+        return ", ".join([p for p in parts if p])  # removes blanks
+
+    @property
+    def full_address(self):
+        parts = [
+            self.flat_building,
+            self.area_street,
+            self.landmark if self.landmark else "",
+            f"{self.town_city}, {self.state} - {self.pincode}"
+        ]
+        return ", ".join([p for p in parts if p])  # removes blanks
 
     
 class Cart(models.Model):
@@ -218,6 +238,7 @@ class ReturnExchange(models.Model):
 
     STATUS_CHOICES = [
         ('requested', 'Requested'),
+        ('cancled_by_user', 'Cancelled by User'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
         ('completed', 'Completed'),

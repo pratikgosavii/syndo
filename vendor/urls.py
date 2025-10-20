@@ -86,6 +86,11 @@ urlpatterns = [
     path('delete-party/<party_id>', delete_party, name='delete_party'),
     path('list-party/', list_party, name='list_party'),
 
+    path('add-bannercampaign/', add_bannercampaign, name='add_bannercampaign'),
+    path('update-bannercampaign/<bannercampaign_id>', update_bannercampaign, name='update_bannercampaign'),
+    path('delete-bannercampaign/<bannercampaign_id>', delete_bannercampaign, name='delete_bannercampaign'),
+    path('list-bannercampaign/', list_bannercampaign, name='list_bannercampaign'),
+
     path('add-bank/', add_bank, name='add_bank'),
     path('update-bank/<bank_id>', update_bank, name='update_bank'),
     path('delete-bank/<bank_id>', delete_bank, name='delete_bank'),
@@ -172,8 +177,13 @@ urlpatterns = [
 
     path('order-details/<order_id>', order_details, name='order_details'),
     path('order-list/', order_list, name='order_list'),
+    path('order-exchange-list/', order_exchange_list, name='order_exchange_list'),
+    path('return-detail/<return_item_id>', return_detail, name='return_detail'),
+    path('approve_return/<return_item_id>', approve_return, name='approve_return'),
+    path('reject-return/<return_item_id>', reject_return, name='reject_return'),
+    path('completed-return/<return_item_id>', completed_return, name='completed_return'),
+    
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
-    # path('order-list/', pos, name='create-sale'),
     
     path('accept-order/<order_id>', accept_order, name='accept_order'),
     path('assign-delivery-boy/<order_id>', assign_delivery_boy, name='assign_delivery_boy'),

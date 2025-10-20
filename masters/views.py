@@ -897,6 +897,29 @@ def list_home_banner(request):
     return render(request, 'list_home_banner.html', {'data' : data})
 
 
+
+@login_required(login_url='login_admin')
+def vendor_list_bannercampaign(request):
+
+    data = BannerCampaign.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'vendor_list_bannercampaign.html', context)
+
+
+@login_required(login_url='login_admin')
+def approve_bannercampaign(request, banner_id):
+
+    data = BannerCampaign.objects.get(id = banner_id)
+    data.is_approved = True
+    data.save()
+    
+    return redirect('vendor_list_bannercampaign')
+
+
+
+
 def delete_home_banner(request, home_banner_id):
 
     data = home_banner.objects.get(id = home_banner_id).delete()

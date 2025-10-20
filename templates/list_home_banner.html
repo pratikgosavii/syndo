@@ -90,7 +90,7 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 class="mb-sm-0 font-size-18">List Amenity</h4>
+                            <h4 class="mb-sm-0 font-size-18">List Home Banner</h4>
                         </div>
                     </div>
                 </div>
@@ -108,6 +108,7 @@
                                             <tr>
                                                 <th>#</th>
                                                 <th>Title</th>
+                                                <th>Image</th>
                                                 <th>Description</th>
                                                 <th>Action</th>
                                             </tr>
@@ -117,7 +118,14 @@
                                             {% for i in data %}
                                                 <tr>
                                                     <td>{{ forloop.counter }}</td>
-                                                    <td>{{ i.name }}</td>
+                                                    <td>{{ i.title }}</td>
+                                                    <td>
+        {% if i.image %}
+            <img src="{{ i.image.url }}" alt="Banner" style="height:60px; width:auto; border-radius:5px;">
+        {% else %}
+            No Image
+        {% endif %}
+    </td>
                                                     <td>{{ i.description }}</td>
                                                   
                                                     <td>

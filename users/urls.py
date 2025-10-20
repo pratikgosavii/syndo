@@ -25,6 +25,7 @@ urlpatterns = [
     path('login/', LoginAPIView.as_view(), name='login'),
     path('register-device-token/', RegisterDeviceTokenAPIView.as_view(), name='RegisterDeviceTokenAPIView'),
     path('login-admin/', login_admin, name='login_admin'),
+    path('login-vendor/', login_vendor, name='login_vendor'),
     path('update-user/', UserUpdateView.as_view(), name='UserUpdateView'),
     path('get-user/', UsergetView.as_view(), name='UsergetView'),
     path('delete-user/', DeleteUserAPIView.as_view(), name='DeleteUserAPIView'),

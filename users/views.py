@@ -294,6 +294,31 @@ def  login_admin(request):
     return render(request, 'adminLogin.html', context)
 
 
+def  login_vendor(request):
+
+    forms = LoginForm()
+    if request.method == 'POST':
+        forms = LoginForm(request.POST)
+        if forms.is_valid():
+            mobile = forms.cleaned_data['mobile']
+            password = forms.cleaned_data['password']
+            print(mobile)
+            print(password)
+            user = authenticate(mobile=mobile, password=password)
+            if user:
+                login(request, user)
+
+                if user.is_vendor:
+                    print('---------------------------------')
+                    print('---------------------------------')
+                    print('---------------------------------')
+                return redirect('dashboard')
+            else:
+                messages.error(request, 'wrong username password')
+    context = {'form': forms}
+    return render(request, 'vendorLogin.html', context)
+
+
 # def resgister_page(request):
 
 #     forms = registerForm()
