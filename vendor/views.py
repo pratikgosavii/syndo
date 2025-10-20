@@ -224,7 +224,7 @@ def delete_coupon(request, coupon_id):
 @login_required(login_url='login_admin')
 def list_coupon(request):
 
-    data = coupon.objects.all()
+    data = coupon.objects.filter(user = request.user)
     context = {
         'data': data
     }
@@ -392,6 +392,83 @@ def list_party(request):
         'data': data
     }
     return render(request, 'list_party.html', context)
+
+
+@login_required(login_url='login_admin')
+def add_bannercampaign(request):
+
+    if request.method == 'POST':
+
+        forms = BannerCampaignForm(request.POST, request.FILES)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_bannercampaign')
+        else:
+            print(forms.errors)
+            context = {
+                'form': forms
+            }
+            return render(request, 'add_bannercampaign.html', context)
+    
+    else:
+
+        forms = BannerCampaignForm()
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_bannercampaign.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def update_bannercampaign(request, party_id):
+
+    if request.method == 'POST':
+
+        instance = BannerCampaign.objects.get(id=party_id)
+
+        forms = BannerCampaignForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms.save()
+            return redirect('list_bannercampaign')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = BannerCampaign.objects.get(id=party_id)
+        forms = BannerCampaignForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_bannercampaign.html', context)
+
+        
+
+@login_required(login_url='login_admin')
+def delete_bannercampaign(request, bannercampaign_id):
+
+    BannerCampaign.objects.get(id=bannercampaign_id).delete()
+
+    return HttpResponseRedirect(reverse('list_bannercampaign'))
+
+
+@login_required(login_url='login_admin')
+def list_bannercampaign(request):
+
+    data = BannerCampaign.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_bannercampaign.html', context)
+
+
 
 
 @login_required(login_url='login_admin')
@@ -631,14 +708,8 @@ def delete_customer(request, vendor_id):
 @login_required(login_url='login_admin')
 def list_customer(request):
     
-    if request.user.is_superuser:
-
-        data = vendor_customers.objects.all()
-
-
-    else:
-
-        data = vendor_customers.objects.filter(user = request.user)
+   
+    data = vendor_customers.objects.filter(user = request.user)
 
 
     context = {
@@ -1064,110 +1135,182 @@ from reportlab.lib.units import mm
 from reportlab.lib import colors
 from .models import product, CompanyProfile
 
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Table, TableStyle,
+    Spacer, KeepInFrame, PageBreak
+)
 
-@login_required(login_url='login_admin')
+
+from io import BytesIO
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import mm
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+from reportlab.lib import colors
+from reportlab.graphics.barcode import code128
+from reportlab.lib.utils import ImageReader
+from num2words import num2words
+from datetime import datetime
+
+
 def generate_barcode(request):
+    # Example product details (replace these with DB data)
+
     if request.method == "POST":
+
         ids = request.POST.getlist("selected_products")
         products = product.objects.filter(id__in=ids)
 
-        # Sticker size = 100mm (height) × 200mm (width)
-        PAGE_WIDTH = 200 * mm
-        PAGE_HEIGHT = 100 * mm
+        if not products.exists(): 
+            return HttpResponse("No products selected", status=400) 
+        try: 
+            user_settings = BarcodeSettings.objects.get(user=request.user) 
+        except BarcodeSettings.DoesNotExist: user_settings = None
+
+        try: 
+            company = CompanyProfile.objects.get(user=request.user) 
+            company_name = company.company_name or "COMPANY NAME" 
+        except CompanyProfile.DoesNotExist: 
+            company_name = "COMPANY NAME"
+        
+       
+
+
+        # Dynamically set layout size
+        # if user_settings and user_settings.barcode_size == "50x100":
+        #     PAGE_WIDTH = 100 * mm
+        #     PAGE_HEIGHT = 50 * mm
+        #     barcode_height = 18 * mm
+        #     font_title = 10
+        #     font_text = 8
+        #     font_price = 9
+        # else:
+        #     PAGE_WIDTH = 50 * mm
+        #     PAGE_HEIGHT = 25 * mm
+        #     barcode_height = 10 * mm
+        #     font_title = 7
+        #     font_text = 5
+        #     font_price = 6
+
+        PAGE_WIDTH = 100 * mm
+        PAGE_HEIGHT = 50 * mm
+        barcode_height = 18 * mm
+        font_title = 10
+        font_text = 9
+        font_price = 9
+
+        # Create PDF
+
         buffer = BytesIO()
-
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=(PAGE_WIDTH, PAGE_HEIGHT),
-            leftMargin=5 * mm,
-            rightMargin=5 * mm,
-            topMargin=5 * mm,
-            bottomMargin=5 * mm,
-        )
-
-        elements = []
-        styles = getSampleStyleSheet()
-
-        # Custom styles
-        title_style = ParagraphStyle('title_style', parent=styles['Heading1'], alignment=1, fontSize=16, spaceAfter=6)
-        bold_style = ParagraphStyle('bold_style', parent=styles['Normal'], fontSize=11, leading=13, spaceAfter=3)
-        normal_style = ParagraphStyle('normal_style', parent=styles['Normal'], fontSize=10, leading=12, spaceAfter=2)
-        price_style = ParagraphStyle('price_style', parent=styles['Heading1'], alignment=1, fontSize=16, textColor=colors.black)
-
-        default_company = CompanyProfile.objects.get(user=request.user)
+        p = canvas.Canvas(buffer, pagesize=(PAGE_WIDTH, PAGE_HEIGHT))
 
         for i in products:
-            # ✅ Barcode as Drawing (safe for Platypus)
-            barcode = createBarcodeDrawing(
-                'Code128',
-                value=str(i.id),
-                barHeight=25 * mm,
-                barWidth=0.6,
-                humanReadable=True
-            )
+            item_name = i.name
+            mrp = i.mrp
+            discount = i.wholesale_price
+            sale_price = i.sales_price
+            package_date = datetime.now().strftime("%d/%m/%Y")
+            note = "The small note here"
+            barcode_value = i.id
 
-            # --- Layout ---
-            # Top row: Company Name (centered full width)
-            top_row = [Paragraph(f"<b>{default_company.company_name}</b>", title_style)]
+          
+            # Margin padding
+            x_margin = 2 * mm
+            y_margin = 2 * mm
 
-            # Middle row: Left side product info, right side barcode + package date
-            info_left = [
-                Paragraph(f"<b>Item:</b> {i.name}", bold_style),
-                Paragraph(f"<b>MRP :</b> {i.mrp}", bold_style),
-                Paragraph(f"<b>Discount :</b> 0", bold_style),
-                Paragraph(f"<b>Note :</b> ----", normal_style),
-            ]
-            info_right = [
-                Paragraph("Package Date - DD/MM/YYYY", normal_style),
-                Spacer(1, 6),
-                barcode
-            ]
+            # Draw rounded border
+            p.setStrokeColor(colors.black)
+            p.roundRect(x_margin, y_margin, PAGE_WIDTH - 2 * x_margin, PAGE_HEIGHT - 2 * y_margin, 3 * mm, stroke=1, fill=0)
 
-            middle_row = [info_left, info_right]
+            # Starting coordinates
+            x_left = x_margin + 5
+            y_top = PAGE_HEIGHT - y_margin - 8
 
-            # Bottom rows: Sale Price + text
-            bottom_row = [Paragraph(f"<b>Sale Price : {i.sales_price}</b>", price_style)]
-            bottom_text = [Paragraph("price in text here", normal_style)]
+           # === Company Name (Top Center) ===
+            p.setFont("Helvetica-Bold", font_title + 2)
+            p.drawCentredString(PAGE_WIDTH / 2, y_top - 4, company_name)
 
-            # ✅ Build full table layout
-            table = Table(
-                [
-                    top_row,
-                    middle_row,
-                    bottom_row,
-                    bottom_text
-                ],
-                colWidths=[(PAGE_WIDTH - 20 * mm) / 2, (PAGE_WIDTH - 20 * mm) / 2],
-            )
+            # Add extra vertical gap below company name
+            company_name_gap = 10  # ⬅️ increase this for more distance
+            content_start_y = y_top - 4 - company_name_gap
 
-            table.setStyle(TableStyle([
-                ('SPAN', (0, 0), (-1, 0)),  # Company name full width
-                ('SPAN', (0, 2), (-1, 2)),  # Sale price full width
-                ('SPAN', (0, 3), (-1, 3)),  # price text full width
-                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),  # company
-                ('ALIGN', (0, 1), (0, 1), 'LEFT'),     # product info
-                ('ALIGN', (1, 1), (1, 1), 'CENTER'),   # barcode
-                ('ALIGN', (0, 2), (-1, 2), 'CENTER'),  # sale price
-                ('ALIGN', (0, 3), (-1, 3), 'CENTER'),  # price text
-                ('VALIGN', (0, 1), (0, 1), 'TOP'),
-                ('VALIGN', (1, 1), (1, 1), 'TOP'),
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
-            ]))
+            # === Left Side (Item / MRP / Discount) ===
+            p.setFont("Helvetica-Bold", font_text)
+            line_gap = 12  # spacing between each text line
+            start_y = content_start_y - 10  # ⬅️ start content a bit below the heading
 
-            elements.append(table)
+            # Item
+            p.drawString(x_left, start_y, "Item:")
+            p.setFont("Helvetica", font_text)
+            p.drawString(x_left + 28, start_y, str(item_name))
 
-        # Build PDF
-        doc.build(elements)
+            # MRP
+            p.setFont("Helvetica-Bold", font_text)
+            p.drawString(x_left, start_y - line_gap, "MRP:")
+            p.setFont("Helvetica", font_text)
+            p.drawString(x_left + 28, start_y - line_gap, f"{mrp:.2f}")
 
-        pdf = buffer.getvalue()
-        buffer.close()
+            # Discount
+            p.setFont("Helvetica-Bold", font_text)
+            p.drawString(x_left, start_y - 2 * line_gap, "Discount:")
+            p.setFont("Helvetica", font_text)
+            p.drawString(x_left + 45, start_y - 2 * line_gap, str(discount if discount else "None"))
 
-        response = HttpResponse(content_type="application/pdf")
-        response["Content-Disposition"] = "inline; filename=barcode_sticker.pdf"
-        response.write(pdf)
-        return response
+            # === NOTE BOX (Anchored near bottom left) ===
+            note_box_height = 12 * mm
+            note_box_y = y_margin + 8 * mm  # padding from bottom
+            p.setFont("Helvetica-Bold", font_text)
+            p.drawString(x_left, note_box_y + 14 * mm, "Note:")  # was 12 * mm
+            p.rect(x_left, note_box_y-2, 45 * mm, 12 * mm)
+            p.setFont("Helvetica", font_text - 1)
+            p.drawString(x_left + 5, note_box_y + note_box_height / 2 - 3, note)
 
+            # === RIGHT SIDE (Package Date / Barcode / Sale Price / In Word) ===
+            right_start_x = PAGE_WIDTH - (x_margin + 45 * mm)
+
+            # Add this vertical offset to push everything down
+            right_section_offset = 25  # ⬅️ increase this for more gap from the top
+            right_top_y = y_top - right_section_offset
+
+            # Package Date
+            p.setFont("Helvetica", font_text)
+            p.drawString(right_start_x, right_top_y, f"Package Date - {package_date}")
+
+            # Barcode (centered nicely below package date)
+            barcode_top_gap = 5 * mm  # vertical gap between date and barcode
+            barcode = code128.Code128(barcode_value, barHeight=barcode_height, barWidth=0.6)
+
+            barcode_x = PAGE_WIDTH - x_margin - 40 * mm
+            barcode_y = right_top_y - barcode_top_gap - barcode_height
+            barcode.drawOn(p, barcode_x, barcode_y)
+
+            # Sale Price (pushed below barcode)
+            price_gap = 10  # distance between barcode and Sale Price
+            p.setFont("Helvetica-Bold", font_price)
+            p.drawString(right_start_x, barcode_y - price_gap, f"Sale Price: {sale_price:.2f}")
+
+            # In Word — right-aligned with the note box bottom
+            p.setFont("Helvetica", font_text - 1)
+            inword_text = f"In Word: {num2words(sale_price)}"
+            text_width = p.stringWidth(inword_text, "Helvetica", font_text - 1)
+            p.drawString(PAGE_WIDTH - x_margin - text_width - 5, note_box_y - 12, inword_text)
+            # Finish up
+            p.showPage()
+        p.save()
+
+        buffer.seek(0)
+        return HttpResponse(buffer, content_type='application/pdf')
+
+
+    else:
+
+        data = product.objects.filter(user = request.user)
+        context = {
+            'data': data
+        }
+        return render(request, 'list_product_barcode.html', context)
+
+        
 
 
 
@@ -2537,7 +2680,7 @@ def pos_wholesaless(request, sale_id):
 
 def order_details(request, order_id):
 
-    order = Order.objects.prefetch_related('items__product').get(id=order_id)
+    order = Order.objects.get(id=order_id)
     delivery_boy_data = DeliveryBoy.objects.filter(user = request.user)
 
     context = {
@@ -2553,12 +2696,83 @@ from customer.models import *
 
 def order_list(request):
 
-    data = Order.objects.prefetch_related('items__product').all().order_by('-id')
+    data = Order.objects.filter(
+        items__product__user=request.user
+    ).distinct().order_by('-created_at')
 
     context = {
         "data" : data
     }
     return render(request, 'list_order.html', context)
+
+def order_exchange_list(request):
+
+    data = ReturnExchange.objects.filter(
+        order_item__product__user=request.user
+    ).distinct().order_by('-created_at')
+
+    print(data)
+    context = {
+        "data" : data
+    }
+    return render(request, 'list_exchange.html', context)
+
+def return_detail(request, return_item_id):
+    data = get_object_or_404(ReturnExchange, id=return_item_id)
+    context = {"data": data}
+    return render(request, 'return_exchange_detail.html', context)
+
+
+def approve_return(request, return_item_id):
+    data = get_object_or_404(ReturnExchange, id=return_item_id)
+
+    if data.status != 'requested':
+        messages.error(request, "Only requested items can be approved.")
+    else:
+        data.status = 'approved'
+        data.save()
+        # Update OrderItem status
+        if data.type == 'return':
+            data.order_item.status = 'returned'
+        elif data.type == 'exchange':
+            data.order_item.status = 'pending'  # waiting for exchange
+        data.order_item.save()
+        messages.success(request, f"{data.get_type_display()} request approved successfully.")
+
+    return redirect('return_detail', return_item_id=return_item_id)
+
+
+def reject_return(request, return_item_id):
+    data = get_object_or_404(ReturnExchange, id=return_item_id)
+
+    if data.status != 'requested':
+        messages.error(request, "Only requested items can be rejected.")
+    else:
+        data.status = 'rejected'
+        data.save()
+        messages.success(request, f"{data.get_type_display()} request rejected.")
+
+    return redirect('return_detail', return_item_id=return_item_id)
+
+
+def completed_return(request, return_item_id):
+    data = get_object_or_404(ReturnExchange, id=return_item_id)
+
+    if data.status != 'approved':
+        messages.error(request, "Only approved requests can be marked as completed.")
+    else:
+        data.status = 'completed'
+        data.save()
+        # Update OrderItem status as delivered
+        data.order_item.status = 'delivered'
+        data.order_item.save()
+        messages.success(request, f"{data.get_type_display()} request marked as completed.")
+
+    return redirect('return_detail', return_item_id=return_item_id)
+
+
+
+
 
 
 def privacy_policy(request):

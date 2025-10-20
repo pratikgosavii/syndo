@@ -97,19 +97,24 @@ from rest_framework import filters
 from rest_framework import generics, mixins, filters
 
 
+from .serializers import VendorStoreLiteSerializer
+
 class VendorStoreListAPIView(mixins.ListModelMixin,
                              mixins.RetrieveModelMixin,
                              generics.GenericAPIView):
     queryset = vendor_store.objects.all()
-    serializer_class = VendorStoreSerializer
+    serializer_class = VendorStoreLiteSerializer  # ✅ USE NEW ONE HERE
     filter_backends = [filters.SearchFilter]
-    search_fields = ['user__first_name', 'user__last_name', 'user__username']  # search by user fields
-    lookup_field = "id"   # so /stores/<id>/ works
+    search_fields = ["user__first_name", "user__last_name", "user__username"]
+    lookup_field = "id"
+
+    def get_serializer_context(self):
+        return {"request": self.request}  # ✅ needed for following field
 
     def get(self, request, *args, **kwargs):
         if "id" in kwargs:
-            return self.retrieve(request, *args, **kwargs)  # GET /stores/<id>/
-        return self.list(request, *args, **kwargs)          # GET /stores/
+            return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)    # GET /stores/
  
 
 
@@ -428,7 +433,7 @@ class RandomBannerAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = BannerCampaign.objects.all()
+        qs = BannerCampaign.objects.filter(is_approved = True)
         count = qs.count()
 
         if count == 0:

@@ -759,3 +759,15 @@ class InvoiceSettingsForm(forms.ModelForm):
         model = InvoiceSettings
         exclude = ['user']
         widgets = {field: forms.CheckboxInput(attrs={'class': 'form-check-input'}) for field in model._meta.get_fields() if field.name != 'user'}
+
+
+        
+class BannerCampaignForm(forms.ModelForm):
+    class Meta:
+        model = BannerCampaign
+        fields = ['banner_image', 'campaign_name']
+        widgets = {
+            'campaign_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Campaign Name'}),
+            'banner_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+
+        }

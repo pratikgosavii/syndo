@@ -129,20 +129,12 @@ class ReelSerializer(serializers.ModelSerializer):
         return False
     
 
+
 class BannerCampaignSerializer(serializers.ModelSerializer):
     class Meta:
         model = BannerCampaign
         fields = '__all__'
         read_only_fields = ['user', 'is_approved', 'created_at']
-
-    def validate(self, data):
-        if data.get('boost_post') and not data.get('budget'):
-            raise serializers.ValidationError({"budget": "Budget is required when boost post is enabled."})
-        if data.get('budget') and data.get('budget') < 10:
-            raise serializers.ValidationError({"budget": "Minimum budget is 10 Rupees."})
-        return data
-
-
   
 
         

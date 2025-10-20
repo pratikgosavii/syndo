@@ -146,7 +146,12 @@
 
                         {% for item in data.items.all %}
                             <div class="d-flex mb-3">
-                                <img src="{{ item.product.image.url }}" alt="Product" class="product-img me-3">
+                                {% if item.product.image %}
+    <img src="{{ item.product.image.url }}" alt="Product" class="product-img me-3">
+{% else %}
+    <img src="{% static 'images/default-product.png' %}" alt="No Image" class="product-img me-3">
+{% endif %}
+
                                 <div>
                                     <p class="mb-0">{{ item.product.name }}</p>
                                     <small>{{ item.product.description|default:"No description" }}<br>click on product icon for further details</small>
@@ -175,9 +180,9 @@
 
                     <div class="mb-3">
                         <div class="section-title">Delivery Details</div>
-                        <p class="mb-0">Address: <strong>{{ data.customer_address }}</strong></p>
-<p class="mb-0">Mobile: <strong>{{ data.customer_mobile }}</strong></p>
-                            <button class="btn btn-sm btn-call ms-2">Call</button>
+                        <p class="mb-0">Address: <strong>{{ data.address.full_address }}</strong></p>
+<p class="mb-0">Mobile: <strong>{{ data.address.mobile_number }}</strong></p>
+                            {% comment %} <button class="btn btn-sm btn-call ms-2">Call</button> {% endcomment %}
                         </p>
                         <p class="mb-0">Payment Mode: <strong>{{ data.payment_mode }}</strong></p>
                     </div>

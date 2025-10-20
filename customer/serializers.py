@@ -277,3 +277,21 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['id', 'product', 'user', 'rating', 'comment', 'created_at', 'updated_at']
+
+
+from vendor.models import vendor_store
+
+class VendorStoreLiteSerializer(serializers.ModelSerializer):
+    following = serializers.SerializerMethodField()
+
+    class Meta:
+        model = vendor_store
+        fields = [
+            "id", "name", "banner_image", "profile_image", "about",
+            "is_active", "is_online", "following"
+        ]
+
+    def get_following(self, obj):
+        user = self.context["request"].user
+        # ✅ just check if this vendor has this user as follower
+        return Follower.objects.filter(user=obj.user, follower=user).exists()

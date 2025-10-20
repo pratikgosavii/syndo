@@ -175,7 +175,7 @@
                             </ul>
                         </li>
 
-                         <li>
+                         {% comment %} <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
                                 <span data-key="t-authentication">User Management (next phase) </span>
@@ -205,7 +205,7 @@
                                 </li>
 
                             </ul>
-                        </li>
+                        </li> {% endcomment %}
 
                         
                         <li>
@@ -247,23 +247,11 @@
                         <li>
                    
 
-                        <li>
-                            <li>
-                                <a href="javascript: void(0);" class="has-arrow">
-                                    <i data-feather="layers"></i>
-                                    <span data-key="t-authentication">Store Setting</span>
-                                </a>
-                                <ul class="sub-menu" aria-expanded="false">
-                                    <li><a href="{% url 'online_store_setting' %}">Online Store Setting</a></li>
-                                    <li><a href="{% url 'store_hours' %}">Store Hours</a></li>
-
-                                    {% comment %} <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li> {% endcomment %}
-                                </ul>
-                            </li>
-                        <li>
-
-                        <li>
                        
+
+                        
+                        
+
                       
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
@@ -396,48 +384,9 @@
 
 
 
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Bank Account</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_bank' %}">Add Bank</a></li>
-                                <li><a href="{% url 'list_bank' %}">Bank List</a></li>
-                            </ul>
-                        </li> 
+                      
 
-
-                          <li>
-                            <a href="{% url 'cash_in_hand' %}">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Cash In Hand</span>
-                            </a>
-                        </li>
-
-
-                          <li>
-                            <a href="{% url 'invoice_setting' %}">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Invoice Settings</span>
-                            </a>
-                        </li>
-
-                          <li>
-                            <a href="{% url 'tax_setting' %}">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Tax Settings</span>
-                            </a>
-                        </li>
-
-
-                        <li>
-                            <a href="{% url 'delivery_management' %}">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Delivery Management</span>
-                            </a>
-                        </li>
-
+                      
 
                                 
                         <li>
@@ -479,70 +428,133 @@
                         
                        
                        
-
-
-                      
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
                                 <span data-key="t-authentication">Payments</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_payment' %}">Add Payment</a></li>
-                                <li><a href="{% url 'list_payment' %}">Payment List</a></li>
-                            </ul>
-                        </li> 
-                      
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Manage Vendor</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_vendor' %}">Add Vendor</a></li>
-                                <li><a href="{% url 'list_vendor' %}">Vendor List</a></li>
-                            </ul>
+
+                                <!-- Product Category -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Manage Customer</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_customer' %}">Add Vendor</a></li>
+                                        <li><a href="{% url 'add_customer' %}">Vendor List</a></li>
+                                    </ul>
+                                </li> 
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Payments</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_payment' %}">Add Payments</a></li>
+                                        <li><a href="{% url 'list_payment' %}">Payments List</a></li>
+                                    </ul>
+                                </li> 
+                            </ul> 
                         </li> 
 
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Manage Customer</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_customer' %}">Add Customer</a></li>
-                                <li><a href="{% url 'list_customer' %}">Customer List</a></li>
-                            </ul>
-                        </li> 
+                         
 
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
+                        <li class="menu-item-has-children">
+                            <a href="javascript:void(0);"  class="has-arrow">
                                 <i data-feather="layers"></i>
                                 <span data-key="t-authentication">Order Management</span>
                             </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'order_list' %}">Order List</a></li>
-                            </ul>
-                        </li> 
-
-
-                       
-                        
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Orders Management</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'order_list' %}">Order Add</a></li>
-                                <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
-
+                            <ul class="sub-menu">
+                                <li>
+                                    <a href="{% url 'order_list' %}">
+                                        <span>Orders List</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'order_exchange_list' %}">
+                                        <span>Return / Exchange Requests</span>
+                                    </a>
+                                </li>
                             </ul>
                         </li>
 
+
+                        <li>
+                            <a href="{% url 'delivery_management' %}">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Delivery Management</span>
+                            </a>
+                        </li>
+
+
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Bank Account</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_bank' %}">Add Bank</a></li>
+                                <li><a href="{% url 'list_bank' %}">Bank List</a></li>
+                            </ul>
+                        </li> 
+
+                          <li>
+                            <a href="{% url 'cash_in_hand' %}">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Cash In Hand</span>
+                            </a>
+                        </li>
+
+
                        
 
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Banner</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_home_banner' %}">Banner Add</a></li>
+                                <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
+                                <li><a href="{% url 'vendor_list_bannercampaign' %}">Vendor Banner List</a></li>
+
+                            </ul>
+                            
+                        </li>
+
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Store Setting</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'online_store_setting' %}">Online Store Setting</a></li>
+                                <li><a href="{% url 'store_hours' %}">Store Hours</a></li>
+
+                                {% comment %} <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li> {% endcomment %}
+                            </ul>
+                        </li>
                     
+
+                          <li>
+                            <a href="{% url 'invoice_setting' %}">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Invoice Settings</span>
+                            </a>
+                        </li>
+
+                          <li>
+                            <a href="{% url 'tax_setting' %}">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Tax Settings</span>
+                            </a>
+                        </li>
+
                        
                        
                         <div style="margin: 100% 0 0 35%; align-content: center">
