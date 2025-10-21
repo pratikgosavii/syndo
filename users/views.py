@@ -302,6 +302,7 @@ def  login_vendor(request):
         if forms.is_valid():
             mobile = forms.cleaned_data['mobile']
             password = forms.cleaned_data['password']
+            mobile = '+91' + mobile 
             print(mobile)
             print(password)
             user = authenticate(mobile=mobile, password=password)
