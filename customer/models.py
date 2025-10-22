@@ -213,6 +213,9 @@ class OrderItem(models.Model):
         ('delivered', 'Delivered'),
         ('returned', 'Returned'),
         ('returned requested', 'Returned Requested'),
+        ('replacement requested', 'Replacement Requested'),
+        ('returned completed', 'returned Completed'),
+        ('replacement completed', 'replacement Completed'),
         ('cancelled', 'Cancelled'),
     ]
 
@@ -220,7 +223,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="items")
     quantity = models.IntegerField(default=1)
     price = models.IntegerField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=28, choices=STATUS_CHOICES, default='pending')
 
     def total_price(self):
         return self.quantity * self.price
