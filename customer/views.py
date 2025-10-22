@@ -7,8 +7,8 @@ from django.shortcuts import render
 from users.models import *
 
 from rest_framework import viewsets, permissions
-from vendor.models import BannerCampaign, Reel, SpotlightProduct, coupon, vendor_store
-from vendor.serializers import BannerCampaignSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer
+from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store
+from vendor.serializers import BannerCampaignSerializer, PostSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer
 from .models import *
 from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 
@@ -156,6 +156,15 @@ class ListProducts(ListAPIView):
         return qs.distinct()
     
 
+
+class ListPosts(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PostSerializer
+
+    def get_queryset(self):
+        # Only return posts belonging to the logged-in user
+        return Post.objects.filter(user=self.request.user)
+    
 
 # class products_details(APIView):
 #     """

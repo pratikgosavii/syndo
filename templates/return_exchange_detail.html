@@ -24,18 +24,18 @@
             <p><strong>Type:</strong> {{ data.get_type_display }}</p>
             <p><strong>Reason:</strong> {{ data.reason }}</p>
             <p><strong>Current Status:</strong> 
-    {% if data.status == 'requested' %}
-        <span class="badge bg-warning">{{ data.status|capfirst }}</span>
-    {% elif data.status == 'approved' %}
-        <span class="badge bg-success">{{ data.status|capfirst }}</span>
-    {% elif data.status == 'rejected' %}
-        <span class="badge bg-danger">{{ data.status|capfirst }}</span>
-    {% elif data.status == 'completed' %}
+    {% if data.order_item.status == 'returned/replaced_requested' %}
+        <span class="badge bg-warning">{{ data.order_item.status|capfirst }}</span>
+    {% elif data.order_item.status == 'returned/replaced_approved' %}
+        <span class="badge bg-success">{{ data.order_item.status|capfirst }}</span>
+    {% elif data.order_item.status == 'returned/replaced_rejected' %}
+        <span class="badge bg-danger">{{ data.order_item.status|capfirst }}</span>
+    {% elif data.order_item.status == 'returned/replaced_completed' %}
         <span class="badge bg-primary">{{ data.status|capfirst }}</span>
-    {% elif data.status == 'cancled_by_user' %}
-        <span class="badge bg-secondary">{{ data.status|capfirst }}</span>
+    {% elif data.order_item.status == 'returned/replaced_cancelled' %}
+        <span class="badge bg-secondary">{{ data.order_item.status|capfirst }}</span>
     {% else %}
-        <span class="badge bg-light text-dark">{{ data.status|capfirst }}</span>
+        <span class="badge bg-light text-dark">{{ data.order_item.status|capfirst }}</span>
     {% endif %}
 </p>
 
