@@ -136,6 +136,10 @@ class OrderSerializer(serializers.ModelSerializer):
             oi.order = order
         OrderItem.objects.bulk_create(order_items)
 
+                # ✅ CLEAR CART AFTER SUCCESSFUL ORDER CREATION
+        Cart.objects.filter(user=request.user).delete()
+
+
         return order
 
     def update(self, instance, validated_data):
@@ -146,7 +150,7 @@ class OrderSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-    def get_store_details(self):
+    def get_store_details(self, obj):
 
         first_item = self.instance.items.first()  # safely get first order item
         if first_item:
