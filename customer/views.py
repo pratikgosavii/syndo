@@ -140,8 +140,11 @@ class ListProducts(ListAPIView):
         qs = product.objects.filter(is_active=True)
 
         # Filter by customer pincode
-        if user.pincode:
-            qs = qs.filter(vendor__coverages__pincode=user.pincode)
+          # Get pincode from ?pincode=XXXX in URL
+        pincode = self.request.GET.get("pincode")
+
+        if pincode:
+            qs = qs.filter(vendor__coverages__pincode=pincode)
 
         # Annotate favourites
         if user.is_authenticated:
