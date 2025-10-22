@@ -53,9 +53,14 @@ class OrderItemSerializer(serializers.ModelSerializer):
             return False
 
         # Check if a pending/approved ReturnExchange exists
-        existing = obj.status.exclude(status__in=['returned/replaced_rejected', 'returned/replaced_completed', 'returned/replaced_cancelled'])
-        if existing.exists():
-            return False
+        blocked_status = [
+            'returned/replaced_rejected', 
+            'returned/replaced_completed', 
+            'cancelled'
+        ]
+        
+        if obj.status not in blocked_status:
+            return True  # eligible
 
         return True
 
