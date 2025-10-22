@@ -2743,7 +2743,7 @@ def return_detail(request, return_item_id):
 def approve_return(request, return_item_id):
     data = get_object_or_404(ReturnExchange, id=return_item_id)
 
-    if data.status != 'returned/replaced_requested':
+    if data.order_item.status != 'returned/replaced_requested':
         messages.error(request, "Only requested items can be approved.")
     else:
        
@@ -2758,7 +2758,7 @@ def approve_return(request, return_item_id):
 def reject_return(request, return_item_id):
     data = get_object_or_404(ReturnExchange, id=return_item_id)
 
-    if data.status != 'returned/replaced_requested':
+    if data.order_item.status != 'returned/replaced_requested':
         messages.error(request, "Only requested items can be rejected.")
     else:
         data.status = 'returned/replaced_rejected'
@@ -2771,7 +2771,7 @@ def reject_return(request, return_item_id):
 def completed_return(request, return_item_id):
     data = get_object_or_404(ReturnExchange, id=return_item_id)
 
-    if data.status != 'returned/replaced_approved':
+    if data.order_item.status != 'returned/replaced_approved':
         messages.error(request, "Only approved requests can be marked as completed.")
     else:
         data.status = 'returned/replacement_completed'
