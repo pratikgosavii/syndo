@@ -210,12 +210,15 @@ class Order(models.Model):
 class OrderItem(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('intransit', 'In Transit'),
         ('delivered', 'Delivered'),
-        ('returned', 'Returned'),
-        ('returned requested', 'Returned Requested'),
-        ('replacement requested', 'Replacement Requested'),
-        ('returned completed', 'returned Completed'),
-        ('replacement completed', 'replacement Completed'),
+        
+        ('returned/replaced_requested', 'returned/replaced_requested'),
+        ('returned/replaced_approved', 'returned/replaced_approved'),
+        ('returned/replaced_rejected', 'returned/replaced_rejected'),
+        ('returned/replaced_completed', 'returned/replaced_completed'),
+        ('returned/replaced_cancelled', 'returned/replaced_cancelled'),
+        
         ('cancelled', 'Cancelled'),
     ]
 
@@ -240,20 +243,11 @@ class ReturnExchange(models.Model):
         ('exchange', 'Exchange'),
     ]
 
-    STATUS_CHOICES = [
-        ('requested', 'Requested'),
-        ('cancled_by_user', 'Cancelled by User'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('completed', 'Completed'),
-    ]
-
     order_item = models.ForeignKey("OrderItem", on_delete=models.CASCADE, related_name="return_exchanges")
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="return_exchanges")
 
     type = models.CharField(max_length=10, choices=RETURN_TYPES)
     reason = models.TextField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='requested')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

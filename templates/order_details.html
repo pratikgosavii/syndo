@@ -145,22 +145,39 @@
                        <div class="section-title">{{ data.items.all|length }} Items in this Order</div>
 
                         {% for item in data.items.all %}
-                            <div class="d-flex mb-3">
-                                {% if item.product.image %}
-    <img src="{{ item.product.image.url }}" alt="Product" class="product-img me-3">
-{% else %}
-    <img src="{% static 'images/default-product.png' %}" alt="No Image" class="product-img me-3">
-{% endif %}
+    <div class="d-flex mb-3 align-items-center">
+        {% if item.product.image %}
+            <img src="{{ item.product.image.url }}" alt="Product" class="product-img me-3">
+        {% else %}
+            <img src="{% static 'images/default-product.png' %}" alt="No Image" class="product-img me-3">
+        {% endif %}
 
-                                <div>
-                                    <p class="mb-0">{{ item.product.name }}</p>
-                                    <small>{{ item.product.description|default:"No description" }}<br>click on product icon for further details</small>
-                                    <p class="mb-0 mt-1">
-                                        <span class="price-new">Rs. {{ item.price }}</span>
-                                    </p>
-                                </div>
-                            </div>
-                        {% endfor %}
+        <div class="flex-grow-1">
+            <p class="mb-0">{{ item.product.name }}</p>
+            <small>{{ item.product.description|default:"No description" }}<br>click on product icon for further details</small>
+            <p class="mb-0 mt-1">
+                <span class="price-new">Rs. {{ item.price }}</span>
+            </p>
+
+            <!-- Status Update Form -->
+            {% if item.status == 'intransit' or item.status == 'delivered' %}
+                <form action="{% url 'update_order_item_status' item.id %}" method="post" class="mt-2 d-flex align-items-center">
+                    {% csrf_token %}
+                    <select name="status" class="form-select me-2" style="width: 150px;">
+                        <option value="intransit" {% if item.status == 'intransit' %}selected{% endif %}>In Transit</option>
+                        <option value="delivered" {% if item.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                </form>
+            {% else %}
+                <span class="badge bg-secondary">{{ item.get_status_display }}</span>
+            {% endif %}
+
+
+        </div>
+    </div>
+{% endfor %}
+
 
 
 

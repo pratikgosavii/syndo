@@ -2705,6 +2705,23 @@ def order_list(request):
     }
     return render(request, 'list_order.html', context)
 
+
+
+def update_order_item_status(request, order_item_id):
+
+    if request.method == "POST":
+        item = get_object_or_404(OrderItem, id=order_item_id)
+        status = request.POST.get("status")
+        if status in dict(OrderItem.STATUS_CHOICES):
+            item.status = status
+            item.save()
+            messages.success(request, f"Status for {item.product.name} updated to {status}.")
+        else:
+            messages.error(request, "Invalid status selected.")
+    return redirect(request.META.get("HTTP_REFERER", "/"))
+
+
+
 def order_exchange_list(request):
 
     data = ReturnExchange.objects.filter(
@@ -2726,16 +2743,12 @@ def return_detail(request, return_item_id):
 def approve_return(request, return_item_id):
     data = get_object_or_404(ReturnExchange, id=return_item_id)
 
-    if data.status != 'requested':
+    if data.status != 'returned/replaced_requested':
         messages.error(request, "Only requested items can be approved.")
     else:
-        data.status = 'approved'
-        data.save()
-        # Update OrderItem status
-        if data.type == 'return':
-            data.order_item.status = 'returned'
-        elif data.type == 'exchange':
-            data.order_item.status = 'pending'  # waiting for exchange
+       
+      
+        data.order_item.status = 'returned/replaced_approved' 
         data.order_item.save()
         messages.success(request, f"{data.get_type_display()} request approved successfully.")
 
@@ -2745,10 +2758,10 @@ def approve_return(request, return_item_id):
 def reject_return(request, return_item_id):
     data = get_object_or_404(ReturnExchange, id=return_item_id)
 
-    if data.status != 'requested':
+    if data.status != 'returned/replaced_requested':
         messages.error(request, "Only requested items can be rejected.")
     else:
-        data.status = 'rejected'
+        data.status = 'returned/replaced_rejected'
         data.save()
         messages.success(request, f"{data.get_type_display()} request rejected.")
 
@@ -2758,13 +2771,13 @@ def reject_return(request, return_item_id):
 def completed_return(request, return_item_id):
     data = get_object_or_404(ReturnExchange, id=return_item_id)
 
-    if data.status != 'approved':
+    if data.status != 'returned/replaced_approved':
         messages.error(request, "Only approved requests can be marked as completed.")
     else:
-        data.status = 'completed'
+        data.status = 'returned/replacement_completed'
         data.save()
         # Update OrderItem status as delivered
-        data.order_item.status = 'delivered'
+        data.order_item.status = 'returned/replaced_completed'
         data.order_item.save()
         messages.success(request, f"{data.get_type_display()} request marked as completed.")
 
