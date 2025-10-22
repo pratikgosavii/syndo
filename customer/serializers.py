@@ -154,8 +154,10 @@ class OrderSerializer(serializers.ModelSerializer):
         from vendor.serializers import VendorStoreSerializer
         first_item = obj.items.first()
         if first_item:
-            return VendorStoreSerializer(first_item.product.user.vendor_store).data
+            store = first_item.product.user.vendor_store.first()  # IMPORTANT FIX
+            return VendorStoreSerializer(store).data
         return None
+
 
 
 
