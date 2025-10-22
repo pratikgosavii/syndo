@@ -70,7 +70,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "total_amount", "order_id", 'user_details', 'address_details']
+        read_only_fields = ["id", "created_at", "items", "item_total", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
     
     def generate_order_id(self):
         """Generate sequential order_id like SVIND0001, SVIND0002..."""
@@ -145,6 +145,12 @@ class OrderSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+    def get_store_details(self):
+
+        first_item = self.instance.items.first()  # safely get first order item
+        if first_item:
+            return first_item.product.store  # assuming product has store FK
+        return None
 
 
 
