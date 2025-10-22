@@ -64,6 +64,7 @@ from users.serializer import UserProfileSerializer
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    store_details = serializers.SerializerMethodField()
     user_details = UserProfileSerializer(source = 'user', read_only=True)
     address_details = AddressSerializer(source="address", read_only = True)
 
