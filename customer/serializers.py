@@ -203,9 +203,17 @@ class ReturnExchangeSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
-    
+        user = self.context['request'].user
+        validated_data['user'] = user
+
+        instance = super().create(validated_data)
+
+        # ✅ Update OrderItem status to 'returned'
+        order_item = instance.order_item
+        order_item.status = 'returned requested'
+        order_item.save(update_fields=['status'])
+
+        return instance
 
 
 class FollowerSerializer(serializers.ModelSerializer):
