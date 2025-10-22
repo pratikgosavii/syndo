@@ -31,7 +31,7 @@
     {% elif data.order_item.status == 'returned/replaced_rejected' %}
         <span class="badge bg-danger">{{ data.order_item.status|capfirst }}</span>
     {% elif data.order_item.status == 'returned/replaced_completed' %}
-        <span class="badge bg-primary">{{ data.status|capfirst }}</span>
+        <span class="badge bg-primary">{{ data.order_item.status|capfirst }}</span>
     {% elif data.order_item.status == 'returned/replaced_cancelled' %}
         <span class="badge bg-secondary">{{ data.order_item.status|capfirst }}</span>
     {% else %}
@@ -41,10 +41,10 @@
 
             <p><strong>Requested On:</strong> {{ data.created_at|date:"d M Y, h:i A" }}</p>
             <div class="mt-3">
-              {% if data.status == 'requested' %}
+              {% if data.order_item.status == 'returned/replaced_requested' %}
     <a href="{% url 'approve_return' data.id %}" class="btn btn-success btn-sm">Mark as Approve</a>
     <a href="{% url 'reject_return' data.id %}" class="btn btn-danger btn-sm">Mark as Reject</a>
-{% elif data.status == 'approved' %}
+{% elif data.order_item.status == 'returned/replaced_approved' %}
     <a href="{% url 'completed_return' data.id %}" class="btn btn-success btn-sm">Mark as Completed</a>
 {% endif %}
             </div>
