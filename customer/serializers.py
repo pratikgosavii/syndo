@@ -5,6 +5,10 @@ from .models import *
 
 from vendor.serializers import product_serializer
 
+from django.utils import timezone
+import datetime
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
     product_details = product_serializer(source="product", read_only=True)
     is_return_eligible = serializers.SerializerMethodField()
@@ -21,29 +25,33 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'is_exchange_eligible'
         ]
 
+        
     def get_is_return_eligible(self, obj):
-        """Check if the product is returnable within 7 days"""
         if obj.status != 'delivered':
             return False
         if not getattr(obj.product, 'return_policy', False):
             return False
 
         order_date = obj.order.created_at
+        if isinstance(order_date, datetime.date) and not isinstance(order_date, datetime.datetime):
+            # Convert date to datetime at midnight
+            order_date = datetime.datetime.combine(order_date, datetime.time.min, tzinfo=timezone.get_current_timezone())
+
         within_7_days = (timezone.now() - order_date).days <= 7
         return within_7_days
 
     def get_is_exchange_eligible(self, obj):
-        """Check if the product is exchangeable within 7 days"""
         if obj.status != 'delivered':
             return False
         if not getattr(obj.product, 'replacement', False):
             return False
 
         order_date = obj.order.created_at
+        if isinstance(order_date, datetime.date) and not isinstance(order_date, datetime.datetime):
+            order_date = datetime.datetime.combine(order_date, datetime.time.min, tzinfo=timezone.get_current_timezone())
+
         within_7_days = (timezone.now() - order_date).days <= 7
         return within_7_days
-    
-    
 
     
 class AddressSerializer(serializers.ModelSerializer):
