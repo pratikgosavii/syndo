@@ -152,10 +152,12 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def get_store_details(self, obj):
         from vendor.serializers import VendorStoreSerializer
-        first_item = obj.items.first()
+        first_item = obj.items.first()  # ✅ correct — use obj, never self.instance
+
         if first_item:
-            store = first_item.product.user.vendor_store.first()  # IMPORTANT FIX
+            store = first_item.product.user.vendor_store.first()  # reverse FK returns queryset → use first()
             return VendorStoreSerializer(store).data
+
         return None
 
 
