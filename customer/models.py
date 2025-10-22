@@ -261,7 +261,8 @@ class ReturnExchange(models.Model):
         product = self.order_item.product
         order_date = self.order_item.order.created_at
 
-        within_7_days = (timezone.now().date() - order_date).days <= 7
+        within_7_days = (timezone.now().date() - order_date.date()).days <= 7
+
         if not within_7_days:
             return False
 
