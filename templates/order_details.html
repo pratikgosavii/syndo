@@ -160,7 +160,7 @@
             </p>
 
             <!-- Status Update Form -->
-            {% if item.status == 'intransit' or item.status == 'delivered' %}
+            {% if item.status == 'intransit' or item.status == 'delivered' or item.status == 'pending' %}
                 <form action="{% url 'update_order_item_status' item.id %}" method="post" class="mt-2 d-flex align-items-center">
                     {% csrf_token %}
                     <select name="status" class="form-select me-2" style="width: 150px;">
