@@ -74,10 +74,10 @@ class ReturnExchangeAPIView(APIView):
         except ReturnExchange.DoesNotExist:
             return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if instance.status not in ['requested', 'approved']:
+        if instance.status not in ['returned/replaced_approved', 'returned/replaced_completed']:
             return Response({"error": "Cannot cancel. Request already processed or completed."}, status=status.HTTP_400_BAD_REQUEST)
 
-        instance.status = 'rejected'
+        instance.order_item.status = 'returned/replaced_cancelled'
         instance.save()
 
         return Response({"success": "Return/Exchange request cancelled successfully."}, status=status.HTTP_200_OK)

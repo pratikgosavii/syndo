@@ -53,7 +53,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             return False
 
         # Check if a pending/approved ReturnExchange exists
-        existing = obj.return_exchanges.exclude(status__in=['rejected', 'cancled_by_user', 'completed'])
+        existing = obj.status.exclude(status__in=['returned/replaced_rejected', 'returned/replaced_completed', 'returned/replaced_cancelled'])
         if existing.exists():
             return False
 
@@ -210,7 +210,7 @@ class ReturnExchangeSerializer(serializers.ModelSerializer):
 
         # ✅ Update OrderItem status to 'returned'
         order_item = instance.order_item
-        order_item.status = 'returned requested'
+        order_item.status = 'returned/replaced_requested'
         order_item.save(update_fields=['status'])
 
         return instance
