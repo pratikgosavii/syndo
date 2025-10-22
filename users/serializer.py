@@ -23,6 +23,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'email',
+            'pincode',
             'is_customer',
             'is_vendor',
             'is_subuser',
