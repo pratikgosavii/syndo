@@ -151,10 +151,10 @@ class OrderSerializer(serializers.ModelSerializer):
         return instance
 
     def get_store_details(self, obj):
-
-        first_item = self.instance.items.first()  # safely get first order item
+        from vendor.serializers import VendorStoreSerializer
+        first_item = obj.items.first()
         if first_item:
-            return first_item.product.store  # assuming product has store FK
+            return VendorStoreSerializer(first_item.product.user.vendor_store).data
         return None
 
 
