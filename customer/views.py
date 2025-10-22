@@ -21,7 +21,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Only return orders for the logged-in user
         user = self.request.user
-        return Order.objects.prefetch_related('items').filter(user=user)
+        return Order.objects.prefetch_related('items').filter(user=user).order_by('-id')
 
     def perform_create(self, serializer):
         # Automatically set the user when saving
