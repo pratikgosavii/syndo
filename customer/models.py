@@ -202,7 +202,7 @@ class Order(models.Model):
     address = models.ForeignKey(Address, on_delete=models.CASCADE, null=True, blank=True)
     
     delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
-    created_at = models.DateField(auto_now=True)
+    created_at = models.DateTimeField(auto_now=True)
 
     
     
@@ -273,7 +273,7 @@ class ReturnExchange(models.Model):
         return True
 
     def __str__(self):
-        return f"{self.get_type_display()} - {self.order_item.product.name} ({self.status})"
+        return f"{self.get_type_display()} - {self.order_item.product.name}"
 
     
 
