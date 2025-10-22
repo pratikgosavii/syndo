@@ -212,6 +212,7 @@ class OrderItem(models.Model):
         ('pending', 'Pending'),
         ('delivered', 'Delivered'),
         ('returned', 'Returned'),
+        ('returned requested', 'Returned Requested'),
         ('cancelled', 'Cancelled'),
     ]
 
