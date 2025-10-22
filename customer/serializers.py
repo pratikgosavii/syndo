@@ -22,7 +22,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'quantity', 
             'product_details',
             'is_return_eligible',
-            'is_exchange_eligible'
+            'is_exchange_eligible',
+            'status'
         ]
 
         
