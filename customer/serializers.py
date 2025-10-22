@@ -287,7 +287,7 @@ class VendorStoreLiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = vendor_store
         fields = [
-            "id", "name", "banner_image", "profile_image", "about",
+            "id", "name", "banner_image", "profile_image", "about",'user',
             "is_active", "is_online", "following"
         ]
 
