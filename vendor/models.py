@@ -1182,6 +1182,8 @@ from django.db import models
 
 
 class Offer(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="requestsvdsdcdd")
+
     request = models.ForeignKey(
         'customer.ProductRequest',
         on_delete=models.CASCADE,

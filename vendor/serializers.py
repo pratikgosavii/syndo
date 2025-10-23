@@ -834,8 +834,6 @@ class OfferSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["seller", "created_at", "valid_till"]
 
-    
-    
     def get_store(self, obj):
         try:
             # Assuming one store per user
