@@ -52,7 +52,7 @@ class RequestOfferAPIView(APIView):
 class AllRequestOfferAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, request_id):
+    def get(self, request):
         """
         Get all Return/Exchange requests of logged-in user
         """
