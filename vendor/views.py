@@ -3330,7 +3330,13 @@ class VendorStoreListAPIView(generics.ListAPIView):
         return vendor_store.objects.filter(user=user)
 
 
+class requestlist(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request):
+        queryset = ProductRequest.objects.all().order_by("-created_at")
+        serializer = ProductRequestSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
         
 class VendorReturnManageAPIView(APIView):
     """
