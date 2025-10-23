@@ -49,6 +49,21 @@ class RequestOfferAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class AllRequestOfferAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, request_id):
+        """
+        Get all Return/Exchange requests of logged-in user
+        """
+        from vendor.models import Offer
+        from vendor.serializers import OfferSerializer
+
+        queryset = Offer.objects.filter(request__user=request.user).order_by('-created_at')
+        serializer = OfferSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 
 class ReturnExchangeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
