@@ -328,7 +328,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     class Meta:
         model = Review
-        fields = ['id', 'order_item', 'user', 'rating', 'comment', 'created_at', 'updated_at']
+        fields = ['id', 'order_item', 'photo', 'user', 'rating', 'comment', 'created_at', 'updated_at']
 
 
 from vendor.models import vendor_store

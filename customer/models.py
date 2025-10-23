@@ -369,6 +369,8 @@ class Review(models.Model):
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    photo = models.ImageField(upload_to="review/photos/", blank=True, null=True)
+
 
     class Meta:
         unique_together = ('order_item', 'user')  # ensures 1 review per user per product
