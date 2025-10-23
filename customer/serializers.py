@@ -13,7 +13,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     product_details = product_serializer(source="product", read_only=True)
     is_return_eligible = serializers.SerializerMethodField()
     is_exchange_eligible = serializers.SerializerMethodField()
-
+    is_reviewed = serializers.SerializerMethodField()  # ✅ NEW FIELD
     class Meta:
         model = OrderItem
         fields = [
@@ -23,7 +23,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'product_details',
             'is_return_eligible',
             'is_exchange_eligible',
-            'status'
+            'status',
+            'is_reviewed'  # ✅ add here also
         ]
 
         
@@ -70,6 +71,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
     def get_is_exchange_eligible(self, obj):
         return self._is_allowed_check(obj, 'exchange')
 
+    def get_is_reviewed(self, obj):
+        user = self.context['request'].user  # logged-in user
+        return Review.objects.filter(order_item=obj, user=user).exists()
+    
     
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
