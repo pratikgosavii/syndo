@@ -777,7 +777,8 @@ class StoreByCategoryView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
-    
+from rest_framework.exceptions import ValidationError
+ 
 class CustomerProductReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
