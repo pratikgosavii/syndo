@@ -63,6 +63,7 @@ router.register(r'coverage', VendorCoverageViewSet, basename='vendor-coverage')
 urlpatterns = [
 
     
+    path('request-list/', requestlist.as_view(), name='request-lists'),
     path('return-exchange/', VendorReturnManageAPIView.as_view(), name='vendor-return-manage'),
     
     path('add-company-profile/', add_company_profile, name='add_company_profile'),

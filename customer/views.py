@@ -817,3 +817,7 @@ class ProductRequestViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def get_queryset(self):
+        # Return only requests created by the logged-in user
+        return ProductRequest.objects.filter(user=self.request.user).order_by("-created_at")
