@@ -343,3 +343,14 @@ class VendorStoreLiteSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         # ✅ just check if this vendor has this user as follower
         return Follower.objects.filter(user=obj.user, follower=user).exists()
+
+
+
+
+class ProductRequestSerializer(serializers.ModelSerializer):
+    user_details = UserProfileSerializer(source = 'user', read_only = True)
+
+    class Meta:
+        model = ProductRequest
+        fields = "__all__"
+        read_only_fields = ["user", "created_at"]

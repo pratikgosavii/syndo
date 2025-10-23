@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from users.serializer import UserProfileSerializer
 from .models import *
 from masters.serializers import *
 
@@ -789,3 +790,21 @@ class VendorCoverageSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "pincode", "pincode_details"]
 
     
+
+    
+class OfferSerializer(serializers.ModelSerializer):
+    seller = serializers.StringRelatedField(read_only=True)
+    request_details = serializers.SerializerMethodField()
+    user_details = UserProfileSerializer(source = 'user', read_only = True)
+
+    class Meta:
+        model = Offer
+        fields = "__all__"
+        read_only_fields = ["seller", "created_at", "valid_till"]
+
+    def get_request_details(self, obj):
+        return {
+            "id": obj.request.id,
+            "product_name": obj.request.product_name,
+            "type": obj.request.type,
+        }
