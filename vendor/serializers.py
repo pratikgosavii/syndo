@@ -331,7 +331,7 @@ class product_serializer(serializers.ModelSerializer):
         
     def get_reviews(self, obj):
         from customer.serializers import ReviewSerializer  # avoid circular import
-        reviews = Review.objects.filter(order_item__product=obj)  # ✅ get reviews where product matches
+        reviews = Review.objects.filter(order_item__product=obj)  # correct
         return ReviewSerializer(reviews, many=True).data
 
 
