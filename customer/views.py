@@ -163,7 +163,7 @@ class ListPosts(ListAPIView):
 
     def get_queryset(self):
         # Only return posts belonging to the logged-in user
-        return Post.objects.filter(user=self.request.user)
+        return Post.objects.all()
     
 
 # class products_details(APIView):
