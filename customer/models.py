@@ -127,7 +127,7 @@ class PrintJob(models.Model):
     print_type = models.CharField(
         max_length=20,
         choices=[("single", "Single Side"), ("double", "Double Side")],
-        default="single",
+        default="single", blank=True, null=True
     )
     add_ons = models.ManyToManyField("vendor.addon", blank=True, related_name="print_jobs")
 
@@ -150,7 +150,7 @@ class PrintFile(models.Model):
     number_of_copies = models.PositiveIntegerField(default=1)
     page_count = models.PositiveIntegerField(default=0)
     page_numbers = models.CharField(max_length=255, blank=True, null=True)
-
+    
     def __str__(self):
         return f"{self.file_name} ({self.number_of_copies} copies)"
 

@@ -1110,6 +1110,16 @@ def list_product(request):
 
 
 @login_required(login_url='login_admin')
+def list_stock(request):
+
+    data = product.objects.filter(user = request.user)
+    context = {
+        'data': data
+    }
+    return render(request, 'list_stock.html', context)
+
+
+@login_required(login_url='login_admin')
 def barcode_setting(request):
 
     settings, created = BarcodeSettings.objects.get_or_create(user=request.user)
