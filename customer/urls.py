@@ -27,6 +27,7 @@ router.register(r'support/tickets', SupportTicketViewSet, basename='support-tick
 
 urlpatterns = [
 
+path('request-offer/<int:request_id>/', RequestOfferAPIView.as_view(), name='RequestOfferAPIView'),
 path('return-exchange/', ReturnExchangeAPIView.as_view(), name='return-exchange'),
     
 path('stores/', VendorStoreListAPIView.as_view(), name='vendor-store-list'),
