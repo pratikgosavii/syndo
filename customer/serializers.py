@@ -348,8 +348,12 @@ class VendorStoreLiteSerializer(serializers.ModelSerializer):
 
 
 class ProductRequestSerializer(serializers.ModelSerializer):
-    user_details = UserProfileSerializer(source = 'user', read_only = True)
+    from masters.serializers import product_category_serializer, product_subcategory_serializer
 
+
+    user_details = UserProfileSerializer(source = 'user', read_only = True)
+    category_details = product_category_serializer(source = 'category', read_only = True)
+    sub_category_details = product_subcategory_serializer(source = 'sub_category', read_only = True)
     class Meta:
         model = ProductRequest
         fields = "__all__"
