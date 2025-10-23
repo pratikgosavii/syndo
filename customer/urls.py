@@ -20,6 +20,8 @@ router.register(r'customer-product-review', CustomerProductReviewViewSet, basena
 router.register(r'favourites', FavouriteViewSet, basename='favourites')
 router.register(r'favourites-store', FavouriteStoreViewSet, basename='favourites_store')
 
+router.register("requests", ProductRequestViewSet, basename="product-request")
+
 router.register(r'support/tickets', SupportTicketViewSet, basename='support-ticket')
 
 

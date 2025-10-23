@@ -796,3 +796,16 @@ class CustomerProductReviewViewSet(viewsets.ModelViewSet):
             raise ValidationError("You can only review products you have purchased.")
 
         serializer.save(user=user)
+
+
+
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+        
+class ProductRequestViewSet(viewsets.ModelViewSet):
+    queryset = ProductRequest.objects.all().order_by("-created_at")
+    serializer_class = ProductRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

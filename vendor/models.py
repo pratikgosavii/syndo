@@ -1175,3 +1175,43 @@ class VendorCoverage(models.Model):
 
     def __str__(self):
         return f"{self.user} covers {self.pincode.code} ({self.pincode.city})"
+    
+
+# models.py
+from django.db import models
+
+
+class Offer(models.Model):
+    request = models.ForeignKey(
+        'customer.ProductRequest',
+        on_delete=models.CASCADE,
+        related_name="offers"
+    )
+    seller = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name="offers"
+    )
+    product = models.ForeignKey(
+        product,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="offers"
+    )
+    heading = models.CharField(max_length=255)
+    selling_price = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.TextField(blank=True, null=True)
+    media = models.ImageField(upload_to="offers/media/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    valid_till = models.DateTimeField(blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        # Offer automatically expires after 7 days
+        if not self.valid_till:
+            from datetime import timedelta, datetime
+            self.valid_till = datetime.now() + timedelta(days=7)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.heading} - {self.seller.username}"

@@ -3423,3 +3423,20 @@ class VendorCoverageViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(VendorCoverage.objects.filter(user=user), many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+    
+class OfferViewSet(viewsets.ModelViewSet):
+    serializer_class = OfferSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  
+    def get_queryset(self):
+        # Show all offers related to the user's requests or their own offers
+        user = self.request.user
+        return Offer.objects.filter(
+            models.Q(request__user=user) | models.Q(seller=user)
+        ).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(seller=self.request.user)

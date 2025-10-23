@@ -376,3 +376,25 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.user.username} review on {self.product.name}"
+
+
+
+        
+class ProductRequest(models.Model):
+    TYPE_CHOICES = [
+        ('personal', 'Personal use'),
+        ('business', 'For Business'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="requests")
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    product_name = models.CharField(max_length=255)
+    category = models.CharField(max_length=100)
+    sub_category = models.CharField(max_length=100, blank=True, null=True)
+    budget = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    photo = models.ImageField(upload_to="requests/photos/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.product_name} ({self.user.username})"
