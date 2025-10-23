@@ -93,10 +93,24 @@ class StoreWorkingHourSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
+
+    store = serializers.SerializerMethodField()
+
     class Meta:
         model = Post
         fields = '__all__'
         read_only_fields = ['user']  
+
+
+    def get_store(self, obj):
+        try:
+            # Assuming one store per user
+            store = obj.user.vendor_store.first()  # related_name='vendor_store'
+            if store:
+                from .serializers import VendorStoreSerializer2
+                return VendorStoreSerializer2(store).data
+        except:
+            return None
 
 class ReelSerializer(serializers.ModelSerializer):
 
@@ -341,11 +355,23 @@ class product_serializer(serializers.ModelSerializer):
 class SpotlightProductSerializer(serializers.ModelSerializer):
 
     product_details = product_serializer(source = "product", read_only=True)
+    store = serializers.SerializerMethodField()
 
     class Meta:
         model = SpotlightProduct
         fields = '__all__'
         read_only_fields = ['user', 'product_details']  
+
+
+    def get_store(self, obj):
+        try:
+            # Assuming one store per user
+            store = obj.user.vendor_store.first()  # related_name='vendor_store'
+            if store:
+                from .serializers import VendorStoreSerializer2
+                return VendorStoreSerializer2(store).data
+        except:
+            return None
     
 class VendorStoreSerializer2(serializers.ModelSerializer):
 
