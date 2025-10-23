@@ -34,7 +34,7 @@ class User(AbstractUser):
     is_vendor = models.BooleanField(default=False)
     is_subuser = models.BooleanField(default=False)
 
-    pincode = models.IntegerField()
+    pincode = models.IntegerField(null=True, blank=True)
 
     mobile = models.CharField(max_length=15, unique=True)
     email = models.EmailField(null=True, blank=True)
