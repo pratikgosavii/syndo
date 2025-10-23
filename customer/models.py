@@ -364,7 +364,7 @@ class TicketMessage(models.Model):
 
 class Review(models.Model):
     order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='product_reviews')
-    user = models.ForeignKey("users.user", on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey("users.user", on_delete=models.CASCADE, related_name='reviews', blank=True, null=True)
     rating = models.PositiveSmallIntegerField()  # 1 to 5 stars
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
