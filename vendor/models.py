@@ -1182,7 +1182,7 @@ from django.db import models
 
 
 class Offer(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="requestsvdsdcdd")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="requestsvdsdcdd", blank=True, null=True)
 
     request = models.ForeignKey(
         'customer.ProductRequest',
