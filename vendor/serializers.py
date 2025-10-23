@@ -822,8 +822,10 @@ class VendorCoverageSerializer(serializers.ModelSerializer):
 
     
 class OfferSerializer(serializers.ModelSerializer):
+    from customer.serializers import ProductRequestSerializer
+
     seller = serializers.StringRelatedField(read_only=True)
-    request_details = serializers.SerializerMethodField()
+    request_details = ProductRequestSerializer(source = "request", read_only = True)
     user_details = UserProfileSerializer(source = 'user', read_only = True)
     store = serializers.SerializerMethodField()
 
