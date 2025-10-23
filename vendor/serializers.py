@@ -330,8 +330,8 @@ class product_serializer(serializers.ModelSerializer):
 
         
     def get_reviews(self, obj):
-        from customer.serializers import ReviewSerializer  # import here to avoid circular import
-        reviews = obj.product_reviews.all()  # make sure related_name='reviews'
+        from customer.serializers import ReviewSerializer  # avoid circular import
+        reviews = Review.objects.filter(order_item__product=obj)  # ✅ get reviews where product matches
         return ReviewSerializer(reviews, many=True).data
 
 
@@ -764,7 +764,7 @@ class NotificationCampaignSerializer(serializers.ModelSerializer):
     
 
 
-from customer.models import ReturnExchange
+from customer.models import ReturnExchange, Review
 
 class ReturnExchangeVendorSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='order_item.product.name', read_only=True)
