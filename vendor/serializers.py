@@ -834,12 +834,7 @@ class OfferSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["seller", "created_at", "valid_till"]
 
-    def get_request_details(self, obj):
-        return {
-            "id": obj.request.id,
-            "product_name": obj.request.product_name,
-            "type": obj.request.type,
-        }
+    
     
     def get_store(self, obj):
         try:
