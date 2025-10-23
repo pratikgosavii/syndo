@@ -784,17 +784,22 @@ class CustomerProductReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        product = serializer.validated_data['product']
+        order_item = serializer.validated_data['order_item']
         user = self.request.user
 
-        # Check if user already reviewed this product
-        if Review.objects.filter(product=product, user=user).exists():
+        # ✅ Block duplicate review
+        if Review.objects.filter(order_item=order_item, user=user).exists():
             raise ValidationError("You have already reviewed this product.")
 
-        # Check if user has purchased this product in any past order
-        if not OrderItem.objects.filter(order__user=user, product=product).exists():
+        # ✅ Ensure user actually purchased THIS exact order item
+        if order_item.order.user != user:
             raise ValidationError("You can only review products you have purchased.")
 
+        # ✅ Ensure order was delivered before review
+        if order_item.status != "delivered":
+            raise ValidationError("You can only review after delivery.")
+
+        # ✅ Save safely
         serializer.save(user=user)
 
 
