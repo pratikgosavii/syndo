@@ -825,6 +825,7 @@ class OfferSerializer(serializers.ModelSerializer):
     seller = serializers.StringRelatedField(read_only=True)
     request_details = serializers.SerializerMethodField()
     user_details = UserProfileSerializer(source = 'user', read_only = True)
+    store = serializers.SerializerMethodField()
 
     class Meta:
         model = Offer
@@ -837,3 +838,14 @@ class OfferSerializer(serializers.ModelSerializer):
             "product_name": obj.request.product_name,
             "type": obj.request.type,
         }
+    
+    def get_store(self, obj):
+        try:
+            # Assuming one store per user
+            store = obj.user.vendor_store.first()  # related_name='vendor_store'
+            if store:
+                from .serializers import VendorStoreSerializer2
+                return VendorStoreSerializer2(store).data
+        except:
+            return None
+        
