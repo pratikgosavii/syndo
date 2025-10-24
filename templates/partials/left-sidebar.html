@@ -108,6 +108,60 @@
                             </ul>
                         </li> 
 
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Product</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+
+                               
+                                <!-- Product Category -->
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">Main Category</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_product_main_category' %}">Add Main Category</a></li>
+                                        <li><a href="{% url 'list_product_main_category' %}">Main Category List</a></li>
+                                    </ul>
+                                </li>
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">Category</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_product_category' %}">Add Category</a></li>
+                                        <li><a href="{% url 'list_product_category' %}">Category List</a></li>
+                                    </ul>
+                                </li>
+
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">SubCategory</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_product_subcategory' %}">Add SubCategory</a></li>
+                                        <li><a href="{% url 'list_product_subcategory' %}">SubCategory List</a></li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <a href="javascript: void(0);" class="has-arrow">Size</a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_size' %}">Add Size</a></li>
+                                        <li><a href="{% url 'list_size' %}">Size List</a></li>
+                                    </ul>
+                                </li>
+                            
+                            </ul>
+                        </li>
+                        
+ <li>
+                                    <a href="javascript: void(0);" class="has-arrow">
+                                        <i data-feather="layers"></i>
+                                        <span data-key="t-authentication">Expense Category</span>
+                                    </a>
+                                    <ul class="sub-menu" aria-expanded="false">
+                                        <li><a href="{% url 'add_expense_category' %}">Add Expense Category</a></li>
+                                        <li><a href="{% url 'list_expense_category' %}">Expense List</a></li>
+                                    </ul>
+                                </li> 
+
 
                               
                         <li>
@@ -171,6 +225,7 @@
                             <ul class="sub-menu" aria-expanded="false">
                                 <li><a href="{% url 'add_home_banner' %}">Banner Add</a></li>
                                 <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
+                                <li><a href="{% url 'vendor_list_bannercampaign' %}">Vendor Banner List</a></li>
 
                             </ul>
                         </li>
@@ -234,7 +289,7 @@
                         {% endif %}
 
                    
-                            <li>
+                        <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
                                 <span data-key="t-authentication">Company Profile</span>
@@ -243,16 +298,8 @@
                                 <li><a href="{% url 'add_company_profile' %}">Add Company Profile</a></li>
                                 <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li>
                             </ul>
-                        </li>
                         <li>
                    
-
-                       
-
-                        
-                        
-
-                      
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
@@ -260,39 +307,7 @@
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
 
-                                <!-- Product Category -->
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">Main Category</a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_product_main_category' %}">Add Main Category</a></li>
-                                        <li><a href="{% url 'list_product_main_category' %}">Main Category List</a></li>
-                                    </ul>
-                                </li>
-
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">Category</a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_product_category' %}">Add Category</a></li>
-                                        <li><a href="{% url 'list_product_category' %}">Category List</a></li>
-                                    </ul>
-                                </li>
-
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">SubCategory</a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_product_subcategory' %}">Add SubCategory</a></li>
-                                        <li><a href="{% url 'list_product_subcategory' %}">SubCategory List</a></li>
-                                    </ul>
-                                </li>
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">Size</a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_size' %}">Add Size</a></li>
-                                        <li><a href="{% url 'list_size' %}">Size List</a></li>
-                                    </ul>
-                                </li>
-                                
-
+                               
                                 <!-- Addon -->
                                 <li>
                                     <a href="javascript: void(0);" class="has-arrow">Addon</a>
@@ -398,29 +413,9 @@
 
                                 <!-- Product Category -->
 
-                               <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <i data-feather="layers"></i>
-                                        <span data-key="t-authentication">Expense Category</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_expense_category' %}">Add Expense Category</a></li>
-                                        <li><a href="{% url 'list_expense_category' %}">Expense List</a></li>
-                                    </ul>
-                                </li> 
-
-
-
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <i data-feather="layers"></i>
-                                        <span data-key="t-authentication">Expense</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_expense' %}">Add Expense</a></li>
-                                        <li><a href="{% url 'list_expense' %}">Expense List</a></li>
-                                    </ul>
-                                </li> 
+                               
+                                <li><a href="{% url 'add_expense' %}">Add Expense</a></li>
+                                <li><a href="{% url 'list_expense' %}">Expense List</a></li>
                             </ul> 
                         </li> 
 
@@ -518,9 +513,8 @@
                                 <span data-key="t-authentication">Banner</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_home_banner' %}">Banner Add</a></li>
-                                <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
-                                <li><a href="{% url 'vendor_list_bannercampaign' %}">Vendor Banner List</a></li>
+                                <li><a href="{% url 'add_bannercampaign' %}">Banner Add</a></li>
+                                <li><a href="{% url 'list_bannercampaign' %}">Banner List</a></li>
 
                             </ul>
                             
