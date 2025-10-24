@@ -288,6 +288,8 @@
 
                         {% endif %}
 
+                        {% if user.is_vendor %}
+
                    
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
@@ -549,7 +551,7 @@
                             </a>
                         </li>
 
-                       
+                       {% endif %}
                        
                         <div style="margin: 100% 0 0 35%; align-content: center">
                             <form method="POST" action="{% url 'logout' %}">
