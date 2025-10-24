@@ -361,20 +361,6 @@ class CartViewSet(viewsets.ModelViewSet):
             for file_data in files_data:
                 PrintFile.objects.create(print_job=print_job, **file_data)
 
-            # ✅ Handle actual uploaded files
-            index = 0
-            while True:
-                uploaded_file = self.request.FILES.get(f"files[{index}].file")
-                if not uploaded_file:
-                    break
-                PrintFile.objects.create(
-                    print_job=print_job,
-                    file=uploaded_file,
-                    number_of_copies=self.request.data.get(f"files[{index}].number_of_copies", 1),
-                    page_count=self.request.data.get(f"files[{index}].page_count", 0),
-                    page_numbers=self.request.data.get(f"files[{index}].page_numbers", ""),
-                )
-                index += 1
 
         return cart_item
 
