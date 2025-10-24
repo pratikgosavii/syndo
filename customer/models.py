@@ -151,8 +151,6 @@ class PrintFile(models.Model):
     page_count = models.PositiveIntegerField(default=0)
     page_numbers = models.CharField(max_length=255, blank=True, null=True)
     
-    def __str__(self):
-        return f"{self.file_name} ({self.number_of_copies} copies)"
 
 
 class Order(models.Model):
