@@ -361,6 +361,20 @@ class CartViewSet(viewsets.ModelViewSet):
             for file_data in files_data:
                 PrintFile.objects.create(print_job=print_job, **file_data)
 
+            # ✅ Handle actual uploaded files
+            index = 0
+            while True:
+                uploaded_file = self.request.FILES.get(f"files[{index}].file")
+                if not uploaded_file:
+                    break
+                PrintFile.objects.create(
+                    print_job=print_job,
+                    file=uploaded_file,
+                    number_of_copies=self.request.data.get(f"files[{index}].number_of_copies", 1),
+                    page_count=self.request.data.get(f"files[{index}].page_count", 0),
+                    page_numbers=self.request.data.get(f"files[{index}].page_numbers", ""),
+                )
+                index += 1
 
         return cart_item
 
@@ -376,8 +390,8 @@ class CartViewSet(viewsets.ModelViewSet):
             return Response({"error": "product is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            product_instance = Product.objects.get(pk=product_id)
-        except Product.DoesNotExist:
+            product_instance = product.objects.get(pk=product_id)
+        except product.DoesNotExist:
             return Response({"error": "Invalid product id."}, status=status.HTTP_404_NOT_FOUND)
 
         # Clear user's existing cart
@@ -417,7 +431,7 @@ class CartViewSet(viewsets.ModelViewSet):
             print_job = PrintJob.objects.create(cart=cart_item, **print_job_data)
 
             if add_ons:
-                valid_addons = AddOn.objects.filter(id__in=add_ons)
+                valid_addons = addon.objects.filter(id__in=add_ons)
                 print_job.add_ons.set(valid_addons)
 
             # JSON-style file data
