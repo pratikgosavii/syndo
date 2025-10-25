@@ -24,6 +24,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'is_return_eligible',
             'is_exchange_eligible',
             'status',
+            'tracking_link',
             'is_reviewed'  # ✅ add here also
         ]
 
