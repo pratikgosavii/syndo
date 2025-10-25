@@ -135,7 +135,7 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
                              mixins.RetrieveModelMixin,
                              generics.GenericAPIView):
     queryset = vendor_store.objects.all()
-    serializer_class = VendorStoreLiteSerializer  # ✅ USE NEW ONE HERE
+    serializer_class = VendorStoreSerializer  # ✅ USE NEW ONE HERE
     filter_backends = [filters.SearchFilter]
     search_fields = ["user__first_name", "user__last_name", "user__username"]
     lookup_field = "id"

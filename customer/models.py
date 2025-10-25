@@ -227,6 +227,7 @@ class OrderItem(models.Model):
     quantity = models.IntegerField(default=1)
     price = models.IntegerField()
     status = models.CharField(max_length=28, choices=STATUS_CHOICES, default='pending')
+    tracking_link = models.URLField(max_length=500, blank=True, null=True)  # ✅ added
 
     def total_price(self):
         return self.quantity * self.price
