@@ -93,36 +93,6 @@ class StoreWorkingHourSerializer(serializers.ModelSerializer):
 
 
 
-class ReelSerializer(serializers.ModelSerializer):
-
-    store = serializers.SerializerMethodField()
-    is_following = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Reel
-        fields = '__all__'
-        read_only_fields = ['user']  
-
-
-    def get_store(self, obj):
-        try:
-            # Assuming one store per user
-            store = obj.user.vendor_store.first()  # related_name='vendor_store'
-            if store:
-                from .serializers import VendorStoreSerializer2
-                return VendorStoreSerializer2(store).data
-        except:
-            return None
-        
-    def get_is_following(self, obj):
-
-        from customer.models import Follower
-
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            # Check if request.user is following obj.user
-            return Follower.objects.filter(user=obj.user, follower=request.user).exists()
-        return False
     
 
 
@@ -332,6 +302,37 @@ class product_serializer(serializers.ModelSerializer):
 
 
 
+class ReelSerializer(serializers.ModelSerializer):
+
+    product_details = product_serializer(source = 'product', read_only = True)
+    store = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Reel
+        fields = '__all__'
+        read_only_fields = ['user']  
+
+
+    def get_store(self, obj):
+        try:
+            # Assuming one store per user
+            store = obj.user.vendor_store.first()  # related_name='vendor_store'
+            if store:
+                from .serializers import VendorStoreSerializer2
+                return VendorStoreSerializer2(store).data
+        except:
+            return None
+        
+    def get_is_following(self, obj):
+
+        from customer.models import Follower
+
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            # Check if request.user is following obj.user
+            return Follower.objects.filter(user=obj.user, follower=request.user).exists()
+        return False
 
     
 class SpotlightProductSerializer(serializers.ModelSerializer):
