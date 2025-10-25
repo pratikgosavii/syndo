@@ -483,7 +483,7 @@ class SaleSerializer(serializers.ModelSerializer):
             'balance_amount', 'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
             'discount_amount', 'total_amount', 'wholesale_invoice_details',
-            'wholesale_invoice', 'bank_details', 'customer_details'
+            'wholesale_invoice', 'bank_details', 'customer_details', 'created_at'
         ]
 
     def get_wholesale_invoice_details(self, obj):
