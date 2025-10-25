@@ -3450,9 +3450,21 @@ class OfferViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Show all offers related to the user's requests or their own offers
         user = self.request.user
+        request_id = self.request.query_params.get("request_id")
+
+        if request_id:
+            # ✅ Return only offers for that specific request (but ensure it belongs to this user)
+            return Offer.objects.filter(
+                request__id=request_id,
+                request__user=user
+            ).order_by("-created_at")
+
+        # ✅ Default: all offers user is involved in
         return Offer.objects.filter(
             models.Q(request__user=user) | models.Q(seller=user)
         ).order_by("-created_at")
 
     def perform_create(self, serializer):
         serializer.save(seller=self.request.user)
+
+        
