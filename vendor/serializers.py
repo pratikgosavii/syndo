@@ -209,7 +209,6 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
 class VendorStoreSerializer2(serializers.ModelSerializer):
 
-
     class Meta:
         model = vendor_store
         fields = '__all__'
