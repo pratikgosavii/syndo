@@ -228,7 +228,8 @@ class product_serializer(serializers.ModelSerializer):
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
     is_favourite = serializers.BooleanField(read_only=True)
     variants = ProductVariantSerializer(many=True, read_only=True)
-    store_details = VendorStoreSerializer2(source='user', read_only = True)
+    store = serializers.SerializerMethodField()
+
     # Add reviews as nested read-only field
     reviews = serializers.SerializerMethodField()
 
@@ -304,7 +305,15 @@ class product_serializer(serializers.ModelSerializer):
         reviews = Review.objects.filter(order_item__product=obj)  # correct
         return ReviewSerializer(reviews, many=True).data
 
-
+    def get_store(self, obj):
+        try:
+            # Assuming one store per user
+            store = obj.user.vendor_store.first()  # related_name='vendor_store'
+            if store:
+                from .serializers import VendorStoreSerializer2
+                return VendorStoreSerializer2(store).data
+        except:
+            return None
 
 class ReelSerializer(serializers.ModelSerializer):
 
