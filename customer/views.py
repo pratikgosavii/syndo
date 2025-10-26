@@ -825,54 +825,43 @@ class HomeScreenView(APIView):
         main_categories = MainCategory.objects.prefetch_related('categories').all()
 
         for main_cat in main_categories:
-            # fetch all related subcategory IDs
             subcategory_ids = list(main_cat.categories.values_list('id', flat=True))
 
-            # --- RANDOM STORES (6 max) ---
+            # ---------- Stores (Max 6) ----------
             user_ids = product.objects.filter(category_id__in=subcategory_ids)\
                                       .values_list('user_id', flat=True).distinct()
 
-            store_list = list(
-                vendor_store.objects.filter(user_id__in=user_ids, is_active=True)
-            )
-
+            stores_qs = vendor_store.objects.filter(user_id__in=user_ids, is_active=True)
+            store_list = list(stores_qs)
             random_stores = random.sample(store_list, min(6, len(store_list)))
 
-            # --- RANDOM PRODUCTS (8 max) ---
-            product_list = list(
-                product.objects.filter(category_id__in=subcategory_ids)
-            )
+            # Serialized store data
+            store_data = VendorStoreSerializer(
+                random_stores, many=True, context={'request': request}
+            ).data
 
+            # ---------- Products (Max 8) ----------
+            product_qs = product.objects.filter(category_id__in=subcategory_ids)
+            product_list = list(product_qs)
             random_products = random.sample(product_list, min(8, len(product_list)))
 
+            # Serialized product data
+            product_data = product_serializer(
+                random_products, many=True, context={'request': request}
+            ).data
+
+            # ---------- Final Response ----------
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
                 "subcategories": list(main_cat.categories.values("id", "name")),
-
-                "stores": [
-                    {
-                        "store_id": s.id,
-                        "store_name": s.name,
-                        "image": s.profile_image.url if s.profile_image else None
-                    }
-                    for s in random_stores
-                ],
-
-                "products": [
-                    {
-                        "product_id": p.id,
-                        "product_name": p.name,
-                        "price": getattr(p, "price", None),
-                        "image": p.image.url if getattr(p, "image", None) else None
-                    }
-                    for p in random_products
-                ]
+                "stores": store_data,
+                "products": product_data
             })
 
         return Response(response_data, status=status.HTTP_200_OK)
 
-        
+
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
