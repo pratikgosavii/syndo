@@ -854,7 +854,7 @@ class HomeScreenView(APIView):
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
-                "subcategories": list(main_cat.categories.values("id", "name")),
+                "subcategories": list(main_cat.categories.values("id", "name", "image")),
                 "stores": store_data,
                 "products": product_data
             })
