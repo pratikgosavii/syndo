@@ -384,30 +384,7 @@ class PostSerializer(serializers.ModelSerializer):
                 return VendorStoreSerializer2(store).data
         except:
             return None
-        
-class VendorStoreSerializer(serializers.ModelSerializer):
-    # Nested child serializers
-    working_hours = StoreWorkingHourSerializer(source='user.working_hours', many=True, read_only=True)
-    spotlight_products = SpotlightProductSerializer(source='user.spotlightproduct_set', many=True, read_only=True)
-    posts = PostSerializer(source='user.post_set', many=True, read_only=True)
-    reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
-    banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
-
-    class Meta:
-        model = vendor_store
-        fields = [
-            'id', 'user',
-            'working_hours',
-            'spotlight_products',
-            'name',
-            'about',
-            'profile_image',
-            'banner_image',
-            'posts',
-            'reels',
-            'banners',
-        ]
-    
+     
 
 
 from rest_framework import serializers
@@ -578,7 +555,35 @@ class SaleSerializer(serializers.ModelSerializer):
         sale.save()
 
 
+   
+class VendorStoreSerializer(serializers.ModelSerializer):
+    # Nested child serializers
+    working_hours = StoreWorkingHourSerializer(source='user.working_hours', many=True, read_only=True)
+    spotlight_products = SpotlightProductSerializer(source='user.spotlightproduct_set', many=True, read_only=True)
+    posts = PostSerializer(source='user.post_set', many=True, read_only=True)
+    reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
+    banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
 
+    products = product_serializer(source='user.productssdsdsd', many=True, read_only=True) 
+
+    class Meta:
+        model = vendor_store
+        fields = [
+            'id', 'user',
+            'working_hours',
+            'spotlight_products',
+            'name',
+            'products',
+            'about',
+            'profile_image',
+            'banner_image',
+            'posts',
+            'reels',
+            'banners',
+        ]
+    
+
+    
 class DeliverySettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliverySettings
