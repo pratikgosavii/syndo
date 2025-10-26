@@ -53,6 +53,7 @@ path('coupons/', CartCouponAPIView.as_view(), name='CartCouponAPIView'),  # GET 
 path('products/search/', ProductSearchAPIView.as_view(), name='search-products'),
 
 path('stores-by-category/', StoreByCategoryView.as_view(), name='stores-by-category'),
+path('Home-Screen-Api/', HomeScreenView.as_view(), name='HomeScreenView'),
 path('stores-by-subcategory/', StoreBySubCategoryView.as_view(), name='stores-by-subcategory'),
 
 
