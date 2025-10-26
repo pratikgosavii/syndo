@@ -202,10 +202,17 @@ class CustomizePrintVariantSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
 
     size_detials = size_serializer(source = 'size', read_only = True)
+    reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = product
         fields = '__all__'
+
+        
+    def get_reviews(self, obj):
+        from customer.serializers import ReviewSerializer  # avoid circular import
+        reviews = Review.objects.filter(order_item__product=obj)  # correct
+        return ReviewSerializer(reviews, many=True).data
 
 
 
@@ -302,12 +309,7 @@ class product_serializer(serializers.ModelSerializer):
         
     def get_reviews(self, obj):
         from customer.serializers import ReviewSerializer  # avoid circular import
-        # Include reviews of this product + its parent + its children (variants)
-        reviews = Review.objects.filter(
-            Q(order_item__product=obj) |            # current product
-            Q(order_item__product__parent=obj) |    # children products
-            Q(order_item__product=obj.parent)       # parent product
-        )
+        reviews = Review.objects.filter(order_item__product=obj)  # correct
         return ReviewSerializer(reviews, many=True).data
 
     def get_store(self, obj):
