@@ -222,7 +222,7 @@ class product_serializer(serializers.ModelSerializer):
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
     is_favourite = serializers.BooleanField(read_only=True)
-    variants = ProductVariantSerializer(source = "parent", many=True, read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
 
     # Add reviews as nested read-only field
     reviews = serializers.SerializerMethodField()
