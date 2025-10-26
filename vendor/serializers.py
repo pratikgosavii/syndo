@@ -202,15 +202,18 @@ class CustomizePrintVariantSerializer(serializers.ModelSerializer):
 class ProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = product
-        fields = [
-            "id",
-            "name",
-            "sales_price",
-            "color",
-            "size",
-            "stock",
-            "image",
-        ]
+        fields = '__all__'
+
+
+
+
+class VendorStoreSerializer2(serializers.ModelSerializer):
+
+
+    class Meta:
+        model = vendor_store
+        fields = '__all__'
+
 
 
 import json
@@ -223,7 +226,7 @@ class product_serializer(serializers.ModelSerializer):
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
     is_favourite = serializers.BooleanField(read_only=True)
     variants = ProductVariantSerializer(many=True, read_only=True)
-
+    store_details = VendorStoreSerializer2(source='user', read_only = true)
     # Add reviews as nested read-only field
     reviews = serializers.SerializerMethodField()
 
@@ -355,13 +358,6 @@ class SpotlightProductSerializer(serializers.ModelSerializer):
         except:
             return None
     
-class VendorStoreSerializer2(serializers.ModelSerializer):
-
-
-    class Meta:
-        model = vendor_store
-        fields = '__all__'
-
         
     
 class PostSerializer(serializers.ModelSerializer):
