@@ -4,7 +4,7 @@ from django.shortcuts import render
 # Create your views here.
 
 
-from masters.models import MainCategory
+from masters.models import MainCategory, product_subcategory
 from users.models import *
 
 from rest_framework import viewsets, permissions
@@ -854,7 +854,17 @@ class HomeScreenView(APIView):
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
-                "subcategories": list(main_cat.categories.values("id", "name", "image")),
+                "subcategories": [
+                {
+                    "id": cat.id,
+                    "name": cat.name,
+                    "image": cat.image.url if cat.image else None,
+                    "subcategories": list(
+                        product_subcategory.objects.filter(category=cat).values("id", "name", "image")
+                    )
+                }
+                for cat in main_cat.categories.all()
+            ]
                 "stores": store_data,
                 "products": product_data
             })
