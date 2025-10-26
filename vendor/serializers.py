@@ -200,6 +200,9 @@ class CustomizePrintVariantSerializer(serializers.ModelSerializer):
         exclude = ['product']
 
 class ProductVariantSerializer(serializers.ModelSerializer):
+
+    size_detials = size_serializer(source = 'size', read_only = True)
+
     class Meta:
         model = product
         fields = '__all__'
