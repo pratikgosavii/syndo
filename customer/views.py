@@ -864,7 +864,7 @@ class HomeScreenView(APIView):
                     )
                 }
                 for cat in main_cat.categories.all()
-            ]
+            ],
                 "stores": store_data,
                 "products": product_data
             })
