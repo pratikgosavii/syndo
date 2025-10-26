@@ -200,36 +200,31 @@ class CustomizePrintVariantSerializer(serializers.ModelSerializer):
         exclude = ['product']
 
 class ProductVariantSerializer(serializers.ModelSerializer):
-
-    size_detials = size_serializer(source = 'size', read_only = True)
+    size_detials = size_serializer(source='size', read_only=True)
     reviews = serializers.SerializerMethodField()
-    is_favourite = serializers.BooleanField(read_only=True)
-    
+    is_favourite = serializers.SerializerMethodField()  # ✅ dynamic now
+
     class Meta:
         model = product
         fields = '__all__'
 
-        
     def get_reviews(self, obj):
         from customer.serializers import ReviewSerializer  # avoid circular import
-        reviews = Review.objects.filter(order_item__product=obj)  # correct
+        reviews = Review.objects.filter(order_item__product=obj)
         return ReviewSerializer(reviews, many=True).data
 
     def get_is_favourite(self, obj):
-
         from customer.models import Favourite
-        """
-        Efficiently check if this variant (product) is favourited by the current user.
-        Caches the user's favourite product IDs to avoid repeated DB hits.
-        """
+
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
 
-        # ✅ Cache favourite IDs on serializer instance (only one DB call)
+        # ✅ Cache favourite IDs (only one DB query per request)
         if not hasattr(self, "_user_fav_ids"):
             self._user_fav_ids = set(
-                Favourite.objects.filter(user=request.user).values_list("product_id", flat=True)
+                Favourite.objects.filter(user=request.user)
+                .values_list("product_id", flat=True)
             )
 
         return obj.id in self._user_fav_ids
@@ -252,7 +247,8 @@ class product_serializer(serializers.ModelSerializer):
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
     is_favourite = serializers.BooleanField(read_only=True)
-    variants = ProductVariantSerializer(many=True, read_only=True)
+    # variants = ProductVariantSerializer(many=True, read_only=True)
+    variants = serializers.SerializerMethodField()
     store = serializers.SerializerMethodField()
 
     # Add reviews as nested read-only field
@@ -339,6 +335,16 @@ class product_serializer(serializers.ModelSerializer):
                 return VendorStoreSerializer2(store).data
         except:
             return None
+        
+
+    def get_variants(self, obj):
+        # ✅ Pass context so request is available inside ProductVariantSerializer
+        serializer = ProductVariantSerializer(
+            obj.variants.all(),
+            many=True,
+            context=self.context  # <-- this is the key fix
+        )
+        return serializer.data
 
 class ReelSerializer(serializers.ModelSerializer):
 
