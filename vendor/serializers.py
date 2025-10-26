@@ -302,7 +302,12 @@ class product_serializer(serializers.ModelSerializer):
         
     def get_reviews(self, obj):
         from customer.serializers import ReviewSerializer  # avoid circular import
-        reviews = Review.objects.filter(order_item__product=obj)  # correct
+        # Include reviews of this product + its parent + its children (variants)
+        reviews = Review.objects.filter(
+            Q(order_item__product=obj) |            # current product
+            Q(order_item__product__parent=obj) |    # children products
+            Q(order_item__product=obj.parent)       # parent product
+        )
         return ReviewSerializer(reviews, many=True).data
 
     def get_store(self, obj):
