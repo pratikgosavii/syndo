@@ -203,7 +203,8 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
     size_detials = size_serializer(source = 'size', read_only = True)
     reviews = serializers.SerializerMethodField()
-
+    is_favourite = serializers.BooleanField(read_only=True)
+    
     class Meta:
         model = product
         fields = '__all__'
@@ -214,7 +215,24 @@ class ProductVariantSerializer(serializers.ModelSerializer):
         reviews = Review.objects.filter(order_item__product=obj)  # correct
         return ReviewSerializer(reviews, many=True).data
 
+    def get_is_favourite(self, obj):
 
+        from customer.models import Favourite
+        """
+        Efficiently check if this variant (product) is favourited by the current user.
+        Caches the user's favourite product IDs to avoid repeated DB hits.
+        """
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+
+        # ✅ Cache favourite IDs on serializer instance (only one DB call)
+        if not hasattr(self, "_user_fav_ids"):
+            self._user_fav_ids = set(
+                Favourite.objects.filter(user=request.user).values_list("product_id", flat=True)
+            )
+
+        return obj.id in self._user_fav_ids
 
 
 class VendorStoreSerializer2(serializers.ModelSerializer):
