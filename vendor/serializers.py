@@ -201,17 +201,33 @@ class CustomizePrintVariantSerializer(serializers.ModelSerializer):
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     size_detials = size_serializer(source='size', read_only=True)
+
+    avg_rating = serializers.SerializerMethodField()    
     reviews = serializers.SerializerMethodField()
+    
     is_favourite = serializers.SerializerMethodField()  # ✅ dynamic now
 
     class Meta:
         model = product
         fields = '__all__'
 
+    def _get_reviews_queryset(self, obj):
+        """ Reuse same queryset to avoid double DB hit """
+        if not hasattr(self, '_cached_reviews'):
+            self._cached_reviews = Review.objects.filter(order_item__product=obj)
+        return self._cached_reviews
+
     def get_reviews(self, obj):
-        from customer.serializers import ReviewSerializer  # avoid circular import
-        reviews = Review.objects.filter(order_item__product=obj)
+        from customer.serializers import ReviewSerializer
+        reviews = self._get_reviews_queryset(obj)
         return ReviewSerializer(reviews, many=True).data
+
+    def get_avg_rating(self, obj):
+        from django.db.models import Avg
+        reviews = self._get_reviews_queryset(obj)
+        avg = reviews.aggregate(avg=Avg('rating'))['avg']
+        return round(avg, 1) if avg else 0.0
+    
 
     def get_is_favourite(self, obj):
         from customer.models import Favourite
@@ -252,6 +268,7 @@ class product_serializer(serializers.ModelSerializer):
     store = serializers.SerializerMethodField()
 
     # Add reviews as nested read-only field
+    avg_rating = serializers.SerializerMethodField()    
     reviews = serializers.SerializerMethodField()
 
     class Meta:
@@ -321,10 +338,22 @@ class product_serializer(serializers.ModelSerializer):
         return instance
 
         
+    def _get_reviews_queryset(self, obj):
+        """ Reuse same queryset to avoid double DB hit """
+        if not hasattr(self, '_cached_reviews'):
+            self._cached_reviews = Review.objects.filter(order_item__product=obj)
+        return self._cached_reviews
+
     def get_reviews(self, obj):
-        from customer.serializers import ReviewSerializer  # avoid circular import
-        reviews = Review.objects.filter(order_item__product=obj)  # correct
+        from customer.serializers import ReviewSerializer
+        reviews = self._get_reviews_queryset(obj)
         return ReviewSerializer(reviews, many=True).data
+
+    def get_avg_rating(self, obj):
+        from django.db.models import Avg
+        reviews = self._get_reviews_queryset(obj)
+        avg = reviews.aggregate(avg=Avg('rating'))['avg']
+        return round(avg, 1) if avg else 0.0
 
     def get_store(self, obj):
         try:
