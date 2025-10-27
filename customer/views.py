@@ -910,13 +910,22 @@ class HomeScreenView(APIView):
             stores_list = list(stores_qs)
             # pick random up to 6
             random_stores = random.sample(stores_list, min(6, len(stores_list)))
-
+            # ✅ Get approved banner campaigns (latest or random as per your choice)
+            banners = BannerCampaign.objects.filter(is_approved=True).order_by('-created_at')[:5]
+            banners_data = [
+                {
+                    'id': b.id,
+                    'banner_image': b.banner_image.url if b.banner_image else None,
+                } for b in banners
+            ]
             # Serialize stores minimally (id, name, image)
             stores_data = [
                 {
                     'id': s.id,
                     'name': s.name,
-                    'image': s.profile_image.url if s.profile_image else None
+                    'profile_image': s.profile_image.url if s.profile_image else None,
+                    'banner' : banners_data
+
                 } for s in random_stores
             ]
 
