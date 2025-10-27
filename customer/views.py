@@ -456,8 +456,30 @@ class CartViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=["patch"])
+    def update_quantity(self, request, pk=None):
+        """Update only the quantity (increase or decrease) of an existing cart item."""
+        try:
+            cart_item = Cart.objects.get(pk=pk, user=request.user)
+        except Cart.DoesNotExist:
+            return Response({"error": "Cart item not found."}, status=404)
 
-    # ✅ Clear entire cart
+        new_qty = request.data.get("quantity")
+        if not new_qty:
+            return Response({"error": "quantity is required."}, status=400)
+
+        new_qty = int(new_qty)
+        if new_qty <= 0:
+            cart_item.delete()
+            return Response({"message": "Item removed from cart"}, status=200)
+
+        cart_item.quantity = new_qty
+        cart_item.save()
+        return Response({"message": "Quantity updated ✅", "quantity": cart_item.quantity}, status=200)
+    
+
+        # ✅ Clear entire cart
     @action(detail=False, methods=["post"])
     def clear_cart(self, request):
         Cart.objects.filter(user=request.user).delete()
@@ -466,6 +488,7 @@ class CartViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
