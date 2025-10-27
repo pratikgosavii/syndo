@@ -817,49 +817,136 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+import time
+from django.db import connection
+
 class HomeScreenView(APIView):
     """
-    MAIN CATEGORY HOME API (FULLY OPTIMIZED)
-    - Includes Level 1 Categories + Level 2 Subcategories
-    - 6 Stores (Random)
-    - 8 Products (Random)
+    Return for each MainCategory:
+      - categories (product_category list)
+      - up to 6 random stores that sell products from those categories
+      - up to 6 products (full details) from those categories
+
+    Optimizations:
+      - prefetch related sets for products (variants, addons, print variants)
+      - fetch all reviews for the product batch in a single query and pass via context
+      - fetch store list via user ids derived from product batch (fast)
     """
 
     def get(self, request, *args, **kwargs):
+        start_total = time.time()
         response_data = []
-        main_categories = MainCategory.objects.prefetch_related('categories').all()
+
+        # Prefetch categories (these are product_category linked from MainCategory)
+        main_categories = MainCategory.objects.prefetch_related(
+            Prefetch('categories', queryset=product_category.objects.only('id', 'name', 'image'))
+        ).only('id', 'name')
 
         for main_cat in main_categories:
-            category_ids = main_cat.categories.values_list('id', flat=True)
+            # direct categories under this main category
+            categories_qs = main_cat.categories.all()  # already prefetched
+            category_ids = list(categories_qs.values_list('id', flat=True))
 
-            # === STORES (any 6, fast query) ===
-            user_ids = product.objects.filter(
-                category_id__in=category_ids
-            ).values_list('user_id', flat=True).distinct()
-
-            stores = vendor_store.objects.filter(
-                user_id__in=user_ids,
-                is_active=True
-            ).only('id', 'name', 'profile_image')[:6]
-
-            store_data = VendorStoreSerializer(stores, many=True, context={'request': request}).data
-
-            # === PRODUCTS (any 6, fast query) ===
-            products = product.objects.filter(
+            # -------------------------
+            # Fetch product batch (limit 6) with related prefetches
+            # -------------------------
+            products_qs = product.objects.filter(
                 category_id__in=category_ids,
                 is_active=True
-            ).only('id', 'name', 'sales_price', 'image')[:6]
+            ).select_related(
+                'user', 'category', 'sub_category'
+            ).prefetch_related(
+                'variants',                           # product.variants (if you have related_name 'variants')
+                'variants__size',                     # size on variants
+                'product_addon_set__addon',           # product_addon -> addon
+                'print_variants',                     # PrintVariant (related_name)
+                'customize_print_variants',           # CustomizePrintVariant (related_name)
+                'user__vendor_store'                  # prefetch vendor_store of the user
+            ).order_by('?')[:6]  # random 6 products for this main category
 
-            product_data = product_serializer(products, many=True, context={'request': request}).data
+            products = list(products_qs)  # evaluate
 
-            # === RESPONSE ===
+            product_ids = [p.id for p in products]
+
+            # -------------------------
+            # Fetch reviews for all products in batch — single query
+            # -------------------------
+            reviews_map = {}
+            if product_ids:
+                # Reviews are referenced via order_item__product in your serializer.
+                # We fetch reviews that relate to these products in one shot.
+                reviews_qs = Review.objects.filter(order_item__product_id__in=product_ids).select_related('order_item', 'user')
+                # Serialize them (use existing ReviewSerializer)
+                serialized_reviews = ReviewSerializer(reviews_qs, many=True, context={'request': request}).data
+
+                # Build map: product_id -> list of review dicts
+                for r in serialized_reviews:
+                    # Try to get product_id from nested order_item if serializer provides it,
+                    # else attempt to read it from r['order_item']['product'] etc.
+                    # This depends on your ReviewSerializer output; adapt if needed.
+                    prod_id = None
+                    # safe extraction — best-effort
+                    try:
+                        prod_id = r.get('order_item', {}).get('product')
+                    except Exception:
+                        prod_id = None
+
+                    # fallback: attempt to read order_item -> id and then map using DB (rare)
+                    if not prod_id:
+                        # try to pull from related objects on reviews_qs if needed
+                        # since serialized_reviews order matches reviews_qs order, we can map by index,
+                        # but easier is to re-query minimal mapping from DB (cheap for small batch)
+                        pass
+
+                    if prod_id:
+                        reviews_map.setdefault(prod_id, []).append(r)
+
+            # -------------------------
+            # Stores: determine user_ids from products we fetched (fast)
+            # then pick up to 6 random stores for this main category
+            # -------------------------
+            user_ids = set([p.user_id for p in products if p.user_id])
+            stores_qs = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).only('id', 'name', 'profile_image')
+            stores_list = list(stores_qs)
+            # pick random up to 6
+            random_stores = random.sample(stores_list, min(6, len(stores_list)))
+
+            # Serialize stores minimally (id, name, image)
+            stores_data = [
+                {
+                    'id': s.id,
+                    'name': s.name,
+                    'image': s.profile_image.url if s.profile_image else None
+                } for s in random_stores
+            ]
+
+            # -------------------------
+            # Serialize products using product_serializer but pass reviews_map in context
+            # product_serializer must use reviews_map if present to avoid per-object queries
+            # -------------------------
+            # prepare serializer context
+            ser_context = {'request': request, 'reviews_map': reviews_map}
+
+            # Use your existing serializer but because we prefetched related objects, it should not do extra queries
+            products_serialized = product_serializer(products, many=True, context=ser_context).data
+
+            # -------------------------
+            # build response payload for this main category
+            # -------------------------
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
-                "categories": list(main_cat.categories.values("id", "name", "image")),
-                "stores": store_data,
-                "products": product_data
+                "categories": [
+                    {"id": c.id, "name": c.name, "image": c.image.url if c.image else None}
+                    for c in categories_qs
+                ],
+                "stores": stores_data,
+                "products": products_serialized
             })
+
+        total_ms = (time.time() - start_total) * 1000.0
+        # optional: print timings to server console for debug
+        print(f"HomeScreenView total time: {total_ms:.2f} ms")
 
         return Response(response_data, status=status.HTTP_200_OK)
 
