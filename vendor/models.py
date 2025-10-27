@@ -542,7 +542,7 @@ class product(models.Model):
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
-    stock_cached = models.IntegerField(default=0)
+    stock_cached = models.IntegerField(default=0, null=True, blank=True)
 
 
     created_at = models.DateTimeField(auto_now_add=True)

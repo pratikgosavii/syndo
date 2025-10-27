@@ -143,7 +143,7 @@ class product_Form(forms.ModelForm):
                 'placeholder': '#ffffff',
                 'style': 'width: 100px;',
             }),
-            'size': forms.TextInput(attrs={'class': 'form-control'}),
+            'size': forms.Select(attrs={'class': 'form-control'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
             'expiry_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
 
