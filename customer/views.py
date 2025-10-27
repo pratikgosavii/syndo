@@ -827,59 +827,41 @@ class HomeScreenView(APIView):
 
     def get(self, request, *args, **kwargs):
         response_data = []
-
-        # ✅ Single prefetch — NO LOOP QUERIES
-        main_categories = MainCategory.objects.prefetch_related(
-            Prefetch(
-                'categories',
-                queryset=product_category.objects.prefetch_related(
-                    Prefetch(
-                        'product_subcategory_set',
-                        queryset=product_subcategory.objects.only('id', 'name', 'image')
-                    )
-                ).only('id', 'name', 'image')
-            )
-        ).only('id', 'name')
+        main_categories = MainCategory.objects.prefetch_related('categories').all()
 
         for main_cat in main_categories:
-            subcategory_ids = [cat.id for cat in main_cat.categories.all()]
+            category_ids = main_cat.categories.values_list('id', flat=True)
 
-            # ✅ FAST queryset (no fields waste)
-            stores_qs = vendor_store.objects.filter(
-                user_id__in=product.objects.filter(category_id__in=subcategory_ids)
-                .values_list('user_id', flat=True).distinct(),
+            # === STORES (any 6, fast query) ===
+            user_ids = product.objects.filter(
+                category_id__in=category_ids
+            ).values_list('user_id', flat=True).distinct()
+
+            stores = vendor_store.objects.filter(
+                user_id__in=user_ids,
                 is_active=True
-            ).only('id', 'name', 'profile_image')
+            ).only('id', 'name', 'profile_image')[:6]
 
-            random_stores = random.sample(list(stores_qs), min(6, stores_qs.count()))
-            store_data = VendorStoreSerializer(random_stores, many=True, context={'request': request}).data
+            store_data = VendorStoreSerializer(stores, many=True, context={'request': request}).data
 
-            # ✅ Only needed product fields
-            products_qs = product.objects.filter(category_id__in=subcategory_ids).only('id', 'name', 'mrp', 'sales_price', 'stock', 'image')
-            random_products = random.sample(list(products_qs), min(8, products_qs.count()))
-            product_data = product_serializer(random_products, many=True, context={'request': request}).data
+            # === PRODUCTS (any 6, fast query) ===
+            products = product.objects.filter(
+                category_id__in=category_ids,
+                is_active=True
+            ).only('id', 'name', 'sales_price', 'image')[:6]
 
-            # ✅ Final structured response
+            product_data = product_serializer(products, many=True, context={'request': request}).data
+
+            # === RESPONSE ===
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
-                "subcategories": [
-                    {
-                        "id": cat.id,
-                        "name": cat.name,
-                        "image": cat.image.url if cat.image else None,
-                        "subcategories": list(
-                            cat.product_subcategory_set.values("id", "name", "image")
-                        )
-                    }
-                    for cat in main_cat.categories.all()
-                ],
+                "categories": list(main_cat.categories.values("id", "name", "image")),
                 "stores": store_data,
                 "products": product_data
             })
 
         return Response(response_data, status=status.HTTP_200_OK)
-
 
 
 
