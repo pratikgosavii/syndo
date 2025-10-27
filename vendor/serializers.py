@@ -610,7 +610,6 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'working_hours',
             'spotlight_products',
             'name',
-            'products',
             'about',
             'profile_image',
             'banner_image',
