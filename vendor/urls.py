@@ -181,6 +181,7 @@ urlpatterns = [
     path('order-details/<order_id>', order_details, name='order_details'),
     path('order-list/', order_list, name='order_list'),
     path('update-order-item-status/<order_item_id>', update_order_item_status, name='update_order_item_status'),
+    path('order-item-status/<order_item_id>', UpdateOrderItemStatusAPIView.as_view(), name='order_item_status'),
 
     path('order-exchange-list/', order_exchange_list, name='order_exchange_list'),
     path('return-detail/<return_item_id>', return_detail, name='return_detail'),
