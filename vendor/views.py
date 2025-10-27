@@ -2732,6 +2732,26 @@ def update_order_item_status(request, order_item_id):
 
 
 
+
+class UpdateOrderItemStatusAPIView(APIView):
+    def post(self, request, order_item_id):
+        item = get_object_or_404(OrderItem, id=order_item_id)
+        status_value = request.data.get("status")
+
+        if status_value in dict(OrderItem.STATUS_CHOICES):
+            item.status = status_value
+            item.save()
+            return Response(
+                {"message": f"Status for {item.product.name} updated to {status_value} ✅"},
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"error": "Invalid status selected."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+
 def order_exchange_list(request):
 
     data = ReturnExchange.objects.filter(
@@ -3366,47 +3386,52 @@ class VendorReturnManageAPIView(APIView):
     def patch(self, request):
         """
         Update status of a return/exchange request
-        Example JSON:
-        {
-            "id": 12,
-            "action": "approve"  # or "reject" / "complete"
-        }
+        action = "approve" | "reject" | "complete"
         """
         req_id = request.data.get("id")
         action = request.data.get("action")
 
         if not req_id or not action:
-            return Response({"error": "Both 'id' and 'action' are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Both 'id' and 'action' are required."}, status=400)
 
         try:
             instance = ReturnExchange.objects.get(id=req_id, order_item__product__user=request.user)
         except ReturnExchange.DoesNotExist:
-            return Response({"error": "Return/Exchange request not found or not related to your products."},
-                            status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Invalid request or not related to your products."}, status=404)
 
-        valid_actions = {
-            "approve": "approved",
-            "reject": "rejected",
-            "complete": "completed",
-        }
+        # ✅ Logic same as before
+        if action == "approve":
+            if instance.order_item.status != 'returned/replaced_requested':
+                return Response({"error": "Only requested items can be approved."}, status=400)
 
-        if action not in valid_actions:
-            return Response({"error": "Invalid action. Use 'approve', 'reject', or 'complete'."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            instance.status = 'returned/replaced_approved'
+            instance.order_item.status = 'returned/replaced_approved'
+            instance.order_item.save()
 
-        # Prevent status changes if already completed/rejected
-        if instance.status in ['rejected', 'completed']:
-            return Response({"error": "This request has already been processed."}, status=status.HTTP_400_BAD_REQUEST)
+        elif action == "reject":
+            if instance.order_item.status != 'returned/replaced_requested':
+                return Response({"error": "Only requested items can be rejected."}, status=400)
 
-        instance.status = valid_actions[action]
+            instance.status = 'returned/replaced_rejected'
+
+        elif action == "complete":
+            if instance.order_item.status != 'returned/replaced_approved':
+                return Response({"error": "Only approved requests can be marked as completed."}, status=400)
+
+            instance.status = 'returned/replacement_completed'
+            instance.order_item.status = 'returned/replaced_completed'
+            instance.order_item.save()
+
+        else:
+            return Response({"error": "Invalid action. Use 'approve', 'reject', or 'complete'."}, status=400)
+
         instance.save()
 
         return Response({
-            "success": f"Request {action}d successfully.",
+            "success": f"{action.capitalize()} successful",
             "id": instance.id,
             "status": instance.status
-        }, status=status.HTTP_200_OK)
-    
+        }, status=200)
 
 
 
