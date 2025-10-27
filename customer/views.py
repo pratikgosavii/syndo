@@ -911,23 +911,26 @@ class HomeScreenView(APIView):
             # pick random up to 6
             random_stores = random.sample(stores_list, min(6, len(stores_list)))
             # ✅ Get approved banner campaigns (latest or random as per your choice)
-            banners = BannerCampaign.objects.filter(is_approved=True).order_by('-created_at')[:5]
-            banners_data = [
-                {
-                    'id': b.id,
-                    'banner_image': b.banner_image.url if b.banner_image else None,
-                } for b in banners
-            ]
-            # Serialize stores minimally (id, name, image)
-            stores_data = [
-                {
+            stores_data = []
+            for s in random_stores:
+                store_banners = BannerCampaign.objects.filter(
+                    user=s.user,   # 🔥 filter only for this store's owner
+                    is_approved=True
+                ).order_by('-created_at')[:5]
+
+                store_banners_data = [
+                    {
+                        'id': b.id,
+                        'banner_image': b.banner_image.url if b.banner_image else None,
+                    } for b in store_banners
+                ]
+
+                stores_data.append({
                     'id': s.id,
                     'name': s.name,
                     'profile_image': s.profile_image.url if s.profile_image else None,
-                    'banners' : banners_data
-
-                } for s in random_stores
-            ]
+                    'banners': store_banners_data  # 🔥 now store-wise banners
+                })
 
             # -------------------------
             # Serialize products using product_serializer but pass reviews_map in context
