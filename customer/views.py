@@ -855,7 +855,7 @@ class HomeScreenView(APIView):
             store_data = VendorStoreSerializer(random_stores, many=True, context={'request': request}).data
 
             # ✅ Only needed product fields
-            products_qs = product.objects.filter(category_id__in=subcategory_ids).only('id', 'name', 'price', 'image')
+            products_qs = product.objects.filter(category_id__in=subcategory_ids).only('id', 'name', 'mrp', 'sales_price', 'stock', 'image')
             random_products = random.sample(list(products_qs), min(8, products_qs.count()))
             product_data = product_serializer(random_products, many=True, context={'request': request}).data
 
