@@ -924,7 +924,7 @@ class HomeScreenView(APIView):
                     'id': s.id,
                     'name': s.name,
                     'profile_image': s.profile_image.url if s.profile_image else None,
-                    'banner' : banners_data
+                    'banners' : banners_data
 
                 } for s in random_stores
             ]
