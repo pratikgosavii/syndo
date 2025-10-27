@@ -4,7 +4,7 @@ from django.shortcuts import render
 # Create your views here.
 
 
-from masters.models import MainCategory, product_subcategory
+from masters.models import MainCategory, product_category, product_subcategory
 from users.models import *
 
 from rest_framework import viewsets, permissions
