@@ -818,13 +818,6 @@ from rest_framework.response import Response
 from rest_framework import status
 
 class HomeScreenView(APIView):
-    """
-    MAIN CATEGORY HOME API (FULLY OPTIMIZED)
-    - Includes Level 1 Categories + Level 2 Subcategories
-    - 6 Stores (Random)
-    - 8 Products (Random)
-    """
-
     def get(self, request, *args, **kwargs):
         response_data = []
         main_categories = MainCategory.objects.prefetch_related('categories').all()
@@ -832,27 +825,39 @@ class HomeScreenView(APIView):
         for main_cat in main_categories:
             category_ids = main_cat.categories.values_list('id', flat=True)
 
-            # === STORES (any 6, fast query) ===
-            user_ids = product.objects.filter(
-                category_id__in=category_ids
-            ).values_list('user_id', flat=True).distinct()
-
+            # === STORES (any 6) ===
             stores = vendor_store.objects.filter(
-                user_id__in=user_ids,
+                user_id__in=product.objects.filter(category_id__in=category_ids)
+                .values_list('user_id', flat=True).distinct(),
                 is_active=True
             ).only('id', 'name', 'profile_image')[:6]
 
-            store_data = VendorStoreSerializer(stores, many=True, context={'request': request}).data
+            store_data = [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "image": s.profile_image.url if s.profile_image else None
+                }
+                for s in stores
+            ]
 
-            # === PRODUCTS (any 6, fast query) ===
+            # === PRODUCTS (any 6) ===
             products = product.objects.filter(
                 category_id__in=category_ids,
                 is_active=True
-            ).only('id', 'name', 'sales_price', 'image')[:6]
+            ).only('id', 'name', 'sales_price', 'mrp', 'image')[:6]
 
-            product_data = product_serializer(products, many=True, context={'request': request}).data
+            product_data = [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "sales_price": p.sales_price,
+                    "mrp": p.mrp,
+                    "image": p.image.url if p.image else None
+                }
+                for p in products
+            ]
 
-            # === RESPONSE ===
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
