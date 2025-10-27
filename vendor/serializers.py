@@ -602,7 +602,6 @@ class VendorStoreSerializer(serializers.ModelSerializer):
     reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
     banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
 
-    products = product_serializer(source='user.productssdsdsd', many=True, read_only=True) 
 
     class Meta:
         model = vendor_store
