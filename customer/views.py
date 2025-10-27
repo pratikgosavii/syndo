@@ -936,7 +936,7 @@ class HomeScreenView(APIView):
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
-                "subcategory": [
+                "subcategories": [
                     {"id": c.id, "name": c.name, "image": c.image.url if c.image else None}
                     for c in categories_qs
                 ],
