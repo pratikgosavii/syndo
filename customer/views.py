@@ -812,64 +812,74 @@ class StoreByCategoryView(APIView):
     
 
 
+from django.db.models import Prefetch
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
 class HomeScreenView(APIView):
     """
-    Get main categories with subcategories.
-    For each main category:
-        → 6 random stores
-        → 8 random products
+    MAIN CATEGORY HOME API (FULLY OPTIMIZED)
+    - Includes Level 1 Categories + Level 2 Subcategories
+    - 6 Stores (Random)
+    - 8 Products (Random)
     """
+
     def get(self, request, *args, **kwargs):
         response_data = []
 
-        main_categories = MainCategory.objects.prefetch_related('categories').all()
+        # ✅ Single prefetch — NO LOOP QUERIES
+        main_categories = MainCategory.objects.prefetch_related(
+            Prefetch(
+                'categories',
+                queryset=product_category.objects.prefetch_related(
+                    Prefetch(
+                        'product_subcategory_set',
+                        queryset=product_subcategory.objects.only('id', 'name', 'image')
+                    )
+                ).only('id', 'name', 'image')
+            )
+        ).only('id', 'name')
 
         for main_cat in main_categories:
-            subcategory_ids = list(main_cat.categories.values_list('id', flat=True))
+            subcategory_ids = [cat.id for cat in main_cat.categories.all()]
 
-            # ---------- Stores (Max 6) ----------
-            user_ids = product.objects.filter(category_id__in=subcategory_ids)\
-                                      .values_list('user_id', flat=True).distinct()
+            # ✅ FAST queryset (no fields waste)
+            stores_qs = vendor_store.objects.filter(
+                user_id__in=product.objects.filter(category_id__in=subcategory_ids)
+                .values_list('user_id', flat=True).distinct(),
+                is_active=True
+            ).only('id', 'name', 'profile_image')
 
-            stores_qs = vendor_store.objects.filter(user_id__in=user_ids, is_active=True)
-            store_list = list(stores_qs)
-            random_stores = random.sample(store_list, min(6, len(store_list)))
+            random_stores = random.sample(list(stores_qs), min(6, stores_qs.count()))
+            store_data = VendorStoreSerializer(random_stores, many=True, context={'request': request}).data
 
-            # Serialized store data
-            store_data = VendorStoreSerializer(
-                random_stores, many=True, context={'request': request}
-            ).data
+            # ✅ Only needed product fields
+            products_qs = product.objects.filter(category_id__in=subcategory_ids).only('id', 'name', 'price', 'image')
+            random_products = random.sample(list(products_qs), min(8, products_qs.count()))
+            product_data = product_serializer(random_products, many=True, context={'request': request}).data
 
-            # ---------- Products (Max 8) ----------
-            product_qs = product.objects.filter(category_id__in=subcategory_ids)
-            product_list = list(product_qs)
-            random_products = random.sample(product_list, min(8, len(product_list)))
-
-            # Serialized product data
-            product_data = product_serializer(
-                random_products, many=True, context={'request': request}
-            ).data
-
-            # ---------- Final Response ----------
+            # ✅ Final structured response
             response_data.append({
                 "main_category_id": main_cat.id,
                 "main_category_name": main_cat.name,
                 "subcategories": [
-                {
-                    "id": cat.id,
-                    "name": cat.name,
-                    "image": cat.image.url if cat.image else None,
-                    "subcategories": list(
-                        product_subcategory.objects.filter(category=cat).values("id", "name", "image")
-                    )
-                }
-                for cat in main_cat.categories.all()
-            ],
+                    {
+                        "id": cat.id,
+                        "name": cat.name,
+                        "image": cat.image.url if cat.image else None,
+                        "subcategories": list(
+                            cat.product_subcategory_set.values("id", "name", "image")
+                        )
+                    }
+                    for cat in main_cat.categories.all()
+                ],
                 "stores": store_data,
                 "products": product_data
             })
 
         return Response(response_data, status=status.HTTP_200_OK)
+
 
 
 
