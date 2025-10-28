@@ -204,7 +204,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
     avg_rating = serializers.SerializerMethodField()    
     reviews = serializers.SerializerMethodField()
-    
+
     is_favourite = serializers.SerializerMethodField()  # ✅ dynamic now
 
     class Meta:
@@ -339,10 +339,12 @@ class product_serializer(serializers.ModelSerializer):
 
         
     def _get_reviews_queryset(self, obj):
-        """ Reuse same queryset to avoid double DB hit """
-        if not hasattr(self, '_cached_reviews'):
-            self._cached_reviews = Review.objects.filter(order_item__product=obj)
-        return self._cached_reviews
+        if not hasattr(self, '_reviews_cache'):
+            self._reviews_cache = {}
+        if obj.id not in self._reviews_cache:
+            self._reviews_cache[obj.id] = Review.objects.filter(order_item__product=obj)
+        return self._reviews_cache[obj.id]
+
 
     def get_reviews(self, obj):
         from customer.serializers import ReviewSerializer
