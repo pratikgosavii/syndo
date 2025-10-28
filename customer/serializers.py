@@ -326,9 +326,12 @@ class SupportTicketSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+
+    user_details = UserProfileSerializer(source = 'user', read_only = True)
+
     class Meta:
         model = Review
-        fields = ['id', 'order_item', 'photo',  'rating', 'comment', 'created_at', 'updated_at']
+        fields = ['id', 'order_item', 'photo',  'rating', 'comment', 'user_details', 'created_at', 'updated_at']
         read_only_fields = [ "user"]
 
 from vendor.models import vendor_store
