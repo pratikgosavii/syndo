@@ -574,6 +574,7 @@ class BankLedgerAPIView(APIView):
         return Response({
             "bank_id": bank.id,
             "bank_name": bank.name,
+            "opening" :  bank.opening_balance,
             "balance": bank.opening_balance + ledger_total,
             "ledger": serializer.data.get("ledger_entries", [])
         })
