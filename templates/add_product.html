@@ -126,7 +126,7 @@ input:checked + .slider:before {
 
             <div class="container">
                 <div class="form-container">
-                    <form method="POST" enctype="multipart/form-data">
+                    <form method="POST" enctype="multipart/form-data" id="product-form">
                         {% csrf_token %}
                         
                         <div style="justify-content: right; display: flex;">
@@ -253,7 +253,6 @@ input:checked + .slider:before {
                     
                         <!-- Stock -->
                         <hr class="product-only-field">
-                        <div class="product-only-field">
 
                             <div class="mb-3 form-check ">
                                 {{ form.track_serial_numbers }}
@@ -275,7 +274,6 @@ input:checked + .slider:before {
                                 {{ form.low_stock_quantity }}
                             </div>
                             
-                        </div>
                         
                         <!-- Optional Attributes -->
                         <hr class="product-only-field">
@@ -313,12 +311,12 @@ input:checked + .slider:before {
                                     
                        
                     
-                        <div class="mb-3 product-only-field" id="batch_number_wrapper">
+                        <div class="mb-3" id="batch_number_wrapper">
                             <label for="id_batch_number" class="form-label">Batch Number</label>
                             {{ form.batch_number }}
                         </div>
                     
-                        <div class="mb-3 product-only-field" id="expiry_date_wrapper">
+                        <div class="mb-3" id="expiry_date_wrapper">
                             <label for="id_expiry_date" class="form-label">Expiry Date</label>
                             {{ form.expiry_date }}
                         </div>
@@ -1223,8 +1221,74 @@ function handleCustomPrintToggleChange() {
 
 
   
+  
+  // --------------------- Inline native validation messages for all fields ---------------------
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('product-form') || document.querySelector('form');
+    if (!form) return;
 
-    </script>
+    function showError(el) {
+      if (!el || el.validity.valid) return;
+      let container = el.parentNode;
+      // Remove any existing error under this parent
+      const prev = container.querySelector('.validation-error');
+      if (prev) prev.remove();
+      const msg = document.createElement('div');
+      msg.className = 'validation-error text-danger small';
+      msg.textContent = el.validationMessage || 'Please fill out this field.';
+      container.appendChild(msg);
+    }
+
+    function clearError(el) {
+      const container = el?.parentNode;
+      if (!container) return;
+      const prev = container.querySelector('.validation-error');
+      if (prev) prev.remove();
+    }
+
+    // On submit: prevent default if invalid and show messages for all invalid fields
+    form.addEventListener('submit', function (e) {
+      // Clear old messages
+      form.querySelectorAll('.validation-error').forEach(n => n.remove());
+
+      if (!form.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+        const invalidEls = form.querySelectorAll(':invalid');
+        let first;
+        invalidEls.forEach(el => {
+          // skip hidden/disabled
+          if (el.disabled) return;
+          if (el.offsetParent === null) return;
+          showError(el);
+          if (!first) first = el;
+        });
+        first?.focus?.();
+      }
+    }, true);
+
+    // Suppress native bubble and show inline on each invalid event
+    form.addEventListener('invalid', function (e) {
+      e.preventDefault();
+      const el = e.target;
+      // skip hidden/disabled
+      if (el.disabled) return;
+      if (el.offsetParent === null) return;
+      showError(el);
+    }, true);
+
+    // Live clear when field becomes valid
+    form.querySelectorAll('input, select, textarea').forEach(el => {
+      el.addEventListener('input', () => {
+        if (el.checkValidity()) clearError(el);
+      });
+      el.addEventListener('change', () => {
+        if (el.checkValidity()) clearError(el);
+      });
+    });
+  });
+
+     </script>
     
 
 

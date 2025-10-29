@@ -170,7 +170,7 @@ class ListProducts(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = product.objects.filter(is_active=True)
+        qs = product.objects.filter(is_active=True, sale_type__in = ["online", "both"])
 
         # Filter by customer pincode
           # Get pincode from ?pincode=XXXX in URL
@@ -759,8 +759,18 @@ class ProductSearchAPIView(ListAPIView):
 
     def get_queryset(self):
         search_term = self.request.query_params.get("q")  # use ?q=shirt
-        qs = product.objects.all()
+        qs = product.objects.filter(is_active=True, sale_type__in = ["online", "both"])
 
+         # Filter by customer pincode
+          # Get pincode from ?pincode=XXXX in URL
+        pincode = self.request.GET.get("pincode")
+
+        if pincode:
+            qs = qs.filter(vendor__coverages__pincode=pincode)
+        user = self.request.user
+        # Annotate favourites
+        
+    
         if search_term:
             qs = qs.filter(
                 Q(name__icontains=search_term) |
@@ -771,7 +781,14 @@ class ProductSearchAPIView(ListAPIView):
                 Q(category__name__icontains=search_term) |
                 Q(sub_category__name__icontains=search_term)
             )
-        return qs
+
+        if user.is_authenticated:
+            favs = Favourite.objects.filter(user=user, product=OuterRef('pk'))
+            qs = qs.annotate(is_favourite=Exists(favs))
+        else:
+            qs = qs.annotate(is_favourite=Value(False, output_field=BooleanField()))
+
+        return qs.distinct()
 
 
 
