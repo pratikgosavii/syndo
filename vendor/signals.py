@@ -82,6 +82,9 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
 
     # >>> NEW : Special case for CashLedger (no FK field)
     if ledger_model.__name__ == "CashLedger":
+        # Guard: require user to attribute cash ledger entries
+        if user is None:
+            return
         # Get or create CashBalance for the user
         from .models import CashBalance
         cash_balance, created = CashBalance.objects.get_or_create(
@@ -213,7 +216,12 @@ def adjust_ledger_to_target(parent, ledger_model, transaction_type, reference_id
 # -------------------------------
 @receiver(post_save, sender=Sale)
 def sale_ledger(sender, instance, created, **kwargs):
-    # For updates, adjust to target instead of creating duplicates
+    # Always reset previous entries for this reference, then adjust to target
+    reset_ledger_for_reference(CustomerLedger, "sale", instance.id)
+    reset_ledger_for_reference(BankLedger, "sale", instance.id)
+    reset_ledger_for_reference(CashLedger, "sale", instance.id)
+
+    # For updates, adjust to target for current state
     # Customer ledger → target is total_amount
     if instance.customer:
         adjust_ledger_to_target(
@@ -238,7 +246,7 @@ def sale_ledger(sender, instance, created, **kwargs):
         )
 
     # Cash ledger → target is advance_amount or total when cash
-    if instance.payment_method == "cash":
+    if instance.payment_method == "cash" and instance.user is not None:
         target_cash = instance.advance_amount or instance.total_amount or Decimal(0)
         adjust_ledger_to_target(
             None,
@@ -256,6 +264,11 @@ def sale_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
+    # Always reset previous entries for this reference, then adjust current
+    reset_ledger_for_reference(VendorLedger, "purchase", instance.id)
+    reset_ledger_for_reference(BankLedger, "purchase", instance.id)
+    reset_ledger_for_reference(CashLedger, "purchase", instance.id)
+
     if instance.vendor:
         amt = (instance.discount_amount or Decimal(0)) + (instance.advance_amount or Decimal(0))
         adjust_ledger_to_target(
@@ -280,7 +293,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
         )
 
     # Cash ledger for purchase
-    if instance.payment_method == "cash":
+    if instance.payment_method == "cash" and instance.user is not None:
         target = -(instance.advance_amount or Decimal(0))
         adjust_ledger_to_target(
             None,
@@ -298,6 +311,10 @@ def purchase_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Expense)
 def expense_ledger(sender, instance, created, **kwargs):
+    # Reset then adjust current
+    reset_ledger_for_reference(BankLedger, "expense", instance.id)
+    reset_ledger_for_reference(CashLedger, "expense", instance.id)
+
     if instance.bank:
         adjust_ledger_to_target(
             instance.bank,
@@ -309,7 +326,7 @@ def expense_ledger(sender, instance, created, **kwargs):
         )
 
     # Cash ledger
-    if instance.payment_method == "cash":
+    if instance.payment_method == "cash" and instance.user is not None:
         adjust_ledger_to_target(
             None,
             CashLedger,
@@ -327,6 +344,14 @@ def expense_ledger(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Payment)
 def payment_ledger(sender, instance, created, **kwargs):
     amt = Decimal(instance.amount or 0)
+
+    # Reset all possible previous effects for this reference to handle updates
+    reset_ledger_for_reference(CustomerLedger, "payment", instance.id)
+    reset_ledger_for_reference(CustomerLedger, "refund", instance.id)
+    reset_ledger_for_reference(VendorLedger, "payment", instance.id)
+    reset_ledger_for_reference(VendorLedger, "refund", instance.id)
+    reset_ledger_for_reference(CashLedger, "deposit", instance.id)
+    reset_ledger_for_reference(CashLedger, "withdrawal", instance.id)
 
     if instance.customer:
         if instance.type == "received":
@@ -369,7 +394,7 @@ def payment_ledger(sender, instance, created, **kwargs):
             )
 
     # >>> NEW : Cash ledger for cash payments
-    if instance.payment_type == "cash":
+    if instance.payment_type == "cash" and instance.user is not None:
         if instance.type == "received":
             adjust_ledger_to_target(
                 None,
@@ -429,24 +454,26 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
 
     # Deduct from source bank
     if instance.from_bank:
+        to_name = instance.to_bank.name if getattr(instance, 'to_bank', None) else 'destination bank'
         adjust_ledger_to_target(
             instance.from_bank,
             BankLedger,
             "expense",
             instance.id,
             -amt,
-            f"Transfer to {instance.to_bank.name}"
+            f"Transfer to {to_name}"
         )
 
     # Add to destination bank
     if instance.to_bank:
+        from_name = instance.from_bank.name if getattr(instance, 'from_bank', None) else 'source bank'
         adjust_ledger_to_target(
             instance.to_bank,
             BankLedger,
             "deposit",
             instance.id,
             amt,
-            f"Transfer from {instance.from_bank.name}"
+            f"Transfer from {from_name}"
         )
 
 
@@ -539,18 +566,22 @@ def update_stock_on_purchase_edit(sender, instance, **kwargs):
 
     if old_product and old_product != instance.product:
         product.objects.filter(id=old_product.id).update(stock_cached=F('stock_cached') - old_qty)
-        log_stock_transaction(old_product, "purchase", -old_qty, ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(old_product, "purchase", -old_qty, ref_id=instance.pk)
 
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
-        log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
         return
 
     if qty_diff > 0:
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + qty_diff)
-        log_stock_transaction(instance.product, "purchase", qty_diff, ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(instance.product, "purchase", qty_diff, ref_id=instance.pk)
     elif qty_diff < 0:
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - abs(qty_diff))
-        log_stock_transaction(instance.product, "purchase", -abs(qty_diff), ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(instance.product, "purchase", -abs(qty_diff), ref_id=instance.pk)
 
 
 @receiver(post_delete, sender=PurchaseItem)
@@ -576,18 +607,22 @@ def update_stock_on_sale_edit(sender, instance, **kwargs):
 
     if old_product and old_product != instance.product:
         product.objects.filter(id=old_product.id).update(stock_cached=F('stock_cached') + old_qty)
-        log_stock_transaction(old_product, "sale", old_qty, ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(old_product, "sale", old_qty, ref_id=instance.pk)
 
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
-        log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
         return
 
     if qty_diff > 0:
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - qty_diff)
-        log_stock_transaction(instance.product, "sale", -qty_diff, ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(instance.product, "sale", -qty_diff, ref_id=instance.pk)
     elif qty_diff < 0:
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + abs(qty_diff))
-        log_stock_transaction(instance.product, "sale", abs(qty_diff), ref_id=instance.pk)
+        if instance.pk:
+            log_stock_transaction(instance.product, "sale", abs(qty_diff), ref_id=instance.pk)
 
 
 @receiver(post_delete, sender=SaleItem)
@@ -605,18 +640,87 @@ def reduce_stock_on_order_create(sender, instance, created, **kwargs):
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
         log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
 
+@receiver(pre_save, sender=OrderItem)
+def update_stock_on_order_edit(sender, instance, **kwargs):
+    try:
+        old = OrderItem.objects.get(pk=instance.pk)
+        old_qty = old.quantity
+        old_product = old.product
+    except OrderItem.DoesNotExist:
+        old_qty = 0
+        old_product = None
+
+    if instance.pk is None:
+        return
+
+    qty_diff = instance.quantity - old_qty
+
+    if old_product and old_product != instance.product:
+        product.objects.filter(id=old_product.id).update(stock_cached=F('stock_cached') + old_qty)
+        log_stock_transaction(old_product, "sale", old_qty, ref_id=instance.pk)
+
+        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
+        log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
+        return
+
+    if qty_diff > 0:
+        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - qty_diff)
+        log_stock_transaction(instance.product, "sale", -qty_diff, ref_id=instance.pk)
+    elif qty_diff < 0:
+        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + abs(qty_diff))
+        log_stock_transaction(instance.product, "sale", abs(qty_diff), ref_id=instance.pk)
+
 
 @receiver(post_save, sender=ReturnExchange)
 def update_stock_on_return_exchange(sender, instance, created, **kwargs):
-    # Only adjust stock when status becomes "completed"
-    if not created and instance.status == "completed":
-        if instance.type == "return":
-            product.objects.filter(id=instance.order_item.product.id).update(
-                stock_cached=F('stock_cached') + instance.order_item.quantity
+    # ReturnExchange no longer has status; handled via OrderItem.status elsewhere
+    return
+
+@receiver(post_save, sender=OrderItem)
+def add_stock_on_return_completed(sender, instance, created, **kwargs):
+    # When OrderItem status transitions to returned/replaced_completed, add stock back for returns
+    if created:
+        return
+    try:
+        new_status = instance.status
+    except Exception:
+        return
+    if new_status == 'returned/replaced_completed':
+        try:
+            from customer.models import ReturnExchange
+            req = ReturnExchange.objects.filter(order_item=instance).order_by('-created_at').first()
+        except Exception:
+            req = None
+        if req and req.type == 'return':
+            product.objects.filter(id=instance.product.id).update(
+                stock_cached=F('stock_cached') + instance.quantity
             )
-            log_stock_transaction(
-                instance.order_item.product, 
-                "return", 
-                instance.order_item.quantity, 
-                ref_id=instance.pk
-            )
+            # Avoid duplicate transaction per request id
+            from django.db.models import Q
+            if not StockTransaction.objects.filter(
+                product=instance.product,
+                transaction_type='return',
+                reference_id=req.pk
+            ).exists():
+                log_stock_transaction(
+                    instance.product,
+                    'return',
+                    instance.quantity,
+                    ref_id=req.pk
+                )
+
+# --- Ensure stock logs on create have proper reference ids ---
+@receiver(post_delete, sender=OrderItem)
+def restore_stock_on_order_delete(sender, instance, **kwargs):
+    product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
+    log_stock_transaction(instance.product, "sale", instance.quantity, ref_id=instance.pk)
+
+@receiver(post_save, sender=PurchaseItem)
+def log_purchase_item_on_create(sender, instance, created, **kwargs):
+    if created:
+        log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
+
+@receiver(post_save, sender=SaleItem)
+def log_sale_item_on_create(sender, instance, created, **kwargs):
+    if created:
+        log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
