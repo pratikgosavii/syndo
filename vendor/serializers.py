@@ -645,10 +645,13 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'about',
             'profile_image',
             'banner_image',
-            'storetag',
             'posts',
             'reels',
             'banners',
+            'storetag',
+            'latitude',
+            'longitude',
+            'is_location',
             'is_store_open',
         ]
     
