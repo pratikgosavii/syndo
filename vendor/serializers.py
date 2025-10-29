@@ -753,7 +753,7 @@ class InvoiceSettingsSerializer(serializers.ModelSerializer):
 class BankLedgerSerializer(serializers.ModelSerializer):
     class Meta:
         model = BankLedger
-        fields = ["id", "transaction_type", "reference_id", "description", "amount", "created_at"]
+        fields = ["id", "transaction_type", "reference_id", "balance_after", "description", "amount", "created_at"]
 
 class BankWithLedgerSerializer(serializers.ModelSerializer):
     ledger_entries = BankLedgerSerializer(many=True, read_only=True)
