@@ -65,6 +65,7 @@ class OnlineStoreSetting(models.Model):
 class vendor_store(models.Model):
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name="vendor_store", blank=True, null=True)
     name = models.CharField(max_length=50)
+    storetag = models.CharField(max_length=50, blank=True, null=True)
     banner_image = models.ImageField(upload_to='store/', blank=True, null=True)
     profile_image = models.ImageField(upload_to='store/', blank=True, null=True)
     about = models.CharField(max_length=500, blank=True, null=True)

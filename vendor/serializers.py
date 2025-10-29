@@ -633,6 +633,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
     reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
     banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
 
+    is_store_open = serializers.SerializerMethodField() 
 
     class Meta:
         model = vendor_store
@@ -644,11 +645,30 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'about',
             'profile_image',
             'banner_image',
+            'storetag',
             'posts',
             'reels',
             'banners',
+            'is_store_open',
         ]
     
+    def get_is_store_open(self, obj):
+         # Store-level active check ✅
+        if not obj.is_active:
+            return False
+
+        now = timezone.localtime()
+        today = now.strftime('%A').lower()
+        current_time = now.time()
+
+        working_hour = obj.user.working_hours.filter(day=today).first()
+        if not working_hour or not working_hour.is_open:
+            return False  # closed today fully
+
+        if working_hour.open_time and working_hour.close_time:
+            return working_hour.open_time <= current_time <= working_hour.close_time
+
+        return True  # If no time is set but marked open
 
     
 class DeliverySettingsSerializer(serializers.ModelSerializer):
