@@ -69,6 +69,9 @@ class vendor_store(models.Model):
     banner_image = models.ImageField(upload_to='store/', blank=True, null=True)
     profile_image = models.ImageField(upload_to='store/', blank=True, null=True)
     about = models.CharField(max_length=500, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=50, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=50, decimal_places=6, blank=True, null=True)
+    is_location = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
     is_online = models.BooleanField(default=False)
     
