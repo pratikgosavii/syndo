@@ -624,7 +624,8 @@ class SaleSerializer(serializers.ModelSerializer):
         sale.save()
 
 
-   
+from django.utils import timezone
+
 class VendorStoreSerializer(serializers.ModelSerializer):
     # Nested child serializers
     working_hours = StoreWorkingHourSerializer(source='user.working_hours', many=True, read_only=True)
