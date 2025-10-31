@@ -185,14 +185,14 @@ urlpatterns = [
 
     path('order-details/<order_id>', order_details, name='order_details'),
     path('order-list/', order_list, name='order_list'),
-    path('update-order-item-status/<order_item_id>', update_order_item_status, name='update_order_item_status'),
-    path('order-item-status/<order_item_id>', UpdateOrderItemStatusAPIView.as_view(), name='order_item_status'),
+    path('update-order-item-status/<order_item_id>/', update_order_item_status, name='update_order_item_status'),
+    path('order-item-status/<order_item_id>/', UpdateOrderItemStatusAPIView.as_view(), name='order_item_status'),
 
     path('order-exchange-list/', order_exchange_list, name='order_exchange_list'),
-    path('return-detail/<return_item_id>', return_detail, name='return_detail'),
-    path('approve_return/<return_item_id>', approve_return, name='approve_return'),
-    path('reject-return/<return_item_id>', reject_return, name='reject_return'),
-    path('completed-return/<return_item_id>', completed_return, name='completed_return'),
+    path('return-detail/<return_item_id>/', return_detail, name='return_detail'),
+    path('approve_return/<return_item_id>/', approve_return, name='approve_return'),
+    path('reject-return/<return_item_id>/', reject_return, name='reject_return'),
+    path('completed-return/<return_item_id>/', completed_return, name='completed_return'),
     
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     

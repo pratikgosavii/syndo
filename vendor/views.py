@@ -2745,7 +2745,7 @@ def update_order_item_status(request, order_item_id):
 
 class UpdateOrderItemStatusAPIView(APIView):
     def post(self, request, order_item_id):
-        item = get_object_or_404(OrderItem, id=order_item_id)
+        item = OrderItem.objects.get(id=order_item_id)
         status_value = request.data.get("status")
 
         if status_value in dict(OrderItem.STATUS_CHOICES):
