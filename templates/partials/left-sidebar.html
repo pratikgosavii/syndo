@@ -301,6 +301,13 @@
                                 <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li>
                             </ul>
                         <li>
+
+                            <li>
+                                <a href="{% url 'daybook_report' %}" class="has-arrow">
+                                    <i data-feather="layers"></i>
+                                    <span data-key="t-authentication">Day Book</span>
+                                </a>
+                            </li>
                    
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
@@ -327,6 +334,8 @@
                                         <li><a href="{% url 'list_product' %}">Product List</a></li>
                                     </ul>
                                 </li>
+
+                             
 
                                <li>
                                     <a href="{% url 'generate_barcode' %}">
@@ -479,10 +488,13 @@
                         </li>
 
 
+                       
+
+
                         <li>
-                            <a href="{% url 'delivery_management' %}">
+                            <a href="{% url 'list_stock' %}" class="has-arrow">
                                 <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Delivery Management</span>
+                                <span data-key="t-authentication">List Stock</span>
                             </a>
                         </li>
 

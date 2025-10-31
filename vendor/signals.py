@@ -703,11 +703,11 @@ def add_stock_on_return_completed(sender, instance, created, **kwargs):
                 reference_id=req.pk
             ).exists():
                 log_stock_transaction(
-                    instance.product,
-                    'return',
-                    instance.quantity,
-                    ref_id=req.pk
-                )
+                        instance.product,
+                        'return',
+                        instance.quantity,
+                        ref_id=req.pk
+                    )
 
 # --- Ensure stock logs on create have proper reference ids ---
 @receiver(post_delete, sender=OrderItem)

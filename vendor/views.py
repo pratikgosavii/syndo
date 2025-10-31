@@ -1113,11 +1113,20 @@ def list_product(request):
 @login_required(login_url='login_admin')
 def list_stock(request):
 
-    data = product.objects.filter(user = request.user)
-    context = {
-        'data': data
-    }
-    return render(request, 'list_stock.html', context)
+    queryset = product.objects.all()
+    product_filter = productFilter(request.GET, queryset=queryset)
+    products = product_filter.qs
+
+    # To keep filter state in the template (e.g. highlight active button)
+    current_filter = request.GET.get('sale_type', 'all')
+    search_query = request.GET.get('search', '')
+
+    return render(request, 'list_stock.html', {
+        'data': products,
+        'current_filter': current_filter,
+        'search_query': search_query,
+        'filter': product_filter,
+    })
 
 
 @login_required(login_url='login_admin')
@@ -2903,7 +2912,7 @@ def auto_assign_delivery(request):
 
 
 
-from .models import CashBalance, vendor_bank, CashTransfer
+from .models import CashBalance, vendor_bank, CashTransfer, CashAdjustHistory
 
 @login_required
 def cash_in_hand(request):
@@ -2925,7 +2934,22 @@ def adjust_cash(request):
             print("Amount entered:", amount)
 
             balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
-            balance_obj.balance += Decimal(amount)
+            previous_balance = Decimal(balance_obj.balance or 0)
+            new_balance = Decimal(amount)
+            delta = new_balance - previous_balance
+
+            # Write history to dedicated table
+            if delta != 0:
+                CashAdjustHistory.objects.create(
+                    user=request.user,
+                    previous_balance=previous_balance,
+                    new_balance=new_balance,
+                    delta_amount=delta,
+                    note=f"Manual cash adjust: {previous_balance} -> {new_balance}",
+                )
+
+            # Apply the new balance
+            balance_obj.balance = new_balance
             balance_obj.save()
             print('Balance updated successfully')
             
@@ -2938,7 +2962,9 @@ def adjust_cash(request):
   # optionally handle errors
     return redirect('cash_in_hand')
 
-
+def adjust_cash_history(request):
+    data = CashAdjustHistory.objects.filter(user=request.user)
+    return render(request, 'cash_adjust_history.html', {'data': data})
 
 from django.contrib import messages
 
@@ -2960,9 +2986,7 @@ def bank_transfer(request):
             if amount > balance_obj.balance:
                 messages.error(request, "Insufficient balance.")
             else:
-                # Deduct and record transfer
-                balance_obj.balance -= Decimal(amount)
-                balance_obj.save()
+              
 
                 CashTransfer.objects.create(user=request.user, bank_account=bank, amount=amount)
 
@@ -2973,6 +2997,12 @@ def bank_transfer(request):
     return redirect('cash_in_hand')
 
 
+
+
+@login_required
+def cash_adjust_history(request):
+    data = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'cash_adjust_history.html', { 'data': data })
 
 
 class StoreWorkingHourViewSet(viewsets.ModelViewSet):
@@ -3023,8 +3053,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
-from .models import CashBalance, CashTransfer
-from .serializers import CashBalanceSerializer, CashTransferSerializer
+from .models import CashBalance, CashTransfer, CashAdjustHistory
+from .serializers import CashBalanceSerializer, CashTransferSerializer, CashAdjustHistorySerializer
 from vendor.models import vendor_bank
 
 
@@ -3043,11 +3073,260 @@ class CashBalanceViewSet(viewsets.ViewSet):
             amount = Decimal(request.data.get('amount', 0))
             print(amount)
             balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
-            balance_obj.balance = amount
+            previous = Decimal(balance_obj.balance or 0)
+            new = amount
+            delta = new - previous
+            if delta != 0:
+                CashAdjustHistory.objects.create(
+                    user=request.user,
+                    previous_balance=previous,
+                    new_balance=new,
+                    delta_amount=delta,
+                    note=f"API cash adjust: {previous} -> {new}",
+                )
+            balance_obj.balance = new
             balance_obj.save()
             return Response({'message': 'Balance updated'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='adjust-history')
+    def list_adjust_history(self, request):
+        qs = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
+        return Response(CashAdjustHistorySerializer(qs, many=True).data)
+
+
+# -------------------------------
+# Day Book API
+# -------------------------------
+from django.db.models import Sum, Q
+from datetime import datetime, timedelta
+from django.utils import timezone as dj_timezone
+from .models import (
+    CustomerLedger,
+    VendorLedger,
+    CashLedger as CashLedgerModel,
+    BankLedger as BankLedgerModel,
+    StockTransaction,
+)
+
+
+class DayBookAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _day_bounds(self, date_str):
+        if date_str:
+            try:
+                d = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                d = dj_timezone.localdate()
+        else:
+            d = dj_timezone.localdate()
+        start = datetime.combine(d, datetime.min.time()).astimezone(dj_timezone.get_current_timezone())
+        end = datetime.combine(d, datetime.max.time()).astimezone(dj_timezone.get_current_timezone())
+        return d.isoformat(), start, end
+
+    def _sum_amount(self, qs):
+        agg = qs.aggregate(total=Sum('amount'))
+        return int(agg['total'] or 0)
+
+    def get(self, request):
+        user = request.user
+        date_str = request.query_params.get('date')  # YYYY-MM-DD
+        date_iso, start, end = self._day_bounds(date_str)
+
+        # Tiles (totals)
+        sales_total = self._sum_amount(CustomerLedger.objects.filter(
+            customer__user=user, transaction_type='sale', created_at__range=(start, end)
+        ))
+        purchases_total = self._sum_amount(VendorLedger.objects.filter(
+            vendor__user=user, transaction_type='purchase', created_at__range=(start, end)
+        ))
+        receipts_total = self._sum_amount(CustomerLedger.objects.filter(
+            customer__user=user, transaction_type='payment', created_at__range=(start, end)
+        ))
+        payments_total = abs(self._sum_amount(VendorLedger.objects.filter(
+            vendor__user=user, transaction_type='payment', created_at__range=(start, end)
+        )))
+        expenses_bank = abs(self._sum_amount(BankLedgerModel.objects.filter(
+            bank__user=user, transaction_type='expense', created_at__range=(start, end)
+        )))
+        expenses_cash = abs(self._sum_amount(CashLedgerModel.objects.filter(
+            user=user, transaction_type='expense', created_at__range=(start, end)
+        )))
+        expenses_total = expenses_bank + expenses_cash
+
+        stock_count = StockTransaction.objects.filter(
+            product__user=user, created_at__range=(start, end)
+        ).count()
+
+        # Opening/closing balances
+        # Cash
+        last_cash_before = CashLedgerModel.objects.filter(user=user, created_at__lt=start).order_by('-created_at').first()
+        opening_cash = int(getattr(last_cash_before, 'balance_after', 0) or 0)
+        last_cash_on = CashLedgerModel.objects.filter(user=user, created_at__lte=end).order_by('-created_at').first()
+        closing_cash = int(getattr(last_cash_on, 'balance_after', opening_cash) or opening_cash)
+
+        # Bank: sum across all user banks
+        bank_accounts = vendor_bank.objects.filter(user=user)
+        opening_bank = 0
+        closing_bank = 0
+        for b in bank_accounts:
+            lb_before = BankLedgerModel.objects.filter(bank=b, created_at__lt=start).order_by('-created_at').first()
+            opening_bank += int(getattr(lb_before, 'balance_after', 0) or 0)
+            lb_on = BankLedgerModel.objects.filter(bank=b, created_at__lte=end).order_by('-created_at').first()
+            closing_bank += int(getattr(lb_on, 'balance_after', getattr(lb_before, 'balance_after', 0) or 0))
+
+        # Entries list (cash + bank ledgers)
+        def entry_from_cash(e):
+            amt = int(e.amount or 0)
+            return {
+                'type': e.transaction_type,
+                'medium': 'Cash',
+                'debit': abs(amt) if amt < 0 else 0,
+                'credit': amt if amt > 0 else 0,
+                'time': e.created_at,
+                'reference_id': e.reference_id,
+                'description': e.description or ''
+            }
+
+        def entry_from_bank(e):
+            amt = int(e.amount or 0)
+            return {
+                'type': e.transaction_type,
+                'medium': f"Bank - {e.bank.name}",
+                'debit': abs(amt) if amt < 0 else 0,
+                'credit': amt if amt > 0 else 0,
+                'time': e.created_at,
+                'reference_id': e.reference_id,
+                'description': e.description or ''
+            }
+
+        cash_entries = [entry_from_cash(e) for e in CashLedgerModel.objects.filter(user=user, created_at__range=(start, end)).order_by('created_at')]
+        bank_entries = [entry_from_bank(e) for e in BankLedgerModel.objects.filter(bank__user=user, created_at__range=(start, end)).order_by('created_at')]
+
+        entries = sorted(cash_entries + bank_entries, key=lambda x: x['time'])
+
+        return Response({
+            'date': date_iso,
+            'tiles': {
+                'sales': {'total': sales_total},
+                'purchases': {'total': purchases_total},
+                'stock': {'count': stock_count},
+                'receipts': {'total': receipts_total},
+                'payments': {'total': payments_total},
+                'expenses': {'total': expenses_total},
+            },
+            'accounts': {
+                'cash_in_hand': {'opening': opening_cash, 'closing': closing_cash},
+                'bank_balance': {'opening': opening_bank, 'closing': closing_bank},
+            },
+            'entries': [
+                {
+                    'type': e['type'],
+                    'medium': e['medium'],
+                    'debit': e['debit'],
+                    'credit': e['credit'],
+                    'time': e['time'],
+                    'reference_id': e['reference_id'],
+                    'description': e['description']
+                } for e in entries
+            ]
+        })
+
+
+@login_required
+def daybook_report(request):
+    user = request.user
+    date_str = request.GET.get('date')
+
+    def _day_bounds(date_str_local):
+        if date_str_local:
+            try:
+                d = datetime.strptime(date_str_local, "%Y-%m-%d").date()
+            except ValueError:
+                d = dj_timezone.localdate()
+        else:
+            d = dj_timezone.localdate()
+        start_local = datetime.combine(d, datetime.min.time()).astimezone(dj_timezone.get_current_timezone())
+        end_local = datetime.combine(d, datetime.max.time()).astimezone(dj_timezone.get_current_timezone())
+        return d.isoformat(), start_local, end_local
+
+    def _sum_amount(qs):
+        agg = qs.aggregate(total=Sum('amount'))
+        return int(agg['total'] or 0)
+
+    date_iso, start, end = _day_bounds(date_str)
+
+    sales_total = _sum_amount(CustomerLedger.objects.filter(customer__user=user, transaction_type='sale', created_at__range=(start, end)))
+    purchases_total = _sum_amount(VendorLedger.objects.filter(vendor__user=user, transaction_type='purchase', created_at__range=(start, end)))
+    receipts_total = _sum_amount(CustomerLedger.objects.filter(customer__user=user, transaction_type='payment', created_at__range=(start, end)))
+    payments_total = abs(_sum_amount(VendorLedger.objects.filter(vendor__user=user, transaction_type='payment', created_at__range=(start, end))))
+    expenses_bank = abs(_sum_amount(BankLedgerModel.objects.filter(bank__user=user, transaction_type='expense', created_at__range=(start, end))))
+    expenses_cash = abs(_sum_amount(CashLedgerModel.objects.filter(user=user, transaction_type='expense', created_at__range=(start, end))))
+    expenses_total = expenses_bank + expenses_cash
+
+    stock_count = StockTransaction.objects.filter(product__user=user, created_at__range=(start, end)).count()
+
+    last_cash_before = CashLedgerModel.objects.filter(user=user, created_at__lt=start).order_by('-created_at').first()
+    opening_cash = int(getattr(last_cash_before, 'balance_after', 0) or 0)
+    last_cash_on = CashLedgerModel.objects.filter(user=user, created_at__lte=end).order_by('-created_at').first()
+    closing_cash = int(getattr(last_cash_on, 'balance_after', opening_cash) or opening_cash)
+
+    bank_accounts = vendor_bank.objects.filter(user=user)
+    opening_bank = 0
+    closing_bank = 0
+    for b in bank_accounts:
+        lb_before = BankLedgerModel.objects.filter(bank=b, created_at__lt=start).order_by('-created_at').first()
+        opening_bank += int(getattr(lb_before, 'balance_after', 0) or 0)
+        lb_on = BankLedgerModel.objects.filter(bank=b, created_at__lte=end).order_by('-created_at').first()
+        closing_bank += int(getattr(lb_on, 'balance_after', getattr(lb_before, 'balance_after', 0) or 0))
+
+    def entry_from_cash(e):
+        amt = int(e.amount or 0)
+        return {
+            'type': e.transaction_type,
+            'medium': 'Cash',
+            'debit': abs(amt) if amt < 0 else 0,
+            'credit': amt if amt > 0 else 0,
+            'time': e.created_at,
+            'reference_id': e.reference_id,
+            'description': e.description or ''
+        }
+
+    def entry_from_bank(e):
+        amt = int(e.amount or 0)
+        return {
+            'type': e.transaction_type,
+            'medium': f"Bank - {e.bank.name}",
+            'debit': abs(amt) if amt < 0 else 0,
+            'credit': amt if amt > 0 else 0,
+            'time': e.created_at,
+            'reference_id': e.reference_id,
+            'description': e.description or ''
+        }
+
+    cash_entries = [entry_from_cash(e) for e in CashLedgerModel.objects.filter(user=user, created_at__range=(start, end)).order_by('created_at')]
+    bank_entries = [entry_from_bank(e) for e in BankLedgerModel.objects.filter(bank__user=user, created_at__range=(start, end)).order_by('created_at')]
+    entries = sorted(cash_entries + bank_entries, key=lambda x: x['time'])
+
+    context = {
+        'date': date_iso,
+        'tiles': {
+            'sales': {'total': sales_total},
+            'purchases': {'total': purchases_total},
+            'stock': {'count': stock_count},
+            'receipts': {'total': receipts_total},
+            'payments': {'total': payments_total},
+            'expenses': {'total': expenses_total},
+        },
+        'accounts': {
+            'cash_in_hand': {'opening': opening_cash, 'closing': closing_cash},
+            'bank_balance': {'opening': opening_bank, 'closing': closing_bank},
+        },
+        'entries': entries,
+    }
+    return render(request, 'daybook.html', context)
 
 
 class CashTransferViewSet(viewsets.ModelViewSet):
@@ -3070,11 +3349,7 @@ class CashTransferViewSet(viewsets.ModelViewSet):
         if amount > balance_obj.balance:
             raise serializers.ValidationError({"amount": "Insufficient balance."})
 
-        # Deduct balance
-        balance_obj.balance -= Decimal(amount)
-        balance_obj.save()
-
-        # Save transfer record
+        # Save transfer record only; signals will adjust cash and bank
         serializer.save(user=user, bank_account=bank_account)
 
 

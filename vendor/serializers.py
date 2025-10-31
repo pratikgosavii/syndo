@@ -118,6 +118,12 @@ class CashBalanceSerializer(serializers.ModelSerializer):
         fields = ['balance', 'updated_at']
 
 
+class CashAdjustHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CashAdjustHistory
+        fields = ['id', 'previous_balance', 'new_balance', 'delta_amount', 'note', 'created_at']
+
+
 class vendor_bank_serializer(serializers.ModelSerializer):
     class Meta:
         model = vendor_bank
@@ -653,6 +659,8 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'latitude',
             'longitude',
             'is_location',
+            'is_active',
+            'is_online',
             'is_store_open',
         ]
     
