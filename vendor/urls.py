@@ -65,6 +65,8 @@ urlpatterns = [
     
     path('request-list/', requestlist.as_view(), name='request-lists'),
     path('return-exchange/', VendorReturnManageAPIView.as_view(), name='vendor-return-manage'),
+    path('daybook/', DayBookAPIView.as_view(), name='daybook'),
+    path('daybook-report/', daybook_report, name='daybook_report'),
     
     path('add-company-profile/', add_company_profile, name='add_company_profile'),
     path('update-company-profile/<company_profile_id>', update_company_profile, name='update_company_profile'),
@@ -125,13 +127,16 @@ urlpatterns = [
     path('add-product/', add_product, name='add_product'),
     path('add-products/<int:parent_id>/variant/', add_product, name='add_variant'),
     path('update-products/<int:parent_id>/variant/', add_product, name='update_variant'),
-    path('update-product/<int:product_id>/', update_product, name='update_product'),
+    path('update-product/<int:d>/', update_product, name='update_product'),
     path('delete_product/<int:product_id>/', delete_product, name='delete_product'),
     path('list-product/', list_product, name='list_product'),
     path('product-setting/', product_setting, name='product_settings'),
     path('barcode-setting/', barcode_setting, name='barcode_setting'),
     path('product_defaults/', product_defaults, name='product_defaults'),
     path('product-defaults/', product_default.as_view(), name='product_default'),
+
+    path('list-stock/', list_stock, name='list_stock'),
+
     
     path('generate-barcode/', generate_barcode, name='generate_barcode'),
 
@@ -201,6 +206,7 @@ urlpatterns = [
 
     path('cash-in-hand/', cash_in_hand, name='cash_in_hand'),
     path('adjust-cash/', adjust_cash, name='adjust_cash'),
+    path('cash-adjust-history/', cash_adjust_history, name='cash_adjust_history'),
     path('cash-in-hand/transfer/', bank_transfer, name='bank_transfer'),
 
     path('tax-setting/', tax_setting, name='tax_setting'),
