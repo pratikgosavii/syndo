@@ -343,7 +343,7 @@ class VendorStoreLiteSerializer(serializers.ModelSerializer):
         model = vendor_store
         fields = [
             "id", "name", "banner_image", "profile_image", "about",'user',
-            "is_active", "is_online", "following"
+            "is_active", "is_open", "following"
         ]
 
     def get_following(self, obj):

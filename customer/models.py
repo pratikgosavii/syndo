@@ -200,6 +200,7 @@ class Order(models.Model):
 
     # Delivery details
     address = models.ForeignKey(Address, on_delete=models.CASCADE, null=True, blank=True)
+    instruction = models.TextField(blank=True, null=True)
     
     delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
     created_at = models.DateTimeField(auto_now=True)

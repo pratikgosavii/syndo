@@ -123,6 +123,18 @@ class CashAdjustHistorySerializer(serializers.ModelSerializer):
         model = CashAdjustHistory
         fields = ['id', 'previous_balance', 'new_balance', 'delta_amount', 'note', 'created_at']
 
+class OnlineOrderLedgerSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    order_item_id = serializers.IntegerField(source='order_item.id', read_only=True)
+
+    class Meta:
+        model = OnlineOrderLedger
+        fields = [
+            'id', 'order_item_id', 'order_id', 'product', 'product_name',
+            'quantity', 'amount', 'status', 'note', 'created_at'
+        ]
+        read_only_fields = fields
+
 
 class vendor_bank_serializer(serializers.ModelSerializer):
     class Meta:
@@ -660,7 +672,6 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'longitude',
             'is_location',
             'is_active',
-            'is_online',
             'is_store_open',
         ]
     

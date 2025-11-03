@@ -37,6 +37,7 @@ router.register(r'vendor-bank', bankViewSet, basename='bankViewSet')
 router.register(r'cash-balance', CashBalanceViewSet, basename='CashBalanceViewSet')
 router.register(r'cash-transfers', CashTransferViewSet, basename='CashTransferViewSet')
 router.register(r'bank-to-bank-transfers', BankTransferViewSet, basename='BankTransferViewSet')
+router.register(r'online-order-ledger', OnlineOrderLedgerViewSet, basename='online-order-ledger')
 
 router.register(r'notifcation-campaign', NotificationCampaignViewSet, basename='NotificationCampaignViewSet')
 

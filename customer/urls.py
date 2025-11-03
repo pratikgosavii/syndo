@@ -57,6 +57,11 @@ path('Home-Screen-Api/', HomeScreenView.as_view(), name='HomeScreenView'),
 path('stores-by-subcategory/', StoreBySubCategoryView.as_view(), name='stores-by-subcategory'),
 
 
+
+path("stream/chatinit/", ChatInitAPIView.as_view(), name="ChatInitAPIView"),
+
+
+
 ]  + router.urls
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

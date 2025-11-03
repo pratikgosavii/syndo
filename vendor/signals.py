@@ -533,7 +533,7 @@ from django.db.models.signals import post_save
 from django.db.models import F
 from django.dispatch import receiver
 from vendor.models import product
-from .models import PurchaseItem, StockTransaction, SaleItem
+from .models import PurchaseItem, StockTransaction, SaleItem, OnlineOrderLedger
 from customer.models import OrderItem, ReturnExchange 
 
 
@@ -695,6 +695,60 @@ def add_stock_on_return_completed(sender, instance, created, **kwargs):
             product.objects.filter(id=instance.product.id).update(
                 stock_cached=F('stock_cached') + instance.quantity
             )
+
+
+# -----------------------------------------------------------------------------
+# Online Order Ledger entries per vendor for online orders
+# -----------------------------------------------------------------------------
+@receiver(post_save, sender=OrderItem)
+def create_online_order_ledger_on_create(sender, instance, created, **kwargs):
+    # Create a ledger entry when an order item is created (treated as online order)
+    if created:
+        try:
+            OnlineOrderLedger.objects.create(
+                user=instance.product.user,
+                order_item=instance,
+                product=instance.product,
+                order_id=getattr(instance.order, 'id', None),
+                quantity=instance.quantity,
+                amount=getattr(instance, 'price', 0) * instance.quantity,
+                status='recorded',
+                note='Online order recorded'
+            )
+        except Exception:
+            pass
+
+
+@receiver(post_save, sender=OrderItem)
+def update_online_order_ledger_on_return(sender, instance, created, **kwargs):
+    # When order item is completed as returned/replaced, update the previous ledger note/status
+    if created:
+        return
+    try:
+        new_status = instance.status
+    except Exception:
+        return
+    if new_status == 'returned/replaced_completed':
+        try:
+            req = ReturnExchange.objects.filter(order_item=instance).order_by('-created_at').first()
+        except Exception:
+            req = None
+
+        try:
+            entry = OnlineOrderLedger.objects.filter(order_item=instance).order_by('-created_at').first()
+        except OnlineOrderLedger.DoesNotExist:
+            entry = None
+
+        if entry:
+            if req and req.type == 'return':
+                entry.status = 'returned'
+                entry.note = (entry.note or '') + ' | Marked returned'
+            elif req and req.type == 'exchange':
+                entry.status = 'replaced'
+                entry.note = (entry.note or '') + ' | Marked replaced'
+            else:
+                entry.note = (entry.note or '') + ' | Marked completed'
+            entry.save(update_fields=['status', 'note', 'updated_at'])
             # Avoid duplicate transaction per request id
             from django.db.models import Q
             if not StockTransaction.objects.filter(
