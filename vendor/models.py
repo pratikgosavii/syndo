@@ -73,7 +73,6 @@ class vendor_store(models.Model):
     longitude = models.DecimalField(max_digits=50, decimal_places=6, blank=True, null=True)
     is_location = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
-    is_online = models.BooleanField(default=False)
     
 
 DAYS_OF_WEEK = [
@@ -545,6 +544,7 @@ class product(models.Model):
     is_popular = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_online = models.BooleanField(default=False)
 
     stock_cached = models.IntegerField(default=0, null=True, blank=True)
 
@@ -1230,3 +1230,34 @@ class Offer(models.Model):
 
     def __str__(self):
         return f"{self.heading} - {self.seller.username}"
+
+
+# -------------------------------
+# Online Order Ledger (per vendor)
+# -------------------------------
+class OnlineOrderLedger(models.Model):
+    STATUS_CHOICES = [
+        ("recorded", "Recorded"),
+        ("returned", "Returned"),
+        ("replaced", "Replaced"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="online_order_ledgers")  # vendor/user who owns product
+    order_item = models.ForeignKey("customer.OrderItem", on_delete=models.CASCADE, related_name="online_order_ledgers")
+    product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="online_order_ledgers")
+
+    order_id = models.IntegerField(blank=True, null=True)
+    quantity = models.IntegerField(default=1)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="recorded")
+    note = models.CharField(max_length=255, blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"OrderItem #{self.order_item_id} | {self.product.name} | {self.status}"

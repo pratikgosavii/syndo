@@ -1675,6 +1675,14 @@ class ProductViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
 
 
 from rest_framework.decorators import action
@@ -3053,8 +3061,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
-from .models import CashBalance, CashTransfer, CashAdjustHistory
-from .serializers import CashBalanceSerializer, CashTransferSerializer, CashAdjustHistorySerializer
+from .models import CashBalance, CashTransfer, CashAdjustHistory, OnlineOrderLedger
+from .serializers import CashBalanceSerializer, CashTransferSerializer, CashAdjustHistorySerializer, OnlineOrderLedgerSerializer
 from vendor.models import vendor_bank
 
 
@@ -3327,6 +3335,14 @@ def daybook_report(request):
         'entries': entries,
     }
     return render(request, 'daybook.html', context)
+
+
+class OnlineOrderLedgerViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = OnlineOrderLedgerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return OnlineOrderLedger.objects.filter(user=self.request.user).order_by('-created_at')
 
 
 class CashTransferViewSet(viewsets.ModelViewSet):
