@@ -212,22 +212,23 @@
 
                     {% endif %}
 
-
-                    <div class="mb-2">
-                        <form action="{% url 'assign_delivery_boy' data.id %}" method="post">
-                            {% csrf_token %}
-                        <div class="section-title">Delivery Boy  </div>
-                        <div class="input-group">
-                            <select name="delivery_boy_id" class="form-select">
-                                <option selected>Select delivery boy</option>
-                                {% for i in delivery_boy_data %}
-                                    <option value="{{ i.id }}" {% if i.id == data.delivery_boy_id %}selected{% endif %}>{{ i.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn btn-success">Assign</button>
+                    {% if %}
+                        <div class="mb-2">
+                            <form action="{% url 'assign_delivery_boy' data.id %}" method="post">
+                                {% csrf_token %}
+                                <div class="section-title">Delivery Boy  </div>
+                                <div class="input-group">
+                                    <select name="delivery_boy_id" class="form-select">
+                                        <option selected>Select delivery boy</option>
+                                        {% for i in delivery_boy_data %}
+                                            <option value="{{ i.id }}" {% if i.id == data.delivery_boy_id %}selected{% endif %}>{{ i.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-success">Assign</button>
+                                </div>
+                            </form>
                         </div>
-                    </form>
-                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

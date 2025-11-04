@@ -976,9 +976,9 @@ class DeliveryEarnings(models.Model):
     last_order_time = models.TimeField(null=True, blank=True)
 
 class DeliveryMode(models.Model):
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE, unique=True)
+    user = models.ForeignKey("users.User", on_delete=models.CASCADE, unique=True, related_name="delivery_mode")
     is_auto_assign_enabled = models.BooleanField(default=False)
-    is_self_delivery_enabled = models.BooleanField(default=False)
+    is_self_delivery_enabled = models.BooleanField(default=True)
 
 
 
