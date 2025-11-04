@@ -212,7 +212,7 @@
 
                     {% endif %}
 
-                    {% if %}
+                    {% if request.user.delivery_mode.is_self_delivery_enabled == "True" %}
                         <div class="mb-2">
                             <form action="{% url 'assign_delivery_boy' data.id %}" method="post">
                                 {% csrf_token %}
