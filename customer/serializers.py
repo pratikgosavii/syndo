@@ -95,7 +95,6 @@ from users.serializer import UserProfileSerializer
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    store_details = serializers.SerializerMethodField()
     user_details = UserProfileSerializer(source = 'user', read_only=True)
     address_details = AddressSerializer(source="address", read_only = True)
 
@@ -181,16 +180,7 @@ class OrderSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-    def get_store_details(self, obj):
-        from vendor.serializers import VendorStoreSerializer
-        first_item = obj.items.first()  # ✅ correct — use obj, never self.instance
-
-        if first_item:
-            store = first_item.product.user.vendor_store.first()  # reverse FK returns queryset → use first()
-            return VendorStoreSerializer(store).data
-
-        return None
-
+   
 
 
 
