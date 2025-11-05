@@ -101,8 +101,17 @@ class BannerCampaignSerializer(serializers.ModelSerializer):
         model = BannerCampaign
         fields = '__all__'
         read_only_fields = ['user', 'is_approved', 'created_at']
-  
 
+    def validate(self, data):
+        redirect_to = data.get('redirect_to')
+
+        if redirect_to == 'product' and not data.get('product'):
+            raise serializers.ValidationError({"product": "Product ID is required when redirect_to = 'product'."})
+        if redirect_to == 'store' and data.get('product'):
+            raise serializers.ValidationError({"product": "Do not pass product when redirect_to = 'store'."})
+
+        return data
+    
         
 
 class PartySerializer(serializers.ModelSerializer):

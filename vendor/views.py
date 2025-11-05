@@ -3444,7 +3444,16 @@ class BannerCampaignViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        redirect_to = self.request.data.get('redirect_to')
+
+        if redirect_to == 'store':
+            try:
+                store = vendor_store.objects.get(user=self.request.user)
+            except vendor_store.DoesNotExist:
+                raise ValidationError({"store": "Vendor store not found for this user."})
+            serializer.save(user=self.request.user, store=store, product=None)
+        else:
+            serializer.save(user=self.request.user, store=None)
 
 
 

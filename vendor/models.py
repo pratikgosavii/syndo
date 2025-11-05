@@ -138,14 +138,14 @@ class BannerCampaign(models.Model):
     REDIRECT_CHOICES = [
         ('store', 'Store'),
         ('product', 'Product'),
-        ('category', 'Category'),
-        ('external', 'External URL'),
     ]
 
     user = models.ForeignKey("users.User", on_delete=models.CASCADE, related_name='banners')
     banner_image = models.ImageField(upload_to='campaign_banners/', help_text="Max 1MB, Ratio 1:3")
     campaign_name = models.CharField(max_length=255)
-   
+    redirect_to = models.CharField(choices=REDIRECT_CHOICES, max_length=50)
+    product = models.ForeignKey("vendor.product", on_delete=models.CASCADE)
+    store = models.ForeignKey("vendor.vendor_store", on_delete=models.CASCADE)
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
