@@ -122,14 +122,14 @@
                                         <div class="col-6">💳 <strong>Payment</strong><br>{{ sale.get_payment_method_display }}</div>
                                         <div class="col-6 text-end">📅 {{ sale.credit_time_days|date:"d/m/Y" }}</div>
                                     </div>
-                                    <div class="row mb-2">
+                                    {% comment %} <div class="row mb-2">
                                         <div class="col-6">✍️ <strong>Signature</strong><br>
                                             {% if wholesale.signature %}
                                                 <img src="{{ wholesale.signature.url }}" width="80" />
                                             {% endif %}
                                         </div>
                                         <div class="col-6">🔁 <strong>References</strong><br>{{ wholesale.references }}</div>
-                                    </div>
+                                    </div> {% endcomment %}
                                     <div class="row mb-2">
                                         <div class="col-6">📝 <strong>Notes</strong><br>{{ wholesale.notes }}</div>
                                         <div class="col-6">📋 <strong>Terms</strong><br>{{ wholesale.terms }}</div>

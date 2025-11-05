@@ -483,18 +483,6 @@ class SaleItemSerializer(serializers.ModelSerializer):
 
 
 
-class PosWholesaleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = pos_wholesale
-        fields = [
-            'invoice_type', 'invoice_number', 'date',
-            'dispatch_address', 'delivery_city', 'signature',
-            'references', 'notes', 'terms',
-            'delivery_charges', 'packaging_charges', 'reverse_charges',
-            'eway_bill_number', 'lr_number', 'vehicle_number',
-            'transport_name', 'number_of_parcels'
-        ]
-
 from rest_framework.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
@@ -514,7 +502,7 @@ class PosWholesaleSerializer(serializers.ModelSerializer):
         model = pos_wholesale
         fields = [
             'invoice_type', 'invoice_number', 'date',
-            'dispatch_address', 'delivery_city', 'signature',
+            'dispatch_address', 'delivery_city',
             'references', 'notes', 'terms',
             'delivery_charges', 'packaging_charges', 'reverse_charges',
             'eway_bill_number', 'lr_number', 'vehicle_number',
@@ -653,6 +641,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
     banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
 
     is_store_open = serializers.SerializerMethodField() 
+    store_rating = serializers.SerializerMethodField()
 
     class Meta:
         model = vendor_store
@@ -673,6 +662,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'is_location',
             'is_active',
             'is_store_open',
+            'store_rating',
         ]
     
     def get_is_store_open(self, obj):
@@ -692,6 +682,16 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             return working_hour.open_time <= current_time <= working_hour.close_time
 
         return True  # If no time is set but marked open
+
+    def get_store_rating(self, obj):
+        """Average product rating for this store (across all product reviews)."""
+        try:
+            from customer.models import Review
+            from django.db.models import Avg
+            avg = Review.objects.filter(order_item__product__user=obj.user).aggregate(a=Avg('rating'))['a']
+            return round(avg or 0.0, 1)
+        except Exception:
+            return 0.0
 
     
 class DeliverySettingsSerializer(serializers.ModelSerializer):
@@ -960,36 +960,36 @@ class OfferSerializer(serializers.ModelSerializer):
             return None
         
 
-class StoreRatingSerializer(serializers.ModelSerializer):
-    vendor_user_id = serializers.IntegerField(write_only=True)
-    user_details = UserProfileSerializer(source = 'seller', read_only = True)
+# class StoreRatingSerializer(serializers.ModelSerializer):
+#     vendor_user_id = serializers.IntegerField(write_only=True)
+#     user_details = UserProfileSerializer(source = 'seller', read_only = True)
 
-    class Meta:
-        model = StoreRating
-        fields = [
-            'id',
-            'vendor_user_id',
-            'user',
-            'user_details',
-            'store',
-            'rating',
-            'comment',
-            'is_active',
-            'created_at',
-        ]
-        read_only_fields = ['id', 'created_at', 'user', 'user_details', 'store']
+#     class Meta:
+#         model = StoreRating
+#         fields = [
+#             'id',
+#             'vendor_user_id',
+#             'user',
+#             'user_details',
+#             'store',
+#             'rating',
+#             'comment',
+#             'is_active',
+#             'created_at',
+#         ]
+#         read_only_fields = ['id', 'created_at', 'user', 'user_details', 'store']
 
-    def validate(self, data):
-        """Ensure vendor_user_id corresponds to a valid store."""
-        vendor_user_id = data.get('vendor_user_id')
-        if not vendor_user_id:
-            raise serializers.ValidationError({"vendor_user_id": "This field is required."})
+#     def validate(self, data):
+#         """Ensure vendor_user_id corresponds to a valid store."""
+#         vendor_user_id = data.get('vendor_user_id')
+#         if not vendor_user_id:
+#             raise serializers.ValidationError({"vendor_user_id": "This field is required."})
 
-        try:
-            store = vendor_store.objects.get(user_id=vendor_user_id)
-        except vendor_store.DoesNotExist:
-            raise serializers.ValidationError({"vendor_user_id": "Store not found for this user"})
+#         try:
+#             store = vendor_store.objects.get(user_id=vendor_user_id)
+#         except vendor_store.DoesNotExist:
+#             raise serializers.ValidationError({"vendor_user_id": "Store not found for this user"})
 
-        # Attach store to validated data so viewset doesn’t complain
-        data['store'] = store
-        return data
+#         # Attach store to validated data so viewset doesn’t complain
+#         data['store'] = store
+#         return data

@@ -24,7 +24,7 @@ router.register("requests", ProductRequestViewSet, basename="product-request")
 
 router.register(r'support/tickets', SupportTicketViewSet, basename='support-ticket')
 
-router.register(r'store-rating', StoreRatingViewSet, basename='StoreRatingViewSet')
+# router.register(r'store-rating', StoreRatingViewSet, basename='StoreRatingViewSet')
 
 
 urlpatterns = [

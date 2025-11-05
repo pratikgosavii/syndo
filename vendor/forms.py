@@ -612,7 +612,6 @@ class pos_wholesaleForm(forms.ModelForm):
             # Optional Fields
             'dispatch_address',
             'delivery_city',
-            'signature',
             'references',
             'notes',
             'terms',
@@ -647,7 +646,6 @@ class pos_wholesaleForm(forms.ModelForm):
             'transport_name': forms.TextInput(attrs={'class': 'form-control'}),
             'number_of_parcels': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'number_of_parcels'}),
 
-            'signature': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
