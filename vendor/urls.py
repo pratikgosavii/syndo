@@ -206,7 +206,7 @@ urlpatterns = [
 
     path('cash-in-hand/', cash_in_hand, name='cash_in_hand'),
     path('adjust-cash/', adjust_cash, name='adjust_cash'),
-    path('cash-adjust-history/', cash_adjust_history, name='cash_adjust_history'),
+    path('cash-adjust-history/', CashAdjustHistoryAPIView.as_view(), name='cash_adjust_history'),
     path('cash-in-hand/transfer/', bank_transfer, name='bank_transfer'),
 
     path('tax-setting/', tax_setting, name='tax_setting'),

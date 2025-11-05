@@ -3007,10 +3007,18 @@ def bank_transfer(request):
 
 
 
-@login_required
-def cash_adjust_history(request):
-    data = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'cash_adjust_history.html', { 'data': data })
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import CashAdjustHistory
+from .serializers import CashAdjustHistorySerializer
+
+class CashAdjustHistoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
+        return Response(CashAdjustHistorySerializer(qs, many=True).data)
 
 
 class StoreWorkingHourViewSet(viewsets.ModelViewSet):
