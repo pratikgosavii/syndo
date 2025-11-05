@@ -959,3 +959,37 @@ class OfferSerializer(serializers.ModelSerializer):
         except:
             return None
         
+
+class StoreRatingSerializer(serializers.ModelSerializer):
+    vendor_user_id = serializers.IntegerField(write_only=True)
+    user_details = UserProfileSerializer(source = 'seller', read_only = True)
+
+    class Meta:
+        model = StoreRating
+        fields = [
+            'id',
+            'vendor_user_id',
+            'user',
+            'user_details',
+            'store',
+            'rating',
+            'comment',
+            'is_active',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'user', 'user_details', 'store']
+
+    def validate(self, data):
+        """Ensure vendor_user_id corresponds to a valid store."""
+        vendor_user_id = data.get('vendor_user_id')
+        if not vendor_user_id:
+            raise serializers.ValidationError({"vendor_user_id": "This field is required."})
+
+        try:
+            store = vendor_store.objects.get(user_id=vendor_user_id)
+        except vendor_store.DoesNotExist:
+            raise serializers.ValidationError({"vendor_user_id": "Store not found for this user"})
+
+        # Attach store to validated data so viewset doesn’t complain
+        data['store'] = store
+        return data

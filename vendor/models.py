@@ -181,6 +181,24 @@ class vendor_bank(models.Model):
 
 
 # -------------------------------
+# Store Rating (by customers for stores)
+# -------------------------------
+class StoreRating(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='store_ratings', blank=True, null=True)
+    store = models.ForeignKey('vendor_store', on_delete=models.CASCADE, related_name='ratings', blank=True, null=True)
+    rating = models.PositiveSmallIntegerField()
+    comment = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('user', 'store')
+
+    def __str__(self):
+        return f"{self.store.name} rated {self.rating} by {self.user.username}"
+
+# -------------------------------
 # Vendor Customers
 # -------------------------------
 class vendor_customers(models.Model):

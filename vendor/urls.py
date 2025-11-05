@@ -137,7 +137,6 @@ urlpatterns = [
     path('product-defaults/', product_default.as_view(), name='product_default'),
 
     path('list-stock/', list_stock, name='list_stock'),
-
     
     path('generate-barcode/', generate_barcode, name='generate_barcode'),
 
@@ -153,7 +152,6 @@ urlpatterns = [
     path('delete_purchase/<int:purchase_id>/', delete_purchase, name='delete_purchase'),
     path('list-purchase/', list_purchase, name='list_purchase'),
     path("get-next-purchaseeno/", NextPurchaseNumberAPI.as_view(), name="NextPurchaseNumberAPI"),
-
 
     path('add-addon/', add_addon, name='add_addon'),
     path('update-addon/<addon_id>', update_addon, name='update_addon'),
