@@ -3345,6 +3345,50 @@ class OnlineOrderLedgerViewSet(viewsets.ReadOnlyModelViewSet):
         return OnlineOrderLedger.objects.filter(user=self.request.user).order_by('-created_at')
 
 
+# -------------------------------
+# Store Reviews (vendor moderation)
+# -------------------------------
+from customer.models import Review
+from customer.serializers import ReviewSerializer
+
+
+class StoreReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'patch']
+
+    def get_queryset(self):
+        qs = Review.objects.select_related('order_item__product', 'user')
+        # Default: vendor sees own store's reviews
+        qs = qs.filter(order_item__product__user=self.request.user)
+
+        # Optional filter: admin can pass store_user_id to view specific store
+        store_user_id = self.request.query_params.get('store_user_id')
+        if store_user_id:
+            qs = Review.objects.filter(order_item__product__user_id=store_user_id)
+
+        is_visible = self.request.query_params.get('is_visible')
+        if is_visible is not None:
+            val = str(is_visible).lower() in ('true', '1', 'yes')
+            qs = qs.filter(is_visible=val)
+
+        return qs.order_by('-created_at')
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Only the vendor owning the product (or superuser) can toggle visibility
+        if (getattr(instance.order_item.product, 'user', None) != request.user) and (not request.user.is_superuser):
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        is_visible = request.data.get('is_visible', None)
+        if is_visible is None:
+            return Response({"error": "is_visible is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.is_visible = str(is_visible).lower() in ('true', '1', 'yes')
+        instance.save(update_fields=['is_visible'])
+        return Response(self.get_serializer(instance).data, status=status.HTTP_200_OK)
+
+
 class CashTransferViewSet(viewsets.ModelViewSet):
     serializer_class = CashTransferSerializer
     permission_classes = [IsAuthenticated]
