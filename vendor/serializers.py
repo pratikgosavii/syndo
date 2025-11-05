@@ -642,6 +642,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
 
     is_store_open = serializers.SerializerMethodField() 
     store_rating = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
 
     class Meta:
         model = vendor_store
@@ -663,6 +664,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'is_active',
             'is_store_open',
             'store_rating',
+            'reviews',
         ]
     
     def get_is_store_open(self, obj):
@@ -684,14 +686,28 @@ class VendorStoreSerializer(serializers.ModelSerializer):
         return True  # If no time is set but marked open
 
     def get_store_rating(self, obj):
-        """Average product rating for this store (across all product reviews)."""
+        """Average product rating for this store (all reviews, visible or not)."""
         try:
             from customer.models import Review
             from django.db.models import Avg
-            avg = Review.objects.filter(order_item__product__user=obj.user).aggregate(a=Avg('rating'))['a']
+            avg = (Review.objects
+                   .filter(order_item__product__user=obj.user)
+                   .aggregate(a=Avg('rating'))['a'])
             return round(avg or 0.0, 1)
         except Exception:
             return 0.0
+
+    def get_reviews(self, obj):
+        """Return only visible reviews for this store's products."""
+        try:
+            from customer.models import Review
+            from customer.serializers import ReviewSerializer
+            qs = Review.objects.filter(order_item__product__user=obj.user, is_visible=True).order_by('-created_at')
+            # pass through request if available for nested serializer context
+            context = getattr(self, 'context', {})
+            return ReviewSerializer(qs, many=True, context=context).data
+        except Exception:
+            return []
 
     
 class DeliverySettingsSerializer(serializers.ModelSerializer):
