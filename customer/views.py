@@ -1061,8 +1061,7 @@ from django.conf import settings
 from stream_chat import StreamChat
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
-from vendor.models import StoreRating, vendor_store
-from vendor.serializers import StoreRatingSerializer
+from vendor.models import  vendor_store
 from rest_framework.exceptions import ValidationError
 
 
@@ -1138,37 +1137,37 @@ class ChatInitAPIView(APIView):
         }, status=200)
 
 
-class StoreRatingViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = StoreRatingSerializer
+# class StoreRatingViewSet(viewsets.ModelViewSet):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = StoreRatingSerializer
 
-    def perform_create(self, serializer):
-        vendor_user_id = serializer.validated_data.pop('vendor_user_id', None)
-        if not vendor_user_id:
-            raise ValidationError({"vendor_user_id": "This field is required."})
+#     def perform_create(self, serializer):
+#         vendor_user_id = serializer.validated_data.pop('vendor_user_id', None)
+#         if not vendor_user_id:
+#             raise ValidationError({"vendor_user_id": "This field is required."})
 
-        try:
-            store = vendor_store.objects.get(user_id=vendor_user_id)
-        except vendor_store.DoesNotExist:
-            raise ValidationError({"vendor_user_id": "Store not found for this user"})
+#         try:
+#             store = vendor_store.objects.get(user_id=vendor_user_id)
+#         except vendor_store.DoesNotExist:
+#             raise ValidationError({"vendor_user_id": "Store not found for this user"})
 
-        obj, created = StoreRating.objects.get_or_create(
-            user=self.request.user,
-            store=store,
-            defaults={
-                'rating': serializer.validated_data.get('rating'),
-                'comment': serializer.validated_data.get('comment'),
-            }
-        )
-        if not created:
-            obj.rating = serializer.validated_data.get('rating')
-            obj.comment = serializer.validated_data.get('comment')
-            obj.save(update_fields=['rating', 'comment', 'created_at'])
-        self._created_instance = obj
+#         obj, created = StoreRating.objects.get_or_create(
+#             user=self.request.user,
+#             store=store,
+#             defaults={
+#                 'rating': serializer.validated_data.get('rating'),
+#                 'comment': serializer.validated_data.get('comment'),
+#             }
+#         )
+#         if not created:
+#             obj.rating = serializer.validated_data.get('rating')
+#             obj.comment = serializer.validated_data.get('comment')
+#             obj.save(update_fields=['rating', 'comment', 'created_at'])
+#         self._created_instance = obj
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        out = StoreRatingSerializer(self._created_instance)
-        return Response(out.data, status=201)
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         self.perform_create(serializer)
+#         out = StoreRatingSerializer(self._created_instance)
+#         return Response(out.data, status=201)
