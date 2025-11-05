@@ -321,7 +321,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ['id', 'order_item', 'photo',  'rating', 'comment', 'user_details', 'created_at', 'updated_at']
+        fields = ['id', 'order_item', 'photo', 'is_visible', 'rating', 'comment', 'user_details', 'created_at', 'updated_at']
         read_only_fields = [ "user"]
 
 from vendor.models import vendor_store
