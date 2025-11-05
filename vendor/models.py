@@ -144,8 +144,8 @@ class BannerCampaign(models.Model):
     banner_image = models.ImageField(upload_to='campaign_banners/', help_text="Max 1MB, Ratio 1:3")
     campaign_name = models.CharField(max_length=255)
     redirect_to = models.CharField(choices=REDIRECT_CHOICES, max_length=50)
-    product = models.ForeignKey("vendor.product", on_delete=models.CASCADE)
-    store = models.ForeignKey("vendor.vendor_store", on_delete=models.CASCADE)
+    product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, null=True, blank=True)
+    store = models.ForeignKey("vendor.vendor_store", on_delete=models.CASCADE, null=True, blank=True)
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
