@@ -77,6 +77,6 @@ class RoleMenuPermission(models.Model):
 
 
 class DeviceToken(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="user_token")
     token = models.CharField(max_length=255)  # FCM token
     updated_at = models.DateTimeField(auto_now=True)
