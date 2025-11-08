@@ -30,3 +30,4 @@ class CustomUserAdmin(UserAdmin):
     ordering = ('mobile',)
 
 admin.site.register(User, CustomUserAdmin)
+admin.site.register(DeviceToken)
