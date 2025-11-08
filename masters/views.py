@@ -137,6 +137,7 @@ from django.conf import settings
 from firebase_admin import messaging
 
 def send_push_notification(user, title, body, campaign_id):
+    print('I am here')
     if not hasattr(user, "device_token") or not user.device_token:
         return
 
