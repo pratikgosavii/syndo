@@ -132,13 +132,16 @@ def list_notification_campaigns(request):
 import requests
 from django.conf import settings
 
-
+from users.models import DeviceToken
 
 from firebase_admin import messaging
 
 def send_push_notification(user, title, body, campaign_id):
     print('I am here')
-    if user.user_token.device_token:
+
+    device_token = DeviceToken.objects.get(user=user)
+
+    if device_token:
 
         message = messaging.Message(
             notification=messaging.Notification(
@@ -148,7 +151,7 @@ def send_push_notification(user, title, body, campaign_id):
             data={
                 "campaign_id": str(campaign_id),
             },
-            token=user.user_token.device_token,
+            token=device_token,
         )
 
         try:
