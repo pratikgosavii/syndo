@@ -148,7 +148,7 @@ def send_push_notification(user, title, body, campaign_id):
         data={
             "campaign_id": str(campaign_id),
         },
-        token=user.device_token,
+        token=user.user_token.device_token,
     )
 
     try:
