@@ -138,24 +138,24 @@ from firebase_admin import messaging
 
 def send_push_notification(user, title, body, campaign_id):
     print('I am here')
-   
+    if user.user_token.device_token:
 
-    message = messaging.Message(
-        notification=messaging.Notification(
-            title=title,
-            body=body,
-        ),
-        data={
-            "campaign_id": str(campaign_id),
-        },
-        token=user.user_token.device_token,
-    )
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data={
+                "campaign_id": str(campaign_id),
+            },
+            token=user.user_token.device_token,
+        )
 
-    try:
-        response = messaging.send(message)
-        print("✅ Successfully sent message:", response)
-    except Exception as e:
-        print("❌ Error sending message:", e)
+        try:
+            response = messaging.send(message)
+            print("✅ Successfully sent message:", response)
+        except Exception as e:
+            print("❌ Error sending message:", e)
 
 
 
