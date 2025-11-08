@@ -259,7 +259,7 @@ class PrintJobSerializer(serializers.ModelSerializer):
 
 # ---------- Cart ----------
 class CartSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=product.objects.all())
+    product = serializers.PrimaryKeyRelatedField(queryset=product.objects.filter(is_active=True))
     product_details = product_serializer(source="product", read_only=True)
     print_job = PrintJobSerializer(required=False)
 
@@ -333,7 +333,7 @@ class VendorStoreLiteSerializer(serializers.ModelSerializer):
         model = vendor_store
         fields = [
             "id", "name", "banner_image", "profile_image", "about",'user',
-            "is_active", "is_open", "following"
+            "is_active", "is_online", "is_open", "following"
         ]
 
     def get_following(self, obj):

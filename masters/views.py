@@ -174,11 +174,11 @@ def approve_notification_campaign(request, pk):
     campaign.save()
 
     # send push notifications to all followers
-    followers = campaign.user.followers.all()  # adjust as per your relation
+    followers = User.objects.filter()  # adjust as per your relation
     print(f"🔔 Starting notification sending for campaign={campaign.id}, followers={followers.count()}")
 
     for follower_relation in followers:
-        follower = follower_relation.follower  # get actual user object
+        follower = follower_relation  # get actual user object
         try:
             response = send_push_notification(
                 user=follower,
