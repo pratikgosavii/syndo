@@ -72,11 +72,17 @@
 
 
     <div class="sale-summary mt-2">
-        Total Items: {{ sale.total_items }}<br>
-        Total Amount: ₹{{ sale.total_amount }}<br>
-        Tax ({{ sale.tax_percentage }}%): ₹{{ sale.total_tax }}<br>
-        Discount({{ sale.discount_percentage }}%): {{ sale.total_discount }}<br>
-        <strong>Final Amount: ₹{{ sale.total_amount }}</strong>
+        <div>
+            Total Items: {{ sale.total_items }}<br>
+            Total Amount: ₹{{ sale.total_amount }}<br>
+            Tax ({{ sale.tax_percentage }}%): ₹{{ sale.total_tax }}<br>
+            Discount({{ sale.discount_percentage }}%): {{ sale.total_discount }}<br>
+            <strong>Final Amount: ₹{{ sale.total_amount }}</strong>
+        </div>
+        <div>
+            <strong> Wholesale Bill?: {{ sale.is_wholesale_rate|yesno:"Yes,No" }}</strong>
+
+        </div>
     </div>
 
     <!-- 🔻 This is the toggle button -->

@@ -552,7 +552,7 @@ class SaleItemForm(forms.ModelForm):
         super(SaleItemForm, self).__init__(*args, **kwargs)
 
         if user:
-            self.fields['product'].queryset = product.objects.filter(user=user)
+            self.fields['product'].queryset = product.objects.filter(user=user, is_active=True)
 
 
 class SaleForm(forms.ModelForm):

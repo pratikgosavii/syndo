@@ -1103,7 +1103,7 @@ def delete_product(request, product_id):
 @login_required(login_url='login_admin')
 def list_product(request):
 
-    data = product.objects.filter(user = request.user)
+    data = product.objects.filter(user=request.user, is_active=True)
     context = {
         'data': data
     }
@@ -1113,7 +1113,7 @@ def list_product(request):
 @login_required(login_url='login_admin')
 def list_stock(request):
 
-    queryset = product.objects.all()
+    queryset = product.objects.filter(is_active=True, user=request.user)
     product_filter = productFilter(request.GET, queryset=queryset)
     products = product_filter.qs
 
@@ -1179,7 +1179,7 @@ def generate_barcode(request):
     if request.method == "POST":
 
         ids = request.POST.getlist("selected_products")
-        products = product.objects.filter(id__in=ids)
+        products = product.objects.filter(id__in=ids, is_active=True)
 
         if not products.exists(): 
             return HttpResponse("No products selected", status=400) 
@@ -1324,7 +1324,7 @@ def generate_barcode(request):
 
     else:
 
-        data = product.objects.filter(user = request.user)
+        data = product.objects.filter(user=request.user, is_active=True)
         context = {
             'data': data
         }
@@ -1448,7 +1448,7 @@ from django.http import JsonResponse
 
 
 class get_product(ListAPIView):
-    queryset = product.objects.all()
+    queryset = product.objects.filter(is_active=True)
     serializer_class = product_serializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = '__all__'  # enables filtering on all fields
@@ -1670,7 +1670,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsVendor]
 
     def get_queryset(self):
-        return product.objects.filter(user=self.request.user)
+        return product.objects.filter(user=self.request.user, is_active=True)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -1928,7 +1928,7 @@ def generate_unique_code(self):
 @login_required(login_url='login_admin')
 def add_purchase(request):
 
-    data = product.objects.all()
+    data = product.objects.filter(is_active=True, user=request.user)
 
     if request.method == 'POST':
 
@@ -1983,7 +1983,7 @@ def add_purchase(request):
 
 @login_required(login_url='login_admin')
 def update_purchase(request, purchase_id):
-    data = product.objects.all()
+    data = product.objects.filter(is_active=True, user=request.user)
     instance = Purchase.objects.get(id=purchase_id)
 
     if request.method == 'POST':
@@ -2371,7 +2371,7 @@ def pos(request):
                 "customer_forms": customer_form,
                 "wholesale_forms": wholesale_form,
                 "saleitemform": SaleItemForm(),
-                "products": product.objects.filter(user=request.user),
+                "products": product.objects.filter(user=request.user, is_active=True),
             }
             return render(request, "pos_form.html", context)
 
@@ -2420,7 +2420,7 @@ def pos(request):
                     "customer_forms": customer_form,
                     "wholesale_forms": wholesale_form,
                     "saleitemform": SaleItemForm(),
-                    "products": product.objects.filter(user=request.user),
+                    "products": product.objects.filter(user=request.user, is_active=True),
                     "error_message": str(e),
                 }
                 return render(request, "pos_form.html", context)
@@ -2431,7 +2431,7 @@ def pos(request):
         "customer_forms": customer_form,
         "wholesale_forms": wholesale_form,
         "saleitemform": SaleItemForm(),
-        "products": product.objects.filter(user=request.user),
+        "products": product.objects.filter(user=request.user, is_active=True),
     })
 
 
@@ -2471,7 +2471,7 @@ def update_sale(request, sale_id):
                 "customer_forms": customer_form,
                 "wholesale_forms": wholesale_form,
                 "saleitemform": SaleItemForm(),
-                "products": product.objects.filter(user=request.user),
+                "products": product.objects.filter(user=request.user, is_active=True),
                 "existing_items": items_with_amount,  # ✅ Use calculated data
                 "error_message": "Please correct the errors below.",
             }
@@ -2536,7 +2536,7 @@ def update_sale(request, sale_id):
                     "customer_forms": customer_form,
                     "wholesale_forms": wholesale_form,
                     "saleitemform": SaleItemForm(),
-                    "products": product.objects.filter(user=request.user),
+                    "products": product.objects.filter(user=request.user, is_active=True),
                     "existing_items": items_with_amount,  # ✅ Keep calculated
                     "error_message": str(e),
                 }

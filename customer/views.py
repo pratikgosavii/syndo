@@ -135,7 +135,7 @@ from .serializers import VendorStoreLiteSerializer
 class VendorStoreListAPIView(mixins.ListModelMixin,
                              mixins.RetrieveModelMixin,
                              generics.GenericAPIView):
-    queryset = vendor_store.objects.all()
+    queryset = vendor_store.objects.filter(is_active=True)
     serializer_class = VendorStoreSerializer  # ✅ USE NEW ONE HERE
     filter_backends = [filters.SearchFilter]
     search_fields = ["user__first_name", "user__last_name", "user__username"]
@@ -170,14 +170,19 @@ class ListProducts(ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        qs = product.objects.filter(is_active=True, sale_type__in = ["online", "both"])
+        qs = product.objects.filter(
+            is_active=True,
+            sale_type__in=["online", "both"],
+            user__vendor_store__is_active=True,
+            user__vendor_store__is_online=True,
+        )
 
         # Filter by customer pincode
           # Get pincode from ?pincode=XXXX in URL
-        pincode = self.request.GET.get("pincode")
+        pincode = user.pincode
 
         if pincode:
-            qs = qs.filter(vendor__coverages__pincode=pincode)
+            qs = qs.filter(user__coverages__pincode__code=pincode)
 
         # Annotate favourites
         if user.is_authenticated:
@@ -808,13 +813,13 @@ class StoreBySubCategoryView(APIView):
 
         # Get distinct user IDs who have products in this subcategory
         user_ids = (
-            product.objects.filter(sub_category_id=subcategory_id)
+            product.objects.filter(sub_category_id=subcategory_id, is_active=True)
             .values_list('user_id', flat=True)
             .distinct()
         )
 
         # Get all vendor stores of those users
-        stores = vendor_store.objects.filter(user_id__in=user_ids).distinct()
+        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).distinct()
 
         serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -839,13 +844,13 @@ class StoreByCategoryView(APIView):
 
         # Get distinct user IDs who have products in this category
         user_ids = (
-            product.objects.filter(category_id=category_id)
+            product.objects.filter(category_id=category_id, is_active=True)
             .values_list('user_id', flat=True)
             .distinct()
         )
 
         # Get all vendor stores of those users
-        stores = vendor_store.objects.filter(user_id__in=user_ids).distinct()
+        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).distinct()
 
         serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)

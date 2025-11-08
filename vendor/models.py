@@ -73,6 +73,10 @@ class vendor_store(models.Model):
     longitude = models.DecimalField(max_digits=50, decimal_places=6, blank=True, null=True)
     is_location = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
+    is_online = models.BooleanField(default=False)
+    is_offline = models.BooleanField(default=False)
+    display_as_catalog = models.BooleanField(default=False)
+    private_catalog = models.BooleanField(default=False)
     
 
 DAYS_OF_WEEK = [
@@ -171,9 +175,16 @@ class vendor_bank(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        # On creation, set balance = opening_balance if balance is None
-        if self._state.adding and (self.balance is None):
+        # On creation: seed running balance from opening_balance
+        if self._state.adding:
             self.balance = self.opening_balance
+        else:
+            # On update: lock opening_balance (never editable after create)
+            try:
+                old = vendor_bank.objects.get(pk=self.pk)
+                self.opening_balance = old.opening_balance
+            except vendor_bank.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -232,9 +243,16 @@ class vendor_customers(models.Model):
     transport_name = models.CharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # On creation, set balance = opening_balance if balance is None
-        if self._state.adding and (self.balance is None):
+        # On creation: seed running balance from opening_balance
+        if self._state.adding:
             self.balance = self.opening_balance
+        else:
+            # Lock opening_balance after create
+            try:
+                old = vendor_customers.objects.get(pk=self.pk)
+                self.opening_balance = old.opening_balance
+            except vendor_customers.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -265,9 +283,16 @@ class vendor_vendors(models.Model):
     country = models.CharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # On creation, set balance = opening_balance if balance is None
-        if self._state.adding and (self.balance is None):
+        # On creation: seed running balance from opening_balance
+        if self._state.adding:
             self.balance = self.opening_balance
+        else:
+            # Lock opening_balance after create
+            try:
+                old = vendor_vendors.objects.get(pk=self.pk)
+                self.opening_balance = old.opening_balance
+            except vendor_vendors.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
 
     def __str__(self):

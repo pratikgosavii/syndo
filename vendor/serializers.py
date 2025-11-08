@@ -671,7 +671,11 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             'longitude',
             'is_location',
             'is_active',
+            'is_online',
             'is_store_open',
+            'is_offline',
+            'display_as_catalog',
+            'private_catalog',
             'store_rating',
             'reviews',
         ]
