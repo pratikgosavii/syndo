@@ -8,12 +8,28 @@ from vendor.serializers import product_serializer
 from django.utils import timezone
 import datetime
 
+class OrderPrintFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderPrintFile
+        fields = ["id", "file", "number_of_copies", "page_count", "page_numbers"]
+
+
+class OrderPrintJobSerializer(serializers.ModelSerializer):
+    files = OrderPrintFileSerializer(many=True, read_only=True)
+    add_ons = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
+    class Meta:
+        model = OrderPrintJob
+        fields = ["instructions", "total_amount", "print_type", "print_variant", "customize_variant", "add_ons", "files"]
+
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_details = product_serializer(source="product", read_only=True)
     is_return_eligible = serializers.SerializerMethodField()
     is_exchange_eligible = serializers.SerializerMethodField()
     is_reviewed = serializers.SerializerMethodField()  # ✅ NEW FIELD
+    # Include print job details if any (read-only)
+    print_job = OrderPrintJobSerializer(read_only=True)
     class Meta:
         model = OrderItem
         fields = [
@@ -21,6 +37,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'product', 
             'quantity', 
             'product_details',
+            'print_job',
             'is_return_eligible',
             'is_exchange_eligible',
             'status',
@@ -116,6 +133,7 @@ class OrderSerializer(serializers.ModelSerializer):
         # calculate totals
         item_total = Decimal("0.00")
         order_items = []
+        print_jobs_payload = []  # parallel array of print job payloads or None
 
         for item in items_data:
             product_id = item.get("product")
@@ -141,6 +159,31 @@ class OrderSerializer(serializers.ModelSerializer):
                 )
             )
 
+            # Gather print job payload either from request item or from cart (fallback)
+            item_print_job = item.get("print_job")
+            if item_print_job is None and getattr(product1, "product_type", None) == "print":
+                cart_item = Cart.objects.filter(user=request.user, product=product1).select_related("print_job").first()
+                if cart_item and hasattr(cart_item, "print_job"):
+                    pj = cart_item.print_job
+                    item_print_job = {
+                        "instructions": pj.instructions,
+                        "total_amount": pj.total_amount,
+                        "print_type": pj.print_type,
+                        "print_variant": getattr(pj.print_variant, "id", None),
+                        "customize_variant": getattr(pj.customize_variant, "id", None),
+                        "add_ons": list(pj.add_ons.values_list("id", flat=True)),
+                        "files": [
+                            {
+                                "file": pf.file,  # will be used directly
+                                "number_of_copies": pf.number_of_copies,
+                                "page_count": pf.page_count,
+                                "page_numbers": pf.page_numbers,
+                            }
+                            for pf in pj.files.all()
+                        ],
+                    }
+            print_jobs_payload.append(item_print_job)
+
         # generate order_id
         order_id = self.generate_order_id()
 
@@ -165,6 +208,53 @@ class OrderSerializer(serializers.ModelSerializer):
         for oi in order_items:
             oi.order = order
         OrderItem.objects.bulk_create(order_items)
+
+        # After bulk create, attach print jobs (if any)
+        for oi, pj_payload in zip(order_items, print_jobs_payload):
+            if not pj_payload:
+                continue
+            # Resolve foreign keys if IDs provided
+            print_variant = None
+            customize_variant = None
+            if isinstance(pj_payload.get("print_variant"), int):
+                from vendor.models import PrintVariant as PV
+                try:
+                    print_variant = PV.objects.get(id=pj_payload["print_variant"])
+                except PV.DoesNotExist:
+                    print_variant = None
+            if isinstance(pj_payload.get("customize_variant"), int):
+                from vendor.models import CustomizePrintVariant as CPV
+                try:
+                    customize_variant = CPV.objects.get(id=pj_payload["customize_variant"])
+                except CPV.DoesNotExist:
+                    customize_variant = None
+
+            order_pj = OrderPrintJob.objects.create(
+                order_item=oi,
+                instructions=pj_payload.get("instructions"),
+                total_amount=pj_payload.get("total_amount") or 0,
+                print_type=pj_payload.get("print_type") or "single",
+                print_variant=print_variant,
+                customize_variant=customize_variant,
+            )
+
+            # add-ons
+            addon_ids = pj_payload.get("add_ons") or []
+            if addon_ids:
+                from vendor.models import addon as Addon
+                valid_addons = Addon.objects.filter(id__in=addon_ids)
+                order_pj.add_ons.set(valid_addons)
+
+            # files
+            files = pj_payload.get("files") or []
+            for f in files:
+                OrderPrintFile.objects.create(
+                    print_job=order_pj,
+                    file=f.get("file"),
+                    number_of_copies=f.get("number_of_copies", 1),
+                    page_count=f.get("page_count", 0),
+                    page_numbers=f.get("page_numbers", ""),
+                )
 
                 # ✅ CLEAR CART AFTER SUCCESSFUL ORDER CREATION
         Cart.objects.filter(user=request.user).delete()

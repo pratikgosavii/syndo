@@ -239,6 +239,35 @@ class OrderItem(models.Model):
 
 
 
+class OrderPrintJob(models.Model):
+    order_item = models.OneToOneField("OrderItem", on_delete=models.CASCADE, related_name="print_job")
+    instructions = models.TextField(blank=True, null=True)
+    total_amount = models.IntegerField(default=0)
+    print_type = models.CharField(
+        max_length=20,
+        choices=[("single", "Single Side"), ("double", "Double Side")],
+        default="single", blank=True, null=True
+    )
+    add_ons = models.ManyToManyField("vendor.addon", blank=True, related_name="order_print_jobs")
+
+    print_variant = models.ForeignKey(
+        "vendor.PrintVariant", on_delete=models.SET_NULL, null=True, blank=True, related_name="order_print_jobs"
+    )
+    customize_variant = models.ForeignKey(
+        "vendor.CustomizePrintVariant", on_delete=models.SET_NULL, null=True, blank=True, related_name="order_print_jobs"
+    )
+
+    def __str__(self):
+        return f"Order Print Job for {self.order_item.product.name}"
+
+
+class OrderPrintFile(models.Model):
+    print_job = models.ForeignKey(OrderPrintJob, on_delete=models.CASCADE, related_name="files")
+    file = models.FileField(upload_to="order_print_jobs/files/")
+    number_of_copies = models.PositiveIntegerField(default=1)
+    page_count = models.PositiveIntegerField(default=0)
+    page_numbers = models.CharField(max_length=255, blank=True, null=True)
+
 class ReturnExchange(models.Model):
     RETURN_TYPES = [
         ('return', 'Return'),
