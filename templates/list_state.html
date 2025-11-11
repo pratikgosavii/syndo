@@ -64,8 +64,7 @@
                                         <thead>
                                             <tr>
                                                 <th>#</th>
-                                                <th>Code</th>
-                                                <th>City</th>
+                                                <th>Name</th>
                                                
                                                 <th>Action</th>
                                             </tr>
@@ -75,15 +74,14 @@
                                                 {% for i in data %}
                                                     <tr>
                                                         <td>{{ forloop.counter }}</td>
-                                                        <td>{{ i.code }}</td>
-                                                        <td>{{ i.city }}</td>
+                                                        <td>{{ i.name }}</td>
                                                      
                                                         <td>
-                                                            <a href="{% url 'update_pincode' i.id %}">
+                                                            <a href="{% url 'update_state' i.id %}">
                                                                 <i class="bi bi-pencil-square text-primary action-icons edit" title="ledger"></i>
                                                             </a>
                                                          
-                                                            <a href="{% url 'delete_pincode' i.id %}">
+                                                            <a href="{% url 'delete_state' i.id %}">
                                                                 <i class="bi bi-trash text-danger" title="Delete"></i>
                                                             </a>
                                                         </td>
