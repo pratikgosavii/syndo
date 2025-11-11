@@ -790,6 +790,7 @@ class CompanyProfile(models.Model):
     billing_address = models.TextField(blank=True, null=True)
     address_line_1 = models.CharField(max_length=255, blank=True, null=True)
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
+    state = models.ForeignKey('masters.State', on_delete=models.SET_NULL, null=True, blank=True)
     pan = models.CharField(max_length=10, blank=True, null=True)
     upi_id = models.CharField(max_length=50, blank=True, null=True)
     website = models.URLField(blank=True, null=True)
@@ -975,6 +976,7 @@ class pos_wholesale(models.Model):
 
     def __str__(self):
         return f"{self.invoice_number} - {self.get_invoice_type_display()}" 
+
 
         # models.py
 from django.db import models

@@ -26,6 +26,15 @@ class PincodeForm(forms.ModelForm):
         }
 
 
+class StateForm(forms.ModelForm):
+    class Meta:
+        model = State
+        fields = ['name', 'code']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'id': 'name'}),
+            'code': forms.TextInput(attrs={'class': 'form-control', 'id': 'code'}),
+        }
+
 class size_Form(forms.ModelForm):
     class Meta:
         model = size

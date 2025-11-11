@@ -114,6 +114,53 @@ class get_event(ListAPIView):
         return event.objects.filter(start_date__gte=now()).order_by('start_date')
 
 
+@login_required(login_url='login_admin')
+def add_state(request):
+
+    if request.method == "POST":
+        form = StateForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('list_state')
+        else:
+            context = {"form": form}
+            return render(request, 'add_state.html', context)  # reuse simple form template
+    else:
+        form = StateForm()
+        context = {"form": form}
+        return render(request, 'add_state.html', context)
+
+
+@login_required(login_url='login_admin')
+def update_state(request, state_id):
+    instance = get_object_or_404(State, id=state_id)
+    if request.method == "POST":
+        form = StateForm(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            return redirect('list_state')
+    else:
+        form = StateForm(instance=instance)
+    return render(request, 'add_state.html', {"form": form})
+
+
+@login_required(login_url='login_admin')
+def list_state(request):
+    data = State.objects.all().order_by('name')
+    return render(request, 'list_state.html', {"data": data})  # reuse listing template
+
+
+@login_required(login_url='login_admin')
+def delete_state(request, state_id):
+    State.objects.filter(id=state_id).delete()
+    return HttpResponseRedirect(reverse('list_state'))
+
+
+class get_state(ListAPIView):
+    queryset = State.objects.all().order_by('name')
+    serializer_class = StateSerializer
+    filter_backends = [DjangoFilterBackend]
+
 
 
 

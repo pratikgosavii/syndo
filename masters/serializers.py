@@ -32,6 +32,12 @@ class Pincode_serializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class StateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = State
+        fields = '__all__'
+
+
 
 
 class product_category_serializer(serializers.ModelSerializer):
