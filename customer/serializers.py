@@ -347,6 +347,7 @@ class VendorStoreLiteSerializer(serializers.ModelSerializer):
 class ProductRequestSerializer(serializers.ModelSerializer):
     from masters.serializers import product_category_serializer, product_subcategory_serializer
 
+    store = serializers.SerializerMethodField()
 
     user_details = UserProfileSerializer(source = 'user', read_only = True)
     category_details = product_category_serializer(source = 'category', read_only = True)
@@ -355,3 +356,14 @@ class ProductRequestSerializer(serializers.ModelSerializer):
         model = ProductRequest
         fields = "__all__"
         read_only_fields = ["user", "created_at"]
+
+
+    def get_store(self, obj):
+        try:
+            # Assuming one store per user
+            store = obj.user.vendor_store.first()  # related_name='vendor_store'
+            if store:
+                from .serializers import VendorStoreSerializer2
+                return VendorStoreSerializer2(store).data
+        except:
+            return None

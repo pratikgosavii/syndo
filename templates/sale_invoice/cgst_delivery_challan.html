@@ -116,20 +116,24 @@
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <div class="logo">Logo</div>
+      <div class="logo">
+        {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+        <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Logo" style="width:70px;height:70px;border-radius:50%;object-fit:cover;" />
+        {% else %}Logo{% endif %}
+      </div>
       <div class="company-details">
-        <h2>Company Name</h2>
-        Address line 1<br>
-        Address line 2<br>
-        GSTIN : ADFH123HG55 &nbsp;&nbsp; PAN : ADFH123HG55<br>
-        Mobile : +91 8888888888 &nbsp;&nbsp; Email : Email here<br>
-        <b>Reverse Charge</b>
+        <h2>{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</h2>
+        {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br>{% endif %}
+        {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br>{% endif %}
+        GSTIN : {{ sale_instance.company_profile.gstin|default:"-" }} &nbsp;&nbsp; PAN : {{ sale_instance.company_profile.pan|default:"-" }}<br>
+        Mobile : {{ sale_instance.company_profile.contact|default:"-" }} &nbsp;&nbsp; Email : {{ sale_instance.company_profile.email|default:"-" }}<br>
+        {% if wholesale.reverse_charges %}<b>Reverse Charge</b>{% endif %}
       </div>
       <div class="quotation">
         <h3>Delivery Challan (CGST)</h3>
         ORIGINAL FOR RECIPIENT<br>
-        Quote Date: DD/MM/YYYY<br>
-        Quote No: DD/MM/YYYY
+        Date: {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br>
+        No: {{ wholesale.invoice_number }}
       </div>
     </div>
 
@@ -138,22 +142,22 @@
       <tr>
         <td width="33%">
           <b>Customer Details:</b><br>
-          COMPANY NAME<br>
-          GSTIN : ADFH123HG55<br>
-          PAN : ADFH123HG55<br>
-          Aadhar : ADFH123HG55<br>
-          Ph : +91 8888888888
+          {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}<br>
+          GSTIN : {{ sale_instance.customer.gst_number|default:"-" }}<br>
+          PAN : {{ sale_instance.customer.pan_number|default:"-" }}<br>
+          Aadhar : {{ sale_instance.customer.aadhar_number|default:"-" }}<br>
+          Ph : {{ sale_instance.customer.contact|default:"-" }}
         </td>
         <td width="33%">
           <b>Billing Address :</b><br>
-          Address line 1<br>
-          Address line 2<br>
+          {% if sale_instance.customer.billing_address_line1 %}{{ sale_instance.customer.billing_address_line1 }}<br>{% endif %}
+          {% if sale_instance.customer.billing_address_line2 %}{{ sale_instance.customer.billing_address_line2 }}<br>{% endif %}
           <b>Delivery Address :</b><br>
-          Address line 1<br>
-          Address line 2
+          {% if sale_instance.customer.dispatch_address_line1 %}{{ sale_instance.customer.dispatch_address_line1 }}<br>{% endif %}
+          {% if sale_instance.customer.dispatch_address_line2 %}{{ sale_instance.customer.dispatch_address_line2 }}<br>{% endif %}
         </td>
         <td>
-          <b>Reference :</b> Preet Collection
+          <b>Reference :</b> {{ wholesale.references|default:"-" }}
         </td>
       </tr>
     </table>
@@ -170,29 +174,40 @@
         <th>IGST (%)</th>
         <th>Total</th>
       </tr>
+      {% for item in sale_instance.items.all %}
       <tr>
-        <td height="60"></td><td></td><td></td>
-        <td></td><td></td><td></td><td></td><td></td>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ item.product.name }}</td>
+        <td>{{ item.product.hsn|default:"-" }}</td>
+        <td>{{ item.price|floatformat:2 }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.amount|floatformat:2 }}</td>
+        <td>{{ item.product.sgst_rate|default:"0" }}% / {{ item.product.cgst_rate|default:"0" }}%</td>
+        <td>{{ item.total_with_tax|floatformat:2 }}</td>
       </tr>
+      {% endfor %}
     </table>
 
     <!-- Summary -->
     <table class="summary">
       <tr>
         <td width="50%">
-          <b>Total Quantity :</b><br>
-          <b>Total value in words :</b>
+          <b>Total Quantity :</b> {{ total_quantity }}<br>
+          <b>Total value in words :</b> {{ total_in_words }}
         </td>
         <td width="50%">
-          <b>Taxable Amount</b><br>
-          IGST<br>
-          Discount (5%)<br>
-          Delivery Charges<br>
-          Package Charges<br>
-          <b>Round off</b><br>
-          <b>Total Amount</b><br>
-          Paid<br>
-          <b>Balance</b>
+          <table style="width:100%">
+            <tr><td>Taxable Amount</td><td class="text-right">{{ sum_taxable|floatformat:2 }}</td></tr>
+            <tr><td>SGST</td><td class="text-right">{{ sum_sgst|floatformat:2 }}</td></tr>
+            <tr><td>CGST</td><td class="text-right">{{ sum_cgst|floatformat:2 }}</td></tr>
+            <tr><td>Discount ({{ discount_percentage|default:"0" }}%)</td><td class="text-right">{{ discount_amount|floatformat:2 }}</td></tr>
+            <tr><td>Delivery Charges</td><td class="text-right">{{ wholesale.delivery_charges|default:"0.00" }}</td></tr>
+            <tr><td>Package Charges</td><td class="text-right">{{ wholesale.packaging_charges|default:"0.00" }}</td></tr>
+            <tr><td><b>Round off</b></td><td class="text-right">{{ round_off_value|floatformat:2 }}</td></tr>
+            <tr><td><b>Total Amount</b></td><td class="text-right"><b>{{ rounded_total|floatformat:2 }}</b></td></tr>
+            <tr><td>Paid</td><td class="text-right">{{ paid_amount|floatformat:2 }}</td></tr>
+            <tr><td><b>Balance</b></td><td class="text-right"><b>{{ balance_amount|floatformat:2 }}</b></td></tr>
+          </table>
         </td>
       </tr>
     </table>
@@ -200,12 +215,16 @@
     <!-- Bank Details -->
     <div class="bank-details">
       <b>Bank Details :</b><br>
-      Bank :<br>
-      Account No :<br>
-      IFSC Code :<br>
-      Branch :<br>
-      UPI Id :
-      <div class="qr">QR</div>
+      Bank : {{ sale_instance.advance_bank.name|default:"-" }}<br>
+      Account No : {{ sale_instance.advance_bank.account_number|default:"-" }}<br>
+      IFSC Code : {{ sale_instance.advance_bank.ifsc_code|default:"-" }}<br>
+      Branch : {{ sale_instance.advance_bank.branch|default:"-" }}<br>
+      UPI Id : {{ sale_instance.company_profile.upi_id|default:"-" }}
+      <div class="qr">
+        {% if sale_instance.company_profile.payment_qr %}
+        <img src="{{ sale_instance.company_profile.payment_qr.url }}" alt="QR" style="width:80px;height:80px;object-fit:cover;" />
+        {% else %}QR{% endif %}
+      </div>
     </div>
 
     <!-- Tax Summary -->
@@ -217,23 +236,28 @@
         <th>Amount</th>
         <th>Total Tax Amount</th>
       </tr>
+      {% for hsn, data in hsn_summary %}
       <tr>
-        <td height="40"></td><td></td><td></td><td></td><td></td>
+        <td height="40">{{ hsn }}</td>
+        <td>{{ data.taxable_value|floatformat:2 }}</td>
+        <td>{{ data.sgst_rate|default:"0" }}%</td>
+        <td>{{ data.sgst_amount|floatformat:2 }}</td>
+        <td>{{ data.cgst_rate|default:"0" }}%</td>
+        <td>{{ data.cgst_amount|floatformat:2 }}</td>
+        <td>{{ data.total_tax|floatformat:2 }}</td>
       </tr>
+      {% endfor %}
       <tr>
-        <td colspan="4" style="text-align:right"><b>Total</b></td>
-        <td></td>
+        <td colspan="6" style="text-align:right"><b>Total</b></td>
+        <td>{{ total_tax|floatformat:2 }}</td>
       </tr>
     </table>
 
     <!-- Footer -->
     <div class="footer">
-      <strong>Notes:</strong> Note written here
+      <strong>Notes:</strong> {{ wholesale.notes|default:"-" }}
       <strong>Terms & Conditions:</strong>
-      Terms & Conditions here<br>
-      Terms & Conditions here<br>
-      Terms & Conditions here<br>
-      Terms & Conditions here
+      {{ wholesale.terms|default:"-" }}
     </div>
 
     <div class="signature">Authorized Signature</div>

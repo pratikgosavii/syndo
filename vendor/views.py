@@ -2678,7 +2678,7 @@ def sale_invoice(request, sale_id):
 
     total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
 
-    return render(request, template_name, {
+    return render(request, 'template_name', {
         'sale_instance': sale,
         'wholesale': wholesale,
         'total_amount': total_amount,

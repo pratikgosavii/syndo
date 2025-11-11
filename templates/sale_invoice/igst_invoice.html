@@ -39,12 +39,14 @@
                 {% endif %}
             </td>
             <td style="text-align:left;">
-                <div class="bold">{{ sale_instance.company_profile.name }}</div>
-                {{ sale_instance.company_profile.address }}<br>
+                <div class="bold">{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</div>
+                {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br>{% endif %}
+                {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br>{% endif %}
+                {% if sale_instance.company_profile.state %}State: {{ sale_instance.company_profile.state.name }}{% endif %}
             </td>
             <td style="text-align:right;">
                 GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>
-                <b>Invoice Date:</b> {{ wholesale.date|date:"d/m/Y" }}<br>
+                <b>Invoice Date:</b> {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br>
                 <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
                 <b>Composite Scheme</b><br>
                 <b>Due Date:</b> {{ sale_instance.due_date|date:"d/m/Y" }}
@@ -55,8 +57,8 @@
     <!-- Customer Info -->
     <table>
         <tr>
-            <td style="text-align:left;"><b>Customer Name :</b> {{ sale_instance.customer.name }}</td>
-            <td style="text-align:left;"><b>Mobile No :</b> {{ sale_instance.customer.phone }}</td>
+            <td style="text-align:left;"><b>Customer Name :</b> {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}</td>
+            <td style="text-align:left;"><b>Mobile No :</b> {{ sale_instance.customer.contact }}</td>
         </tr>
     </table>
 
@@ -85,8 +87,8 @@
                 <td>{{ forloop.counter }}</td>
                 <td>{{ item.product.name }}</td>
                 <td>{{ item.product.hsn|default:"N/A" }}</td>
-                <td>{{ item.product.mrp|default:"0.00" }}</td>
-                <td>{{ sale_instance.discount_percentage }}%</td>
+                <td>{{ item.price|floatformat:2 }}</td>
+                <td>{{ sale_instance.discount_percentage|default:"0" }}%</td>
                 <td>{{ item.quantity }}</td>
                 <!-- uses DB fields you added -->
                 <td>{{ item.amount|floatformat:2 }}</td>
@@ -120,17 +122,13 @@
             </td>
             <td style="width:40%;">
                 <table class="summary" style="width:100%;">
-                    <tr><td>Taxable Amount: ₹ {{ sale_instance.total_amount_before_discount|floatformat:2 }}</td></tr>
-
-                    {# compute total tax from items without view changes #}
-                   
-                        <tr><td>Total Tax: ₹ 3333333 </td></tr>
-                    
-                    <tr><td>Discount ({{ sale_instance.discount_percentage }}%) : ₹ {{ sale_instance.discount_amount|floatformat:2 }}</td></tr>
+                    <tr><td>Taxable Amount: ₹ {{ sum_taxable|floatformat:2 }}</td></tr>
+                    <tr><td>Total IGST: ₹ {{ sum_igst|floatformat:2 }}</td></tr>
+                    <tr><td>Discount ({{ discount_percentage|default:"0" }}%) : ₹ {{ discount_amount|floatformat:2 }}</td></tr>
                     <tr><td>Round off: ₹ {{ round_off_value|floatformat:2 }}</td></tr>
-                    <tr class="bold"><td>Total Amount: ₹ {{ total_amount|floatformat:2 }}</td></tr>
-                    <tr><td>Paid: ₹ {{ sale_instance.advance_amount|floatformat:2 }}</td></tr>
-                    <tr class="bold"><td style="color:red;">Balance: ₹ {{ sale_instance.balance_amount|floatformat:2 }}</td></tr>
+                    <tr class="bold"><td>Total Amount: ₹ {{ rounded_total|floatformat:2 }}</td></tr>
+                    <tr><td>Paid: ₹ {{ paid_amount|floatformat:2 }}</td></tr>
+                    <tr class="bold"><td style="color:red;">Balance: ₹ {{ balance_amount|floatformat:2 }}</td></tr>
                 </table>
             </td>
         </tr>

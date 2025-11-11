@@ -57,18 +57,20 @@
 
 <div class="header">
   <div class="header-left">
-    <img src="logo.png" width="60"><br>
-    <strong>ABC Pvt Ltd</strong><br>
-    123 Business Street<br>
-    Industrial Area, Pune<br>
-    GSTIN : 27ABCDE1234F1Z5 | PAN : ABCDE1234F<br>
-    Mobile : +91 9876543210 | Email : info@abc.com
+    {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+    <img src="{{ sale_instance.company_profile.profile_image.url }}" width="60"><br>
+    {% endif %}
+    <strong>{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</strong><br>
+    {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br>{% endif %}
+    {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br>{% endif %}
+    GSTIN : {{ sale_instance.company_profile.gstin|default:"-" }} | PAN : {{ sale_instance.company_profile.pan|default:"-" }}<br>
+    Mobile : {{ sale_instance.company_profile.contact|default:"-" }} | Email : {{ sale_instance.company_profile.email|default:"-" }}
   </div>
   <div class="header-right">
     <h3 style="color:blue; margin:0;">QUOTATION</h3>
     <p><strong>Original for Recipient</strong></p>
-    Quotation Date : 20/08/2025 <br>
-    Invoice No. : INV001
+    Quotation Date : {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }} <br>
+    Invoice No. : {{ wholesale.invoice_number }}
   </div>
 </div>
 
@@ -77,20 +79,20 @@
   <tr>
     <td width="40%">
       <strong>Customer Details:</strong><br>
-      XYZ Enterprises<br>
-      GSTIN : 27XYZDE5678F1Z9<br>
-      PAN : XYZDE5678F<br>
-      Aadhar : 1234 5678 9123<br>
-      Ph : +91 9123456780
+      {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}<br>
+      GSTIN : {{ sale_instance.customer.gst_number|default:"-" }}<br>
+      PAN : {{ sale_instance.customer.pan_number|default:"-" }}<br>
+      Aadhar : {{ sale_instance.customer.aadhar_number|default:"-" }}<br>
+      Ph : {{ sale_instance.customer.contact|default:"-" }}
     </td>
     <td width="30%">
       <strong>Billing Address :</strong><br>
-      456 Market Road, Pune<br><br>
+      {% if sale_instance.customer.billing_address_line1 %}{{ sale_instance.customer.billing_address_line1 }}<br>{% endif %}<br>
       <strong>Delivery Address :</strong><br>
-      789 Factory Lane, Pune
+      {% if sale_instance.customer.dispatch_address_line1 %}{{ sale_instance.customer.dispatch_address_line1 }}{% endif %}
     </td>
     <td width="30%">
-      <strong>Reference :</strong> REF123
+      <strong>Reference :</strong> {{ wholesale.references|default:"-" }}
     </td>
   </tr>
 </table>
@@ -116,28 +118,19 @@
     </tr>
   </thead>
   <tbody>
+    {% for item in sale_instance.items.all %}
     <tr>
-      <td>1</td>
-      <td>Product A</td>
-      <td>8501</td>
-      <td>500.00</td>
-      <td>10 Nos</td>
-      <td>5000.00</td>
-      <td>9%</td>
-      <td>9%</td>
-      <td>5900.00</td>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ item.product.name }}</td>
+      <td>{{ item.product.hsn|default:"-" }}</td>
+      <td>{{ item.price|floatformat:2 }}</td>
+      <td>{{ item.quantity }} {{ item.product.unit|default:"" }}</td>
+      <td>{{ item.amount|floatformat:2 }}</td>
+      <td>{{ item.product.sgst_rate|default:"0" }}%</td>
+      <td>{{ item.product.cgst_rate|default:"0" }}%</td>
+      <td>{{ item.total_with_tax|floatformat:2 }}</td>
     </tr>
-    <tr>
-      <td>2</td>
-      <td>Product B</td>
-      <td>8502</td>
-      <td>1000.00</td>
-      <td>5 Nos</td>
-      <td>5000.00</td>
-      <td>9%</td>
-      <td>9%</td>
-      <td>5900.00</td>
-    </tr>
+    {% endfor %}
   </tbody>
 </table>
 
@@ -145,21 +138,21 @@
 <table class="no-border">
   <tr>
     <td width="60%">
-      <strong>Total Quantity :</strong> 15 <br>
-      <strong>Total value in words :</strong> Ten Thousand Eight Hundred Only
+      <strong>Total Quantity :</strong> {{ total_quantity }} <br>
+      <strong>Total value in words :</strong> {{ total_in_words }}
     </td>
     <td width="40%">
       <table>
-        <tr><td>Taxable Amount</td><td>10000.00</td></tr>
-        <tr><td>SGST</td><td>900.00</td></tr>
-        <tr><td>CGST</td><td>900.00</td></tr>
-        <tr><td>Discount (5%)</td><td>500.00</td></tr>
-        <tr><td>Delivery Charges</td><td>200.00</td></tr>
-        <tr><td>Package Charges</td><td>100.00</td></tr>
-        <tr><td>Round off</td><td>0.00</td></tr>
-        <tr><td><strong>Total Amount</strong></td><td><strong>10600.00</strong></td></tr>
-        <tr><td>Paid</td><td>5000.00</td></tr>
-        <tr><td><strong>Balance</strong></td><td><strong>5600.00</strong></td></tr>
+        <tr><td>Taxable Amount</td><td>{{ sum_taxable|floatformat:2 }}</td></tr>
+        <tr><td>SGST</td><td>{{ sum_sgst|floatformat:2 }}</td></tr>
+        <tr><td>CGST</td><td>{{ sum_cgst|floatformat:2 }}</td></tr>
+        <tr><td>Discount ({{ discount_percentage|default:"0" }}%)</td><td>{{ discount_amount|floatformat:2 }}</td></tr>
+        <tr><td>Delivery Charges</td><td>{{ wholesale.delivery_charges|default:"0.00" }}</td></tr>
+        <tr><td>Package Charges</td><td>{{ wholesale.packaging_charges|default:"0.00" }}</td></tr>
+        <tr><td>Round off</td><td>{{ round_off_value|floatformat:2 }}</td></tr>
+        <tr><td><strong>Total Amount</strong></td><td><strong>{{ rounded_total|floatformat:2 }}</strong></td></tr>
+        <tr><td>Paid</td><td>{{ paid_amount|floatformat:2 }}</td></tr>
+        <tr><td><strong>Balance</strong></td><td><strong>{{ balance_amount|floatformat:2 }}</strong></td></tr>
       </table>
     </td>
   </tr>
@@ -170,14 +163,16 @@
   <tr>
     <td width="60%">
       <strong>Bank Details :</strong><br>
-      Bank : HDFC Bank<br>
-      Account No : 123456789012<br>
-      IFSC : HDFC0001234<br>
-      Branch : Pune Main<br>
-      UPI : abc@upi
+      Bank : {{ sale_instance.advance_bank.name|default:"-" }}<br>
+      Account No : {{ sale_instance.advance_bank.account_number|default:"-" }}<br>
+      IFSC : {{ sale_instance.advance_bank.ifsc_code|default:"-" }}<br>
+      Branch : {{ sale_instance.advance_bank.branch|default:"-" }}<br>
+      UPI : {{ sale_instance.company_profile.upi_id|default:"-" }}
     </td>
     <td width="40%" align="center">
-      <img src="qr.png" width="100"><br>
+      {% if sale_instance.company_profile.payment_qr %}
+      <img src="{{ sale_instance.company_profile.payment_qr.url }}" width="100"><br>
+      {% endif %}
       <small>Pay using UPI</small>
     </td>
   </tr>
@@ -197,33 +192,26 @@
     </tr>
   </thead>
   <tbody>
+    {% for hsn, data in hsn_summary %}
     <tr>
-      <td>8501</td>
-      <td>5000.00</td>
-      <td>9%</td>
-      <td>450.00</td>
-      <td>9%</td>
-      <td>450.00</td>
-      <td>900.00</td>
+      <td>{{ hsn }}</td>
+      <td>{{ data.taxable_value|floatformat:2 }}</td>
+      <td>{{ data.sgst_rate|default:"0" }}%</td>
+      <td>{{ data.sgst_amount|floatformat:2 }}</td>
+      <td>{{ data.cgst_rate|default:"0" }}%</td>
+      <td>{{ data.cgst_amount|floatformat:2 }}</td>
+      <td>{{ data.total_tax|floatformat:2 }}</td>
     </tr>
-    <tr>
-      <td>8502</td>
-      <td>5000.00</td>
-      <td>9%</td>
-      <td>450.00</td>
-      <td>9%</td>
-      <td>450.00</td>
-      <td>900.00</td>
-    </tr>
+    {% endfor %}
     <tr>
       <td colspan="6"><strong>Total</strong></td>
-      <td><strong>1800.00</strong></td>
+      <td><strong>{{ total_tax|floatformat:2 }}</strong></td>
     </tr>
   </tbody>
 </table>
 
-<p><strong>Notes:</strong> Delivery within 7 working days.</p>
-<p><strong>Terms & Conditions:</strong><br>1. Payment due within 30 days.<br>2. Goods once sold will not be taken back.</p>
+<p><strong>Notes:</strong> {{ wholesale.notes|default:"-" }}</p>
+<p><strong>Terms & Conditions:</strong><br>{{ wholesale.terms|default:"-" }}</p>
 
 <div class="signature">Authorized Signature</div>
 
