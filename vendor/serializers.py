@@ -374,7 +374,11 @@ class product_serializer(serializers.ModelSerializer):
         for addon in addons_data:
             product_addon.objects.create(product=instance, **addon)
 
+        # Only allow model fields for PrintVariant, ignore display keys
+        allowed_variant_keys = {"paper", "color_type", "sided", "min_quantity", "max_quantity", "price"}
         for variant in variants_data:
+            if isinstance(variant, dict):
+                variant = {k: v for k, v in variant.items() if k in allowed_variant_keys}
             PrintVariant.objects.create(product=instance, **variant)
 
         for custom in customize_data:
@@ -403,7 +407,10 @@ class product_serializer(serializers.ModelSerializer):
 
         if variants_data:
             PrintVariant.objects.filter(product=instance).delete()
+            allowed_variant_keys = {"paper", "color_type", "sided", "min_quantity", "max_quantity", "price"}
             for variant in variants_data:
+                if isinstance(variant, dict):
+                    variant = {k: v for k, v in variant.items() if k in allowed_variant_keys}
                 PrintVariant.objects.create(product=instance, **variant)
 
         if customize_data:
