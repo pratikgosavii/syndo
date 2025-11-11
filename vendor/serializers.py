@@ -15,6 +15,7 @@ class coupon_serializer(serializers.ModelSerializer):
 
 class vendor_customers_serializer(serializers.ModelSerializer):
     
+    state_details = StateSerializer(source = "state", read_only = True)
     class Meta:
         model = vendor_customers
         fields = '__all__'
@@ -58,6 +59,9 @@ class OnlineStoreSettingSerializer(serializers.ModelSerializer):
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
+    state_details = StateSerializer(source = "state", read_only = True)
+
+
     class Meta:
         model = CompanyProfile
         fields = '__all__'
