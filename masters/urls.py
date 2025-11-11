@@ -66,6 +66,13 @@ urlpatterns = [
     path('delete-expense-category/<expense_category_id>', delete_expense_category, name='delete_expense_category'),  # create or fetch list of admins
     path('get-expense-category/', get_expense_category.as_view(), name='get_expense_category'),
 
+    # State master CRUD + API
+    path('add-state/', add_state, name='add_state'),
+    path('update-state/<state_id>', update_state, name='update_state'),
+    path('list-state/', list_state, name='list_state'),
+    path('delete-state/<state_id>', delete_state, name='delete_state'),
+    path('get-state/', get_state.as_view(), name='get_state'),
+
     path('add-size/', add_size, name='add_size'),  # create or fetch list of admins
     path('update-size/<size_id>', update_size, name='update_size'),  # create or fetch list of admins
     path('list-size/', list_size, name='list_size'),  # create or fetch list of admins

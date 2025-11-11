@@ -139,3 +139,10 @@ class Pincode(models.Model):
     def __str__(self):
         return f"{self.code} - {self.city}"
 
+
+class State(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=10, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
