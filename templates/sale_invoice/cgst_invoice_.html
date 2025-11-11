@@ -123,7 +123,7 @@
             <th rowspan="2">S.No.</th>
             <th rowspan="2">Product / Service</th>
             <th rowspan="2">HSN<br>SAC</th>
-            <th rowspan="2">MRP</th>
+            <th rowspan="2">Rate</th>
             <th rowspan="2">Dis</th>
             <th rowspan="2">Qty</th>
             <th rowspan="2">Taxable<br>Value</th>
@@ -131,39 +131,39 @@
             <th rowspan="2">Total</th>
         </tr>
         <tr>
-            <th>SGST/ UTGST %</th>
+            <th>SGST %</th>
             <th>SGST Amt</th>
             <th>CGST %</th>
             <th>CGST Amt</th>
         </tr>
     </thead>
     <tbody>
-        {% for item in sale_instance.items.all %}
+        {% for item in items_with_tax %}
         <tr>
             <td>{{ forloop.counter }}</td>
-            <td>{{ item.product.name }}</td>
-            <td>{{ item.product.hsn_sac }}</td>
-            <td>{{ item.mrp|floatformat:2 }}</td>
-            <td>{{ item.discount|default:"0" }}%</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.hsn }}</td>
+            <td>{{ item.price|floatformat:2 }}</td>
+            <td>{{ discount_percentage|default:"0" }}%</td>
             <td>{{ item.quantity }}</td>
             <td>{{ item.taxable_value|floatformat:2 }}</td>
             <td>{{ item.sgst_percent }}%</td>
             <td>{{ item.sgst_amount|floatformat:2 }}</td>
             <td>{{ item.cgst_percent }}%</td>
             <td>{{ item.cgst_amount|floatformat:2 }}</td>
-            <td>{{ item.total|floatformat:2 }}</td>
+            <td>{{ item.total_with_tax|floatformat:2 }}</td>
         </tr>
         {% endfor %}
     </tbody>
     <tfoot>
         <tr>
             <td colspan="6" style="text-align:right;"><b>Total</b></td>
-            <td><b>{{ sale.total_taxable|floatformat:2 }}</b></td>
+            <td><b>{{ sum_taxable|floatformat:2 }}</b></td>
             <td></td>
-            <td><b>{{ sale.total_sgst|floatformat:2 }}</b></td>
+            <td><b>{{ sum_sgst|floatformat:2 }}</b></td>
             <td></td>
-            <td><b>{{ sale.total_cgst|floatformat:2 }}</b></td>
-            <td><b>{{ sale.total_amount|floatformat:2 }}</b></td>
+            <td><b>{{ sum_cgst|floatformat:2 }}</b></td>
+            <td><b>{{ rounded_total|floatformat:2 }}</b></td>
         </tr>
     </tfoot>
 </table>
