@@ -625,8 +625,8 @@ class ProductSerial(models.Model):
 
 class product_addon(models.Model):
   
-    product = models.ForeignKey('product', on_delete=models.CASCADE, null=True, blank=True)
-    addon = models.ForeignKey('addon', on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey('product', on_delete=models.CASCADE, null=True, blank=True, related_name="product_addon")
+    addon = models.ForeignKey('addon', on_delete=models.CASCADE, null=True, blank=True, related_name = "product_addon_addon")
     # Optional: if you want to override price or add quantity etc.
 
     def __str__(self):
