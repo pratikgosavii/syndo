@@ -903,7 +903,7 @@ class HomeScreenView(APIView):
             ).prefetch_related(
                 'variants',                           # product.variants (if you have related_name 'variants')
                 'variants__size',                     # size on variants
-                'product_addon_set__addon',           # product_addon -> addon
+                'product_addon__addon',               # product_addon -> addon (uses related_name="product_addon")
                 'print_variants',                     # PrintVariant (related_name)
                 'customize_print_variants',           # CustomizePrintVariant (related_name)
                 'user__vendor_store'                  # prefetch vendor_store of the user
