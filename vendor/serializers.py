@@ -306,6 +306,20 @@ class product_serializer(serializers.ModelSerializer):
         model = product
         fields = '__all__'
 
+    def _normalize_addons_payload(self, addons_data):
+        """
+        Accept both object payloads with nested addon objects or just addon IDs.
+        Converts {'addon': 14} → {'addon_id': 14} for Django FK assignment.
+        """
+        normalized = []
+        for entry in addons_data or []:
+            if isinstance(entry, dict) and "addon" in entry and isinstance(entry.get("addon"), int):
+                # Rename key to addon_id for FK assignment without fetching instance
+                entry = {**entry}
+                entry["addon_id"] = entry.pop("addon")
+            normalized.append(entry)
+        return normalized
+
     def _parse_json_field(self, data, key):
         """Safely parse a JSON string from multipart form-data."""
         value = data.get(key)
@@ -320,7 +334,7 @@ class product_serializer(serializers.ModelSerializer):
         request = self.context.get('request')
         data = request.data
 
-        addons_data = self._parse_json_field(data, 'addons')
+        addons_data = self._normalize_addons_payload(self._parse_json_field(data, 'addons'))
         variants_data = self._parse_json_field(data, 'print_variants')
         customize_data = self._parse_json_field(data, 'customize_print_variants')
 
@@ -341,7 +355,7 @@ class product_serializer(serializers.ModelSerializer):
         request = self.context.get('request')
         data = request.data
 
-        addons_data = self._parse_json_field(data, 'addons')
+        addons_data = self._normalize_addons_payload(self._parse_json_field(data, 'addons'))
         variants_data = self._parse_json_field(data, 'print_variants')
         customize_data = self._parse_json_field(data, 'customize_print_variants')
 
