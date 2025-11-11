@@ -181,7 +181,7 @@ class product_Form(forms.ModelForm):
 class addon_Form(forms.ModelForm):
     class Meta:
         model = addon
-        fields = ['product_category', 'name', 'price_per_unit', 'description', 'image']
+        fields = ['product_category', 'name', 'price_per_unit', 'description', 'image', 'is_active']
         widgets = {
             'product_category': forms.Select(attrs={'class': 'form-control'}),
             'name': forms.TextInput(attrs={'placeholder': 'Ex: Lee White T shirt XL size', 'class': 'form-control'}),
