@@ -2641,9 +2641,29 @@ def sale_invoice(request, sale_id):
         same_state = vendor_state_name.strip().lower() == str(customer_state_name).strip().lower()
     store_gst = "cgst" if same_state else "igst"
 
-    # --- Template path decision ---
-    gst_type = "registered" if is_registered else "unregistered"
-    template_name = f"sale_invoice/{gst_type}_{sale_type}.html"
+    # --- Template path decision across types ---
+    template_map = {
+        "proforma": {
+            "igst": "sale_invoice/igst_proforma.html",
+            "cgst": "sale_invoice/cgst_proforma.html",
+        },
+        "invoice": {
+            "igst": "sale_invoice/igst_invoice.html",
+            "cgst": "sale_invoice/cgst_tax_invoice.html",
+        },
+        "quotation": {
+            "igst": "sale_invoice/igst_quotation.html",
+            "cgst": "sale_invoice/cgst_quotation.html",
+        },
+        "delivery_challan": {
+            "igst": "sale_invoice/igst_delivery_challan.html",
+            "cgst": "sale_invoice/cgst_delivery_challan.html",
+        },
+    }
+    template_name = template_map.get(sale_type, {}).get(store_gst)
+    if not template_name:
+        # Fallback
+        template_name = "sale_invoice/online_invoice.html"
 
     # --- Charges and totals ---
     delivery = wholesale.delivery_charges or 0
@@ -2656,6 +2676,12 @@ def sale_invoice(request, sale_id):
     # --- HSN Summary ---
     hsn_summary = {}
     total_tax = 0
+    total_taxable = 0
+    total_quantity = 0
+    total_sgst = 0
+    total_cgst = 0
+    total_igst = 0
+    items_with_tax = []
     for item in sale.items.all():
         hsn = item.product.hsn or "N/A"
         sgst_rate = item.product.sgst_rate or 9
@@ -2670,15 +2696,45 @@ def sale_invoice(request, sale_id):
             }
         hsn_summary[hsn]['taxable_value'] += taxable_val
         total_tax += item.tax_amount
+        total_taxable += float(item.amount)
+        total_quantity += int(item.quantity or 0)
+
+        # tax splits
+        sgst_amt = round(taxable_val * float(sgst_rate) / 100, 2)
+        cgst_amt = round(taxable_val * float(cgst_rate) / 100, 2)
+        total_sgst += sgst_amt
+        total_cgst += cgst_amt
+        total_igst += float(item.tax_amount or 0)
+
+        items_with_tax.append({
+            "name": item.product.name,
+            "hsn": item.product.hsn or "N/A",
+            "price": float(item.price),
+            "quantity": int(item.quantity),
+            "taxable_value": taxable_val,
+            "sgst_percent": float(sgst_rate or 0),
+            "cgst_percent": float(cgst_rate or 0),
+            "sgst_amount": sgst_amt,
+            "cgst_amount": cgst_amt,
+            "igst_percent": float(getattr(item.product, "gst", 0) or 0),
+            "igst_amount": float(item.tax_amount or 0),
+            "total_with_tax": float(item.total_with_tax),
+        })
 
     for hsn, data in hsn_summary.items():
         data['sgst_amount'] = round(data['taxable_value'] * data['sgst_rate'] / 100, 2)
         data['cgst_amount'] = round(data['taxable_value'] * data['cgst_rate'] / 100, 2)
         data['total_tax'] = data['sgst_amount'] + data['cgst_amount']
+        # Helpful for IGST proforma
+        data['igst_rate'] = round((data['sgst_rate'] or 0) + (data['cgst_rate'] or 0), 2)
+        data['igst_amount'] = round(data['total_tax'], 2)
 
     total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
 
-    return render(request, 'template_name', {
+    paid_amount = float(sale.advance_amount or 0)
+    balance_amount = round(rounded_total - paid_amount, 2)
+
+    return render(request, template_name, {
         'sale_instance': sale,
         'wholesale': wholesale,
         'total_amount': total_amount,
@@ -2688,6 +2744,16 @@ def sale_invoice(request, sale_id):
         'total_in_words': total_in_words,
         'total_tax': total_tax,
         'store_gst': store_gst,
+        'sum_taxable': round(total_taxable, 2),
+        'sum_sgst': round(total_sgst, 2),
+        'sum_cgst': round(total_cgst, 2),
+        'sum_igst': round(total_igst, 2),
+        'total_quantity': total_quantity,
+        'discount_percentage': sale.discount_percentage or 0,
+        'discount_amount': sale.discount_amount or 0,
+        'paid_amount': paid_amount,
+        'balance_amount': balance_amount,
+        'items_with_tax': items_with_tax,
     })
 
 

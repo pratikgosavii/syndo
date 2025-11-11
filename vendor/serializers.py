@@ -290,7 +290,7 @@ from rest_framework import serializers
 
 class product_serializer(serializers.ModelSerializer):
     size_details = size_serializer(read_only=True, source='size')
-    addons = ProductAddonSerializer(many=True, required=False)
+    addons = serializers.SerializerMethodField()
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
     is_favourite = serializers.BooleanField(read_only=True)
@@ -306,29 +306,60 @@ class product_serializer(serializers.ModelSerializer):
         model = product
         fields = '__all__'
 
+    def get_addons(self, obj):
+        """
+        Return product_addon rows linked to this product.
+        """
+        try:
+            qs = obj.product_addon.all()  # related_name on product_addon model
+        except Exception:
+            return []
+        return ProductAddonSerializer(qs, many=True).data
+
+    def _parse_json_field(self, data, key):
+        """
+        Safely parse a JSON-like field from request.data for both JSON and form-data:
+        - Already parsed lists/objects (application/json) are returned as-is
+        - Stringified JSON (form-data Text) is parsed
+        - For 'addons', also accept CSV like '14,22'
+        """
+        value = data.get(key)
+        if value is None or value == "":
+            return []
+        if isinstance(value, (list, dict)):
+            return value
+        if isinstance(value, str):
+            s = value.strip()
+            if not s:
+                return []
+            try:
+                return json.loads(s)
+            except Exception:
+                if key == "addons":
+                    import re
+                    return [int(x) for x in re.findall(r"\d+", s)]
+                return []
+        return []
+
     def _normalize_addons_payload(self, addons_data):
         """
-        Accept both object payloads with nested addon objects or just addon IDs.
-        Converts {'addon': 14} → {'addon_id': 14} for Django FK assignment.
+        Normalize addons into a list of dicts acceptable by product_addon.create:
+          - [ {"addon": 14}, {"addon": 22} ]  → [{ "addon_id":14 }, { "addon_id":22 }]
+          - [14, 22]                           → [{ "addon_id":14 }, { "addon_id":22 }]
         """
         normalized = []
         for entry in addons_data or []:
-            if isinstance(entry, dict) and "addon" in entry and isinstance(entry.get("addon"), int):
-                # Rename key to addon_id for FK assignment without fetching instance
-                entry = {**entry}
-                entry["addon_id"] = entry.pop("addon")
-            normalized.append(entry)
+            if isinstance(entry, int):
+                normalized.append({"addon_id": entry})
+                continue
+            if isinstance(entry, dict):
+                if "addon" in entry and isinstance(entry.get("addon"), int):
+                    e = {**entry}
+                    e["addon_id"] = e.pop("addon")
+                    normalized.append(e)
+                else:
+                    normalized.append(entry)
         return normalized
-
-    def _parse_json_field(self, data, key):
-        """Safely parse a JSON string from multipart form-data."""
-        value = data.get(key)
-        if not value:
-            return []
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return []  # fallback to empty list if malformed JSON
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -365,9 +396,9 @@ class product_serializer(serializers.ModelSerializer):
         instance.save()
 
         # Handle related nested data
-        if addons_data:
+        if 'addons' in data:
             product_addon.objects.filter(product=instance).delete()
-            for addon in addons_data:
+            for addon in addons_data or []:
                 product_addon.objects.create(product=instance, **addon)
 
         if variants_data:
@@ -395,6 +426,11 @@ class product_serializer(serializers.ModelSerializer):
         from customer.serializers import ReviewSerializer
         reviews = self._get_reviews_queryset(obj)
         return ReviewSerializer(reviews, many=True).data
+
+    def get_addons(self, obj):
+        from .serializers import ProductAddonSerializer
+        addon = product_addon.objects.filter(product = obj)
+        return ProductAddonSerializer(addon, many=True).data
 
     def get_avg_rating(self, obj):
         from django.db.models import Avg
