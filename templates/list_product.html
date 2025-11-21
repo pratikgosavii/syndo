@@ -173,9 +173,11 @@
                                                         {% endif %}
                                                     </td>
                                                     <td>
+                                                        {% if request.user.is_superuser %}
                                                        <a href="{% url 'add_to_super_catalogue' i.id %}" class="text-decoration-none" title="Add to Catalogue">
                                                             <i class="bi bi-box-arrow-in-down text-success action-icons"></i>
                                                         </a>
+                                                        {% endif %}
                                                         <a href="{% url 'update_product' i.id %}">
                                                             <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
                                                         </a>

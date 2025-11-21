@@ -1143,7 +1143,6 @@ class BarcodeSettings(models.Model):
     show_price_with_text = models.BooleanField(default=False)
 
     BARCODE_SIZE_CHOICES = [
-        ("25x50", "25MM * 50MM"),
         ("50x100", "50MM * 100MM"),
     ]
     barcode_size = models.CharField(max_length=10, choices=BARCODE_SIZE_CHOICES, default="25x50")

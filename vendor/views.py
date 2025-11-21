@@ -851,37 +851,100 @@ def add_to_super_catalogue(request, product_id):
 
     p = get_object_or_404(product, id=product_id)
 
-    # Create super_catalogue instance with matching fields
-    super_catalogue.objects.create(
-        product_type=p.product_type,
-        sale_type=p.sale_type,
-        name=p.name,
-        category=p.category,
-        sub_category=p.sub_category,
-        unit=p.unit,
-        hsn=p.hsn,
-        track_serial_numbers=p.track_serial_numbers,
-        brand_name=p.brand_name,
-        color=p.color,
-        size=p.size,
-        description=p.description,
-        image=p.image,
-        gallery_images=p.gallery_images,
-        instant_delivery=p.instant_delivery,
-        self_pickup=p.self_pickup,
-        general_delivery=p.general_delivery,
-        return_policy=p.return_policy,
-        cod=p.cod,
-        replacement=p.replacement,
-        shop_exchange=p.shop_exchange,
-        shop_warranty=p.shop_warranty,
-        brand_warranty=p.brand_warranty,
-        is_popular=p.is_popular,
-        is_featured=p.is_featured,
-        is_active=p.is_active,
-    )
+    # Clone fields from product -> super_catalogue (1:1 as far as possible)
+    clone_data = {
+        "user": request.user,
+        "parent": p.parent,  # keep variant grouping if needed
+        "product_type": p.product_type,
+        "sale_type": p.sale_type,
+        "food_type": getattr(p, "food_type", None),
 
-    return redirect('list_product')  # Replace with the actual redirect target
+        "name": p.name,
+        "category": p.category,
+        "sub_category": getattr(p, "sub_category", None),
+
+        # pricing
+        "wholesale_price": p.wholesale_price,
+        "purchase_price": p.purchase_price,
+        "sales_price": p.sales_price,
+        "mrp": p.mrp,
+
+        # tax
+        "gst": p.gst,
+        "sgst_rate": p.sgst_rate,
+        "cgst_rate": p.cgst_rate,
+
+        # uom / hsn
+        "unit": p.unit,
+        "hsn": p.hsn,
+
+        # stock
+        "track_serial_numbers": p.track_serial_numbers,
+        "opening_stock": p.opening_stock,
+        "low_stock_alert": p.low_stock_alert,
+        "low_stock_quantity": p.low_stock_quantity,
+        "stock": p.stock,
+
+        # optionals
+        "brand_name": p.brand_name,
+        "color": p.color,
+        "size": getattr(p, "size", None),
+        "batch_number": getattr(p, "batch_number", None),
+        "expiry_date": getattr(p, "expiry_date", None),
+
+        "description": p.description,
+        "image": p.image,
+        "gallery_images": p.gallery_images,
+
+        # delivery/policies
+        "is_customize": getattr(p, "is_customize", False),
+        "instant_delivery": p.instant_delivery,
+        "self_pickup": p.self_pickup,
+        "general_delivery": p.general_delivery,
+        "is_on_shop": getattr(p, "is_on_shop", False),
+
+        "return_policy": p.return_policy,
+        "cod": p.cod,
+        "replacement": p.replacement,
+        "shop_exchange": p.shop_exchange,
+        "shop_warranty": p.shop_warranty,
+        "brand_warranty": p.brand_warranty,
+
+        # flags
+        "is_food": getattr(p, "is_food", False),
+        "tax_inclusive": getattr(p, "tax_inclusive", False),
+        "is_popular": p.is_popular,
+        "is_featured": p.is_featured,
+        "is_active": p.is_active,
+        "is_online": getattr(p, "is_online", False),
+        "stock_cached": getattr(p, "stock_cached", 0),
+    }
+
+    # Filter to only fields that exist on current super_catalogue schema and coerce where needed
+    model_fields = {f.name: f for f in super_catalogue._meta.get_fields() if getattr(f, "concrete", False) and not getattr(f, "many_to_many", False) and not getattr(f, "one_to_many", False)}
+
+    # Coerce sub_category if it's a CharField on super_catalogue
+    if "sub_category" in model_fields:
+        from django.db.models import ForeignKey
+        sc_field = model_fields["sub_category"]
+        if not isinstance(sc_field, ForeignKey):
+            clone_data["sub_category"] = getattr(getattr(p, "sub_category", None), "name", None)
+
+    # Coerce size if it's a CharField on super_catalogue
+    if "size" in model_fields:
+        try:
+            from django.db.models import ForeignKey as _FK
+            is_fk = isinstance(model_fields["size"], _FK)
+        except Exception:
+            is_fk = False
+        if not is_fk:
+            clone_data["size"] = getattr(getattr(p, "size", None), "name", None)
+
+    filtered = {k: v for k, v in clone_data.items() if k in model_fields}
+
+    super_catalogue.objects.create(**filtered)
+
+    return redirect('list_super_catalogue')
 
         
 
@@ -923,8 +986,7 @@ def delete_super_catalogue(request, super_catalogue_id):
 
 @login_required(login_url='login_admin')
 def list_super_catalogue(request):
-
-    data = super_catalogue.objects.all()
+    data = super_catalogue.objects.filter(is_active=True)
     context = {
         'data': data
     }
@@ -1683,6 +1745,27 @@ class ProductViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         return Response(serializer.data)
 
+
+class SuperCatalogueViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    List/read super catalogue products (public).
+    GET /vendor/super-catalogue/?category=&sub_category=&sale_type=
+    """
+    serializer_class = SuperCatalogueSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super_catalogue.objects.filter(is_active=True).order_by("-created_at")
+        category_id = self.request.query_params.get("category")
+        sub_category_id = self.request.query_params.get("sub_category")
+        sale_type = self.request.query_params.get("sale_type")
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+        if sub_category_id:
+            qs = qs.filter(sub_category_id=sub_category_id)
+        if sale_type:
+            qs = qs.filter(sale_type=sale_type)
+        return qs
 
 
 from rest_framework.decorators import action

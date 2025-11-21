@@ -62,8 +62,9 @@ path('stores-by-subcategory/', StoreBySubCategoryView.as_view(), name='stores-by
 
 path("stream/chatinit/", ChatInitAPIView.as_view(), name="ChatInitAPIView"),
 
+# Cashfree webhook (public)
+path('cashfree/webhook/', cashfree_webhook, name='cashfree_webhook'),
 
-
-]  + router.urls
+] + router.urls
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -198,6 +198,12 @@ class Order(models.Model):
     coupon = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
+    # Cashfree payment tracking
+    payment_link = models.URLField(blank=True, null=True)
+    cashfree_order_id = models.CharField(max_length=100, blank=True, null=True)
+    cashfree_session_id = models.CharField(max_length=255, blank=True, null=True)
+    cashfree_status = models.CharField(max_length=20, blank=True, null=True)  # CREATED, PAID, FAILED
+
     # Delivery details
     address = models.ForeignKey(Address, on_delete=models.CASCADE, null=True, blank=True)
     instruction = models.TextField(blank=True, null=True)
@@ -207,6 +213,8 @@ class Order(models.Model):
 
     
     
+
+    # Payment logic handled via service layer (customer/payments/cashfree.py)
 
 class OrderItem(models.Model):
     STATUS_CHOICES = [

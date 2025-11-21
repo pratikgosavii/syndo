@@ -29,6 +29,7 @@ router.register(r'purchase', PurchaseViewSet, basename='PurchaseViewSet')
 
 router.register(r'PrintVariant', PrintVariantViewSet, basename='PrintVariantViewSet')
 router.register(r'product', ProductViewSet, basename='product')
+router.register(r'super-catalogue', SuperCatalogueViewSet, basename='super-catalogue')
 router.register(r'productsetting', ProductSettingsViewSet, basename='ProductSettingsViewSet')
 router.register(r'addon', AddonViewSet, basename='AddonViewSet')
 router.register(r'product-addon', ProductAddonViewSet, basename='ProductAddonViewSet')

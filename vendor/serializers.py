@@ -458,12 +458,17 @@ class product_serializer(serializers.ModelSerializer):
         
 
     def get_variants(self, obj):
-        # ✅ Pass context so request is available inside ProductVariantSerializer
-        serializer = ProductVariantSerializer(
-            obj.variants.all(),
-            many=True,
-            context=self.context  # <-- this is the key fix
-        )
+        # Always show full family: root (parent if any) + all its children
+        root = obj if getattr(obj, "parent_id", None) is None else obj.parent
+        family = [root] + list(root.variants.all())
+        # Remove potential duplicates while preserving order
+        seen = set()
+        unique_family = []
+        for p in family:
+            if p.id not in seen:
+                seen.add(p.id)
+                unique_family.append(p)
+        serializer = ProductVariantSerializer(unique_family, many=True, context=self.context)
         return serializer.data
 
 class ReelSerializer(serializers.ModelSerializer):
@@ -1050,6 +1055,23 @@ class OfferSerializer(serializers.ModelSerializer):
         except:
             return None
         
+
+
+# -------------------------------
+# Super Catalogue (API Serializer)
+# -------------------------------
+class SuperCatalogueSerializer(serializers.ModelSerializer):
+    category_details = product_category_serializer(source="category", read_only=True)
+    sub_category_id = serializers.PrimaryKeyRelatedField(
+        source="sub_category", queryset=product_subcategory.objects.all(), write_only=True, required=False, allow_null=True
+    )
+    sub_category_details = product_subcategory_serializer(source="sub_category", read_only=True)
+    size_details = size_serializer(source="size", read_only=True)
+
+    class Meta:
+        model = super_catalogue
+        fields = "__all__"
+        read_only_fields = ["created_at", "user"]
 
 # class StoreRatingSerializer(serializers.ModelSerializer):
 #     vendor_user_id = serializers.IntegerField(write_only=True)

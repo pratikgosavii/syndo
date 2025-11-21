@@ -10,6 +10,31 @@
     width: 100%;
 }
 
+/* Quick actions row inside sidebar */
+.quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin: 0.75rem 0;
+    padding: 0 0.5rem;
+}
+.quick-actions a .qa-card {
+    width: 80px;
+    color: black;
+}
+
+/* When the sidebar is collapsed, hide quick actions to avoid overflow */
+body.vertical-collapsed .vertical-menu .quick-actions,
+body.vertical-collpsed .vertical-menu .quick-actions, /* fallback: older misspelled class */
+body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled overlay */
+    display: none !important;
+}
+
+/* Also hide on very narrow viewports where sidebar overlays */
+@media (max-width: 991.98px) {
+    .quick-actions { display: none; }
+}
+
 #sidebar-search {
     width: 100%;
     padding-right: 30px; /* space for clear button */
@@ -42,31 +67,32 @@
             <div data-simplebar class="h-100">
 
 
-                <div class="d-flex flex-wrap justify-content-around my-3 px-2">
+                <!-- Quick Actions -->
+                <div class="quick-actions">
 
                 <a href="{% url 'create-sale' %}" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm" style="width: 80px; color: black;">
+                    <div class="border rounded p-3 shadow-sm qa-card">
                     <i data-feather="shopping-bag" style="width: 24px; height: 24px;"></i>
                     <div class="small mt-1">Sale & POS</div>
                     </div>
                 </a>
 
                 <a href="{% url 'add_purchase' %}" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm" style="width: 80px; color: black;">
+                    <div class="border rounded p-3 shadow-sm qa-card">
                     <i data-feather="shopping-cart" style="width: 24px; height: 24px;"></i>
                     <div class="small mt-1">Purchases</div>
                     </div>
                 </a>
 
                 <a href="{% url 'add_expense' %}" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm" style="width: 80px; color: black;">
+                    <div class="border rounded p-3 shadow-sm qa-card">
                     <i data-feather="file-text" style="width: 24px; height: 24px;"></i>
                     <div class="small mt-1">Expenses</div>
                     </div>
                 </a>
 
                 <a href="" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm" style="width: 80px; color: black;">
+                    <div class="border rounded p-3 shadow-sm qa-card">
                     <i data-feather="dollar-sign" style="width: 24px; height: 24px;"></i>
                     <div class="small mt-1">Payments</div>
                     </div>
@@ -146,6 +172,14 @@
                                         <li><a href="{% url 'add_size' %}">Add Size</a></li>
                                         <li><a href="{% url 'list_size' %}">Size List</a></li>
                                     </ul>
+                                </li>
+
+                                <!-- Product List -->
+                                <li>
+                                    <a href="{% url 'list_product' %}">Product List</a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'list_super_catalogue' %}">Super Product catalogue List</a>
                                 </li>
                             
                             </ul>
@@ -304,17 +338,13 @@
                         {% if user.is_vendor %}
 
                    
-                        <li>
-                            <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Company Profile</span>
-                            </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_company_profile' %}">Add Company Profile</a></li>
-                                <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li>
-                            </ul>
-                        <li>
 
+                            <li>
+                                <a href="{% url 'add_company_profile' %}" class="has-arrow">
+                                    <i data-feather="layers"></i>
+                                    <span data-key="t-authentication">Company Profile</span>
+                                </a>
+                            </li>
                             <li>
                                 <a href="{% url 'daybook_report' %}" class="has-arrow">
                                     <i data-feather="layers"></i>

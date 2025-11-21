@@ -8,6 +8,10 @@ from masters.models import MainCategory, product_category, product_subcategory
 from users.models import *
 
 from rest_framework import viewsets, permissions
+from rest_framework.decorators import action
+from .payments.cashfree import create_order_for, refresh_order_status
+from rest_framework.decorators import action
+from .payments.cashfree import create_order_for, refresh_order_status
 from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store
 from vendor.serializers import BannerCampaignSerializer, PostSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer
 from .models import *
@@ -19,6 +23,37 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        """
+        Create order and immediately initiate Cashfree payment.
+        Returns 201 with order payload + payment_session_id/payment_link.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save(user=request.user)
+
+        # Build URLs
+        scheme = "https" if request.is_secure() else "http"
+        host = request.get_host()
+        return_url = f"{scheme}://{host}/payments/success?order_id={order.order_id}"
+        notify_url = f"{scheme}://{host}/customer/cashfree/webhook/"
+        phone = request.data.get("phone") or ""
+
+        # Initiate payment
+        payment = create_order_for(
+            order,
+            customer_id=order.user_id,
+            customer_email=getattr(order.user, "email", "") if order.user_id else None,
+            customer_phone=phone,
+            return_url=return_url,
+            notify_url=notify_url,
+        )
+
+        base = OrderSerializer(order, context={"request": request}).data
+        base["payment"] = payment
+        headers = self.get_success_headers(base)
+        return Response(base, status=status.HTTP_201_CREATED, headers=headers)
+
     def get_queryset(self):
         # Only return orders for the logged-in user
         user = self.request.user
@@ -28,11 +63,48 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         # Automatically set the user when saving
         serializer.save(user=self.request.user)
 
+    @action(detail=True, methods=["post"], url_path="initiate-payment")
+    def initiate_payment(self, request, pk=None):
+        """
+        Trigger Cashfree order creation and return payment_session_id (or payment_link).
+        POST /customer/customer-order/{id}/initiate-payment/
+        Optional body: {"phone": "9999999999"}
+        """
+        order = self.get_object()
+        # Build return and notify URLs
+        scheme = "https" if request.is_secure() else "http"
+        host = request.get_host()
+        return_url = f"{scheme}://{host}/payments/success?order_id={order.order_id}"
+        notify_url = f"{scheme}://{host}/customer/cashfree/webhook/"
+        phone = request.data.get("phone") or ""
+        data = create_order_for(
+            order,
+            customer_id=order.user_id,
+            customer_email=getattr(order.user, "email", "") if order.user_id else None,
+            customer_phone=phone,
+            return_url=return_url,
+            notify_url=notify_url,
+        )
+        return Response(data, status=200)
+
+    @action(detail=True, methods=["get"], url_path="refresh-payment-status")
+    def refresh_payment_status(self, request, pk=None):
+        """
+        Manually refresh order payment status from Cashfree (fallback if webhook delayed).
+        GET /customer/customer-order/{id}/refresh-payment-status/
+        """
+        order = self.get_object()
+        data = refresh_order_status(order)
+        return Response(data, status=200)
+
 
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import hmac, hashlib, base64, os, json
 
 class RequestOfferAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -65,6 +137,58 @@ class AllRequestOfferAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@csrf_exempt
+def cashfree_webhook(request):
+    """
+    Cashfree webhook to update order status.
+    Expects JSON body and header 'x-webhook-signature' (base64 of HMAC-SHA256).
+    """
+    try:
+        raw = request.body
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception:
+        return Response({"detail": "invalid json"}, status=400)
+
+    signature = request.headers.get("x-webhook-signature") or request.headers.get("X-Webhook-Signature")
+    secret = os.getenv("CASHFREE_WEBHOOK_SECRET", "test_webhook_secret")
+
+    # Verify signature if present
+    try:
+        computed = base64.b64encode(hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).digest()).decode()
+        if signature and not hmac.compare_digest(signature, computed):
+            return Response({"detail": "invalid signature"}, status=401)
+    except Exception:
+        pass  # if missing headers, proceed best-effort in sandbox
+
+    # Extract order_id and status robustly
+    order_id = (
+        payload.get("order_id")
+        or payload.get("data", {}).get("order", {}).get("order_id")
+        or payload.get("data", {}).get("order_id")
+    )
+    status_cf = (
+        payload.get("order_status")
+        or payload.get("data", {}).get("order", {}).get("order_status")
+        or payload.get("data", {}).get("payment", {}).get("payment_status")
+    )
+
+    if not order_id:
+        return Response({"detail": "missing order_id"}, status=400)
+
+    # Update order by cashfree_order_id or order_id
+    try:
+        order = Order.objects.filter(cashfree_order_id=order_id).first() or Order.objects.get(order_id=order_id)
+    except Order.DoesNotExist:
+        return Response({"detail": "order not found"}, status=404)
+
+    if status_cf:
+        order.cashfree_status = status_cf
+        if str(status_cf).upper() in ("PAID", "SUCCESS", "CAPTURED"):
+            order.is_paid = True
+            order.payment_mode = "Cashfree"
+        order.save(update_fields=["cashfree_status", "is_paid", "payment_mode"])
+
+    return Response({"success": True}, status=200)
 
 class ReturnExchangeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -903,7 +1027,7 @@ class HomeScreenView(APIView):
             ).prefetch_related(
                 'variants',                           # product.variants (if you have related_name 'variants')
                 'variants__size',                     # size on variants
-                'product_addon__addon',               # product_addon -> addon (uses related_name="product_addon")
+                'product_addon_set__addon',           # product_addon -> addon
                 'print_variants',                     # PrintVariant (related_name)
                 'customize_print_variants',           # CustomizePrintVariant (related_name)
                 'user__vendor_store'                  # prefetch vendor_store of the user
