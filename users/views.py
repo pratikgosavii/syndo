@@ -128,52 +128,74 @@ class LoginAPIView(APIView):
     
     def post(self, request):
         id_token = request.data.get("idToken")
+        print("-------1------------ id_token fetched")
         user_type = request.data.get("user_type")
+        print("-------2------------ user_type fetched")
 
         if not id_token:
+            print("-------3------------ id_token missing")
             return Response({"error": "idToken is required"}, status=400)
 
         try:
             # Verify token with Firebase
             decoded_token = firebase_auth.verify_id_token(id_token)
+            print("-------4------------ token verified")
             mobile = decoded_token.get("phone_number")
+            print(f"-------5------------ mobile: {mobile}")
             uid = decoded_token.get("uid")
+            print(f"-------6------------ uid: {uid}")
 
             if not mobile:
+                print("-------7------------ phone number missing in token")
                 return Response({"error": "Phone number not found in token"}, status=400)
 
             user = User.objects.filter(mobile=mobile).first()
+            print(f"-------8------------ user lookup done: {bool(user)}")
             created = False
+            print("-------9------------ created flag initialized")
 
             if user:
+                print("-------10------------ user exists branch")
                 if not user.is_active:
                     user.is_active = True
+                    print("-------11------------ user activated")
                 if user.firebase_uid != uid:
                     user.firebase_uid = uid
                     print('--------------------------------------------')
                     print(user)
+                    print("-------12------------ firebase_uid updated")
                 user.save()
+                print("-------13------------ existing user saved")
             else:
+                print("-------14------------ user create branch")
                 user = User.objects.create(
                     mobile=mobile,
                     firebase_uid=uid,
                 )
+                print("-------15------------ user created")
 
                 if user_type == "vendor":   
                     vendor_store.objects.create(user = user)
+                    print("-------16------------ vendor_store created")
                     
                 created = True
+                print("-------17------------ created flag set True")
 
                 # Set user type flags based on frontend
                 if user_type == "vendor":
                     user.is_vendor = True
+                    print("-------18------------ is_vendor set True")
                 elif user_type == "customer":
                     user.is_customer = True
+                    print("-------19------------ is_customer set True")
                 user.save()
+                print("-------20------------ new user saved")
 
             # Token creation
             refresh = RefreshToken.for_user(user)
+            print("-------21------------ refresh token created")
             user_details = UserProfileSerializer(user).data
+            print("-------22------------ user_details serialized")
 
             return Response({
                 "access": str(refresh.access_token),
@@ -187,9 +209,11 @@ class LoginAPIView(APIView):
                 },
                 "user_details": user_details
             }, status=201 if created else 200)
+            print("-------23------------ response returned")
 
         except Exception as e:
             print(f"Login failed: {e}")
+            print("-------24------------ exception path")
             return Response({"error": "Invalid or expired Firebase token."}, status=400)
 
 
