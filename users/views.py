@@ -52,6 +52,8 @@ class SignupView(APIView):
             return Response({"error": "idToken and user_type are required"}, status=400)
 
         try:
+            if isinstance(id_token, str):
+                id_token = id_token.strip()
             decoded_token = firebase_auth.verify_id_token(id_token)
             mobile = decoded_token.get("phone_number")
             uid = decoded_token.get("uid")
@@ -117,6 +119,9 @@ class SignupView(APIView):
                 }
             })
 
+        except ValueError as e:
+            print(f"Signup failed: malformed idToken - {e}")
+            return Response({"error": "Malformed idToken provided."}, status=400)
         except Exception as e:
             return Response({"error": str(e)}, status=400)
 
@@ -137,6 +142,8 @@ class LoginAPIView(APIView):
             return Response({"error": "idToken is required"}, status=400)
 
         try:
+            if isinstance(id_token, str):
+                id_token = id_token.strip()
             # Verify token with Firebase
             decoded_token = firebase_auth.verify_id_token(id_token)
             print("-------4------------ token verified")
@@ -211,6 +218,9 @@ class LoginAPIView(APIView):
             }, status=201 if created else 200)
             print("-------23------------ response returned")
 
+        except ValueError as e:
+            print(f"Login failed: malformed idToken - {e}")
+            return Response({"error": "Malformed idToken provided."}, status=400)
         except Exception as e:
             print(f"Login failed: {e}")
             print("-------24------------ exception path")

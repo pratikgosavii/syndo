@@ -95,6 +95,8 @@ REST_FRAMEWORK = {
 
 
 # # firebase_config.py
+
+# # firebase_config.py
 import os
 from firebase_admin import credentials, initialize_app
 
@@ -102,6 +104,7 @@ from firebase_admin import credentials, initialize_app
 firebase_key_path = os.path.join(BASE_DIR, 'syndo', 'svindovender-71cf8-firebase-adminsdk-fbsvc-49dc54f6e3.json')
 cred = credentials.Certificate(firebase_key_path)
 initialize_app(cred)
+
 
 
 RAZORPAY_KEY_ID = 'rzp_test_Rhy8NBxUoi3UsE'
