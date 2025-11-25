@@ -36,11 +36,13 @@ from firebase_admin import auth as firebase_auth
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User  # Your custom user model
 
 
 class SignupView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request):
         id_token = request.data.get("idToken")
@@ -129,7 +131,7 @@ class SignupView(APIView):
 from .serializer import *
 
 class LoginAPIView(APIView):
-
+    permission_classes = [AllowAny]
     
     def post(self, request):
         id_token = request.data.get("idToken")

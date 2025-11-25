@@ -18,6 +18,7 @@ from .serializers import *
 from users.permissions import *
 
 from rest_framework.generics import ListAPIView
+from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -538,6 +539,7 @@ def delete_product_category(request, product_category_id):
 
 
 class get_product_category(ListAPIView):
+    permission_classes = [AllowAny]
     queryset = product_category.objects.all()
     serializer_class = product_category_serializer
 
