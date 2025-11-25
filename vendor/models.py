@@ -717,7 +717,7 @@ class Purchase(models.Model):
   
     PAYMENT_METHOD_CHOICES = [
         ('upi', 'UPI'),
-        ('card', 'Card'),
+        ('cheque', 'Cheque'),
         ('cash', 'Cash'),
         ('credit', 'Credit'),
     ]
@@ -740,7 +740,7 @@ class Purchase(models.Model):
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES)
-
+    advance_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True) 
     advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     advance_mode = models.CharField(max_length=10, choices=ADVANCE_MODE_CHOICES, blank=True, null=True)
     advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
@@ -809,7 +809,7 @@ class Expense(models.Model):
     
     PAYMENT_METHOD_CHOICES = [
         ('upi', 'UPI'),
-        ('card', 'Card'),
+        ('cheque', 'Cheque'),
         ('cash', 'Cash'),
     ]
 
@@ -843,7 +843,7 @@ from decimal import Decimal
 class Sale(models.Model):
     PAYMENT_CHOICES = [
         ('upi', 'UPI'),
-        ('card', 'Card'),
+        ('cheque', 'Cheque'),
         ('cash', 'Cash'),
         ('credit', 'Credit'),
     ]
@@ -1055,7 +1055,6 @@ class CashTransfer(models.Model):
     bank_account = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, default="pending")  # pending, approved, failed
 
     def __str__(self):
         return f"{self.user.username} → ₹{self.amount} "
@@ -1094,8 +1093,7 @@ class Payment(models.Model):
     PAYMENT_TYPE_CHOICES = (
         ('cash', 'Cash'),
         ('upi', 'UPI'),
-        ('card', 'Card'),
-        ('credit', 'Credit'),
+        ('cheque', 'Cheque'),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)

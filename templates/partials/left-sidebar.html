@@ -492,7 +492,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                     </a>
                                     <ul class="sub-menu" aria-expanded="false">
                                         <li><a href="{% url 'add_customer' %}">Add Customer</a></li>
-                                        <li><a href="{% url 'add_customer' %}">Customer List</a></li>
+                                        <li><a href="{% url 'list_customer' %}">Customer List</a></li>
                                     </ul>
                                 </li> 
 
@@ -564,6 +564,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                        
 
+                        {% comment %}
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
@@ -576,8 +577,10 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                             </ul>
                             
                         </li>
+                        {% endcomment %}
 
 
+                        {% comment %}
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
@@ -590,6 +593,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                 {% comment %} <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li> {% endcomment %}
                             </ul>
                         </li>
+                        {% endcomment %}
                     
 
                           <li>
@@ -607,7 +611,16 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                         </li>
 
                        {% endif %}
-                       
+
+                        <!-- Reports (Coming Soon) -->
+                        <li>
+                            <a href="javascript: void(0);">
+                                <i data-feather="bar-chart-2"></i>
+                                <span>Reports</span>
+                                <span class="badge rounded-pill bg-secondary ms-2">Coming Soon</span>
+                            </a>
+                        </li>
+                        
                         <div style="margin: 100% 0 0 35%; align-content: center">
                             <form method="POST" action="{% url 'logout' %}">
                                 {% csrf_token %}

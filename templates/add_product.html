@@ -186,7 +186,7 @@ input:checked + .slider:before {
                             </div>
                         </div>
                     
-                        <div class="mb-3">
+                        <div class="mb-3" id="description_wrapper">
                             <label for="id_description" class="form-label">Description</label>
                             {{ form.description }}
                         </div>
@@ -195,7 +195,7 @@ input:checked + .slider:before {
                         <hr>
                         <div style="display:flex; gap : 10px;" class="product-only-field" id="mrp_section">
                                 
-                            <div class="mb-3 product-only-field">
+                            <div class="mb-3 product-only-field" id="wholesale_price_wrapper">
                                 <label for="id_wholesale_price" class="form-label">Wholesale Price **</label>
                                 {{ form.wholesale_price }}
                             </div>
@@ -225,7 +225,7 @@ input:checked + .slider:before {
                         </div>
                        
                         <div class="product-only-field">
-                            <div class="mb-3">
+                            <div class="mb-3" id="size_wrapper">
                                 <label for="id_size" class="form-label product-only-field">Size</label>
                                 {{ form.size }}
                             </div>
@@ -254,22 +254,22 @@ input:checked + .slider:before {
                         <!-- Stock -->
                         <hr class="product-only-field">
 
-                            <div class="mb-3 form-check ">
+                            <div class="mb-3 form-check " id="track_serial_numbers_wrapper">
                                 {{ form.track_serial_numbers }}
                                 <label class="form-check-label" for="id_track_serial_numbers">Track Serial Numbers</label>
                             </div>
                         
-                            <div class="mb-3">
+                            <div class="mb-3" id="opening_stock_wrapper">
                                 <label for="id_opening_stock" class="form-label">Opening Stock</label>
                                 {{ form.opening_stock }}
                             </div>
                         
-                            <div class="mb-3 form-check ">
+                            <div class="mb-3 form-check " id="low_stock_alert_wrapper">
                                 {{ form.low_stock_alert }}
                                 <label class="form-check-label" for="id_low_stock_alert">Low Stock Alert</label>
                             </div>
                         
-                            <div class="mb-3 ">
+                            <div class="mb-3 " id="low_stock_quantity_wrapper">
                                 <label for="id_low_stock_quantity" class="form-label">Low Stock Quantity</label>
                                 {{ form.low_stock_quantity }}
                             </div>
@@ -1295,6 +1295,79 @@ function handleCustomPrintToggleChange() {
 
 <script>
 
+    // Helpers to show/hide wrappers and set inputs
+    function setVisibleById(id, visible) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = visible ? '' : 'none';
+        el.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = !visible);
+    }
+    function setCheckbox(id, value) {
+        const el = document.getElementById(id);
+        if (el && el.type === 'checkbox') el.checked = !!value;
+    }
+    function applyProductSettingsUI(settings) {
+        // Structural/product fields
+        setVisibleById('category_wrapper', settings.category);
+        setVisibleById('sub_category_wrapper', settings.sub_category);
+        setVisibleById('brand_name_wrapper', settings.brand_name);
+        setVisibleById('color_wrapper', settings.color);
+        setVisibleById('size_wrapper', settings.size);
+        setVisibleById('batch_number_wrapper', settings.batch_number);
+        setVisibleById('expiry_date_wrapper', settings.expiry_date);
+        setVisibleById('description_wrapper', settings.description);
+        setVisibleById('image_wrapper', settings.image);
+        setVisibleById('wholesale_price_wrapper', settings.wholesale_price);
+
+        // Stock related
+        setVisibleById('opening_stock_wrapper', settings.stock);
+        setVisibleById('low_stock_alert_wrapper', settings.stock);
+        setVisibleById('low_stock_quantity_wrapper', settings.stock && settings.low_stock_alert);
+        setCheckbox('id_low_stock_alert', settings.low_stock_alert);
+
+        // IMEI/serial tracking
+        setVisibleById('track_serial_numbers_wrapper', settings.imei);
+        setCheckbox('id_track_serial_numbers', settings.imei);
+
+        // Tax
+        setVisibleById('tax_div', settings.tax);
+
+        // Food
+        const foodWrapper = document.getElementById('foodOptionToggleWrapper');
+        if (foodWrapper) {
+            foodWrapper.style.display = settings.food ? '' : 'none';
+            setCheckbox('id_is_food', settings.food);
+        }
+
+        // Delivery toggles
+        setCheckbox('id_instant_delivery', settings.instant_delivery);
+        setCheckbox('id_self_pickup', settings.self_pickup);
+        setCheckbox('id_general_delivery', settings.general_delivery);
+        // Map shop_orders -> is_on_shop
+        setCheckbox('id_is_on_shop', settings.shop_orders);
+
+        // Policy toggles
+        setCheckbox('id_return_policy', settings.return_policy);
+        setCheckbox('id_cod', settings.cod);
+        setCheckbox('id_replacement', settings.replacement);
+        setCheckbox('id_shop_exchange', settings.shop_exchange);
+        setCheckbox('id_shop_warranty', settings.shop_warranty);
+        setCheckbox('id_brand_warranty', settings.brand_warranty);
+
+        // Optional: sale type influence (online_catalog_only)
+        try {
+            const saleType = document.getElementById('saleType');
+            if (saleType && settings.online_catalog_only) {
+                saleType.value = 'online';
+            }
+        } catch (e) {}
+
+        // Recalculate any totals/derived UI if needed
+        if (typeof recalculateTotals === 'function') {
+            recalculateTotals();
+        }
+    }
+
     document.getElementById("use-defaults-btn").addEventListener("click", function () {
     fetch("{% url 'product_defaults' %}")
         .then(response => response.json())
@@ -1323,6 +1396,8 @@ function handleCustomPrintToggleChange() {
                         console.error(`Error setting field "${field}":`, err);
                     }
                 }
+                // Apply visibility/checkbox defaults
+                applyProductSettingsUI(data);
             } else {
                 console.warn("No defaults found or failed to fetch.");
             }

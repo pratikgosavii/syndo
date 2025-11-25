@@ -151,6 +151,12 @@
             {{ item.stock_cached|default:"0" }} Pieces Left
           </span>
 
+          <!-- Edit Button -->
+          <a href="{% url 'update_product' item.id %}"
+             class="position-absolute top-0 end-0 m-2 text-primary" title="Edit">
+            <i class="bi bi-pencil-square fs-5"></i>
+          </a>
+
           <!-- Delete Button -->
           {% comment %} <a href="{% url 'delete_product' item.id %}" 
              class="position-absolute top-0 end-0 m-2 text-danger" title="Delete">

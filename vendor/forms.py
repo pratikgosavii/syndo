@@ -442,6 +442,12 @@ class PurchaseForm(forms.ModelForm):
             'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'delivery_shipping_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'packaging_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            
+            'advance_payment_amount': forms.NumberInput(attrs={
+                'class': 'form-control d-inline-block w-auto me-2',
+                'placeholder': 'Amount',
+                'style': 'max-width: 100px;'
+            }),
         }
 
 

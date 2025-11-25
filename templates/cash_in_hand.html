@@ -50,7 +50,7 @@
                                 Cash Ledger
                             </button>
                         </a>
-                        <a href="{% url 'cash_adjust_history' %}" class="ms-2">
+                        <a href="{% url 'cash_adjust_history_fb' %}" class="ms-2">
                             <button class="btn btn-outline-warning" style="color: black; border: 2px solid #ffcc5a;">
                                 Adjust History
                             </button>
@@ -93,7 +93,6 @@
                                 <th>Amount</th>
                                 <th>Bank</th>
                                 <th>Account</th>
-                                <th>Status</th>
                                 <th>Created At</th>
                             </tr>
                         </thead>
@@ -104,17 +103,6 @@
                                 <td>₹{{ txn.amount }}</td>
                                 <td>{{ txn.bank_account.name }}</td>
                                 <td>{{ txn.bank_account.account_number }}</td>
-                                <td>
-                                    {% if txn.status == "pending" %}
-                                        <span class="badge bg-warning text-dark">Pending</span>
-                                    {% elif txn.status == "approved" %}
-                                        <span class="badge bg-success">Approved</span>
-                                    {% elif txn.status == "failed" %}
-                                        <span class="badge bg-danger">Failed</span>
-                                    {% else %}
-                                        {{ txn.status }}
-                                    {% endif %}
-                                </td>
                                 <td>{{ txn.created_at|date:"d M Y, h:i A" }}</td>
                             </tr>
                             {% endfor %}

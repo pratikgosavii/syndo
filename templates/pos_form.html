@@ -111,10 +111,7 @@
             
             <!-- Billing -->
             <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Billing</label>
-                {{ form.company_profile }}
-              </div>
+             
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Customer</label>
                 <div class="d-flex gap-2 align-items-end">
@@ -239,7 +236,7 @@
                 <div class="btn-group" role="group" aria-label="Payment method">
                   <button type="button" class="btn btn-warning" onclick="selectPayment('cash', this)">Cash</button>
                   <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
-                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('card', this)">Card</button>
+                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('cheque', this)">Cheque</button>
                   <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
                 </div>
 
@@ -810,22 +807,24 @@ function recalculateTotals() {
       }
 
 
-      $(document).on('change', '.product-select', function () {
-    var productId = $(this).val();
-    var row = $(this).closest('.row');
-    if (productId) {
-        $.ajax({
-            url: "{% url 'get_product_price' %}",
-            data: { product_id: productId },
-            success: function (data) {
-                row.find('.rate-input').val(data.price);  // ✅ Sets the price here
-                let qty = parseFloat(row.find('.quantity').val()) || 0;
-                row.find('.amount').val((qty * parseFloat(data.price)).toFixed(2));
-                $('#total-items').text(document.querySelectorAll('.item-row').length);
-                recalculateTotals();
-            }
-        });
-    }
+$(document).on('change', '.product-select', function () {
+  var productId = $(this).val();
+  // use the specific item row to avoid wrong ancestor
+  var row = $(this).closest('.item-row');
+  if (productId) {
+    $.ajax({
+      url: "{% url 'get_product_price' %}",
+      data: { product_id: productId },
+      success: function (data) {
+        const price = parseFloat(data.price) || 0;
+        row.find('.rate-input').val(price.toFixed(2));  // set price
+        const qty = parseFloat(row.find('.qty-input').val()) || 0;  // correct class
+        row.find('.amount').val((qty * price).toFixed(2));          // update amount
+        $('#total-items').text(document.querySelectorAll('.item-row').length);
+        recalculateTotals();
+      }
+    });
+  }
 });
 
 

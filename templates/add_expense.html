@@ -102,8 +102,8 @@
                                             <button type="button" class="btn {% if form.instance.payment_method == 'upi' %}btn-warning{% else %}btn-outline-dark{% endif %}"
                                             onclick="selectPayment('upi', this)">UPI</button>
 
-                                    <button type="button" class="btn {% if form.instance.payment_method == 'card' %}btn-warning{% else %}btn-outline-dark{% endif %}"
-                                            onclick="selectPayment('card', this)">Card</button>
+                                    <button type="button" class="btn {% if form.instance.payment_method == 'cheque' %}btn-warning{% else %}btn-outline-dark{% endif %}"
+                                            onclick="selectPayment('cheque', this)">Cheque</button>
                                 </div>
 
                                 {% if form.payment_method.errors %}

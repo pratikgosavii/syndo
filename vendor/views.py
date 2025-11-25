@@ -2435,6 +2435,17 @@ def pos(request):
     customer_form = vendor_customersForm()
     wholesale_form = pos_wholesaleForm()
 
+    # Pre-fill default company_profile for GET (and as initial on form)
+    try:
+        default_cp = CompanyProfile.objects.filter(user=request.user).first()
+    except Exception:
+        default_cp = None
+    try:
+        if default_cp and "company_profile" in sale_form.fields:
+            sale_form.fields["company_profile"].initial = default_cp
+    except Exception:
+        pass
+
     if request.method == 'POST':
         print(request.POST)
         sale_form = SaleForm(request.POST)
@@ -2463,6 +2474,10 @@ def pos(request):
                 # Save sale
                 sale_instance = sale_form.save(commit=False)
                 sale_instance.user = request.user
+                # Fallback: set default company_profile if not submitted
+                if not getattr(sale_instance, "company_profile_id", None):
+                    if default_cp:
+                        sale_instance.company_profile = default_cp
                 sale_instance.save()
 
                 # Process Sale Items
@@ -2525,6 +2540,12 @@ def update_sale(request, sale_id):
     sale_instance = get_object_or_404(Sale, id=sale_id, user=request.user)
     existing_items = SaleItem.objects.filter(sale=sale_instance)
 
+    # Default company profile to use if missing
+    try:
+        default_cp = CompanyProfile.objects.filter(user=request.user).first()
+    except Exception:
+        default_cp = None
+
     # ✅ Prepare dict list with amount calculation
     items_with_amount = []
     for item in existing_items:
@@ -2564,6 +2585,9 @@ def update_sale(request, sale_id):
             try:
                 sale_instance = sale_form.save(commit=False)
                 sale_instance.user = request.user
+                # Fallback: set default company_profile when not provided in update
+                if not getattr(sale_instance, "company_profile_id", None) and default_cp:
+                    sale_instance.company_profile = default_cp
                 sale_instance.save()
 
                 # 1. Delete marked items
@@ -2630,6 +2654,12 @@ def update_sale(request, sale_id):
         customer_form = vendor_customersForm()
         wholesale_instance = getattr(sale_instance, 'pos_wholesale', None)
         wholesale_form = pos_wholesaleForm(instance=wholesale_instance)
+        # Pre-fill initial if sale has no company_profile already
+        try:
+            if default_cp and "company_profile" in sale_form.fields and not getattr(sale_instance, "company_profile_id", None):
+                sale_form.fields["company_profile"].initial = default_cp
+        except Exception:
+            pass
 
         context = {
             "form": sale_form,
@@ -3188,6 +3218,15 @@ class CashAdjustHistoryAPIView(APIView):
         qs = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
         return Response(CashAdjustHistorySerializer(qs, many=True).data)
 
+@login_required(login_url='login_admin')
+def cash_adjust_history_view(request):
+    qs = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
+    
+    context = {
+        'data' : qs
+    }
+
+    return render(request, 'cash_adjust_history.html', context)
 
 class StoreWorkingHourViewSet(viewsets.ModelViewSet):
     serializer_class = StoreWorkingHourSerializer
@@ -3654,7 +3693,16 @@ class SaleViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         with transaction.atomic():
-            serializer.save(user=self.request.user)
+            instance = serializer.save(user=self.request.user)
+            # Ensure default company_profile if missing
+            try:
+                if not getattr(instance, "company_profile_id", None):
+                    cp = CompanyProfile.objects.filter(user=self.request.user).first()
+                    if cp:
+                        instance.company_profile = cp
+                        instance.save(update_fields=["company_profile"])
+            except Exception:
+                pass
 
 
 
