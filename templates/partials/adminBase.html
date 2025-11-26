@@ -31,6 +31,24 @@
         border-color: #FCA311  !important;
     }
 
+    .table-filter-row th {
+        background-color: rgba(0, 0, 0, 0.03);
+        padding: 6px;
+    }
+
+    .table-filter-input {
+        width: 100%;
+        font-size: 0.85rem;
+        padding: 4px 6px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+    }
+
+    .table-filter-input:focus {
+        outline: none;
+        border-color: #FCA311;
+        box-shadow: 0 0 0 1px rgba(252, 163, 17, 0.3);
+    }
 </style>
 
 
@@ -88,6 +106,89 @@
     <!-- pace js -->
     <script src="{% static 'libs/pace-js/pace.min.js'%}"></script>
     <script src="{% static 'js/app.js'%}"></script>
+    <script>
+        (function () {
+            function initTableFilters() {
+                const tables = document.querySelectorAll('table');
+                tables.forEach((table) => {
+                    if (table.dataset.enableFilters === 'false') {
+                        return;
+                    }
+                    const thead = table.querySelector('thead');
+                    if (!thead || thead.querySelector('.table-filter-row')) {
+                        return;
+                    }
+
+                    const headerRow = thead.querySelector('tr');
+                    if (!headerRow) {
+                        return;
+                    }
+
+                    const filterRow = document.createElement('tr');
+                    filterRow.classList.add('table-filter-row');
+                    const headers = headerRow.querySelectorAll('th');
+
+                    headers.forEach((th, columnIndex) => {
+                        const filterableAttr = th.dataset.filterable;
+                        const isActionColumn =
+                            /action/i.test(th.textContent.trim()) ||
+                            filterableAttr === 'false';
+                        const filterCell = document.createElement('th');
+
+                        if (!isActionColumn) {
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.placeholder = 'Filter';
+                            input.className = 'table-filter-input';
+                            input.dataset.columnIndex = columnIndex.toString();
+                            input.addEventListener('input', () =>
+                                applyFilters(table)
+                            );
+                            filterCell.appendChild(input);
+                        }
+
+                        filterRow.appendChild(filterCell);
+                    });
+
+                    thead.appendChild(filterRow);
+                    table.dataset.enableFilters = 'true';
+                });
+            }
+
+            function applyFilters(table) {
+                const inputs = table.querySelectorAll('.table-filter-input');
+                const rows = table.querySelectorAll('tbody tr');
+
+                rows.forEach((row) => {
+                    let visible = true;
+                    inputs.forEach((input) => {
+                        const value = input.value.trim().toLowerCase();
+                        const columnIndex = parseInt(
+                            input.dataset.columnIndex,
+                            10
+                        );
+                        if (!Number.isInteger(columnIndex) || value === '') {
+                            return;
+                        }
+                        const cell = row.querySelectorAll('td')[columnIndex];
+                        const cellText = cell
+                            ? cell.textContent.trim().toLowerCase()
+                            : '';
+                        if (!cellText.includes(value)) {
+                            visible = false;
+                        }
+                    });
+                    row.style.display = visible ? '' : 'none';
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initTableFilters);
+            } else {
+                initTableFilters();
+            }
+        })();
+    </script>
     {% block extra_js %}
     
     {% endblock extra_js %}

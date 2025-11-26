@@ -1,6 +1,19 @@
 from django.shortcuts import get_object_or_404, render
 
-from masters.filters import EventFilter
+from masters.filters import (
+    EventFilter,
+    StateFilter,
+    NotificationCampaignFilter,
+    TestimonialFilter,
+    PincodeFilter,
+    MainCategoryFilter,
+    ProductCategoryFilter,
+    ProductSubCategoryFilter,
+    ExpenseCategoryFilter,
+    SizeFilter,
+    CustomerAddressFilter,
+    HomeBannerFilter,
+)
 
 # Create your views here.
 
@@ -95,9 +108,11 @@ def delete_event(request, event_id):
 @login_required(login_url='login_admin')
 def list_event(request):
 
-    data = event.objects.all()
+    event_qs = event.objects.all()
+    event_filter = EventFilter(request.GET or None, queryset=event_qs)
     context = {
-        'data': data
+        'data': event_filter.qs,
+        'filter': event_filter,
     }
     return render(request, 'list_event.html', context)
 
@@ -147,8 +162,9 @@ def update_state(request, state_id):
 
 @login_required(login_url='login_admin')
 def list_state(request):
-    data = State.objects.all().order_by('name')
-    return render(request, 'list_state.html', {"data": data})  # reuse listing template
+    qs = State.objects.all().order_by('name')
+    state_filter = StateFilter(request.GET or None, queryset=qs)
+    return render(request, 'list_state.html', {"data": state_filter.qs, "filter": state_filter})  # reuse listing template
 
 
 @login_required(login_url='login_admin')
@@ -169,9 +185,11 @@ class get_state(ListAPIView):
 @login_required(login_url='login_admin')
 def list_notification_campaigns(request):
 
-    data = NotificationCampaign.objects.all()
+    qs = NotificationCampaign.objects.all()
+    campaign_filter = NotificationCampaignFilter(request.GET or None, queryset=qs)
     context = {
-        'data': data
+        'data': campaign_filter.qs,
+        'filter': campaign_filter,
     }
     return render(request, 'list_notification_campaigns.html', context)
 
