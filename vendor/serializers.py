@@ -294,7 +294,7 @@ class product_serializer(serializers.ModelSerializer):
     addons = serializers.SerializerMethodField()
     print_variants = PrintVariantSerializer(many=True, required=False)
     customize_print_variants = CustomizePrintVariantSerializer(many=True, required=False)
-    is_favourite = serializers.BooleanField(read_only=True)
+    is_favourite = serializers.SerializerMethodField()
     # variants = ProductVariantSerializer(many=True, read_only=True)
     variants = serializers.SerializerMethodField()
     store = serializers.SerializerMethodField()
@@ -455,6 +455,22 @@ class product_serializer(serializers.ModelSerializer):
                 return VendorStoreSerializer2(store).data
         except:
             return None
+
+    def get_is_favourite(self, obj):
+        from customer.models import Favourite
+
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+
+        # ✅ Cache favourite IDs (only one DB query per request)
+        if not hasattr(self, "_user_fav_ids"):
+            self._user_fav_ids = set(
+                Favourite.objects.filter(user=request.user)
+                .values_list("product_id", flat=True)
+            )
+
+        return obj.id in self._user_fav_ids
         
 
     def get_variants(self, obj):
