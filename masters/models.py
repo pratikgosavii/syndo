@@ -53,6 +53,7 @@ class testimonials(models.Model):
 
 
 class expense_category(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expense_categories', null=True, blank=True)
     name = models.CharField(max_length=255)
 
     def __str__(self):

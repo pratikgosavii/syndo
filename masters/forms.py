@@ -69,7 +69,7 @@ class testimonials_Form(forms.ModelForm):
 class expense_category_Form(forms.ModelForm):
     class Meta:
         model = expense_category
-        fields = '__all__'
+        fields = ['name', 'user']
         widgets = {
            
             'name': forms.TextInput(attrs={

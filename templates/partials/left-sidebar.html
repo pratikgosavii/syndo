@@ -91,7 +91,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                     </div>
                 </a>
 
-                <a href="" class="text-center text-decoration-none m-2">
+                <a href="{% url 'add_payment' %}" class="text-center text-decoration-none m-2">
                     <div class="border rounded p-3 shadow-sm qa-card">
                     <i data-feather="dollar-sign" style="width: 24px; height: 24px;"></i>
                     <div class="small mt-1">Payments</div>
@@ -185,16 +185,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                             </ul>
                         </li>
                         
- <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <i data-feather="layers"></i>
-                                        <span data-key="t-authentication">Expense Category</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_expense_category' %}">Add Expense Category</a></li>
-                                        <li><a href="{% url 'list_expense_category' %}">Expense List</a></li>
-                                    </ul>
-                                </li> 
+                       
 
 
                               
@@ -454,7 +445,16 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
 
                       
-
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Expense Category</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_expense_category' %}">Add Expense Category</a></li>
+                                <li><a href="{% url 'list_expense_category' %}">Expense List</a></li>
+                            </ul>
+                        </li> 
                       
 
                                 
@@ -590,12 +590,11 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                 <li><a href="{% url 'online_store_setting' %}">Online Store Setting</a></li>
                                 <li><a href="{% url 'store_hours' %}">Store Hours</a></li>
 
-                                {% comment %} <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li> {% endcomment %}
+                                {% comment %} <li><a href="{% url 'list_company_profile' %}">Company Profile List</a></li> 
                             </ul>
                         </li>
-                        {% endcomment %}
                     
-
+{% endcomment %}
                           <li>
                             <a href="{% url 'invoice_setting' %}">
                                 <i data-feather="layers"></i>

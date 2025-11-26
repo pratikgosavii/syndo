@@ -643,7 +643,7 @@ class pos_wholesaleForm(forms.ModelForm):
             'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
 
             'delivery_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'reverse_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'reverse_charges': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'packaging_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
 
             'eway_bill_number': forms.TextInput(attrs={'class': 'form-control'}),

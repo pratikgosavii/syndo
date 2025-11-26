@@ -41,96 +41,135 @@
 {% block content %}
 
 <div class="main-content">
-    <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="container">
-                <div class="form-container">
-                    <form method="POST" enctype="multipart/form-data">
-                        {% csrf_token %}
-
-                        <h5 class="form-heading">Basic Details</h5>
-                        <div class="mb-3">
-                            <label class="form-label">Customer Name:</label>
-                            {{ form.name }}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Mobile Number:</label>
-                            {{ form.contact }}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email ID:</label>
-                            {{ form.email }}
-                        </div>
-
-                        <h5 class="form-heading">Business Details</h5>
-                        <div class="mb-3">
-                            <label class="form-label">Company Name:</label>
-                            {{ form.company_name }}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">GST:</label>
-                            {{ form.gst_number }}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Aadhar Number:</label>
-                            {{ form.aadhar_number }}
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">PAN:</label>
-                            {{ form.pan_number }}
-                        </div>
-
-                        <h5 class="form-heading">Billing Address</h5>
-                        <div class="mb-3">
-                            {{ form.billing_address_line1 }}
-                            {{ form.billing_address_line2 }}
-                            {{ form.billing_pincode }}
-                            {{ form.billing_city }}
-                            {{ form.billing_state }}
-                            {{ form.billing_country }}
-                        </div>
-
-                        <h5 class="form-heading">Dispatch Address <small><input type="checkbox" onclick="copyBillingToDispatch(this)"> Same as Billing</small></h5>
-                        <div class="mb-3">
-                            {{ form.dispatch_address_line1 }}
-                            {{ form.dispatch_address_line2 }}
-                            {{ form.dispatch_pincode }}
-                            {{ form.dispatch_city }}
-                            {{ form.dispatch_state }}
-                            {{ form.dispatch_country }}
-                        </div>
-
-                        <h5 class="form-heading">Transport</h5>
-                        <div class="mb-3">
-                            {{ form.transport_name }}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="id_opening_balance" class="form-label">Opening Balance</label>
-                            {{ form.opening_balance }}
-                        </div>
-
-
-                        
-
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary custom-button">Submit</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+  <div class="page-content">
+    <div class="container-fluid">
+      <div class="row mb-3">
+        <div class="col-12">
+          <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+            <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
+          </div>
         </div>
+      </div>
+
+      <div class="container">
+        <div class="form-container">
+          <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+            {% csrf_token %}
+
+            <h5 class="form-heading">Basic Details</h5>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Customer Name</label>
+                {{ form.name }}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Mobile Number</label>
+                {{ form.contact }}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Email ID</label>
+                {{ form.email }}
+              </div>
+            </div>
+
+            <hr class="my-4">
+            <h5 class="form-heading">Business Details</h5>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Company Name</label>
+                {{ form.company_name }}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">GST</label>
+                {{ form.gst_number }}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">PAN</label>
+                {{ form.pan_number }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Aadhar Number</label>
+                {{ form.aadhar_number }}
+              </div>
+            </div>
+
+            <hr class="my-4">
+            <div class="d-flex align-items-center gap-3">
+              <h5 class="form-heading mb-0">Billing Address</h5>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                {{ form.billing_address_line1 }}
+              </div>
+              <div class="col-md-6">
+                {{ form.billing_address_line2 }}
+              </div>
+              <div class="col-md-3">
+                {{ form.billing_city }}
+              </div>
+              <div class="col-md-3">
+                {{ form.billing_state }}
+              </div>
+              <div class="col-md-3">
+                {{ form.billing_country }}
+              </div>
+              <div class="col-md-3">
+                {{ form.billing_pincode }}
+              </div>
+            </div>
+
+            <hr class="my-4">
+            <div class="d-flex align-items-center gap-3">
+              <h5 class="form-heading mb-0">Dispatch Address</h5>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="copyBilling" onclick="copyBillingToDispatch(this)">
+                <label class="form-check-label" for="copyBilling">Same as Billing</label>
+              </div>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                {{ form.dispatch_address_line1 }}
+              </div>
+              <div class="col-md-6">
+                {{ form.dispatch_address_line2 }}
+              </div>
+              <div class="col-md-3">
+                {{ form.dispatch_city }}
+              </div>
+              <div class="col-md-3">
+                {{ form.dispatch_state }}
+              </div>
+              <div class="col-md-3">
+                {{ form.dispatch_country }}
+              </div>
+              <div class="col-md-3">
+                {{ form.dispatch_pincode }}
+              </div>
+            </div>
+
+            <hr class="my-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <h5 class="form-heading">Transport</h5>
+                {{ form.transport_name }}
+              </div>
+              <div class="col-md-6">
+                <h5 class="form-heading">Opening Balance</h5>
+                {{ form.opening_balance }}
+              </div>
+            </div>
+
+            <div class="text-center mt-4">
+              <button type="submit" class="btn btn-primary custom-button">Submit</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
-    {% block footer %}
-        {% include 'partials/footer.html' %}
-    {% endblock footer %}
+  </div>
+  {% block footer %}
+    {% include 'partials/footer.html' %}
+  {% endblock footer %}
 </div>
 
 {% endblock content %}

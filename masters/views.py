@@ -18,7 +18,7 @@ from .serializers import *
 from users.permissions import *
 
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -637,14 +637,17 @@ from django.views import View
 
 
 
+@login_required(login_url='login_admin')
 def add_expense_category(request):
     
     if request.method == "POST":
 
-        forms = expense_category_Form(request.POST, request.FILES)
+        forms = expense_category_Form(request.POST)
 
         if forms.is_valid():
-            forms.save()
+            expense = forms.save(commit=False)
+            expense.user = request.user
+            expense.save()
             return redirect('list_expense_category')
         else:
             print(forms.errors)
@@ -662,16 +665,19 @@ def add_expense_category(request):
 
         return render(request, 'add_expense_category.html', { 'form' : expense_category_Form()})
 
+@login_required(login_url='login_admin')
 def update_expense_category(request, expense_category_id):
     
-    instance = expense_category.objects.get(id = expense_category_id)
+    instance = get_object_or_404(expense_category, id=expense_category_id, user=request.user)
 
     if request.method == "POST":
 
-        forms = expense_category_Form(request.POST, request.FILES, instance=instance)
+        forms = expense_category_Form(request.POST, instance=instance)
 
         if forms.is_valid():
-            forms.save()
+            expense = forms.save(commit=False)
+            expense.user = request.user
+            expense.save()
             return redirect('list_expense_category')
         else:
             print(forms.errors)
@@ -689,26 +695,31 @@ def update_expense_category(request, expense_category_id):
         return render(request, 'add_expense_category.html', {'form' : forms})
 
 
+@login_required(login_url='login_admin')
 def list_expense_category(request):
 
-    data = expense_category.objects.all()
+    data = expense_category.objects.filter(user=request.user)
 
     return render(request, 'list_expense_category.html', {'data' : data})
 
 
+@login_required(login_url='login_admin')
 def delete_expense_category(request, expense_category_id):
 
-    data = expense_category.objects.get(id = expense_category_id).delete()
+    expense_category.objects.filter(id=expense_category_id, user=request.user).delete()
 
     return redirect('list_expense_category')
 
 
 
 class get_expense_category(ListAPIView):
-    queryset = expense_category.objects.all()
+    permission_classes = [IsAuthenticated]
     serializer_class = expense_category_serializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = '__all__'  # enables filtering on all fields
+
+    def get_queryset(self):
+        return expense_category.objects.filter(user=self.request.user)
 
 
 def add_size(request):
