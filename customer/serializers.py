@@ -453,7 +453,7 @@ class ProductRequestSerializer(serializers.ModelSerializer):
             # Assuming one store per user
             store = obj.user.vendor_store.first()  # related_name='vendor_store'
             if store:
-                from .serializers import VendorStoreSerializer2
-                return VendorStoreSerializer2(store).data
+                context = getattr(self, "context", {})
+                return VendorStoreLiteSerializer(store, context=context).data
         except:
             return None

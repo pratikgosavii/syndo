@@ -132,12 +132,13 @@ from .serializer import *
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     
     def post(self, request):
         id_token = request.data.get("idToken")
-        print("-------1------------ id_token fetched")
+        print("-------1------------ id_token fetched", id_token)
         user_type = request.data.get("user_type")
-        print("-------2------------ user_type fetched")
+        print("-------2------------ user_type fetched", user_type)
 
         if not id_token:
             print("-------3------------ id_token missing")
