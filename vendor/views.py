@@ -3934,7 +3934,7 @@ class requestlist(APIView):
 
     def get(self, request):
         queryset = ProductRequest.objects.all().order_by("-created_at")
-        serializer = ProductRequestSerializer(queryset, many=True)
+        serializer = ProductRequestSerializer(queryset, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
         
 class VendorReturnManageAPIView(APIView):

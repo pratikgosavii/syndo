@@ -456,4 +456,5 @@ class ProductRequestSerializer(serializers.ModelSerializer):
                 context = getattr(self, "context", {})
                 return VendorStoreLiteSerializer(store, context=context).data
         except:
-            return None
+            return None 
+        
