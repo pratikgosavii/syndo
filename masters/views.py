@@ -989,6 +989,17 @@ def vendor_list_bannercampaign(request):
     return render(request, 'vendor_list_bannercampaign.html', context)
 
 
+
+@login_required(login_url='login_admin')
+def admin_vendor_list_bannercampaign(request):
+
+    data = BannerCampaign.objects.all().order_by('-id')
+    context = {
+        'data': data
+    }
+    return render(request, 'vendor_list_bannercampaign.html', context)
+
+
 @login_required(login_url='login_admin')
 def approve_bannercampaign(request, banner_id):
 
