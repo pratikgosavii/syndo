@@ -421,10 +421,7 @@ class VendorStoreLiteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = vendor_store
-        fields = [
-            "id", "name", "banner_image", "profile_image", "about",'user',
-            "is_active", "is_online", "is_open", "following"
-        ]
+        fields = "__all__"
 
     def get_following(self, obj):
         user = self.context["request"].user
