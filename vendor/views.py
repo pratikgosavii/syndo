@@ -1732,7 +1732,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsVendor]
 
     def get_queryset(self):
-        return product.objects.filter(user=self.request.user, is_active=True)
+        return product.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
