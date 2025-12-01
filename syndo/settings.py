@@ -219,3 +219,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --------------------
+# Cashfree configuration (centralized in settings for prod consistency)
+# --------------------
+# Sandbox credentials provided
+CASHFREE_APP_ID = "TEST108865764e007be25d954f99c5e067568801"
+CASHFREE_SECRET_KEY = "cfsk_ma_test_f5a5d06b79b70e17a1da4ca3e27daa51_3f74a0da"
+# Use sandbox base URL for sandbox keys; switch to https://api.cashfree.com/pg for live keys
+CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
+# Optional webhook secret if verifying webhooks in prod
+# CASHFREE_WEBHOOK_SECRET = "your_webhook_secret"
