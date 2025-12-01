@@ -441,7 +441,7 @@ def update_bannercampaign(request, bannercampaign_id):
     
     else:
 
-        instance = BannerCampaign.objects.get(id=party_id)
+        instance = BannerCampaign.objects.get(id=bannercampaign_id)
         forms = BannerCampaignForm(instance=instance)
 
         context = {
