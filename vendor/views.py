@@ -425,11 +425,11 @@ def add_bannercampaign(request):
         
 
 @login_required(login_url='login_admin')
-def update_bannercampaign(request, party_id):
+def update_bannercampaign(request, bannercampaign_id):
 
     if request.method == 'POST':
 
-        instance = BannerCampaign.objects.get(id=party_id)
+        instance = BannerCampaign.objects.get(id=bannercampaign_id)
 
         forms = BannerCampaignForm(request.POST, request.FILES, instance=instance)
 
