@@ -10,16 +10,20 @@ from customer.models import Order
 
 # Try to load variables from a .env file if python-dotenv is available
 try:
-    from dotenv import load_dotenv  # type: ignore
-    load_dotenv()
+    from dotenv import load_dotenv, find_dotenv  # type: ignore
+    env_path = find_dotenv()
+    if env_path:
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
 except Exception:
     pass
 
 # Cashfree API configuration (no hardcoded secrets; use environment variables)
-CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID")
-CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY")
-CASHFREE_BASE_URL = os.getenv("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/pg")
-CASHFREE_WEBHOOK_SECRET = os.getenv("CASHFREE_WEBHOOK_SECRET")
+CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID") or getattr(settings, "CASHFREE_APP_ID", None)
+CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY") or getattr(settings, "CASHFREE_SECRET_KEY", None)
+CASHFREE_BASE_URL = os.getenv("CASHFREE_BASE_URL", getattr(settings, "CASHFREE_BASE_URL", "https://sandbox.cashfree.com/pg")) or "https://sandbox.cashfree.com/pg"
+CASHFREE_WEBHOOK_SECRET = os.getenv("CASHFREE_WEBHOOK_SECRET") or getattr(settings, "CASHFREE_WEBHOOK_SECRET", None)
 
 
 logger = logging.getLogger(__name__)
