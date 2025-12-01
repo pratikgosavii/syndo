@@ -61,6 +61,7 @@ class OnlineStoreSettingSerializer(serializers.ModelSerializer):
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
     state_details = StateSerializer(source = "state", read_only = True)
+    shipping_state_details = StateSerializer(source="shipping_state", read_only=True)
 
 
     class Meta:
