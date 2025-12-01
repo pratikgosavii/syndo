@@ -4,14 +4,42 @@ import json
 import hmac
 import hashlib
 import base64
+import logging
 from django.conf import settings
 from customer.models import Order
+
+# Try to load variables from a .env file if python-dotenv is available
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
 
 # Cashfree API configuration (no hardcoded secrets; use environment variables)
 CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID")
 CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY")
 CASHFREE_BASE_URL = os.getenv("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/pg")
 CASHFREE_WEBHOOK_SECRET = os.getenv("CASHFREE_WEBHOOK_SECRET")
+
+
+logger = logging.getLogger(__name__)
+
+def _mask(val: str | None) -> str:
+    if not val:
+        return "None"
+    if len(val) <= 8:
+        return "***"
+    return f"{val[:4]}...{val[-4:]}"
+
+# Log loaded config (masked) once
+logger.info(
+    "Cashfree config loaded: app_id=%s, secret=%s, base_url=%s",
+    _mask(CASHFREE_APP_ID),
+    _mask(CASHFREE_SECRET_KEY),
+    CASHFREE_BASE_URL,
+)
+if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+    logger.error("Cashfree credentials missing or empty. Ensure .env is loaded or environment vars are set.")
 
 
 def _cashfree_headers():
@@ -36,6 +64,15 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
             "payment_link": order.payment_link,
         }
 
+    # Ensure phone is present: prefer explicit param, else fallback to user's stored mobile/phone
+    fallback_phone = (
+        customer_phone
+        or getattr(order.user, "mobile", None)
+        or getattr(order.user, "mobile_number", None)
+        or getattr(order.user, "phone", None)
+        or ""
+    )
+
     payload = {
         "order_id": order.order_id,
         "order_amount": float(order.total_amount or 0),
@@ -43,7 +80,7 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         "customer_details": {
             "customer_id": str(customer_id or (order.user_id or "guest")),
             "customer_email": customer_email or getattr(order.user, "email", "") or "noemail@example.com",
-            "customer_phone": customer_phone or "",
+            "customer_phone": fallback_phone,
         },
         "order_meta": {},
     }
@@ -58,6 +95,7 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         data = resp.json()
     except Exception:
         data = {"status": "ERROR", "message": resp.text}
+        logger.exception("Cashfree create order JSON parse error (status=%s): %s", resp.status_code, resp.text)
 
     if resp.status_code in (200, 201) and data.get("payment_session_id"):
         order.cashfree_order_id = data.get("order_id", order.order_id)
@@ -74,6 +112,12 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
 
     order.cashfree_status = f"ERROR:{resp.status_code}"
     order.save(update_fields=["cashfree_status"])
+    # Log the error details for debugging (prints to console if no logging configured)
+    logger.error(
+        "Cashfree create order failed: status=%s, response=%s",
+        resp.status_code,
+        json.dumps(data, ensure_ascii=False),
+    )
     return {"status": "ERROR", "code": resp.status_code, "data": data}
 
 

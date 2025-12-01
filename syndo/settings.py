@@ -25,11 +25,6 @@ import os
 from pathlib import Path
 
 
-
-RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
-RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
-RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -122,11 +117,6 @@ firebase_key_path = os.path.join(BASE_DIR, 'syndo', 'svindovender-71cf8-firebase
 cred = credentials.Certificate(firebase_key_path)
 initialize_app(cred)
 
-
-
-RAZORPAY_KEY_ID = 'rzp_test_Rhy8NBxUoi3UsE'
-RAZORPAY_KEY_SECRET = 'I44vrD209dFoS24gtwdi9jVx'
-RAZORPAY_WEBHOOK_SECRET='s8f7s9df87s9df87s9df87s9df87s9df8'
 
 STREAM_API_KEY = "c7wwttj85hg7"
 STREAM_API_SECRET = "cgptvrzsttwj9vcebwy25k7y6aqkd6nxh56gkwxhsj3djs989g7k5wraprep926d"

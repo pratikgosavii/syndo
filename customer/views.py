@@ -37,7 +37,14 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         host = request.get_host()
         return_url = f"{scheme}://{host}/payments/success?order_id={order.order_id}"
         notify_url = f"{scheme}://{host}/customer/cashfree/webhook/"
-        phone = request.data.get("phone") or ""
+        # Prefer explicit phone from request; fallback to user's mobile/phone fields
+        phone = (
+            request.data.get("phone")
+            or getattr(order.user, "mobile", None)
+            or getattr(order.user, "mobile_number", None)
+            or getattr(order.user, "phone", None)
+            or ""
+        )
 
         # Initiate payment
         payment = create_order_for(
@@ -76,7 +83,14 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         host = request.get_host()
         return_url = f"{scheme}://{host}/payments/success?order_id={order.order_id}"
         notify_url = f"{scheme}://{host}/customer/cashfree/webhook/"
-        phone = request.data.get("phone") or ""
+        # Prefer explicit phone; fallback to user's stored mobile
+        phone = (
+            request.data.get("phone")
+            or getattr(order.user, "mobile", None)
+            or getattr(order.user, "mobile_number", None)
+            or getattr(order.user, "phone", None)
+            or ""
+        )
         data = create_order_for(
             order,
             customer_id=order.user_id,
