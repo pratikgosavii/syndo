@@ -230,3 +230,13 @@ CASHFREE_SECRET_KEY = "cfsk_ma_test_f5a5d06b79b70e17a1da4ca3e27daa51_3f74a0da"
 CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
 # Optional webhook secret if verifying webhooks in prod
 # CASHFREE_WEBHOOK_SECRET = "your_webhook_secret"
+
+# --------------------
+# uEngage configuration (delivery notifications)
+# --------------------
+# Fill these with your actual credentials/templates in prod
+UENGAGE_API_BASE = os.getenv("UENGAGE_API_BASE", "https://api.uengage.in")  # example base; replace if different
+UENGAGE_API_KEY = os.getenv("UENGAGE_API_KEY", "")  # token/key
+UENGAGE_WABA = os.getenv("UENGAGE_WABA", "")  # your WhatsApp sender/WABA number/id
+# Optional: webhook verification/secret
+UENGAGE_WEBHOOK_SECRET = os.getenv("UENGAGE_WEBHOOK_SECRET", "")

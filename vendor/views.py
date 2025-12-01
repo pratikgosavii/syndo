@@ -21,6 +21,7 @@ from django.db.models import Sum
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework import viewsets, permissions
+from integrations.uengage import notify_delivery_event
 
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -609,12 +610,27 @@ class OrderViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         """Restrict update to only allowed fields"""
         instance = self.get_object()
+        previous_status = instance.status
         allowed_fields = {"status", "delivery_boy", "is_paid"}
         data = {k: v for k, v in request.data.items() if k in allowed_fields}
 
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        instance = serializer.save()
+
+        # Notify via uEngage on status change (order-level)
+        try:
+            if "status" in data and data["status"] != previous_status:
+                mapping = {
+                    "accepted": "order_confirmed",
+                    "completed": "delivered",
+                    "cancelled": "cancelled",
+                }
+                evt = mapping.get(instance.status)
+                if evt:
+                    notify_delivery_event(instance, evt)
+        except Exception:
+            pass
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def partial_update(self, request, *args, **kwargs):
@@ -2957,6 +2973,19 @@ class UpdateOrderItemStatusAPIView(APIView):
         if status_value in dict(OrderItem.STATUS_CHOICES):
             item.status = status_value
             item.save()
+            # Notify via uEngage for item-level delivery events
+            try:
+                event_map = {
+                    "intransit": "out_for_delivery",
+                    "delivered": "delivered",
+                    "cancelled": "cancelled",
+                }
+                evt = event_map.get(status_value)
+                if evt:
+                    tracking = item.tracking_link
+                    notify_delivery_event(item.order, evt, tracking_link=tracking)
+            except Exception:
+                pass
             return Response(
                 {"message": f"Status for {item.product.name} updated to {status_value} ✅"},
                 status=status.HTTP_200_OK

@@ -451,10 +451,10 @@ class ProductRequestSerializer(serializers.ModelSerializer):
     def get_store(self, obj):
         try:
             # Assuming one store per user
-            store = obj.user.vendor_store.first()  # related_name='vendor_store'
+            store = vendor_store.objects.get(user = obj.user)  # related_name='vendor_store'
             if store:
                 context = getattr(self, "context", {})
                 return VendorStoreLiteSerializer(store, context=context).data
-        except:
+        except vendor_store.DoesNotExist:
             return None 
         
