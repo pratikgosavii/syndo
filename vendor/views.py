@@ -952,8 +952,11 @@ def add_to_super_catalogue(request, product_id):
         "expiry_date": getattr(p, "expiry_date", None),
 
         "description": p.description,
-        "image": p.image,
-        "gallery_images": p.gallery_images,
+        "image": (p.image.url if getattr(p.image, "name", None) else None),
+        "gallery_images": [
+            (gi.image.url if getattr(gi.image, "name", None) else None)
+            for gi in getattr(p, "gallery_images", []).all()
+        ],
 
         # delivery/policies
         "is_customize": getattr(p, "is_customize", False),
