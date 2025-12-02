@@ -284,6 +284,7 @@ class VendorStoreSerializer2(serializers.ModelSerializer):
 
 
 import json
+import math
 from rest_framework import serializers
 
 class product_serializer(serializers.ModelSerializer):
@@ -297,6 +298,7 @@ class product_serializer(serializers.ModelSerializer):
     store = serializers.SerializerMethodField()
     gallery_images_details = serializers.SerializerMethodField()
     serial_imei_list = serializers.SerializerMethodField()
+    distance_km = serializers.SerializerMethodField()
 
     # Add reviews as nested read-only field
     avg_rating = serializers.SerializerMethodField()    
@@ -336,6 +338,20 @@ class product_serializer(serializers.ModelSerializer):
             return list(obj.serial_imei_list.values_list("value", flat=True))
         except Exception:
             return []
+
+    def get_distance_km(self, obj):
+        """
+        Returns approximate distance in kilometers if annotated by the view as _dist
+        where _dist = (Δlat^2 + Δlon^2). Converts degrees to km using ~111.32 km/degree.
+        """
+        dist = getattr(obj, "_dist", None)
+        if dist is None:
+            return None
+        try:
+            km = (float(dist) ** 0.5) * 111.32
+            return round(km, 2)
+        except Exception:
+            return None
 
     def _parse_json_field(self, data, key):
         """

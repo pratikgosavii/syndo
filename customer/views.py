@@ -297,7 +297,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from vendor.filters import ProductFilter
 
 
-from django.db.models import Exists, OuterRef, Value, BooleanField
+from django.db.models import Exists, OuterRef, Value, BooleanField, F, FloatField, ExpressionWrapper
+from django.db.models.functions import Cast
 
 
 class ListProducts(ListAPIView):
@@ -328,6 +329,25 @@ class ListProducts(ListAPIView):
             qs = qs.annotate(is_favourite=Exists(favs))
         else:
             qs = qs.annotate(is_favourite=Value(False, output_field=BooleanField()))
+
+        # Optional: order by nearest using simple squared-distance if lat/lng provided
+        lat = self.request.query_params.get("lat")
+        lng = self.request.query_params.get("lng")
+        if lat and lng:
+            try:
+                lat_f = float(lat); lng_f = float(lng)
+                qs = qs.filter(
+                    user__vendor_store__latitude__isnull=False,
+                    user__vendor_store__longitude__isnull=False,
+                )
+                dist_expr = (
+                    (Cast(F('user__vendor_store__latitude'), FloatField()) - Value(lat_f)) ** 2 +
+                    (Cast(F('user__vendor_store__longitude'), FloatField()) - Value(lng_f)) ** 2
+                )
+                qs = qs.annotate(_dist=ExpressionWrapper(dist_expr, output_field=FloatField())) \
+                       .order_by('_dist', 'id')
+            except ValueError:
+                pass
 
         return qs.distinct()
     
