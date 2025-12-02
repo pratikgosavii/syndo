@@ -737,8 +737,18 @@ class reelsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        products = Reel.objects.all()
-        serializer = ReelSerializer(products, many=True)
+        reels = Reel.objects.all()
+        # Filter by customer's pincode coverage if available
+        try:
+            pincode = getattr(request.user, "pincode", None)
+            if pincode:
+                reels = reels.filter(
+                    Q(product__user__coverages__pincode__code=pincode) |
+                    Q(user__coverages__pincode__code=pincode)
+                ).distinct()
+        except Exception:
+            pass
+        serializer = ReelSerializer(reels, many=True, context={'request': request})
         return Response(serializer.data)
 
 
