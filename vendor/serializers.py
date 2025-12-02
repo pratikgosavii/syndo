@@ -292,6 +292,7 @@ class product_serializer(serializers.ModelSerializer):
     variants = serializers.SerializerMethodField()
     store = serializers.SerializerMethodField()
     gallery_images_details = serializers.SerializerMethodField()
+    serial_imei_list = serializers.SerializerMethodField()
 
     # Add reviews as nested read-only field
     avg_rating = serializers.SerializerMethodField()    
@@ -325,6 +326,12 @@ class product_serializer(serializers.ModelSerializer):
         # Legacy schema (ImageField): return single image entry if present
         url = gi.url if getattr(gi, "name", None) else None
         return [] if not url else [{"id": None, "image": url, "created_at": None}]
+
+    def get_serial_imei_list(self, obj):
+        try:
+            return list(obj.serial_imei_list.values_list("value", flat=True))
+        except Exception:
+            return []
 
     def _parse_json_field(self, data, key):
         """
@@ -379,6 +386,7 @@ class product_serializer(serializers.ModelSerializer):
         variants_data = self._parse_json_field(data, 'print_variants')
         customize_data = self._parse_json_field(data, 'customize_print_variants')
         gallery_image_ids = self._parse_json_field(data, 'gallery_image_ids')  # optional list of existing IDs
+        imeis = self._parse_json_field(data, 'serial_imei_no') or self._parse_json_field(data, 'serial_imei_nos')
 
         instance = product.objects.create(**validated_data)
 
@@ -395,9 +403,32 @@ class product_serializer(serializers.ModelSerializer):
         for custom in customize_data:
             CustomizePrintVariant.objects.create(product=instance, **custom)
 
-        # Attach gallery images: support both uploaded files and existing image ids
+        # Save serial/IMEI numbers (deduplicate, ignore blanks)
         try:
-            upload_list = request.FILES.getlist('gallery_images')
+            from vendor.models import serial_imei_no as SerialImei
+            seen = set()
+            for v in imeis or []:
+                val = str(v).strip()
+                if not val or val in seen:
+                    continue
+                seen.add(val)
+                SerialImei.objects.create(product=instance, value=val)
+        except Exception:
+            pass
+
+        # Attach gallery images: support both uploaded files and existing image ids
+        # Collect uploads from common frontend patterns: gallery_images, gallery_images[], gallery_images[0], gallery_image, gallery_image[0]
+        upload_list = []
+        try:
+            mf = request.FILES
+            candidate_keys = set()
+            for k in mf.keys():
+                if k in ("gallery_images", "gallery_images[]", "gallery_image"):
+                    candidate_keys.add(k)
+                if k.startswith("gallery_images[") or k.startswith("gallery_image["):
+                    candidate_keys.add(k)
+            for k in candidate_keys:
+                upload_list.extend(mf.getlist(k))
         except Exception:
             upload_list = []
         for f in upload_list or []:
@@ -433,6 +464,7 @@ class product_serializer(serializers.ModelSerializer):
         variants_data = self._parse_json_field(data, 'print_variants')
         customize_data = self._parse_json_field(data, 'customize_print_variants')
         gallery_image_ids = self._parse_json_field(data, 'gallery_image_ids')
+        imeis = self._parse_json_field(data, 'serial_imei_no') or self._parse_json_field(data, 'serial_imei_nos')
 
         # Update basic fields
         for attr, value in validated_data.items():
@@ -461,7 +493,16 @@ class product_serializer(serializers.ModelSerializer):
         # Replace gallery images only if provided in this request
         files_provided = False
         try:
-            upload_list = request.FILES.getlist('gallery_images')
+            mf = request.FILES
+            upload_list = []
+            candidate_keys = set()
+            for k in mf.keys():
+                if k in ("gallery_images", "gallery_images[]", "gallery_image"):
+                    candidate_keys.add(k)
+                if k.startswith("gallery_images[") or k.startswith("gallery_image["):
+                    candidate_keys.add(k)
+            for k in candidate_keys:
+                upload_list.extend(mf.getlist(k))
             files_provided = bool(upload_list)
         except Exception:
             upload_list = []
@@ -493,6 +534,21 @@ class product_serializer(serializers.ModelSerializer):
                     if first:
                         instance.gallery_images = first.image
                         instance.save(update_fields=["gallery_images"])
+
+        # Replace serial/IMEI numbers if provided
+        if imeis is not None:
+            try:
+                from vendor.models import serial_imei_no as SerialImei
+                instance.serial_imei_list.all().delete()
+                seen = set()
+                for v in imeis or []:
+                    val = str(v).strip()
+                    if not val or val in seen:
+                        continue
+                    seen.add(val)
+                    SerialImei.objects.create(product=instance, value=val)
+            except Exception:
+                pass
 
         return instance
 

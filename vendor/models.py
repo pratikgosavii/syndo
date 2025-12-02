@@ -551,7 +551,7 @@ class product(models.Model):
 
     # Stock;
     # Allow very large numeric values (more than 18 digits)
-    serial_numbers = models.DecimalField(max_digits=30, decimal_places=0, null=True, blank=True)
+    barcode = models.DecimalField(max_digits=30, decimal_places=0, null=True, blank=True)
     track_serial_numbers = models.BooleanField(default=False)
     
     track_stock = models.BooleanField(default=False)
@@ -626,6 +626,18 @@ class ProductSerial(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.serial_number}"
 
+
+class serial_imei_no(models.Model):
+    """
+    Stores serial/IMEI numbers for a product (multiple per product).
+    """
+    product = models.ForeignKey(product, on_delete=models.CASCADE, related_name='serial_imei_list')
+    value = models.CharField(max_length=64, db_index=True)
+    is_sold = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.product.name} - {self.value}"
 
 
 class product_addon(models.Model):
