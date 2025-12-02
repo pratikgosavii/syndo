@@ -235,6 +235,10 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = product
         fields = '__all__'
+        # Prevent DRF from trying to bind M2M field from request (we handle files manually)
+        extra_kwargs = {
+            'gallery_images': {'read_only': True},
+        }
 
     def _get_reviews_queryset(self, obj):
         """ Reuse same queryset to avoid double DB hit """
@@ -382,6 +386,9 @@ class product_serializer(serializers.ModelSerializer):
         request = self.context.get('request')
         data = request.data
 
+        # Ensure M2M is not passed into model.create()
+        validated_data.pop('gallery_images', None)
+
         addons_data = self._normalize_addons_payload(self._parse_json_field(data, 'addons'))
         variants_data = self._parse_json_field(data, 'print_variants')
         customize_data = self._parse_json_field(data, 'customize_print_variants')
@@ -459,6 +466,9 @@ class product_serializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         request = self.context.get('request')
         data = request.data
+
+        # Ensure M2M is not assigned directly
+        validated_data.pop('gallery_images', None)
 
         addons_data = self._normalize_addons_payload(self._parse_json_field(data, 'addons'))
         variants_data = self._parse_json_field(data, 'print_variants')

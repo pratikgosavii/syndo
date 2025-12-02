@@ -569,7 +569,8 @@ class product(models.Model):
 
     description = models.TextField(null=True, blank=True)
     image = models.ImageField(upload_to='product_images/', null=True, blank=True)
-    gallery_images = models.ImageField(upload_to='product_gallery/', null=True, blank=True)
+    # Multiple gallery images via M2M
+    gallery_images = models.ManyToManyField('ProductImage', blank=True, related_name='products_gallery_images')
 
     # Delivery & Policies
     is_customize = models.BooleanField(default=False)

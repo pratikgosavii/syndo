@@ -1033,10 +1033,22 @@ class HomeScreenView(APIView):
             # -------------------------
             # Fetch product batch (limit 6) with related prefetches
             # -------------------------
+            # Base product queryset for this main category
             products_qs = product.objects.filter(
                 category_id__in=category_ids,
                 is_active=True
-            ).select_related(
+            )
+
+            # Apply pincode filter like in ListProducts (customer's pincode coverage)
+            try:
+                user = request.user
+                pincode = getattr(user, "pincode", None)
+                if pincode:
+                    products_qs = products_qs.filter(user__coverages__pincode__code=pincode)
+            except Exception:
+                pass
+
+            products_qs = products_qs.select_related(
                 'user', 'category', 'sub_category'
             ).prefetch_related(
                 'variants',                           # product.variants (if you have related_name 'variants')
