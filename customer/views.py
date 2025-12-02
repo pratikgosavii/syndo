@@ -1101,18 +1101,14 @@ class HomeScreenView(APIView):
                     is_approved=True
                 ).order_by('-created_at')[:5]
 
-                store_banners_data = [
-                    {
-                        'id': b.id,
-                        'banner_image': b.banner_image.url if b.banner_image else None,
-                    } for b in store_banners
-                ]
+                # Use full serializer for banners so frontend gets redirect/product/store fields too
+                store_banners_data = BannerCampaignSerializer(store_banners, many=True, context={'request': request}).data
 
                 stores_data.append({
                     'id': s.id,
                     'name': s.name,
                     'profile_image': s.profile_image.url if s.profile_image else None,
-                    'banners': store_banners_data  # 🔥 now store-wise banners
+                    'banners': store_banners_data  # serialized BannerCampaign data
                 })
 
             # -------------------------
