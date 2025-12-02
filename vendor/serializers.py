@@ -102,21 +102,6 @@ class StoreWorkingHourSerializer(serializers.ModelSerializer):
     
 
 
-class BannerCampaignSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BannerCampaign
-        fields = '__all__'
-        read_only_fields = ['user', 'is_approved', 'created_at']
-
-    def validate(self, data):
-        redirect_to = data.get('redirect_to')
-
-        if redirect_to == 'product' and not data.get('product'):
-            raise serializers.ValidationError({"product": "Product ID is required when redirect_to = 'product'."})
-        if redirect_to == 'store' and data.get('product'):
-            raise serializers.ValidationError({"product": "Do not pass product when redirect_to = 'store'."})
-
-        return data
     
         
 
@@ -488,11 +473,34 @@ class product_serializer(serializers.ModelSerializer):
         serializer = ProductVariantSerializer(unique_family, many=True, context=self.context)
         return serializer.data
 
+
+
+class BannerCampaignSerializer(serializers.ModelSerializer):
+
+    product_details = product_serializer(source = "product", read_only = True)
+    
+    class Meta:
+        model = BannerCampaign
+        fields = '__all__'
+        read_only_fields = ['user', 'is_approved', 'created_at']
+
+    def validate(self, data):
+        redirect_to = data.get('redirect_to')
+
+        if redirect_to == 'product' and not data.get('product'):
+            raise serializers.ValidationError({"product": "Product ID is required when redirect_to = 'product'."})
+        if redirect_to == 'store' and data.get('product'):
+            raise serializers.ValidationError({"product": "Do not pass product when redirect_to = 'store'."})
+
+        return data
+    
+    
 class ReelSerializer(serializers.ModelSerializer):
 
     product_details = product_serializer(source = 'product', read_only = True)
     store = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
+    reel_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Reel
@@ -519,6 +527,12 @@ class ReelSerializer(serializers.ModelSerializer):
             # Check if request.user is following obj.user
             return Follower.objects.filter(user=obj.user, follower=request.user).exists()
         return False
+
+    def get_reel_count(self, obj):
+        try:
+            return Reel.objects.filter(user=obj.user).count()
+        except Exception:
+            return 0
 
     
 class SpotlightProductSerializer(serializers.ModelSerializer):
