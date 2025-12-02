@@ -291,7 +291,7 @@ class product_serializer(serializers.ModelSerializer):
     # variants = ProductVariantSerializer(many=True, read_only=True)
     variants = serializers.SerializerMethodField()
     store = serializers.SerializerMethodField()
-    gallery_images = ProductImageSerializer(many=True, read_only=True)
+    gallery_images_details = serializers.SerializerMethodField()
 
     # Add reviews as nested read-only field
     avg_rating = serializers.SerializerMethodField()    
@@ -310,6 +310,21 @@ class product_serializer(serializers.ModelSerializer):
         except Exception:
             return []
         return ProductAddonSerializer(qs, many=True).data
+
+    def get_gallery_images_details(self, obj):
+        gi = getattr(obj, "gallery_images")
+        # New schema (ManyToMany): serialize related images
+        print('-------------------')
+        print('-------------------')
+        print('-------------------')
+        print(gi)
+        print('-------------------')
+        print('-------------------')
+        if hasattr(gi, "all"):
+            return ProductImageSerializer(gi.all(), many=True, context=self.context).data
+        # Legacy schema (ImageField): return single image entry if present
+        url = gi.url if getattr(gi, "name", None) else None
+        return [] if not url else [{"id": None, "image": url, "created_at": None}]
 
     def _parse_json_field(self, data, key):
         """
@@ -387,10 +402,26 @@ class product_serializer(serializers.ModelSerializer):
             upload_list = []
         for f in upload_list or []:
             img = ProductImage.objects.create(image=f)
-            instance.gallery_images.add(img)
+            gi = getattr(instance, "gallery_images", None)
+            # Support both M2M (new) and legacy ImageField (old server without reload)
+            if hasattr(gi, "add"):
+                gi.add(img)
+            else:
+                # Legacy fallback: keep only the first upload
+                if not getattr(instance, "gallery_images", None):
+                    instance.gallery_images = img.image
+                    instance.save(update_fields=["gallery_images"])
         if gallery_image_ids:
             existing = ProductImage.objects.filter(id__in=[int(i) for i in gallery_image_ids if str(i).isdigit()])
-            instance.gallery_images.add(*list(existing))
+            gi = getattr(instance, "gallery_images", None)
+            if hasattr(gi, "add"):
+                gi.add(*list(existing))
+            else:
+                # If legacy ImageField, set the first existing image (best-effort)
+                first = existing.first()
+                if first:
+                    instance.gallery_images = first.image
+                    instance.save(update_fields=["gallery_images"])
 
         return instance
 
@@ -436,13 +467,32 @@ class product_serializer(serializers.ModelSerializer):
             upload_list = []
         ids_provided = 'gallery_image_ids' in data
         if files_provided or ids_provided:
-            instance.gallery_images.clear()
+            gi = getattr(instance, "gallery_images", None)
+            # Clear existing (M2M) or null out legacy ImageField
+            if hasattr(gi, "clear"):
+                gi.clear()
+            else:
+                instance.gallery_images = None
+                instance.save(update_fields=["gallery_images"])
             for f in upload_list or []:
                 img = ProductImage.objects.create(image=f)
-                instance.gallery_images.add(img)
+                gi = getattr(instance, "gallery_images", None)
+                if hasattr(gi, "add"):
+                    gi.add(img)
+                else:
+                    if not getattr(instance, "gallery_images", None):
+                        instance.gallery_images = img.image
+                        instance.save(update_fields=["gallery_images"])
             if gallery_image_ids:
                 existing = ProductImage.objects.filter(id__in=[int(i) for i in gallery_image_ids if str(i).isdigit()])
-                instance.gallery_images.add(*list(existing))
+                gi = getattr(instance, "gallery_images", None)
+                if hasattr(gi, "add"):
+                    gi.add(*list(existing))
+                else:
+                    first = existing.first()
+                    if first:
+                        instance.gallery_images = first.image
+                        instance.save(update_fields=["gallery_images"])
 
         return instance
 
