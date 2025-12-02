@@ -1,4 +1,11 @@
 from rest_framework import serializers
+from vendor.models import ProductImage
+
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ["id", "image", "created_at"]
 from users.serializer import UserProfileSerializer
 from .models import *
 from masters.serializers import *
@@ -284,6 +291,7 @@ class product_serializer(serializers.ModelSerializer):
     # variants = ProductVariantSerializer(many=True, read_only=True)
     variants = serializers.SerializerMethodField()
     store = serializers.SerializerMethodField()
+    gallery_images = ProductImageSerializer(many=True, read_only=True)
 
     # Add reviews as nested read-only field
     avg_rating = serializers.SerializerMethodField()    
@@ -355,6 +363,7 @@ class product_serializer(serializers.ModelSerializer):
         addons_data = self._normalize_addons_payload(self._parse_json_field(data, 'addons'))
         variants_data = self._parse_json_field(data, 'print_variants')
         customize_data = self._parse_json_field(data, 'customize_print_variants')
+        gallery_image_ids = self._parse_json_field(data, 'gallery_image_ids')  # optional list of existing IDs
 
         instance = product.objects.create(**validated_data)
 
@@ -371,6 +380,18 @@ class product_serializer(serializers.ModelSerializer):
         for custom in customize_data:
             CustomizePrintVariant.objects.create(product=instance, **custom)
 
+        # Attach gallery images: support both uploaded files and existing image ids
+        try:
+            upload_list = request.FILES.getlist('gallery_images')
+        except Exception:
+            upload_list = []
+        for f in upload_list or []:
+            img = ProductImage.objects.create(image=f)
+            instance.gallery_images.add(img)
+        if gallery_image_ids:
+            existing = ProductImage.objects.filter(id__in=[int(i) for i in gallery_image_ids if str(i).isdigit()])
+            instance.gallery_images.add(*list(existing))
+
         return instance
 
     def update(self, instance, validated_data):
@@ -380,6 +401,7 @@ class product_serializer(serializers.ModelSerializer):
         addons_data = self._normalize_addons_payload(self._parse_json_field(data, 'addons'))
         variants_data = self._parse_json_field(data, 'print_variants')
         customize_data = self._parse_json_field(data, 'customize_print_variants')
+        gallery_image_ids = self._parse_json_field(data, 'gallery_image_ids')
 
         # Update basic fields
         for attr, value in validated_data.items():
@@ -404,6 +426,23 @@ class product_serializer(serializers.ModelSerializer):
             CustomizePrintVariant.objects.filter(product=instance).delete()
             for custom in customize_data:
                 CustomizePrintVariant.objects.create(product=instance, **custom)
+
+        # Replace gallery images only if provided in this request
+        files_provided = False
+        try:
+            upload_list = request.FILES.getlist('gallery_images')
+            files_provided = bool(upload_list)
+        except Exception:
+            upload_list = []
+        ids_provided = 'gallery_image_ids' in data
+        if files_provided or ids_provided:
+            instance.gallery_images.clear()
+            for f in upload_list or []:
+                img = ProductImage.objects.create(image=f)
+                instance.gallery_images.add(img)
+            if gallery_image_ids:
+                existing = ProductImage.objects.filter(id__in=[int(i) for i in gallery_image_ids if str(i).isdigit()])
+                instance.gallery_images.add(*list(existing))
 
         return instance
 
@@ -500,7 +539,6 @@ class ReelSerializer(serializers.ModelSerializer):
     product_details = product_serializer(source = 'product', read_only = True)
     store = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
-    reel_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Reel
@@ -527,12 +565,6 @@ class ReelSerializer(serializers.ModelSerializer):
             # Check if request.user is following obj.user
             return Follower.objects.filter(user=obj.user, follower=request.user).exists()
         return False
-
-    def get_reel_count(self, obj):
-        try:
-            return Reel.objects.filter(user=obj.user).count()
-        except Exception:
-            return 0
 
     
 class SpotlightProductSerializer(serializers.ModelSerializer):

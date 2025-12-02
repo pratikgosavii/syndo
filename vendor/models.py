@@ -457,7 +457,8 @@ class super_catalogue(models.Model):
 
     description = models.TextField(null=True, blank=True)
     image = models.ImageField(upload_to='product_images/', null=True, blank=True)
-    gallery_images = models.ImageField(upload_to='product_gallery/', null=True, blank=True)
+    # Multiple gallery images via M2M to ProductImage
+    gallery_images = models.ManyToManyField('ProductImage', blank=True, related_name='products')
 
     # Delivery & Policies
     instant_delivery = models.BooleanField(default=False)
@@ -537,10 +538,10 @@ class product(models.Model):
     sub_category = models.ForeignKey("masters.product_subcategory", related_name='sdfdsz', on_delete=models.CASCADE)
 
     # Pricing details
-    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    sales_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2)
+    sales_price = models.DecimalField(max_digits=10, decimal_places=2)    #pos
+    mrp = models.DecimalField(max_digits=10, decimal_places=2)  
    
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, null=True, blank=True)
     hsn = models.CharField(max_length=50, null=True, blank=True)
@@ -548,8 +549,12 @@ class product(models.Model):
     sgst_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     cgst_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    # Stock
+    # Stock;
+    # Allow very large numeric values (more than 18 digits)
+    serial_numbers = models.DecimalField(max_digits=30, decimal_places=0, null=True, blank=True)
     track_serial_numbers = models.BooleanField(default=False)
+    
+    track_stock = models.BooleanField(default=False)
     opening_stock = models.IntegerField(null=True, blank=True)
     low_stock_alert = models.BooleanField(default=False)
     low_stock_quantity = models.IntegerField(null=True, blank=True)
@@ -1076,6 +1081,13 @@ class CashTransfer(models.Model):
     def __str__(self):
         return f"{self.user.username} → ₹{self.amount} "
 
+
+class ProductImage(models.Model):
+    image = models.ImageField(upload_to='product_gallery/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.image.name if self.image else "ProductImage"
 
 
 class BankTransfer(models.Model):
