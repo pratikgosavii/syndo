@@ -174,7 +174,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" {% if p.id == item.product.id %}selected{% endif %}>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" {% if p.id == item.product.id %}selected{% endif %}>
                         {{ p.name }}
                       </option>
                     {% endfor %}
@@ -202,7 +202,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}">{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}">{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -495,7 +495,7 @@
                   <input type="text" class="form-control text-center" value="0" id="qty-{{ product.id }}" readonly>
                   <button class="btn btn-outline-secondary" onclick="adjustQty('{{ product.id }}', 1)">+</button>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="addToPOS({{ product.id }}, '{{ product.name }}', {{ product.sales_price }}, 'qty-{{ product.id }}')">Add to POS</button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="addToPOS({{ product.id }}, '{{ product.name }}', {{ product.sales_price }}, {{ product.wholesale_price }}, 'qty-{{ product.id }}')">Add to POS</button>
               </div>
             </div>
           </div>
@@ -714,8 +714,10 @@ function recalculateTotals() {
 
 
   // Add selected product to POS
-  function addToPOS(pid, name, price, qtyId) {
+  function addToPOS(pid, name, salePrice, wholesalePrice, qtyId) {
   const qty = parseInt(document.getElementById(qtyId).value) || 1;
+  const useWholesale = document.getElementById('wholesale_selector').checked;
+  const price = useWholesale ? parseFloat(wholesalePrice || 0) : parseFloat(salePrice || 0);
 
   let rowFound = Array.from(document.querySelectorAll('.item-row')).find(row => {
     return row.querySelector('.product-select').value == pid;
@@ -807,25 +809,40 @@ function recalculateTotals() {
       }
 
 
-$(document).on('change', '.product-select', function () {
-  var productId = $(this).val();
-  // use the specific item row to avoid wrong ancestor
-  var row = $(this).closest('.item-row');
-  if (productId) {
-    $.ajax({
-      url: "{% url 'get_product_price' %}",
-      data: { product_id: productId },
-      success: function (data) {
-        const price = parseFloat(data.price) || 0;
-        row.find('.rate-input').val(price.toFixed(2));  // set price
-        const qty = parseFloat(row.find('.qty-input').val()) || 0;  // correct class
-        row.find('.amount').val((qty * price).toFixed(2));          // update amount
-        $('#total-items').text(document.querySelectorAll('.item-row').length);
-        recalculateTotals();
-      }
+  $(document).on('change', '.product-select', function () {
+    const row = $(this).closest('.item-row');
+    const selected = this.options[this.selectedIndex];
+    const useWholesale = document.getElementById('wholesale_selector').checked;
+    const sale = parseFloat(selected.getAttribute('data-sale')) || 0;
+    const wholesale = parseFloat(selected.getAttribute('data-wholesale')) || 0;
+    const price = useWholesale ? wholesale : sale;
+    row.find('.rate-input').val(price.toFixed(2));
+    const qty = parseFloat(row.find('.qty-input').val()) || 0;
+    row.find('.amount').val((qty * price).toFixed(2));
+    $('#total-items').text(document.querySelectorAll('.item-row').length);
+    recalculateTotals();
+  });
+
+  // Apply wholesale pricing across all rows when toggle changes or on load
+  function applyWholesaleToAllRows() {
+    const useWholesale = document.getElementById('wholesale_selector').checked;
+    document.querySelectorAll('.item-row').forEach((row) => {
+      const sel = row.querySelector('.product-select');
+      if (!sel || !sel.value) return;
+      const opt = sel.options[sel.selectedIndex];
+      if (!opt) return;
+      const sale = parseFloat(opt.getAttribute('data-sale')) || 0;
+      const wholesale = parseFloat(opt.getAttribute('data-wholesale')) || 0;
+      const price = useWholesale ? wholesale : sale;
+      const rate = row.querySelector('.rate-input');
+      if (rate) rate.value = price.toFixed(2);
+      recalcRow(row);
     });
+    recalculateTotals();
   }
-});
+
+  document.addEventListener('DOMContentLoaded', applyWholesaleToAllRows);
+  document.getElementById('wholesale_selector').addEventListener('change', applyWholesaleToAllRows);
 
 
 

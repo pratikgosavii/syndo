@@ -1359,7 +1359,7 @@ def generate_barcode(request):
             sale_price = i.sales_price
             package_date = datetime.now().strftime("%d/%m/%Y")
             note = "The small note here"
-            barcode_value = i.id
+            barcode_value = str("svindo" + i.id)
 
           
             # Margin padding
@@ -4016,13 +4016,45 @@ from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 def barcode_lookup(request):
-    barcode = request.GET.get('barcode')
-    print(barcode)
+    # Normalize input
+    barcode = (request.GET.get('barcode') or '').strip()
+    if not barcode:
+        return JsonResponse({'success': False}, status=400)
+
+    # Determine price key (optionally accept wholesale=1)
+    price_attr = 'sales_price'
+    wholesale_flag = (request.GET.get('wholesale') or '').lower()
+    if wholesale_flag in ('1', 'true', 'yes', 'on'):
+        price_attr = 'wholesale_price'
+
+    # Case 1: internal svindo<ID> format
+    if barcode.lower().startswith('svindo'):
+        pid = barcode[6:]
+        try:
+            prod = product.objects.get(id=pid)
+            price = getattr(prod, price_attr, None) or prod.sales_price
+            return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
+        except product.DoesNotExist:
+            return JsonResponse({'success': False})
+
+    # Case 2: direct product barcode field
+    prod = product.objects.filter(barcode=barcode).first()
+    if prod:
+        price = getattr(prod, price_attr, None) or prod.sales_price
+        return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
+
+    # Case 3: serial/IMEI resolves to product
     try:
-        product_instance = product.objects.get(id=barcode)
-        return JsonResponse({'success': True, 'id': product_instance.id, 'name': product_instance.name, 'price': product_instance.sales_price})
-    except product.DoesNotExist:
-        return JsonResponse({'success': False})
+        from vendor.models import serial_imei_no  # local import avoids circulars
+        serial = serial_imei_no.objects.select_related('product').filter(value=barcode).first()
+        if serial and serial.product_id:
+            prod = serial.product
+            price = getattr(prod, price_attr, None) or prod.sales_price
+            return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
+    except Exception:
+        pass
+
+    return JsonResponse({'success': False})
     
 
 
