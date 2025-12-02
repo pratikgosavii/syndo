@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 UENGAGE_API_BASE: str = getattr(settings, "UENGAGE_API_BASE", "").rstrip("/")
 UENGAGE_API_KEY: str = getattr(settings, "UENGAGE_API_KEY", "")
 UENGAGE_WABA: str = getattr(settings, "UENGAGE_WABA", "")
+UENGAGE_DELIVERY_BASE: str = getattr(settings, "UENGAGE_DELIVERY_BASE", UENGAGE_API_BASE).rstrip("/")
+UENGAGE_RIDER_BASE: str = getattr(settings, "UENGAGE_RIDER_BASE", "").rstrip("/")
+UENGAGE_ACCESS_TOKEN: str = getattr(settings, "UENGAGE_ACCESS_TOKEN", "")
 
 
 def _headers() -> Dict[str, str]:
@@ -48,14 +51,25 @@ def send_template(to: str, template_name: str, body_params: List[str]) -> Dict:
         try:
             data = resp.json()
         except Exception:
-            data = {"text": resp.text}
-        if resp.status_code in (200, 201):
-            return {"status": "OK", "data": data}
-        logger.error("uEngage send_template failed: %s %s", resp.status_code, data)
-        return {"status": "ERROR", "code": resp.status_code, "data": data}
+            data = {"message": resp.text}
+
+        # According to docs: success -> { status: boolean, message: string }
+        status_bool = None
+        if isinstance(data, dict):
+            status_bool = data.get("status")
+
+        if resp.status_code in (200, 201) and status_bool is True:
+            return {"ok": True, "status_code": resp.status_code, "message": data.get("message"), "raw": data}
+
+        # Normalize error payloads for 400/401/404 or any non-OK
+        error = (isinstance(data, dict) and data.get("error")) or None
+        message = (isinstance(data, dict) and data.get("message")) or resp.text
+        logger.error("uEngage send_template failed: status=%s code=%s error=%s message=%s",
+                     status_bool, resp.status_code, error, message)
+        return {"ok": False, "status_code": resp.status_code, "error": error, "message": message, "raw": data}
     except Exception as e:
         logger.exception("uEngage send_template exception")
-        return {"status": "ERROR", "exception": str(e)}
+        return {"ok": False, "status_code": None, "error": "exception", "message": str(e)}
 
 
 def get_recipient_phone(order) -> Optional[str]:
@@ -79,11 +93,26 @@ def get_recipient_phone(order) -> Optional[str]:
     return None
 
 
-def notify_delivery_event(order, event: str, tracking_link: Optional=str, rider_name: Optional[str]=None, rider_phone: Optional[str]=None):
+def notify_delivery_event(order, event: str, tracking_link: Optional[str]=None, rider_name: Optional[str]=None, rider_phone: Optional[str]=None):
     """
     High-level helper to send delivery-related templates for an Order.
     event: one of ["order_confirmed", "packed", "shipped", "out_for_delivery", "delivered", "cancelled"]
     """
+    # Gate by vendor DeliveryMode.is_auto_assign_enabled
+    try:
+        vendor_user = None
+        item0 = order.items.select_related("product").first()
+        if item0 and getattr(item0.product, "user", None):
+            vendor_user = item0.product.user
+        if vendor_user:
+            from vendor.models import DeliveryMode  # local import to avoid circulars
+            enabled = DeliveryMode.objects.filter(user=vendor_user, is_auto_assign_enabled=True).exists()
+            if not enabled:
+                return {"status": "SKIPPED", "reason": "auto_assign_disabled"}
+    except Exception:
+        # If check fails, do not block notifications silently; proceed best-effort
+        pass
+
     to = get_recipient_phone(order)
     if not to:
         logger.warning("uEngage: No recipient phone for order %s", getattr(order, "order_id", None))
@@ -115,4 +144,213 @@ def notify_delivery_event(order, event: str, tracking_link: Optional=str, rider_
 
     template_name, params = tpl
     return send_template(to, template_name, params)
+
+
+# -----------------------------
+# Delivery Task APIs (assumptive endpoints; adjust to real docs)
+# -----------------------------
+def _pickup_from_company_profile(vendor_user):
+    try:
+        cp = vendor_user.user_company_profile
+    except Exception:
+        return None
+    if not cp:
+        return None
+    address = ", ".join([
+        p for p in [
+            cp.address_line_1, cp.address_line_2, cp.city, cp.state.name if getattr(cp.state, "name", None) else None, cp.pincode, cp.country
+        ] if p
+    ])
+    return {
+        "name": cp.company_name or "",
+        "phone": cp.contact or "",
+        "address": address or "",
+    }
+
+
+def _drop_from_order(order):
+    addr = getattr(order, "address", None)
+    if not addr:
+        return None
+    address = ", ".join([
+        p for p in [
+            addr.flat_building, addr.area_street, addr.landmark, addr.town_city, addr.state, addr.pincode
+        ] if p
+    ])
+    return {
+        "name": addr.full_name or "",
+        "phone": addr.mobile_number or "",
+        "address": address or "",
+    }
+
+
+def create_delivery_task(order) -> Dict:
+    """
+    Create a delivery task with uEngage for the given order.
+    Returns normalized dict: { ok, status_code, task_id, tracking_url, message, error, raw }
+    """
+    # Use Rider API new spec
+    if not (UENGAGE_RIDER_BASE and UENGAGE_ACCESS_TOKEN):
+        return {"ok": False, "status_code": None, "error": "missing_credentials", "message": "uEngage rider API not configured"}
+
+    try:
+        item0 = order.items.select_related("product").first()
+        vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
+        pickup = _pickup_from_company_profile(vendor_user)
+        drop = _drop_from_order(order)
+        if not (pickup and drop):
+            return {"ok": False, "status_code": None, "error": "missing_addresses", "message": "Pickup/Drop addresses missing"}
+
+        # storeId from CompanyProfile
+        store_id = None
+        try:
+            cp = vendor_user.user_company_profile if vendor_user else None
+            store_id = getattr(cp, "uengage_store_id", None)
+        except Exception:
+            store_id = None
+        if not store_id:
+            return {"ok": False, "status_code": None, "error": "missing_store_id", "message": "uEngage storeId missing in CompanyProfile"}
+
+        url = f"{UENGAGE_RIDER_BASE}/createTask"
+        payload = {
+            "storeId": str(store_id),
+            "pickup_details": {
+                "name": pickup["name"],
+                "contact_number": pickup["phone"],
+                "address": pickup["address"],
+                "city": "",  # optional
+                "latitude": str(getattr(vendor_user.vendor_store.first(), "latitude", "") if vendor_user else ""),
+                "longitude": str(getattr(vendor_user.vendor_store.first(), "longitude", "") if vendor_user else ""),
+            },
+            "drop_details": {
+                "name": drop["name"],
+                "contact_number": drop["phone"],
+                "address": drop["address"],
+                "city": getattr(getattr(order, "address", None), "town_city", "") or "",
+                "latitude": str(getattr(getattr(order, "address", None), "latitude", "") or ""),
+                "longitude": str(getattr(getattr(order, "address", None), "longitude", "") or ""),
+            },
+            "order_details": {
+                "order_total": str(order.total_amount or ""),
+                "paid": "true" if getattr(order, "is_paid", False) else "false",
+                "vendor_order_id": getattr(order, "order_id", ""),
+                "order_source": "app",
+                "customer_orderId": getattr(order, "order_id", ""),
+            },
+            "order_items": [],
+            "authentication": {
+                "delivery_otp": "",
+                "rto_otp": "true"
+            }
+        }
+        headers = {"Content-Type": "application/json", "access-token": UENGAGE_ACCESS_TOKEN}
+        resp = requests.post(url, json=payload, headers=headers, timeout=20)
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"message": resp.text}
+
+        # Docs show status as "true"/boolean and keys: taskId, vendor_order_id, Status_code
+        status_ok = False
+        if isinstance(data, dict):
+            status_ok = (data.get("status") in (True, "true", "200", "ACCEPTED"))
+        if resp.status_code in (200, 201) and status_ok:
+            task_id = data.get("taskId") or data.get("task_id") or None
+            tracking_url = data.get("tracking_url") or None
+            return {"ok": True, "status_code": resp.status_code, "task_id": task_id, "tracking_url": tracking_url, "message": data.get("message"), "raw": data}
+        return {"ok": False, "status_code": resp.status_code, "error": (data.get("error") if isinstance(data, dict) else None), "message": (data.get("message") if isinstance(data, dict) else resp.text), "raw": data}
+    except Exception as e:
+        logger.exception("uEngage create_delivery_task exception")
+        return {"ok": False, "status_code": None, "error": "exception", "message": str(e)}
+
+
+def cancel_delivery_task(task_id: str) -> Dict:
+    if not (UENGAGE_RIDER_BASE and UENGAGE_ACCESS_TOKEN):
+        return {"ok": False, "status_code": None, "error": "missing_credentials", "message": "uEngage rider API not configured"}
+    try:
+        url = f"{UENGAGE_RIDER_BASE}/cancelTask"
+        payload = {"storeId": "", "taskId": task_id}
+        headers = {"Content-Type": "application/json", "access-token": UENGAGE_ACCESS_TOKEN}
+        resp = requests.post(url, json=payload, headers=headers, timeout=15)
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"message": resp.text}
+        status_bool = isinstance(data, dict) and (data.get("status") in (True, "true"))
+        if resp.status_code in (200, 201) and status_bool:
+            return {"ok": True, "status_code": resp.status_code, "message": data.get("message"), "raw": data}
+        return {"ok": False, "status_code": resp.status_code, "error": (data.get("error") if isinstance(data, dict) else None), "message": (data.get("message") if isinstance(data, dict) else resp.text), "raw": data}
+    except Exception as e:
+        logger.exception("uEngage cancel_delivery_task exception")
+        return {"ok": False, "status_code": None, "error": "exception", "message": str(e)}
+
+
+def get_delivery_status(task_id: str) -> Dict:
+    if not (UENGAGE_RIDER_BASE and UENGAGE_ACCESS_TOKEN):
+        return {"ok": False, "status_code": None, "error": "missing_credentials", "message": "uEngage rider API not configured"}
+    try:
+        url = f"{UENGAGE_RIDER_BASE}/trackTaskStatus"
+        payload = {"storeId": "", "taskId": task_id}
+        headers = {"Content-Type": "application/json", "access-token": UENGAGE_ACCESS_TOKEN}
+        resp = requests.post(url, json=payload, headers=headers, timeout=15)
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"message": resp.text}
+        status_bool = isinstance(data, dict) and (data.get("status") in (True, "true"))
+        if resp.status_code in (200, 201) and status_bool:
+            return {"ok": True, "status_code": resp.status_code, "message": data.get("message"), "raw": data}
+        return {"ok": False, "status_code": resp.status_code, "error": (data.get("error") if isinstance(data, dict) else None), "message": (data.get("message") if isinstance(data, dict) else resp.text), "raw": data}
+    except Exception as e:
+        logger.exception("uEngage get_delivery_status exception")
+        return {"ok": False, "status_code": None, "error": "exception", "message": str(e)}
+
+
+def get_serviceability_for_order(order) -> Dict:
+    """
+    Calls /getServiceability with pickup/drop lat/lon for this order's vendor store and address.
+    """
+    if not (UENGAGE_RIDER_BASE and UENGAGE_ACCESS_TOKEN):
+        return {"ok": False, "status_code": None, "error": "missing_credentials", "message": "uEngage rider API not configured"}
+    try:
+        item0 = order.items.select_related("product").first()
+        vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
+        if not vendor_user:
+            return {"ok": False, "status_code": None, "error": "missing_vendor", "message": "Vendor not found for order"}
+        try:
+            cp = vendor_user.user_company_profile
+            store_id = getattr(cp, "uengage_store_id", None)
+        except Exception:
+            store_id = None
+        if not store_id:
+            return {"ok": False, "status_code": None, "error": "missing_store_id", "message": "uEngage storeId missing in CompanyProfile"}
+        vs = vendor_user.vendor_store.first() if getattr(vendor_user, "vendor_store", None) else None
+        p_lat = str(getattr(vs, "latitude", "") or "")
+        p_lon = str(getattr(vs, "longitude", "") or "")
+        addr = getattr(order, "address", None)
+        d_lat = str(getattr(addr, "latitude", "") or "")
+        d_lon = str(getattr(addr, "longitude", "") or "")
+
+        url = f"{UENGAGE_RIDER_BASE}/getServiceability"
+        payload = {
+            "store_id": str(store_id),
+            "pickupDetails": {"latitude": p_lat, "longitude": p_lon},
+            "dropDetails": {"latitude": d_lat, "longitude": d_lon},
+        }
+        headers = {"Content-Type": "application/json", "access-token": UENGAGE_ACCESS_TOKEN}
+        resp = requests.post(url, json=payload, headers=headers, timeout=10)
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"message": resp.text}
+        # Expect status "200" or similar with serviceability flags
+        service_ok = False
+        if isinstance(data, dict):
+            if data.get("status") in (200, "200"):
+                svc = data.get("serviceability") or {}
+                service_ok = bool(svc.get("riderServiceAble") and svc.get("locationServiceAble"))
+        return {"ok": service_ok, "status_code": resp.status_code, "raw": data}
+    except Exception as e:
+        logger.exception("uEngage get_serviceability_for_order exception")
+        return {"ok": False, "status_code": None, "error": "exception", "message": str(e)}
 

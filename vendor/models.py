@@ -814,6 +814,9 @@ class CompanyProfile(models.Model):
 
     is_default = models.BooleanField(default=False)
 
+    # uEngage Flash: per-store identifier for delivery APIs
+    uengage_store_id = models.CharField(max_length=50, blank=True, null=True)
+
 
     def __str__(self):
         return self.company_name

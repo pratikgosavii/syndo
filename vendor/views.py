@@ -21,7 +21,8 @@ from django.db.models import Sum
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework import viewsets, permissions
-from integrations.uengage import notify_delivery_event
+from integrations.uengage import notify_delivery_event, create_delivery_task
+from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile
 
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -618,6 +619,48 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
 
+        # Auto-assign logic when order is accepted
+        try:
+            if "status" in data and data["status"] == "accepted":
+                # Identify vendor user from first item
+                item0 = instance.items.select_related("product").first()
+                vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
+                if vendor_user:
+                    mode = DeliveryMode.objects.filter(user=vendor_user).first()
+                else:
+                    mode = None
+
+                if mode and mode.is_auto_assign_enabled:
+                    # Prefer self delivery if enabled and rider available
+                    if getattr(mode, "is_self_delivery_enabled", False):
+                        rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
+                    else:
+                        rider = None
+
+                    if rider:
+                        instance.delivery_boy = rider
+                        instance.save(update_fields=["delivery_boy"])
+                    else:
+                        # Create external delivery task with uEngage
+                        res = create_delivery_task(instance)
+                        if res.get("ok"):
+                            # persist task id and tracking across items
+                            task_id = res.get("task_id")
+                            tracking = res.get("tracking_url")
+                            if task_id:
+                                instance.uengage_task_id = task_id
+                                instance.save(update_fields=["uengage_task_id"])
+                            if tracking:
+                                for it in instance.items.all():
+                                    if not it.tracking_link:
+                                        it.tracking_link = tracking
+                                        it.save(update_fields=["tracking_link"])
+                        else:
+                            # Could notify vendor here about failure; do not block
+                            pass
+        except Exception:
+            pass
+
         # Notify via uEngage on status change (order-level)
         try:
             if "status" in data and data["status"] != previous_status:
@@ -1181,7 +1224,11 @@ def delete_product(request, product_id):
 @login_required(login_url='login_admin')
 def list_product(request):
 
-    data = product.objects.filter(user=request.user, is_active=True)
+    if request.user.is_superuser:
+        data = product.objects.all()
+    
+    else:
+        data = product.objects.filter(user=request.user, is_active=True)
     context = {
         'data': data
     }
@@ -2969,6 +3016,34 @@ class UpdateOrderItemStatusAPIView(APIView):
     def post(self, request, order_item_id):
         item = OrderItem.objects.get(id=order_item_id)
         status_value = request.data.get("status")
+
+        # Guard: cannot move to intransit unless rider or external task is set (when auto-assign enabled)
+        if status_value == "intransit":
+            try:
+                order = item.order
+                item0 = order.items.select_related("product").first()
+                vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
+                mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
+                if mode and mode.is_auto_assign_enabled:
+                    if not (getattr(order, "delivery_boy_id", None) or getattr(order, "uengage_task_id", None)):
+                        # Try auto-assign now
+                        rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
+                        if rider:
+                            order.delivery_boy = rider
+                            order.save(update_fields=["delivery_boy"])
+                        else:
+                            res = create_delivery_task(order)
+                            if res.get("ok"):
+                                order.uengage_task_id = res.get("task_id")
+                                order.save(update_fields=["uengage_task_id"])
+                                tracking = res.get("tracking_url")
+                                if tracking and not item.tracking_link:
+                                    item.tracking_link = tracking
+                                    item.save(update_fields=["tracking_link"])
+                            else:
+                                return Response({"error": "No delivery boy available and external assignment failed."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception:
+                pass
 
         if status_value in dict(OrderItem.STATUS_CHOICES):
             item.status = status_value

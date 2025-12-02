@@ -235,8 +235,12 @@ CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
 # uEngage configuration (delivery notifications)
 # --------------------
 # Fill these with your actual credentials/templates in prod
-UENGAGE_API_BASE = os.getenv("UENGAGE_API_BASE", "https://api.uengage.in")  # example base; replace if different
+UENGAGE_API_BASE = os.getenv("UENGAGE_API_BASE", "https://riderapi-staging.uengage.in")  # example base; replace if different
 UENGAGE_API_KEY = os.getenv("UENGAGE_API_KEY", "")  # token/key
 UENGAGE_WABA = os.getenv("UENGAGE_WABA", "")  # your WhatsApp sender/WABA number/id
 # Optional: webhook verification/secret
 UENGAGE_WEBHOOK_SECRET = os.getenv("UENGAGE_WEBHOOK_SECRET", "")
+
+# uEngage Flash Rider API (serviceability / create / track / cancel)
+UENGAGE_RIDER_BASE = os.getenv("UENGAGE_RIDER_BASE", "https://riderapi-staging.uengage.in")
+UENGAGE_ACCESS_TOKEN = os.getenv("UENGAGE_ACCESS_TOKEN", "")

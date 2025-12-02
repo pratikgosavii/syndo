@@ -204,6 +204,9 @@ class Order(models.Model):
     cashfree_session_id = models.CharField(max_length=255, blank=True, null=True)
     cashfree_status = models.CharField(max_length=20, blank=True, null=True)  # CREATED, PAID, FAILED
 
+    # External delivery integration tracking (uEngage)
+    uengage_task_id = models.CharField(max_length=100, blank=True, null=True)
+
     # Delivery details
     address = models.ForeignKey(Address, on_delete=models.CASCADE, null=True, blank=True)
     instruction = models.TextField(blank=True, null=True)
