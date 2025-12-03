@@ -118,7 +118,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
+        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
     
     def generate_order_id(self):
         """Generate sequential order_id like SVIND0001, SVIND0002..."""
@@ -132,6 +132,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
         # calculate totals
         item_total = Decimal("0.00")
+        tax_total = Decimal("0.00")
         order_items = []
         print_jobs_payload = []  # parallel array of print job payloads or None
 
@@ -150,6 +151,17 @@ class OrderSerializer(serializers.ModelSerializer):
             unit_price = Decimal(str(product1.sales_price))
             line_total = unit_price * quantity
             item_total += line_total
+
+            # Add GST to tax_total only if product price is NOT tax inclusive
+            try:
+                gst_rate = Decimal(str(getattr(product1, "gst", 0) or 0))
+            except Exception:
+                gst_rate = Decimal("0")
+            if not getattr(product1, "tax_inclusive", False) and gst_rate > 0:
+                line_tax = (line_total * gst_rate / Decimal("100"))
+                # Round to 2 decimals for currency
+                line_tax = line_tax.quantize(Decimal("0.01"))
+                tax_total += line_tax
 
             order_items.append(
                 OrderItem(
@@ -194,13 +206,14 @@ class OrderSerializer(serializers.ModelSerializer):
         coupon = Decimal(str(validated_data.get("coupon", 0)))
 
         # calculate final total
-        total_amount = item_total + shipping_fee - wallet_amount - cashback - coupon
+        total_amount = item_total + tax_total + shipping_fee - wallet_amount - cashback - coupon
 
         # set calculated totals in order
         order = Order.objects.create(
             **validated_data,
             order_id=order_id,
             item_total=item_total,
+            tax_total=tax_total,
             total_amount=total_amount,
         )
 

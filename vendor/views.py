@@ -4038,7 +4038,7 @@ def barcode_lookup(request):
             return JsonResponse({'success': False})
 
     # Case 2: direct product barcode field
-    prod = product.objects.filter(barcode=barcode).first()
+    prod = product.objects.filter(assign_barcode=barcode).first()
     if prod:
         price = getattr(prod, price_attr, None) or prod.sales_price
         return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
