@@ -77,6 +77,23 @@ class vendor_store(models.Model):
     is_offline = models.BooleanField(default=False)
     display_as_catalog = models.BooleanField(default=False)
     private_catalog = models.BooleanField(default=False)
+    # KYC details
+    pan_number = models.CharField(max_length=10, blank=True, null=True)
+    gstin = models.CharField(max_length=15, blank=True, null=True)
+    bank_account_number = models.CharField(max_length=50, blank=True, null=True)
+    bank_ifsc = models.CharField(max_length=20, blank=True, null=True)
+    # Verification flags and timestamps
+    is_pan_verified = models.BooleanField(default=False)
+    pan_verified_at = models.DateTimeField(blank=True, null=True)
+    is_gstin_verified = models.BooleanField(default=False)
+    gstin_verified_at = models.DateTimeField(blank=True, null=True)
+    is_bank_verified = models.BooleanField(default=False)
+    bank_verified_at = models.DateTimeField(blank=True, null=True)
+    kyc_last_error = models.CharField(max_length=255, blank=True, null=True)
+    # FSSAI
+    fssai_number = models.CharField(max_length=20, blank=True, null=True)
+    is_fssai_verified = models.BooleanField(default=False)
+    fssai_verified_at = models.DateTimeField(blank=True, null=True)
     
 
 DAYS_OF_WEEK = [

@@ -197,6 +197,11 @@ urlpatterns = [
     
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
     
+    # KYC Verification (QuickKYC)
+    path('kyc/verify-pan/', VerifyPANAPIView.as_view(), name='verify_pan'),
+    path('kyc/verify-gstin/', VerifyGSTINAPIView.as_view(), name='verify_gstin'),
+    path('kyc/verify-bank/', VerifyBankAPIView.as_view(), name='verify_bank'),
+    path('kyc/verify-fssai/', VerifyFSSAIAPIView.as_view(), name='verify_fssai'),
     path('accept-order/<order_id>', accept_order, name='accept_order'),
     path('assign-delivery-boy/<order_id>', assign_delivery_boy, name='assign_delivery_boy'),
     

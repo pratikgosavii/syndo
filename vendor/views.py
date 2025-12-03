@@ -128,6 +128,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from .models import vendor_store
 from .serializers import VendorStoreSerializer
 
@@ -1758,6 +1759,138 @@ from rest_framework import viewsets
 
 from users.permissions import *
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils import timezone
+from .services.quickkyc import (
+    verify_pan as kyc_verify_pan,
+    verify_gstin as kyc_verify_gstin,
+    verify_bank as kyc_verify_bank,
+    verify_fssai as kyc_verify_fssai,
+    QuickKYCError,
+)
+from .models import vendor_store
+
+
+class VerifyPANAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        pan = request.data.get("pan")
+        name = request.data.get("name", "")
+        if not pan:
+            return Response({"detail": "pan is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        store = vendor_store.objects.filter(user=request.user).first()
+        if not store:
+            return Response({"detail": "Vendor store not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            result = kyc_verify_pan(pan, name)
+            # Simplistic success check; adapt to provider schema
+            success = bool(result.get("success", True))
+            store.pan_number = pan
+            store.is_pan_verified = success
+            store.pan_verified_at = timezone.now() if success else None
+            store.kyc_last_error = None if success else (result.get("message") or "PAN verification failed")
+            store.save(update_fields=["pan_number", "is_pan_verified", "pan_verified_at", "kyc_last_error"])
+            return Response({"verified": success, "result": result}, status=200 if success else 400)
+        except QuickKYCError as e:
+            store.kyc_last_error = str(e)
+            store.is_pan_verified = False
+            store.save(update_fields=["kyc_last_error", "is_pan_verified"])
+            return Response({"verified": False, "error": str(e)}, status=502)
+
+
+class VerifyGSTINAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        gstin = request.data.get("gstin")
+        if not gstin:
+            return Response({"detail": "gstin is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        store = vendor_store.objects.filter(user=request.user).first()
+        if not store:
+            return Response({"detail": "Vendor store not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            result = kyc_verify_gstin(gstin)
+            success = bool(result.get("success", True))
+            store.gstin = gstin
+            store.is_gstin_verified = success
+            store.gstin_verified_at = timezone.now() if success else None
+            store.kyc_last_error = None if success else (result.get("message") or "GSTIN verification failed")
+            store.save(update_fields=["gstin", "is_gstin_verified", "gstin_verified_at", "kyc_last_error"])
+            return Response({"verified": success, "result": result}, status=200 if success else 400)
+        except QuickKYCError as e:
+            store.kyc_last_error = str(e)
+            store.is_gstin_verified = False
+            store.save(update_fields=["kyc_last_error", "is_gstin_verified"])
+            return Response({"verified": False, "error": str(e)}, status=502)
+
+
+class VerifyBankAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        account_number = request.data.get("account_number")
+        ifsc = request.data.get("ifsc")
+        name = request.data.get("name", "")
+        if not account_number or not ifsc:
+            return Response({"detail": "account_number and ifsc are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        store = vendor_store.objects.filter(user=request.user).first()
+        if not store:
+            return Response({"detail": "Vendor store not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            result = kyc_verify_bank(account_number, ifsc, name)
+            success = bool(result.get("success", True))
+            store.bank_account_number = account_number
+            store.bank_ifsc = ifsc
+            store.is_bank_verified = success
+            store.bank_verified_at = timezone.now() if success else None
+            store.kyc_last_error = None if success else (result.get("message") or "Bank verification failed")
+            store.save(update_fields=[
+                "bank_account_number", "bank_ifsc",
+                "is_bank_verified", "bank_verified_at", "kyc_last_error"
+            ])
+            return Response({"verified": success, "result": result}, status=200 if success else 400)
+        except QuickKYCError as e:
+            store.kyc_last_error = str(e)
+            store.is_bank_verified = False
+            store.save(update_fields=["kyc_last_error", "is_bank_verified"])
+            return Response({"verified": False, "error": str(e)}, status=502)
+
+
+class VerifyFSSAIAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        fssai = request.data.get("fssai")
+        if not fssai:
+            return Response({"detail": "fssai is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        store = vendor_store.objects.filter(user=request.user).first()
+        if not store:
+            return Response({"detail": "Vendor store not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            result = kyc_verify_fssai(fssai)
+            success = bool(result.get("success", True))
+            store.fssai_number = fssai
+            store.is_fssai_verified = success
+            store.fssai_verified_at = timezone.now() if success else None
+            store.kyc_last_error = None if success else (result.get("message") or "FSSAI verification failed")
+            store.save(update_fields=["fssai_number", "is_fssai_verified", "fssai_verified_at", "kyc_last_error"])
+            return Response({"verified": success, "result": result}, status=200 if success else 400)
+        except QuickKYCError as e:
+            store.kyc_last_error = str(e)
+            store.is_fssai_verified = False
+            store.save(update_fields=["kyc_last_error", "is_fssai_verified"])
+            return Response({"verified": False, "error": str(e)}, status=502)
 
 
 class OnlineStoreSettingViewSet(viewsets.ModelViewSet):

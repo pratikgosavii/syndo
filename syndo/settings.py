@@ -221,6 +221,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --------------------
+# QuickKYC configuration
+# --------------------
+# Prefer environment variables; provide defaults suitable for QuickKYC public base URL.
+QUICKKYC_BASE_URL = "https://api.quickekyc.com/api/v1"
+# Set your API key here (or via environment). Do NOT commit real prod keys.
+QUICKKYC_API_KEY = "69cabe8b-255c-4d14-9225-aaad46cd01b6"
+
+# --------------------
 # Cashfree configuration (centralized in settings for prod consistency)
 # --------------------
 # Sandbox credentials provided
