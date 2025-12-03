@@ -315,12 +315,12 @@ class ListProducts(ListAPIView):
             user__vendor_store__is_active=True,
             user__vendor_store__is_online=True,
         )
-
+        print(user)
         # Filter by customer pincode
           # Use the user's default address (is_default=True)
-        default_addr = Address.objects.filter(user=user, is_default=True).only('pincode').first()
+        default_addr = Address.objects.filter(user=user, is_default=True).first()
         pincode = default_addr.pincode if default_addr else None
-
+        print(default_addr)
         if pincode:
             qs = qs.filter(user__coverages__pincode__code=pincode)
 
