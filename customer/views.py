@@ -317,8 +317,9 @@ class ListProducts(ListAPIView):
         )
 
         # Filter by customer pincode
-          # Get pincode from ?pincode=XXXX in URL
-        pincode = user.pincode
+          # Use the user's default address (is_default=True)
+        default_addr = Address.objects.filter(user=user, is_default=True).only('pincode').first()
+        pincode = default_addr.pincode if default_addr else None
 
         if pincode:
             qs = qs.filter(user__coverages__pincode__code=pincode)
@@ -331,8 +332,8 @@ class ListProducts(ListAPIView):
             qs = qs.annotate(is_favourite=Value(False, output_field=BooleanField()))
 
         # Optional: order by nearest using simple squared-distance if lat/lng provided
-        lat = self.request.query_params.get("lat")
-        lng = self.request.query_params.get("lng")
+        lat = default_addr.latitude 
+        lng = default_addr.longitude
         if lat and lng:
             try:
                 lat_f = float(lat); lng_f = float(lng)
@@ -1069,14 +1070,12 @@ class HomeScreenView(APIView):
                 is_active=True
             )
 
-            # Apply pincode filter like in ListProducts (customer's pincode coverage)
-            try:
-                user = request.user
-                pincode = getattr(user, "pincode", None)
-                if pincode:
-                    products_qs = products_qs.filter(user__coverages__pincode__code=pincode)
-            except Exception:
-                pass
+            # Apply pincode and distance logic like in ListProducts (using user's default address)
+            user = request.user
+            default_addr = Address.objects.filter(user=user, is_default=True).only('pincode', 'latitude', 'longitude').first()
+            pincode = default_addr.pincode if default_addr else None
+            if pincode:
+                products_qs = products_qs.filter(user__coverages__pincode__code=pincode)
 
             products_qs = products_qs.select_related(
                 'user', 'category', 'sub_category'
@@ -1087,7 +1086,29 @@ class HomeScreenView(APIView):
                 'print_variants',                     # PrintVariant (related_name)
                 'customize_print_variants',           # CustomizePrintVariant (related_name)
                 'user__vendor_store'                  # prefetch vendor_store of the user
-            ).order_by('?')[:6]  # random 6 products for this main category
+            )
+
+            # Distance ordering using user's default address coordinates, fallback to random if not available
+            lat = getattr(default_addr, 'latitude', None) if default_addr else None
+            lng = getattr(default_addr, 'longitude', None) if default_addr else None
+            if lat and lng:
+                try:
+                    lat_f = float(lat); lng_f = float(lng)
+                    products_qs = products_qs.filter(
+                        user__vendor_store__latitude__isnull=False,
+                        user__vendor_store__longitude__isnull=False,
+                    )
+                    dist_expr = (
+                        (Cast(F('user__vendor_store__latitude'), FloatField()) - Value(lat_f)) ** 2 +
+                        (Cast(F('user__vendor_store__longitude'), FloatField()) - Value(lng_f)) ** 2
+                    )
+                    products_qs = products_qs.annotate(
+                        _dist=ExpressionWrapper(dist_expr, output_field=FloatField())
+                    ).order_by('_dist', 'id')[:6]
+                except (ValueError, TypeError):
+                    products_qs = products_qs.order_by('?')[:6]  # fallback to random
+            else:
+                products_qs = products_qs.order_by('?')[:6]  # random 6 products for this main category
 
             products = list(products_qs)  # evaluate
 
