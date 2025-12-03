@@ -551,7 +551,7 @@ class product(models.Model):
 
     # Stock;
     # Allow very large numeric values (more than 18 digits)
-    barcode = models.DecimalField(max_digits=30, decimal_places=0, null=True, blank=True)
+    assign_barcode = models.DecimalField(max_digits=30, decimal_places=0, null=True, blank=True)
     track_serial_numbers = models.BooleanField(default=False)
     
     track_stock = models.BooleanField(default=False)
