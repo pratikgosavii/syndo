@@ -213,6 +213,8 @@ class OrderSerializer(serializers.ModelSerializer):
             **validated_data,
             order_id=order_id,
             item_total=item_total,
+            tax_total=tax_total,
+            total_amount=total_amount,
         )
 
         # bulk create items with linked order
