@@ -1,3 +1,4 @@
+from typing import Any
 from rest_framework import serializers
 from .models import *
 
@@ -156,7 +157,7 @@ class OrderSerializer(serializers.ModelSerializer):
                         "print_type": pj.print_type,
                         "print_variant": getattr(pj.print_variant, "id", None),
                         "customize_variant": getattr(pj.customize_variant, "id", None),
-                        "add_ons": list(pj.add_ons.values_list("id", flat=True)),
+                        "add_ons": list[Any](pj.add_ons.values_list("id", flat=True)),
                         "files": [
                             {
                                 "file": pf.file,  # will be used directly

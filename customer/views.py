@@ -175,38 +175,38 @@ class ReturnShippingRatesAPIView(APIView):
             elif delivery_type == "instant_delivery":
                 base_fare = Decimal(str(getattr(ds, "instant_min_base_fare", 30.00))) if ds else Decimal("30.00")
                 per_km = Decimal(str(getattr(ds, "instant_per_km_charge", 10.00))) if ds else Decimal("10.00")
-
-                # Need coordinates to compute distance; if missing, fall back to base fare
-                if addr:
-                    # vendor store coords
-                    store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
-                    lat1 = _to_float(getattr(store, "latitude", None)) if store else None
-                    lon1 = _to_float(getattr(store, "longitude", None)) if store else None
-                    # customer address coords
-                    lat2 = _to_float(getattr(addr, "latitude", None))
-                    lon2 = _to_float(getattr(addr, "longitude", None))
-
-                    if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
-                        # Haversine distance in km
-                        import math
-                        R = 6371.0
-                        dlat = math.radians(lat2 - lat1)
-                        dlon = math.radians(lon2 - lon1)
-                        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-                        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-                        distance_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
-
-                if distance_km is not None:
-                    calculated = (per_km * distance_km).quantize(Decimal("0.01"))
-                    shipping_fee = max(base_fare, calculated) if base_fare is not None else calculated
-                else:
-                    shipping_fee = base_fare
             else:
                 # self_pickup or on_shop_order => no shipping
                 shipping_fee = Decimal("0.00")
+                # Need coordinates to compute distance; if missing, fall back to base fare
+            if addr:
+                # vendor store coords
+                store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
+                lat1 = _to_float(getattr(store, "latitude", None)) if store else None
+                lon1 = _to_float(getattr(store, "longitude", None)) if store else None
+                # customer address coords
+                lat2 = _to_float(getattr(addr, "latitude", None))
+                lon2 = _to_float(getattr(addr, "longitude", None))
+
+                if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
+                    # Haversine distance in km
+                    import math
+                    R = 6371.0
+                    dlat = math.radians(lat2 - lat1)
+                    dlon = math.radians(lon2 - lon1)
+                    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+                    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                    distance_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
+
+            if distance_km is not None:
+                calculated = (per_km * distance_km).quantize(Decimal("0.01"))
+                shipping_fee = max(base_fare, calculated) if base_fare is not None else calculated
+            else:
+                shipping_fee = base_fare
+            
 
         return Response(
-            {
+            {   
                 "delivery_type": delivery_type,
                 "shipping_fee": str(shipping_fee),
                 "distance_km": str(distance_km) if distance_km is not None else None,
