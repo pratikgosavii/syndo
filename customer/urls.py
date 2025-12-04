@@ -29,7 +29,7 @@ router.register(r'support/tickets', SupportTicketViewSet, basename='support-tick
 
 urlpatterns = [
 
-path('return-shippingrates', ReturnShippingRatesAPIView.as_view(), name='ReturnShippingRatesAPIView'),
+path('return-shippingrates/', ReturnShippingRatesAPIView.as_view(), name='ReturnShippingRatesAPIView'),
 
 path('request-offer/<int:request_id>/', RequestOfferAPIView.as_view(), name='RequestOfferAPIView'),
 path('all-request-offer', AllRequestOfferAPIView.as_view(), name='AllRequestOfferAPIView'),
