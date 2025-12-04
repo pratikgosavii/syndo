@@ -170,9 +170,37 @@ class OrderSerializer(serializers.ModelSerializer):
             print_jobs_payload.append(item_print_job)
 
             # Calculate pricing based on product type
-            unit_price = Decimal(str(product1.sales_price))
-            
             if is_print_product and item_print_job:
+                # For print products: get price from variant if available, otherwise use product sales_price
+                unit_price = None
+                
+                # Check for print_variant first
+                print_variant_id = item_print_job.get("print_variant")
+                if print_variant_id:
+                    try:
+                        from vendor.models import PrintVariant
+                        print_variant = PrintVariant.objects.get(id=print_variant_id)
+                        if print_variant.price:
+                            unit_price = Decimal(str(print_variant.price))
+                    except Exception:
+                        pass
+                
+                # If no print_variant price, check customize_variant
+                if unit_price is None:
+                    customize_variant_id = item_print_job.get("customize_variant")
+                    if customize_variant_id:
+                        try:
+                            from vendor.models import CustomizePrintVariant
+                            customize_variant = CustomizePrintVariant.objects.get(id=customize_variant_id)
+                            if customize_variant.price:
+                                unit_price = Decimal(str(customize_variant.price))
+                        except Exception:
+                            pass
+                
+                # Fallback to product sales_price if no variant price found
+                if unit_price is None:
+                    unit_price = Decimal(str(product1.sales_price))
+                
                 # For print products: calculate based on total pages
                 # Total pages = sum of (page_count * number_of_copies) for all files
                 total_pages = Decimal("0")
@@ -182,10 +210,11 @@ class OrderSerializer(serializers.ModelSerializer):
                     number_of_copies = Decimal(str(file_data.get("number_of_copies", 1)))
                     total_pages += page_count * number_of_copies
                 
-                # Use sales_price per page * total_pages
+                # Use variant price (or product sales_price) per page * total_pages
                 line_total = unit_price * total_pages
             else:
                 # For regular products: use sales_price * quantity
+                unit_price = Decimal(str(product1.sales_price))
                 line_total = unit_price * quantity
             
             item_total += line_total
@@ -201,6 +230,7 @@ class OrderSerializer(serializers.ModelSerializer):
                 line_tax = line_tax.quantize(Decimal("0.01"))
                 tax_total += line_tax
 
+            # Store the calculated unit_price (variant price for print products, sales_price for regular)
             order_items.append(
                 OrderItem(
                     product=product1,
