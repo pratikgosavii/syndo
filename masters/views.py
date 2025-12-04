@@ -230,9 +230,12 @@ def send_push_notification(user, title, body, campaign_id):
                 notification=messaging.Notification(
                     title=title,
                     body=body,
+                    
                 ),
                 data={
                     "campaign_id": str(campaign_id),
+                    "store_id": 3,
+                    "product_id": ""
                 },
                 token=token.strip(),  # Ensure no whitespace
             )
