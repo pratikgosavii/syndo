@@ -234,7 +234,7 @@ def send_push_notification(user, title, body, campaign_id):
                 ),
                 data={
                     "campaign_id": str(campaign_id),
-                    "store_id": 3,
+                    "store_id": "3",
                     "product_id": ""
                 },
                 token=token.strip(),  # Ensure no whitespace
