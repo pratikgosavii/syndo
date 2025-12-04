@@ -142,32 +142,11 @@ class OrderSerializer(serializers.ModelSerializer):
                     {"items": [f"Product with id {product_id} does not exist."]}
                 )
 
-            unit_price = Decimal(str(product1.sales_price))
-            line_total = unit_price * quantity
-            item_total += line_total
-
-            # Add GST to tax_total only if product price is NOT tax inclusive
-            try:
-                gst_rate = Decimal(str(getattr(product1, "gst", 0) or 0))
-            except Exception:
-                gst_rate = Decimal("0")
-            if not getattr(product1, "tax_inclusive", False) and gst_rate > 0:
-                line_tax = (line_total * gst_rate / Decimal("100"))
-                # Round to 2 decimals for currency
-                line_tax = line_tax.quantize(Decimal("0.01"))
-                tax_total += line_tax
-
-            order_items.append(
-                OrderItem(
-                    product=product1,
-                    quantity=quantity,
-                    price=unit_price,
-                )
-            )
-
             # Gather print job payload either from request item or from cart (fallback)
             item_print_job = item.get("print_job")
-            if item_print_job is None and getattr(product1, "product_type", None) == "print":
+            is_print_product = getattr(product1, "product_type", None) == "print"
+            
+            if item_print_job is None and is_print_product:
                 cart_item = Cart.objects.filter(user=request.user, product=product1).select_related("print_job").first()
                 if cart_item and hasattr(cart_item, "print_job"):
                     pj = cart_item.print_job
@@ -189,6 +168,46 @@ class OrderSerializer(serializers.ModelSerializer):
                         ],
                     }
             print_jobs_payload.append(item_print_job)
+
+            # Calculate pricing based on product type
+            unit_price = Decimal(str(product1.sales_price))
+            
+            if is_print_product and item_print_job:
+                # For print products: calculate based on total pages
+                # Total pages = sum of (page_count * number_of_copies) for all files
+                total_pages = Decimal("0")
+                files_data = item_print_job.get("files", [])
+                for file_data in files_data:
+                    page_count = Decimal(str(file_data.get("page_count", 0)))
+                    number_of_copies = Decimal(str(file_data.get("number_of_copies", 1)))
+                    total_pages += page_count * number_of_copies
+                
+                # Use sales_price per page * total_pages
+                line_total = unit_price * total_pages
+            else:
+                # For regular products: use sales_price * quantity
+                line_total = unit_price * quantity
+            
+            item_total += line_total
+
+            # Add GST to tax_total only if product price is NOT tax inclusive
+            try:
+                gst_rate = Decimal(str(getattr(product1, "gst", 0) or 0))
+            except Exception:
+                gst_rate = Decimal("0")
+            if not getattr(product1, "tax_inclusive", False) and gst_rate > 0:
+                line_tax = (line_total * gst_rate / Decimal("100"))
+                # Round to 2 decimals for currency
+                line_tax = line_tax.quantize(Decimal("0.01"))
+                tax_total += line_tax
+
+            order_items.append(
+                OrderItem(
+                    product=product1,
+                    quantity=quantity,
+                    price=unit_price,
+                )
+            )
 
         # generate order_id
         # order_id will be generated in Order.save() method
