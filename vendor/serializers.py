@@ -1178,6 +1178,43 @@ class NotificationCampaignSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["user", "status", "views", "clicks", "created_at"]
 
+    def validate(self, data):
+        """
+        Validate that:
+        - If redirect_to is 'store', store must belong to the requesting user
+        - If redirect_to is 'product', product_id must be provided
+        """
+        request = self.context.get('request')
+        redirect_to = data.get('redirect_to')
+        store = data.get('store')
+        product = data.get('product')
+        
+        if redirect_to == 'store':
+            # If store is provided, ensure it belongs to the requesting user
+            if store:
+                if request and store.user != request.user:
+                    raise serializers.ValidationError({
+                        'store': 'You can only select stores that belong to you.'
+                    })
+            # If no store provided, we'll auto-assign in perform_create
+        elif redirect_to == 'product':
+            # Product ID must be provided when redirect_to is 'product'
+            if not product:
+                raise serializers.ValidationError({
+                    'product': 'Product ID is required when redirect_to is "product".'
+                })
+            # Ensure product belongs to the requesting user
+            if request and product.user != request.user:
+                raise serializers.ValidationError({
+                    'product': 'You can only select products that belong to you.'
+                })
+        elif redirect_to == 'custom':
+            # For custom, clear both product and store
+            data['product'] = None
+            data['store'] = None
+        
+        return data
+
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
         return super().create(validated_data)

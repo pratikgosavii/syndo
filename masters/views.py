@@ -206,6 +206,16 @@ def send_push_notification(user, title, body, campaign_id):
     """
     Send the campaign notification to every FCM token that belongs to `user`.
     """
+    # Get campaign to access product and store (fetch once before loop)
+    from vendor.models import NotificationCampaign
+    try:
+        campaign = NotificationCampaign.objects.select_related('product', 'store').get(id=campaign_id)
+        store_id = str(campaign.store.id) if campaign.store else ""
+        product_id = str(campaign.product.id) if campaign.product else ""
+    except NotificationCampaign.DoesNotExist:
+        store_id = ""
+        product_id = ""
+    
     # Get all device tokens for the user, filtering out empty/None tokens
     device_tokens = DeviceToken.objects.filter(
         user=user,
@@ -230,12 +240,11 @@ def send_push_notification(user, title, body, campaign_id):
                 notification=messaging.Notification(
                     title=title,
                     body=body,
-                    
                 ),
                 data={
                     "campaign_id": str(campaign_id),
-                    "store_id": "3",
-                    "product_id": ""
+                    "store_id": store_id,
+                    "product_id": product_id
                 },
                 token=token.strip(),  # Ensure no whitespace
             )

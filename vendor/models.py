@@ -1312,6 +1312,10 @@ class NotificationCampaign(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     rejection_reason = models.TextField(blank=True, null=True)
+    
+    # Foreign keys for redirect targets
+    product = models.ForeignKey('product', on_delete=models.SET_NULL, null=True, blank=True, related_name='notification_campaigns')
+    store = models.ForeignKey('vendor_store', on_delete=models.SET_NULL, null=True, blank=True, related_name='notification_campaigns')
 
     views = models.PositiveIntegerField(default=0)
     clicks = models.PositiveIntegerField(default=0)

@@ -3935,6 +3935,25 @@ class NotificationCampaignViewSet(viewsets.ModelViewSet):
         ).count()
         if month_count >= 3:
             raise serializers.ValidationError("You have reached your monthly limit.")
+        
+        redirect_to = self.request.data.get('redirect_to')
+        
+        # If redirect_to is 'store' and no store provided, auto-assign user's store
+        if redirect_to == 'store':
+            store = serializer.validated_data.get('store')
+            if not store:
+                try:
+                    store = vendor_store.objects.get(user=user)
+                    serializer.validated_data['store'] = store
+                except vendor_store.DoesNotExist:
+                    raise serializers.ValidationError({
+                        'store': 'No store found for this user. Please create a store first.'
+                    })
+                except vendor_store.MultipleObjectsReturned:
+                    # If multiple stores, get the first one
+                    store = vendor_store.objects.filter(user=user).first()
+                    serializer.validated_data['store'] = store
+        
         serializer.save(user=user)
 
 
