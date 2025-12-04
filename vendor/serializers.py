@@ -1142,23 +1142,9 @@ class PurchaseSerializer(serializers.ModelSerializer):
         user = request.user
         items_data = validated_data.pop('items', [])
 
-        # Generate sequential purchase_code (global)
-        last_purchase = Purchase.objects.order_by('-id').first()
-        if last_purchase and last_purchase.purchase_code:
-            try:
-                last_number = int(last_purchase.purchase_code.split('-')[-1])
-            except (IndexError, ValueError):
-                last_number = 0
-        else:
-            last_number = 0
-        prefix = "PUR"
-        new_code = f"{prefix}-{last_number + 1:05d}"
-
-        print(new_code)
-
+        # purchase_code will be generated in Purchase.save() method
         purchase = Purchase.objects.create(
             user=user,
-            purchase_code=new_code,
             **validated_data
         )
 

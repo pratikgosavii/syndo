@@ -206,36 +206,45 @@ def send_push_notification(user, title, body, campaign_id):
     """
     Send the campaign notification to every FCM token that belongs to `user`.
     """
-    tokens = list(
-        DeviceToken.objects.filter(user=user).values_list("token", flat=True)
-    )
+    # Get all device tokens for the user, filtering out empty/None tokens
+    device_tokens = DeviceToken.objects.filter(
+        user=user,
+        token__isnull=False
+    ).exclude(token='').values_list("token", flat=True)
+    
+    tokens = [token for token in device_tokens if token and token.strip()]
 
     if not tokens:
-        print(f"ℹ️ No device tokens registered for user_id={user.id}")
+        print(f"ℹ️ No valid device tokens registered for user_id={user.id}")
         return []
 
     responses = []
     for token in tokens:
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title=title,
-                body=body,
-            ),
-            data={
-                "campaign_id": str(campaign_id),
-            },
-            token=token,
-        )
-
+        # Skip if token is empty or whitespace
+        if not token or not token.strip():
+            print(f"⚠️ Skipping empty token for user_id={user.id}")
+            continue
+            
         try:
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=title,
+                    body=body,
+                ),
+                data={
+                    "campaign_id": str(campaign_id),
+                },
+                token=token.strip(),  # Ensure no whitespace
+            )
+            
             response = messaging.send(message)
             responses.append(response)
             print(
-                f"✅ Successfully sent message to user_id={user.id}, token={token}: {response}"
+                f"✅ Successfully sent message to user_id={user.id}, username={user.username or user.mobile}, token={token[:20]}...: {response}"
             )
         except Exception as e:
             print(
-                f"❌ Error sending message to user_id={user.id}, token={token}: {e}"
+                f"❌ Error sending message to user_id={user.id}, username={user.username or user.mobile}, token={token[:20] if token else 'N/A'}...: {e}"
             )
     return responses
 
@@ -262,15 +271,17 @@ def approve_notification_campaign(request, pk):
     for follower_relation in followers:
         follower = follower_relation  # get actual user object
         try:
-            response = send_push_notification(
+            responses = send_push_notification(
                 user=follower,
                 title=campaign.campaign_name,
                 body=campaign.description,
                 campaign_id=campaign.id
             )
-            print(f"✅ Notification sent to user_id={follower.id}, username={follower.username}, response={response}")
+            if responses:
+                print(f"✅ Notification sent to user_id={follower.id}, username={follower.username or follower.mobile}, devices={len(responses)}")
+            # If no responses, it means no valid tokens (already logged in send_push_notification)
         except Exception as e:
-            print(f"❌ Failed to send notification to user_id={follower.id}, username={follower.username}, error={e}")
+            print(f"❌ Failed to send notification to user_id={follower.id}, username={follower.username or follower.mobile}, error={e}")
 
     messages.success(request, "Campaign approved and notification sent.")
     return redirect("list_notification_campaigns")

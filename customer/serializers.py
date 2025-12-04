@@ -120,12 +120,6 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
     
-    def generate_order_id(self):
-        """Generate sequential order_id like SVIND0001, SVIND0002..."""
-        last_order = Order.objects.aggregate(max_id=Max("id"))["max_id"]
-        next_number = (last_order or 0) + 1
-        return f"SVIND{next_number:05d}"  # 5 digits padded with zeros
-            
     def create(self, validated_data):
         request = self.context.get("request")
         items_data = request.data.get("items", [])
@@ -197,7 +191,7 @@ class OrderSerializer(serializers.ModelSerializer):
             print_jobs_payload.append(item_print_job)
 
         # generate order_id
-        order_id = self.generate_order_id()
+        # order_id will be generated in Order.save() method
 
         # Compute shipping using vendor DeliverySettings and distance between store and order address
         def _to_float(val, default=None):
@@ -267,9 +261,9 @@ class OrderSerializer(serializers.ModelSerializer):
         total_amount = item_total + tax_total + shipping_fee - coupon
 
         # set calculated totals in order
+        # order_id will be generated in Order.save() method
         order = Order.objects.create(
             **validated_data,
-            order_id=order_id,
             item_total=item_total,
             tax_total=tax_total,
             total_amount=total_amount,

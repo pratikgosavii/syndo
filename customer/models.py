@@ -213,8 +213,17 @@ class Order(models.Model):
     delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
     created_at = models.DateTimeField(auto_now=True)
 
-    
-    
+    def save(self, *args, **kwargs):
+        if not self.order_id:
+            from vendor.utils import generate_serial_number
+            from django.utils import timezone
+            self.order_id = generate_serial_number(
+                prefix='ONL',
+                model_class=Order,
+                date=timezone.now().date(),
+                user=self.user
+            )
+        super().save(*args, **kwargs)
 
     # Payment logic handled via service layer (customer/payments/cashfree.py)
 

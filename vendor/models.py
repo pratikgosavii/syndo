@@ -763,7 +763,7 @@ class Purchase(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
-    purchase_code = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    purchase_code = models.CharField(max_length=100, unique=True, blank=True, null=True)
 
     purchase_date = models.DateField()
     vendor = models.ForeignKey('vendor_vendors', on_delete=models.CASCADE)
@@ -796,6 +796,17 @@ class Purchase(models.Model):
     vehicle_no = models.CharField(max_length=50, blank=True, null=True)
     transport_name = models.CharField(max_length=100, blank=True, null=True)
     no_of_parcels = models.PositiveIntegerField(blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.purchase_code:
+            from .utils import generate_serial_number
+            self.purchase_code = generate_serial_number(
+                prefix='PUR',
+                model_class=Purchase,
+                date=self.purchase_date,
+                user=self.user
+            )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.purchase_code or f"Purchase #{self.id}"
@@ -927,7 +938,22 @@ class Sale(models.Model):
 
     credit_date = models.DateTimeField(auto_now_add=False, null=True, blank=True)
     is_wholesale_rate = models.BooleanField(default=False)
+    invoice_number = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number and not self.is_wholesale_rate:
+            # Only generate POS serial number for non-wholesale sales
+            from .utils import generate_serial_number
+            from django.utils import timezone
+            self.invoice_number = generate_serial_number(
+                prefix='POS',
+                model_class=Sale,
+                date=timezone.now().date(),
+                user=self.user,
+                filter_kwargs={'is_wholesale_rate': False}
+            )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Sale #{self.id}"
@@ -978,11 +1004,15 @@ class SaleItem(models.Model):
 class pos_wholesale(models.Model):
 
     INVOICE_TYPES = [
-        ('invoice', 'Invoice'),
+        ('invoice', 'Sales Invoice'),
+        ('sales_return', 'Sales Return'),
+        ('sales_order', 'Sales Order'),
         ('proforma', 'Pro Forma Invoice'),
         ('quotation', 'Quotation'),
-        ('credit_note', 'Credit Note'),
         ('delivery_challan', 'Delivery Challan'),
+        ('credit_note', 'Credit Note'),
+        ('debit_note', 'Debit Note'),
+        ('e_invoice', 'E-Invoice (IRN)'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # creator
@@ -1015,15 +1045,31 @@ class pos_wholesale(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:
-            last = pos_wholesale.objects.filter(user=self.user).order_by('-id').first()
-            if last and last.invoice_number.startswith("SVI"):
-                try:
-                    last_number = int(last.invoice_number.replace("SVI", ""))
-                except ValueError:
-                    last_number = 0
-            else:
-                last_number = 0
-            self.invoice_number = f"SVI{last_number + 1}"
+            from .utils import generate_serial_number
+            
+            # Map invoice types to prefixes
+            prefix_map = {
+                'invoice': 'SAL',
+                'sales_return': 'SRN',
+                'sales_order': 'SOR',
+                'proforma': 'PFI',
+                'quotation': 'QTN',
+                'delivery_challan': 'DC',
+                'credit_note': 'CRN',
+                'debit_note': 'DBN',
+                'e_invoice': 'EIN',
+            }
+            
+            prefix = prefix_map.get(self.invoice_type, 'SAL')
+            date = self.date if self.date else None
+            
+            self.invoice_number = generate_serial_number(
+                prefix=prefix,
+                model_class=pos_wholesale,
+                date=date,
+                user=self.user,
+                filter_kwargs={'invoice_type': self.invoice_type}
+            )
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -1166,9 +1212,24 @@ class Payment(models.Model):
     payment_date = models.DateField()
     payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPE_CHOICES)
     bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
+    payment_number = models.CharField(max_length=100, blank=True, null=True)
 
     notes = models.TextField(blank=True, null=True)
     attachment = models.FileField(upload_to='payment_attachments/', blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.payment_number:
+            from .utils import generate_serial_number
+            # Payment Received = REC, Payment Made (You Gave) = PAY
+            prefix = 'REC' if self.type == 'received' else 'PAY'
+            self.payment_number = generate_serial_number(
+                prefix=prefix,
+                model_class=Payment,
+                date=self.payment_date,
+                user=self.user,
+                filter_kwargs={'type': self.type}
+            )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.get_payment_type_display()} - ₹{self.amount}"

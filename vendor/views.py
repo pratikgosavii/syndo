@@ -2360,19 +2360,17 @@ class NextPurchaseNumberAPI(APIView):
 
 
     def get(self, request):
+        from vendor.utils import generate_serial_number
+        from django.utils import timezone
         
         user = request.user
 
-        last_purchase = Purchase.objects.order_by('-id').first()
-        if last_purchase and last_purchase.purchase_code:
-            try:
-                last_number = int(last_purchase.purchase_code.split('-')[-1])
-            except (IndexError, ValueError):
-                last_number = 0
-        else:
-            last_number = 0
-        prefix = "PUR"
-        new_code = f"{prefix}-{last_number + 1:05d}"
+        new_code = generate_serial_number(
+            prefix='PUR',
+            model_class=Purchase,
+            date=timezone.now().date(),
+            user=user
+        )
 
         return Response({"purchase_number": new_code})
 
@@ -2576,34 +2574,33 @@ class NextInvoiceNumberAPI(APIView):
 
 
     def get(self, request):
+        from vendor.utils import generate_serial_number
+        from django.utils import timezone
+        
         invoice_type = request.GET.get('invoice_type')
         user = request.user
 
         type_prefix_map = {
-            'invoice': 'svin-inv',
-            'proforma': 'svin-prof',
-            'quotation': 'svin-quot',
-            'credit_note': 'svin-crednot',
-            'delivery_challan': 'svin-dc',
+            'invoice': 'SAL',
+            'sales_return': 'SRN',
+            'sales_order': 'SOR',
+            'proforma': 'PFI',
+            'quotation': 'QTN',
+            'delivery_challan': 'DC',
+            'credit_note': 'CRN',
+            'debit_note': 'DBN',
+            'e_invoice': 'EIN',
         }
 
-        prefix = type_prefix_map.get(invoice_type, 'svin-inv')
+        prefix = type_prefix_map.get(invoice_type, 'SAL')
 
-        last_invoice = pos_wholesale.objects.filter(
+        invoice_number = generate_serial_number(
+            prefix=prefix,
+            model_class=pos_wholesale,
+            date=None,
             user=user,
-            invoice_type=invoice_type,
-            invoice_number__startswith=prefix
-        ).order_by('-id').first()
-
-        if last_invoice:
-            try:
-                last_number = int(last_invoice.invoice_number.split('-')[-1])
-            except (IndexError, ValueError):
-                last_number = 0
-        else:
-            last_number = 0
-
-        invoice_number = f"{prefix}-{last_number + 1}"
+            filter_kwargs={'invoice_type': invoice_type}
+        )
         return Response({"invoice_number": invoice_number})
 
 
@@ -2613,34 +2610,32 @@ def get_next_invoice_number_api(request):
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Authentication required"}, status=401)
 
+    from vendor.utils import generate_serial_number
+    
     invoice_type = request.GET.get('invoice_type')
     user = request.user
 
     type_prefix_map = {
-        'invoice': 'svin-inv',
-        'proforma': 'svin-prof',
-        'quotation': 'svin-quot',
-        'credit_note': 'svin-crednot',
-        'delivery_challan': 'svin-dc',
+        'invoice': 'SAL',
+        'sales_return': 'SRN',
+        'sales_order': 'SOR',
+        'proforma': 'PFI',
+        'quotation': 'QTN',
+        'delivery_challan': 'DC',
+        'credit_note': 'CRN',
+        'debit_note': 'DBN',
+        'e_invoice': 'EIN',
     }
 
-    prefix = type_prefix_map.get(invoice_type, 'svin-inv')
+    prefix = type_prefix_map.get(invoice_type, 'SAL')
 
-    last_invoice = pos_wholesale.objects.filter(
+    invoice_number = generate_serial_number(
+        prefix=prefix,
+        model_class=pos_wholesale,
+        date=None,
         user=user,
-        invoice_type=invoice_type,
-        invoice_number__startswith=prefix
-    ).order_by('-id').first()
-
-    if last_invoice:
-        try:
-            last_number = int(last_invoice.invoice_number.split('-')[-1])
-        except (IndexError, ValueError):
-            last_number = 0
-    else:
-        last_number = 0
-
-    invoice_number = f"{prefix}-{last_number + 1}"
+        filter_kwargs={'invoice_type': invoice_type}
+    )
     return JsonResponse({"invoice_number": invoice_number})
 
 
