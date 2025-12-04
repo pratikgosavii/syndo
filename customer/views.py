@@ -120,6 +120,101 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import hmac, hashlib, base64, os, json
 
+class ReturnShippingRatesAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+
+    def get(self, request, request_id):
+        """
+        Get all Return/Exchange requests of logged-in user
+        """
+        from vendor.models import DeliverySettings, vendor_store
+        from users.models import User
+        from customer.models import Address
+        from decimal import Decimal
+
+        # Compute shipping using vendor DeliverySettings and distance between store and order address
+        def _to_float(val, default=None):
+            try:
+                return float(val)
+            except Exception:
+                return default
+
+        # Inputs from query params
+        vendor_user_id = request.query_params.get("vendor_user_id")
+        address_id = request.query_params.get("address_id")
+        delivery_type = request.query_params.get("delivery_type") or "self_pickup"
+
+        if not vendor_user_id or not address_id:
+            return Response(
+                {"detail": "vendor_user_id and address_id are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            vendor_user = User.objects.get(id=vendor_user_id)
+        except User.DoesNotExist:
+            return Response({"detail": "Vendor user not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            addr = Address.objects.get(id=address_id, user=request.user)
+        except Address.DoesNotExist:
+            return Response({"detail": "Address not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        shipping_fee = Decimal("0.00")
+        distance_km = None
+
+        if vendor_user:
+            # Load settings once
+            ds = DeliverySettings.objects.filter(user=vendor_user).only(
+                "general_delivery_charge", "instant_per_km_charge", "instant_min_base_fare"
+            ).first()
+            if delivery_type == "general_delivery":
+                # Flat general delivery charge
+                shipping_fee = Decimal(str(getattr(ds, "general_delivery_charge", 50.00))) if ds else Decimal("50.00")
+            elif delivery_type == "instant_delivery":
+                base_fare = Decimal(str(getattr(ds, "instant_min_base_fare", 30.00))) if ds else Decimal("30.00")
+                per_km = Decimal(str(getattr(ds, "instant_per_km_charge", 10.00))) if ds else Decimal("10.00")
+
+                # Need coordinates to compute distance; if missing, fall back to base fare
+                if addr:
+                    # vendor store coords
+                    store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
+                    lat1 = _to_float(getattr(store, "latitude", None)) if store else None
+                    lon1 = _to_float(getattr(store, "longitude", None)) if store else None
+                    # customer address coords
+                    lat2 = _to_float(getattr(addr, "latitude", None))
+                    lon2 = _to_float(getattr(addr, "longitude", None))
+
+                    if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
+                        # Haversine distance in km
+                        import math
+                        R = 6371.0
+                        dlat = math.radians(lat2 - lat1)
+                        dlon = math.radians(lon2 - lon1)
+                        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+                        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                        distance_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
+
+                if distance_km is not None:
+                    calculated = (per_km * distance_km).quantize(Decimal("0.01"))
+                    shipping_fee = max(base_fare, calculated) if base_fare is not None else calculated
+                else:
+                    shipping_fee = base_fare
+            else:
+                # self_pickup or on_shop_order => no shipping
+                shipping_fee = Decimal("0.00")
+
+        return Response(
+            {
+                "delivery_type": delivery_type,
+                "shipping_fee": str(shipping_fee),
+                "distance_km": str(distance_km) if distance_km is not None else None,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class RequestOfferAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     

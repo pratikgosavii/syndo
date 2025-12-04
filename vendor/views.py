@@ -1777,6 +1777,11 @@ class VerifyPANAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        def _is_success(result: dict) -> bool:
+            status_txt = str(result.get("status", "")).lower()
+            code = result.get("status_code")
+            return status_txt == "success" and str(code) == "200"
+
         pan = request.data.get("pan")
         name = request.data.get("name", "")
         if not pan:
@@ -1788,8 +1793,7 @@ class VerifyPANAPIView(APIView):
 
         try:
             result = kyc_verify_pan(pan, name)
-            # Simplistic success check; adapt to provider schema
-            success = bool(result.get("success", True))
+            success = _is_success(result)
             store.pan_number = pan
             store.is_pan_verified = success
             store.pan_verified_at = timezone.now() if success else None
@@ -1807,6 +1811,11 @@ class VerifyGSTINAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        def _is_success(result: dict) -> bool:
+            status_txt = str(result.get("status", "")).lower()
+            code = result.get("status_code")
+            return status_txt == "success" and str(code) == "200"
+
         gstin = request.data.get("gstin")
         if not gstin:
             return Response({"detail": "gstin is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1817,7 +1826,7 @@ class VerifyGSTINAPIView(APIView):
 
         try:
             result = kyc_verify_gstin(gstin)
-            success = bool(result.get("success", True))
+            success = _is_success(result)
             store.gstin = gstin
             store.is_gstin_verified = success
             store.gstin_verified_at = timezone.now() if success else None
@@ -1835,6 +1844,11 @@ class VerifyBankAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        def _is_success(result: dict) -> bool:
+            status_txt = str(result.get("status", "")).lower()
+            code = result.get("status_code")
+            return status_txt == "success" and str(code) == "200"
+
         account_number = request.data.get("account_number")
         ifsc = request.data.get("ifsc")
         name = request.data.get("name", "")
@@ -1847,7 +1861,7 @@ class VerifyBankAPIView(APIView):
 
         try:
             result = kyc_verify_bank(account_number, ifsc, name)
-            success = bool(result.get("success", True))
+            success = _is_success(result)
             store.bank_account_number = account_number
             store.bank_ifsc = ifsc
             store.is_bank_verified = success
@@ -1869,6 +1883,11 @@ class VerifyFSSAIAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        def _is_success(result: dict) -> bool:
+            status_txt = str(result.get("status", "")).lower()
+            code = result.get("status_code")
+            return status_txt == "success" and str(code) == "200"
+
         fssai = request.data.get("fssai")
         if not fssai:
             return Response({"detail": "fssai is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1879,7 +1898,7 @@ class VerifyFSSAIAPIView(APIView):
 
         try:
             result = kyc_verify_fssai(fssai)
-            success = bool(result.get("success", True))
+            success = _is_success(result)
             store.fssai_number = fssai
             store.is_fssai_verified = success
             store.fssai_verified_at = timezone.now() if success else None

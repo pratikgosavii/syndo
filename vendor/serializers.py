@@ -313,7 +313,7 @@ class product_serializer(serializers.ModelSerializer):
         Return product_addon rows linked to this product.
         """
         try:
-            qs = obj.product_addon.all()  # related_name on product_addon model
+            qs = obj.product_addon.filter(addon__is_active=True, user = self.context.get('request').user)  # related_name on product_addon model
         except Exception:
             return []
         return ProductAddonSerializer(qs, many=True).data

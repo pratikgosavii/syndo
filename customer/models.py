@@ -194,8 +194,6 @@ class Order(models.Model):
     item_total = models.DecimalField(max_digits=10, decimal_places=2)
     tax_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    wallet_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    cashback = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     coupon = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 

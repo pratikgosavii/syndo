@@ -680,14 +680,16 @@ class DeliverySettingsForm(forms.ModelForm):
         fields = [
             'instant_order_prep_time',
             'general_delivery_days',
-            'delivery_charge_per_km',
-            'minimum_base_fare'
+            'general_delivery_charge',
+            'instant_per_km_charge',
+            'instant_min_base_fare',
         ]
         widgets = {
             'instant_order_prep_time': forms.NumberInput(attrs={'class': 'form-control'}),
             'general_delivery_days': forms.NumberInput(attrs={'class': 'form-control'}),
-            'delivery_charge_per_km': forms.NumberInput(attrs={'class': 'form-control'}),
-            'minimum_base_fare': forms.NumberInput(attrs={'class': 'form-control'}),
+            'general_delivery_charge': forms.NumberInput(attrs={'class': 'form-control'}),
+            'instant_per_km_charge': forms.NumberInput(attrs={'class': 'form-control'}),
+            'instant_min_base_fare': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
 

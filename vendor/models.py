@@ -1037,8 +1037,11 @@ from django.db import models
 class DeliverySettings(models.Model):
     instant_order_prep_time = models.PositiveIntegerField(default=30)  # in minutes
     general_delivery_days = models.PositiveIntegerField(default=2)
-    delivery_charge_per_km = models.DecimalField(max_digits=6, decimal_places=2, default=10.00)
-    minimum_base_fare = models.DecimalField(max_digits=6, decimal_places=2, default=30.00)
+    # General delivery: flat charge
+    general_delivery_charge = models.DecimalField(max_digits=7, decimal_places=2, default=50.00)
+    # Instant delivery pricing: per-km after base fare
+    instant_per_km_charge = models.DecimalField(max_digits=7, decimal_places=2, default=10.00)
+    instant_min_base_fare = models.DecimalField(max_digits=7, decimal_places=2, default=30.00)
     user = models.ForeignKey("users.User", on_delete=models.CASCADE)
 
 

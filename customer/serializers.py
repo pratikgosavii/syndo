@@ -102,7 +102,7 @@ class AddressSerializer(serializers.ModelSerializer):
 
 
 
-from vendor.models import product
+from vendor.models import product, vendor_store, DeliverySettings
 import random, string
 from django.db.models import Max
 
@@ -199,14 +199,72 @@ class OrderSerializer(serializers.ModelSerializer):
         # generate order_id
         order_id = self.generate_order_id()
 
+        # Compute shipping using vendor DeliverySettings and distance between store and order address
+        def _to_float(val, default=None):
+            try:
+                return float(val)
+            except Exception:
+                return default
+
+        # Determine vendor (assumes all items from one vendor; fallbacks to first item's vendor)
+        vendor_user = None
+        if order_items:
+            vendor_user = order_items[0].product.user
+
+        # Resolve address from validated_data
+        addr = validated_data.get("address")
+        delivery_type = validated_data.get("delivery_type") or "self_pickup"
+        shipping_fee = Decimal("0.00")
+        if vendor_user:
+            # Load settings once
+            ds = DeliverySettings.objects.filter(user=vendor_user).only(
+                "general_delivery_charge", "instant_per_km_charge", "instant_min_base_fare"
+            ).first()
+            if delivery_type == "general_delivery":
+                # Flat general delivery charge
+                shipping_fee = Decimal(str(getattr(ds, "general_delivery_charge", 50.00)))
+            elif delivery_type == "instant_delivery":
+                base_fare = Decimal(str(getattr(ds, "instant_min_base_fare", 30.00)))
+                per_km = Decimal(str(getattr(ds, "instant_per_km_charge", 10.00)))
+
+                # Need coordinates to compute distance; if missing, fall back to base fare
+                dist_km = None
+                if addr:
+                    # vendor store coords
+                    store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
+                    lat1 = _to_float(getattr(store, "latitude", None)) if store else None
+                    lon1 = _to_float(getattr(store, "longitude", None)) if store else None
+                    # customer address coords
+                    lat2 = _to_float(getattr(addr, "latitude", None))
+                    lon2 = _to_float(getattr(addr, "longitude", None))
+
+                    if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
+                        # Haversine distance in km
+                        import math
+                        R = 6371.0
+                        dlat = math.radians(lat2 - lat1)
+                        dlon = math.radians(lon2 - lon1)
+                        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+                        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                        dist_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
+
+                if dist_km is not None:
+                    calculated = (per_km * dist_km).quantize(Decimal("0.01"))
+                    shipping_fee = max(base_fare, calculated)
+                else:
+                    shipping_fee = base_fare
+            else:
+                # self_pickup or on_shop_order => no shipping
+                shipping_fee = Decimal("0.00")
+
+        # ensure shipping fee in validated_data reflects computed value
+        validated_data["shipping_fee"] = shipping_fee
+
         # convert values from validated_data to Decimal safely
-        shipping_fee = Decimal(str(validated_data.get("shipping_fee", 0)))
-        wallet_amount = Decimal(str(validated_data.get("wallet_amount", 0)))
-        cashback = Decimal(str(validated_data.get("cashback", 0)))
         coupon = Decimal(str(validated_data.get("coupon", 0)))
 
         # calculate final total
-        total_amount = item_total + tax_total + shipping_fee - wallet_amount - cashback - coupon
+        total_amount = item_total + tax_total + shipping_fee - coupon
 
         # set calculated totals in order
         order = Order.objects.create(
