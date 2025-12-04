@@ -1260,7 +1260,7 @@ class SuperCatalogueSerializer(serializers.ModelSerializer):
     sub_category_id = serializers.PrimaryKeyRelatedField(
         source="sub_category", queryset=product_subcategory.objects.all(), write_only=True, required=False, allow_null=True
     )
-    sub_category_details = product_subcategory_serializer(source="sub_category", read_only=True)
+    sub_category_details = serializers.SerializerMethodField(read_only=True)
     size_details = size_serializer(source="size", read_only=True)
 
     class Meta:
@@ -1268,6 +1268,33 @@ class SuperCatalogueSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["created_at", "user"]
 
+    def get_sub_category_details(self, obj):
+        """
+        super_catalogue.sub_category is a CharField. It may store either a numeric id (as string)
+        or the subcategory name. Resolve to product_subcategory instance if possible; otherwise
+        return a minimal dict with the raw value.
+        """
+        from masters.models import product_subcategory as PS
+        from masters.serializers import product_subcategory_serializer as PSS
+
+        raw = getattr(obj, "sub_category", None)
+        if not raw:
+            return None
+
+        sub = None
+        # Try by id (raw could be "12")
+        try:
+            sub = PS.objects.filter(pk=int(raw)).first()
+        except Exception:
+            sub = None
+        # Fallback by name
+        if not sub:
+            sub = PS.objects.filter(name=raw).first()
+
+        if sub:
+            return PSS(sub).data
+        # Fallback: return raw string
+        return {"id": None, "name": str(raw)}
 # class StoreRatingSerializer(serializers.ModelSerializer):
 #     vendor_user_id = serializers.IntegerField(write_only=True)
 #     user_details = UserProfileSerializer(source = 'seller', read_only = True)

@@ -203,12 +203,19 @@ from users.models import DeviceToken
 from firebase_admin import messaging
 
 def send_push_notification(user, title, body, campaign_id):
-    print('I am here')
+    """
+    Send the campaign notification to every FCM token that belongs to `user`.
+    """
+    tokens = list(
+        DeviceToken.objects.filter(user=user).values_list("token", flat=True)
+    )
 
-    device_token = DeviceToken.objects.get(user=user)
+    if not tokens:
+        print(f"ℹ️ No device tokens registered for user_id={user.id}")
+        return []
 
-    if device_token:
-
+    responses = []
+    for token in tokens:
         message = messaging.Message(
             notification=messaging.Notification(
                 title=title,
@@ -217,14 +224,20 @@ def send_push_notification(user, title, body, campaign_id):
             data={
                 "campaign_id": str(campaign_id),
             },
-            token=device_token,
+            token=token,
         )
 
         try:
             response = messaging.send(message)
-            print("✅ Successfully sent message:", response)
+            responses.append(response)
+            print(
+                f"✅ Successfully sent message to user_id={user.id}, token={token}: {response}"
+            )
         except Exception as e:
-            print("❌ Error sending message:", e)
+            print(
+                f"❌ Error sending message to user_id={user.id}, token={token}: {e}"
+            )
+    return responses
 
 
 
@@ -243,7 +256,7 @@ def approve_notification_campaign(request, pk):
     campaign.save()
 
     # send push notifications to all followers
-    followers = User.objects.filter()  # adjust as per your relation
+    followers = User.objects.all()  # adjust as per your relation
     print(f"🔔 Starting notification sending for campaign={campaign.id}, followers={followers.count()}")
 
     for follower_relation in followers:
