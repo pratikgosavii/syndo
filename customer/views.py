@@ -12,9 +12,9 @@ from rest_framework.decorators import action
 from .payments.cashfree import create_order_for, refresh_order_status
 from rest_framework.decorators import action
 from .payments.cashfree import create_order_for, refresh_order_status
-from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store, VendorCoverage
+from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store, VendorCoverage, NotificationCampaign
 from masters.serializers import Pincode_serializer
-from vendor.serializers import BannerCampaignSerializer, PostSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer
+from vendor.serializers import BannerCampaignSerializer, PostSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer, NotificationCampaignSerializer
 from .models import *
 from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 
@@ -1523,4 +1523,57 @@ class VendorPincodesAPIView(APIView):
             "vendor_id": vendor_id,
             "pincodes": serializer.data,
             "count": len(serializer.data)
+        }, status=status.HTTP_200_OK)
+
+
+class VendorCampaignsAPIView(APIView):
+    """
+    API to return all campaigns (Banner and Notification) for a specific vendor.
+    GET /customer/vendor-campaigns/?vendor_id=<user_id>
+    If vendor_id is not provided, returns campaigns for the authenticated user (if vendor).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        vendor_id = request.query_params.get('vendor_id')
+        
+        # If vendor_id not provided, use authenticated user (if vendor)
+        if not vendor_id:
+            if not request.user.is_vendor:
+                return Response(
+                    {"detail": "vendor_id parameter is required or user must be a vendor."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            vendor_id = request.user.id
+        else:
+            try:
+                vendor_id = int(vendor_id)
+            except ValueError:
+                return Response(
+                    {"detail": "vendor_id must be a valid integer."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Get banner campaigns (only approved ones for customers)
+        banner_campaigns = BannerCampaign.objects.filter(
+            user_id=vendor_id,
+            is_approved=True
+        ).select_related('product', 'store', 'user').order_by('-created_at')
+        
+        # Get all notification campaigns for the vendor
+        notification_campaigns = NotificationCampaign.objects.filter(
+            user_id=vendor_id
+        ).select_related('product', 'store', 'user').order_by('-created_at')
+        
+        # Serialize the campaigns
+        banner_serializer = BannerCampaignSerializer(banner_campaigns, many=True, context={'request': request})
+        notification_serializer = NotificationCampaignSerializer(notification_campaigns, many=True, context={'request': request})
+        
+        return Response({
+            "vendor_id": vendor_id,
+            "banner_campaigns": banner_serializer.data,
+            "notification_campaigns": notification_serializer.data,
+            "banner_count": len(banner_serializer.data),
+            "notification_count": len(notification_serializer.data),
+            "total_campaigns": len(banner_serializer.data) + len(notification_serializer.data)
         }, status=status.HTTP_200_OK)

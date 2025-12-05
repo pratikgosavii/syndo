@@ -60,6 +60,7 @@ path('stores-by-category/', StoreByCategoryView.as_view(), name='stores-by-categ
 path('Home-Screen-Api/', HomeScreenView.as_view(), name='HomeScreenView'),
 path('stores-by-subcategory/', StoreBySubCategoryView.as_view(), name='stores-by-subcategory'),
 path('vendor-pincodes/', VendorPincodesAPIView.as_view(), name='vendor-pincodes'),
+path('vendor-campaigns/', VendorCampaignsAPIView.as_view(), name='vendor-campaigns'),
 
 
 
