@@ -210,6 +210,8 @@ class ReturnShippingRatesAPIView(APIView):
             {   
                 "delivery_type": delivery_type,
                 "shipping_fee": str(shipping_fee),
+                "delivery_days" : str(ds.general_delivery_days) if ds else None,
+                "instant_order_prep_time" : str(ds.instant_order_prep_time) if ds else None,
                 "distance_km": str(distance_km) if distance_km is not None else None,
             },
             status=status.HTTP_200_OK,
@@ -1168,7 +1170,10 @@ class HomeScreenView(APIView):
             # Base product queryset for this main category
             products_qs = product.objects.filter(
                 category_id__in=category_ids,
-                is_active=True
+                is_active=True,
+                sale_type__in=["online", "both"],
+                user__vendor_store__is_active=True,
+                user__vendor_store__is_online=True,
             )
 
             # Apply pincode and distance logic like in ListProducts (using user's default address)
