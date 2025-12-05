@@ -3203,6 +3203,7 @@ class UpdateOrderItemStatusAPIView(APIView):
                 event_map = {
                     "intransit": "out_for_delivery",
                     "delivered": "delivered",
+                    "ready_to_deliver": "ready_to_deliver",
                     "cancelled": "cancelled",
                 }
                 evt = event_map.get(status_value)

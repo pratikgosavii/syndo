@@ -230,6 +230,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('ready_to_deliver', 'Ready to Deliver'),
         ('intransit', 'In Transit'),
         ('delivered', 'Delivered'),
         

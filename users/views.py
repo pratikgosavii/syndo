@@ -393,6 +393,18 @@ def user_list(request):
 
     return render(request, 'user_list.html', { 'data' : data})
 
+def list_user_customer(request):
+
+    data = User.objects.filter(is_customer=True)
+
+    return render(request, 'list_user_customer.html', { 'data' : data})
+
+def list_user_vendor(request):
+
+    data = User.objects.filter(is_vendor=True).select_related('user_company_profile').prefetch_related('vendor_store')
+
+    return render(request, 'list_user_vendor.html', { 'data' : data})
+
 
 
 
@@ -485,3 +497,88 @@ class RegisterDeviceTokenAPIView(APIView):
             return Response({"error": "Token required"}, status=400)
         DeviceToken.objects.update_or_create(user=request.user, defaults={"token": token})
         return Response({"success": True})
+
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+import json
+
+@login_required(login_url='login_admin')
+def toggle_user_status(request):
+    """
+    Toggle user active/inactive status
+    POST /users/toggle-user-status/
+    Body: {"user_id": 1}
+    """
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    user_id = data.get("user_id")
+    if not user_id:
+        return JsonResponse({"error": "user_id is required"}, status=400)
+    
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+    
+    # Toggle is_active status
+    target_user.is_active = not target_user.is_active
+    target_user.save()
+    
+    return JsonResponse({
+        "success": True,
+        "message": f"User {'enabled' if target_user.is_active else 'disabled'} successfully",
+        "user_id": target_user.id,
+        "is_active": target_user.is_active
+    })
+
+
+@login_required(login_url='login_admin')
+def toggle_global_supplier(request):
+    """
+    Toggle global_supplier status for vendor
+    POST /users/toggle-global-supplier/
+    Body: {"user_id": 1}
+    """
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    user_id = data.get("user_id")
+    if not user_id:
+        return JsonResponse({"error": "user_id is required"}, status=400)
+    
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+    
+    if not target_user.is_vendor:
+        return JsonResponse({"error": "User is not a vendor"}, status=400)
+    
+    # Get vendor store
+    try:
+        vendor_store_obj = vendor_store.objects.get(user=target_user)
+    except vendor_store.DoesNotExist:
+        return JsonResponse({"error": "Vendor store not found"}, status=404)
+    
+    # Toggle global_supplier status
+    vendor_store_obj.global_supplier = not vendor_store_obj.global_supplier
+    vendor_store_obj.save()
+    
+    return JsonResponse({
+        "success": True,
+        "message": f"Vendor {'marked as' if vendor_store_obj.global_supplier else 'removed from'} global supplier",
+        "user_id": target_user.id,
+        "global_supplier": vendor_store_obj.global_supplier
+    })

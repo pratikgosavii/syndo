@@ -105,56 +105,116 @@
                                                 class="table table-bordered table-striped"
                                         >
                                             <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Name</th>
-                                                <th>Email</th>
-                                                <th>Mobile</th>
-                                                <th>Type</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody id="tableBody">
-                                                {% if data %}
-                                            {% for i in data %}
                                                 <tr>
-                                                    <td>{{ forloop.counter }}</td>
-                                                    <td>{{ i.first_name|default:i.username|default:"N/A" }}</td>
-                                                    <td>{{ i.email|default:"N/A" }}</td>
-                                                    <td>{{ i.mobile|default:"N/A" }}</td>
-                                                    <td>   {% if i.is_customer %}
-                                                    Customer
-                                                {% elif i.is_vendor %}
-                                                    Vendor
-                                                {% elif i.is_customer %}
-                                                    Customer
-                                                {% else %}
-                                                    Unknown
-                                                {% endif %}</td>
-                                                    <td>
-                                                        <span class="badge {% if i.is_active %}bg-success{% else %}bg-danger{% endif %}">
-                                                            {% if i.is_active %}Active{% else %}Inactive{% endif %}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <button class="btn btn-sm {% if i.is_active %}btn-danger{% else %}btn-success{% endif %}" 
-                                                                onclick="toggleUserStatus({{ i.id }}, {{ i.is_active|yesno:'false,true' }})">
-                                                            {% if i.is_active %}Disable{% else %}Enable{% endif %}
-                                                        </button>
-                                                        {% if i.is_vendor %}
-                                                        <button class="btn btn-sm btn-info mt-1" 
-                                                                onclick="toggleGlobalSupplier({{ i.id }})"
-                                                                title="Toggle Global Supplier">
-                                                            Global Supplier
-                                                        </button>
-                                                        {% endif %}
-                                                    </td>
-                                                </tr>
-                                            {% endfor %}
-                                            {% endif %}
-                                            </tbody>
-                                        </table>
+    <th>#</th>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Mobile</th>
+    <th>Store Name</th>
+    <th>Company Name</th>
+    <th>GSTIN</th>
+    <th>PAN</th>
+    <th>FSSAI</th>
+    <th>Store Status</th>
+    <th>User Status</th>
+    <th>Global Supplier</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody id="tableBody">
+{% if data %}
+    {% for i in data %}
+    {% with store=i.vendor_store.first company=i.user_company_profile %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ i.first_name|default:i.last_name|default:"N/A" }}</td>
+        <td>{{ i.email|default:"N/A" }}</td>
+        <td>{{ i.mobile|default:"N/A" }}</td>
+        <td>
+            {% if store %}
+                {{ store.name|default:"N/A" }}
+            {% else %}
+                <span class="text-muted">No Store</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if company %}
+                {{ company.company_name|default:"N/A" }}
+            {% else %}
+                N/A
+            {% endif %}
+        </td>
+        <td>
+            {% if company %}
+                {{ company.gstin|default:"N/A" }}
+            {% elif store %}
+                {{ store.gstin|default:"N/A" }}
+            {% else %}
+                N/A
+            {% endif %}
+        </td>
+        <td>
+            {% if company %}
+                {{ company.pan|default:"N/A" }}
+            {% elif store %}
+                {{ store.pan_number|default:"N/A" }}
+            {% else %}
+                N/A
+            {% endif %}
+        </td>
+        <td>
+            {% if store %}
+                {{ store.fssai_number|default:"N/A" }}
+            {% else %}
+                N/A
+            {% endif %}
+        </td>
+        <td>
+            {% if store %}
+                <span class="badge {% if store.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                    {% if store.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+            {% else %}
+                <span class="badge bg-secondary">N/A</span>
+            {% endif %}
+        </td>
+        <td>
+            <span class="badge {% if i.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                {% if i.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+        </td>
+        <td>
+            {% if store %}
+                <span class="badge {% if store.global_supplier %}bg-info{% else %}bg-secondary{% endif %}">
+                    {% if store.global_supplier %}Yes{% else %}No{% endif %}
+                </span>
+            {% else %}
+                <span class="badge bg-secondary">N/A</span>
+            {% endif %}
+        </td>
+        <td>
+            <button class="btn btn-sm {% if i.is_active %}btn-danger{% else %}btn-success{% endif %}" 
+                    onclick="toggleUserStatus({{ i.id }}, {{ i.is_active|yesno:'false,true' }})">
+                {% if i.is_active %}Disable{% else %}Enable{% endif %}
+            </button>
+            {% if store %}
+                <button class="btn btn-sm btn-info mt-1" 
+                        onclick="toggleGlobalSupplier({{ i.id }})"
+                        title="Toggle Global Supplier">
+                    Global Supplier
+                </button>
+            {% endif %}
+        </td>
+    </tr>
+    {% endwith %}
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="13" class="text-center text-muted">No vendors found.</td>
+    </tr>
+{% endif %}
+</tbody>
+ </table>
                                     </div>
                                 </div>
                             </div>

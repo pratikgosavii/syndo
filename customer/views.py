@@ -12,7 +12,8 @@ from rest_framework.decorators import action
 from .payments.cashfree import create_order_for, refresh_order_status
 from rest_framework.decorators import action
 from .payments.cashfree import create_order_for, refresh_order_status
-from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store
+from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store, VendorCoverage
+from masters.serializers import Pincode_serializer
 from vendor.serializers import BannerCampaignSerializer, PostSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer
 from .models import *
 from .serializers import AddressSerializer, CartSerializer, OrderSerializer
@@ -175,35 +176,35 @@ class ReturnShippingRatesAPIView(APIView):
             elif delivery_type == "instant_delivery":
                 base_fare = Decimal(str(getattr(ds, "instant_min_base_fare", 30.00))) if ds else Decimal("30.00")
                 per_km = Decimal(str(getattr(ds, "instant_per_km_charge", 10.00))) if ds else Decimal("10.00")
+
+                # Need coordinates to compute distance; if missing, fall back to base fare
+                if addr:
+                    # vendor store coords
+                    store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
+                    lat1 = _to_float(getattr(store, "latitude", None)) if store else None
+                    lon1 = _to_float(getattr(store, "longitude", None)) if store else None
+                    # customer address coords
+                    lat2 = _to_float(getattr(addr, "latitude", None))
+                    lon2 = _to_float(getattr(addr, "longitude", None))
+
+                    if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
+                        # Haversine distance in km
+                        import math
+                        R = 6371.0
+                        dlat = math.radians(lat2 - lat1)
+                        dlon = math.radians(lon2 - lon1)
+                        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+                        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                        distance_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
+
+                if distance_km is not None:
+                    calculated = (per_km * distance_km).quantize(Decimal("0.01"))
+                    shipping_fee = max(base_fare, calculated) if base_fare is not None else calculated
+                else:
+                    shipping_fee = base_fare
             else:
                 # self_pickup or on_shop_order => no shipping
                 shipping_fee = Decimal("0.00")
-                # Need coordinates to compute distance; if missing, fall back to base fare
-            if addr:
-                # vendor store coords
-                store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
-                lat1 = _to_float(getattr(store, "latitude", None)) if store else None
-                lon1 = _to_float(getattr(store, "longitude", None)) if store else None
-                # customer address coords
-                lat2 = _to_float(getattr(addr, "latitude", None))
-                lon2 = _to_float(getattr(addr, "longitude", None))
-
-                if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
-                    # Haversine distance in km
-                    import math
-                    R = 6371.0
-                    dlat = math.radians(lat2 - lat1)
-                    dlon = math.radians(lon2 - lon1)
-                    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-                    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-                    distance_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
-
-            if distance_km is not None:
-                calculated = (per_km * distance_km).quantize(Decimal("0.01"))
-                shipping_fee = max(base_fare, calculated) if base_fare is not None else calculated
-            else:
-                shipping_fee = base_fare
-            
 
         return Response(
             {   
@@ -392,7 +393,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from vendor.filters import ProductFilter
 
 
-from django.db.models import Exists, OuterRef, Value, BooleanField, F, FloatField, ExpressionWrapper
+from django.db.models import Exists, OuterRef, Value, BooleanField, F, FloatField, ExpressionWrapper, Q
 from django.db.models.functions import Cast
 
 
@@ -411,13 +412,18 @@ class ListProducts(ListAPIView):
             user__vendor_store__is_online=True,
         )
         print(user)
-        # Filter by customer pincode
-          # Use the user's default address (is_default=True)
+        # Filter by customer pincode, but exclude global suppliers from pincode check
+        # Use the user's default address (is_default=True)
         default_addr = Address.objects.filter(user=user, is_default=True).first()
         pincode = default_addr.pincode if default_addr else None
         print(default_addr)
         if pincode:
-            qs = qs.filter(user__coverages__pincode__code=pincode)
+            # Include products from global suppliers OR products matching pincode coverage
+            # Global suppliers are visible everywhere, regular vendors only in their coverage area
+            qs = qs.filter(
+                Q(user__vendor_store__global_supplier=True) |  # Global suppliers: visible everywhere
+                Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+            )
 
         # Annotate favourites
         if user.is_authenticated:
@@ -1170,7 +1176,12 @@ class HomeScreenView(APIView):
             default_addr = Address.objects.filter(user=user, is_default=True).only('pincode', 'latitude', 'longitude').first()
             pincode = default_addr.pincode if default_addr else None
             if pincode:
-                products_qs = products_qs.filter(user__coverages__pincode__code=pincode)
+                # Include products from global suppliers OR products matching pincode coverage
+                # Global suppliers are visible everywhere, regular vendors only in their coverage area
+                products_qs = products_qs.filter(
+                    Q(user__vendor_store__global_supplier=True) |  # Global suppliers: visible everywhere
+                    Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+                )
 
             products_qs = products_qs.select_related(
                 'user', 'category', 'sub_category'
@@ -1468,3 +1479,43 @@ class ChatInitAPIView(APIView):
 #         self.perform_create(serializer)
 #         out = StoreRatingSerializer(self._created_instance)
 #         return Response(out.data, status=201)
+
+
+class VendorPincodesAPIView(APIView):
+    """
+    API to return all pincodes covered by a specific vendor.
+    GET /customer/vendor-pincodes/?vendor_id=<user_id>
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        vendor_id = request.query_params.get('vendor_id')
+        
+        if not vendor_id:
+            return Response(
+                {"detail": "vendor_id parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            vendor_id = int(vendor_id)
+        except ValueError:
+            return Response(
+                {"detail": "vendor_id must be a valid integer."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get all VendorCoverage entries for this vendor
+        coverages = VendorCoverage.objects.filter(
+            user_id=vendor_id
+        ).select_related('pincode')
+        
+        # Extract pincodes and serialize them
+        pincodes = [coverage.pincode for coverage in coverages]
+        serializer = Pincode_serializer(pincodes, many=True)
+        
+        return Response({
+            "vendor_id": vendor_id,
+            "pincodes": serializer.data,
+            "count": len(serializer.data)
+        }, status=status.HTTP_200_OK)

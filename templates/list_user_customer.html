@@ -142,13 +142,7 @@
                                                                 onclick="toggleUserStatus({{ i.id }}, {{ i.is_active|yesno:'false,true' }})">
                                                             {% if i.is_active %}Disable{% else %}Enable{% endif %}
                                                         </button>
-                                                        {% if i.is_vendor %}
-                                                        <button class="btn btn-sm btn-info mt-1" 
-                                                                onclick="toggleGlobalSupplier({{ i.id }})"
-                                                                title="Toggle Global Supplier">
-                                                            Global Supplier
-                                                        </button>
-                                                        {% endif %}
+                                                       
                                                     </td>
                                                 </tr>
                                             {% endfor %}

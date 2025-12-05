@@ -95,6 +95,9 @@ class vendor_store(models.Model):
     is_fssai_verified = models.BooleanField(default=False)
     fssai_verified_at = models.DateTimeField(blank=True, null=True)
     
+    # Global Supplier
+    global_supplier = models.BooleanField(default=False, help_text="Mark vendor as global supplier")
+    
 
 DAYS_OF_WEEK = [
     ('sunday', 'Sunday'),
