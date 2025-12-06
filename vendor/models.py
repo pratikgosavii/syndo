@@ -596,6 +596,7 @@ class product(models.Model):
     gallery_images = models.ManyToManyField('ProductImage', blank=True, related_name='products_gallery_images')
 
     # Delivery & Policies
+    is_catalog = models.BooleanField(default=False)
     is_customize = models.BooleanField(default=False)
     instant_delivery = models.BooleanField(default=False)
     self_pickup = models.BooleanField(default=False)
