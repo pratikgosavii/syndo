@@ -649,7 +649,7 @@ class product_serializer(serializers.ModelSerializer):
 class BannerCampaignSerializer(serializers.ModelSerializer):
 
     product_details = product_serializer(source = "product", read_only = True)
-    
+    store_details = VendorStoreSerializer2(source = "store", read_only = True)
     class Meta:
         model = BannerCampaign
         fields = '__all__'
