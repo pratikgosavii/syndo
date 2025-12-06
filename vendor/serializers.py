@@ -1173,6 +1173,8 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
 
 class NotificationCampaignSerializer(serializers.ModelSerializer):
+    store_details = VendorStoreSerializer2(source = "store", read_only = True)
+
     class Meta:
         model = NotificationCampaign
         fields = "__all__"

@@ -1535,21 +1535,13 @@ class VendorCampaignsAPIView(APIView):
 
     def get(self, request):
         # Get all banner campaigns (only approved ones for customers)
-        banner_campaigns = BannerCampaign.objects.filter(
-            is_approved=True
-        ).select_related('product', 'store', 'user').order_by('-created_at')
-        
-        # Get all notification campaigns
+      
         notification_campaigns = NotificationCampaign.objects.all().select_related('product', 'store', 'user').order_by('-created_at')
         
         # Serialize the campaigns
-        banner_serializer = BannerCampaignSerializer(banner_campaigns, many=True, context={'request': request})
         notification_serializer = NotificationCampaignSerializer(notification_campaigns, many=True, context={'request': request})
         
         return Response({
-            "banner_campaigns": banner_serializer.data,
             "notification_campaigns": notification_serializer.data,
-            "banner_count": len(banner_serializer.data),
-            "notification_count": len(notification_serializer.data),
-            "total_campaigns": len(banner_serializer.data) + len(notification_serializer.data)
+           
         }, status=status.HTTP_200_OK)
