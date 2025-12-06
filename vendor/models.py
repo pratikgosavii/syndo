@@ -260,6 +260,8 @@ class vendor_customers(models.Model):
     dispatch_state = models.CharField(max_length=50, blank=True, null=True)
     dispatch_country = models.CharField(max_length=50, blank=True, null=True)
     # Transport
+    state = models.ForeignKey('masters.State', on_delete=models.SET_NULL, null=True, blank=True)
+
     transport_name = models.CharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs):
@@ -299,7 +301,8 @@ class vendor_vendors(models.Model):
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     pincode = models.CharField(max_length=10, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
-    state = models.CharField(max_length=100, blank=True, null=True)
+    state = models.ForeignKey('masters.State', on_delete=models.SET_NULL, null=True, blank=True)
+
     country = models.CharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs):
