@@ -1167,7 +1167,20 @@ class StoreBySubCategoryView(APIView):
         )
 
         # Get all vendor stores of those users
-        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).distinct()
+        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True, is_online=True).distinct()
+
+        # Filter by customer pincode, but exclude global suppliers from pincode check
+        # Use the user's default address (is_default=True)
+        user = request.user
+        default_addr = Address.objects.filter(user=user, is_default=True).first()
+        pincode = default_addr.pincode if default_addr else None
+        if pincode:
+            # Include stores from global suppliers OR stores matching pincode coverage
+            # Global suppliers are visible everywhere, regular vendors only in their coverage area
+            stores = stores.filter(
+                Q(global_supplier=True) |  # Global suppliers: visible everywhere
+                Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+            )
 
         serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
