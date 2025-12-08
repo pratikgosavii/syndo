@@ -380,6 +380,24 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
     def get_serializer_context(self):
         return {"request": self.request}  # ✅ needed for following field
 
+    def get_queryset(self):
+        qs = vendor_store.objects.filter(is_active=True)
+        
+        # Filter by customer pincode, but exclude global suppliers from pincode check
+        # Use the user's default address (is_default=True)
+        user = self.request.user
+        default_addr = Address.objects.filter(user=user, is_default=True).first()
+        pincode = default_addr.pincode if default_addr else None
+        if pincode:
+            # Include stores from global suppliers OR stores matching pincode coverage
+            # Global suppliers are visible everywhere, regular vendors only in their coverage area
+            qs = qs.filter(
+                Q(global_supplier=True) |  # Global suppliers: visible everywhere
+                Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+            )
+        
+        return qs.distinct()
+
     def get(self, request, *args, **kwargs):
         if "id" in kwargs:
             return self.retrieve(request, *args, **kwargs)
