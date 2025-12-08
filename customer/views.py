@@ -129,7 +129,8 @@ class ReturnShippingRatesAPIView(APIView):
         """
         Get all Return/Exchange requests of logged-in user
         """
-        from vendor.models import DeliverySettings, vendor_store
+        from vendor.models import DeliverySettings, vendor_store, DeliveryDiscount
+        from vendor.serializers import DeliveryDiscountSerializer
         from users.models import User
         from customer.models import Address
         from decimal import Decimal
@@ -205,7 +206,20 @@ class ReturnShippingRatesAPIView(APIView):
             else:
                 # self_pickup or on_shop_order => no shipping
                 shipping_fee = Decimal("0.00")
-
+        
+        # Get vendor's delivery discount
+        delivery_discount = None
+        if vendor_user:
+            try:
+                delivery_discount = DeliveryDiscount.objects.filter(user=vendor_user).first()
+            except Exception:
+                pass
+        
+        # Serialize delivery discount if exists
+        delivery_discount_data = None
+        if delivery_discount:
+            delivery_discount_data = DeliveryDiscountSerializer(delivery_discount).data
+        
         return Response(
             {   
                 "delivery_type": delivery_type,
@@ -213,6 +227,7 @@ class ReturnShippingRatesAPIView(APIView):
                 "delivery_days" : str(ds.general_delivery_days) if ds else None,
                 "instant_order_prep_time" : str(ds.instant_order_prep_time) if ds else None,
                 "distance_km": str(distance_km) if distance_km is not None else None,
+                "delivery_discount": delivery_discount_data,
             },
             status=status.HTTP_200_OK,
         )
