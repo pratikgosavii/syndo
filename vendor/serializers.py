@@ -949,14 +949,22 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             return False
 
         now = timezone.localtime()
-        today = now.strftime('%A').lower()
+        # Get day name - try both lowercase and capitalized to handle case mismatch
+        today_lower = now.strftime('%A').lower()  # 'monday'
+        today_capitalized = now.strftime('%A')  # 'Monday'
         current_time = now.time()
 
-        working_hour = obj.user.working_hours.filter(day=today).first()
+        # Try both lowercase and capitalized day names to handle any case mismatch
+        working_hour = obj.user.working_hours.filter(day=today_capitalized).first()
+        if not working_hour:
+            # Try with lowercase
+            working_hour = obj.user.working_hours.filter(day=today_lower).first()
+        
         if not working_hour or not working_hour.is_open:
             return False  # closed today fully
 
         if working_hour.open_time and working_hour.close_time:
+            # Check if current time is within working hours
             return working_hour.open_time <= current_time <= working_hour.close_time
 
         return True  # If no time is set but marked open
