@@ -480,8 +480,25 @@ class ListPosts(ListAPIView):
     serializer_class = PostSerializer
 
     def get_queryset(self):
-        # Only return posts belonging to the logged-in user
-        return Post.objects.all()
+        qs = Post.objects.filter(
+            user__vendor_store__is_active=True,
+            user__vendor_store__is_online=True,
+        )
+        
+        # Filter by customer pincode, but exclude global suppliers from pincode check
+        # Use the user's default address (is_default=True)
+        user = self.request.user
+        default_addr = Address.objects.filter(user=user, is_default=True).first()
+        pincode = default_addr.pincode if default_addr else None
+        if pincode:
+            # Include posts from global suppliers OR posts from vendors matching pincode coverage
+            # Global suppliers are visible everywhere, regular vendors only in their coverage area
+            qs = qs.filter(
+                Q(user__vendor_store__global_supplier=True) |  # Global suppliers: visible everywhere
+                Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+            )
+        
+        return qs.distinct()
     
 
 # class products_details(APIView):
