@@ -77,6 +77,8 @@ class vendor_store(models.Model):
     is_offline = models.BooleanField(default=False)
     display_as_catalog = models.BooleanField(default=False)
     private_catalog = models.BooleanField(default=False)
+    is_catalog = models.BooleanField(default=False)
+
     # KYC details
     pan_number = models.CharField(max_length=10, blank=True, null=True)
     gstin = models.CharField(max_length=15, blank=True, null=True)
@@ -596,7 +598,6 @@ class product(models.Model):
     gallery_images = models.ManyToManyField('ProductImage', blank=True, related_name='products_gallery_images')
 
     # Delivery & Policies
-    is_catalog = models.BooleanField(default=False)
     is_customize = models.BooleanField(default=False)
     instant_delivery = models.BooleanField(default=False)
     self_pickup = models.BooleanField(default=False)
