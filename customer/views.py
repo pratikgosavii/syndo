@@ -880,17 +880,21 @@ class reelsView(APIView):
 
     def get(self, request):
         reels = Reel.objects.all()
-        # Filter by customer's pincode coverage if available
-        try:
-            pincode = getattr(request.user, "pincode", None)
-            if pincode:
-                reels = reels.filter(
-                    Q(product__user__coverages__pincode__code=pincode) |
-                    Q(user__coverages__pincode__code=pincode)
-                ).distinct()
-        except Exception:
-            pass
-        serializer = ReelSerializer(reels, many=True, context={'request': request})
+        
+        # Filter by customer pincode, but exclude global suppliers from pincode check
+        # Use the user's default address (is_default=True)
+        user = request.user
+        default_addr = Address.objects.filter(user=user, is_default=True).first()
+        pincode = default_addr.pincode if default_addr else None
+        if pincode:
+            # Include reels from global suppliers OR reels from vendors matching pincode coverage
+            # Global suppliers are visible everywhere, regular vendors only in their coverage area
+            reels = reels.filter(
+                Q(user__vendor_store__global_supplier=True) |  # Global suppliers: visible everywhere
+                Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+            )
+        
+        serializer = ReelSerializer(reels.distinct(), many=True, context={'request': request})
         return Response(serializer.data)
 
 
