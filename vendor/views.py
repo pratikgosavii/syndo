@@ -605,9 +605,11 @@ from customer.serializers import *
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.prefetch_related('items__product').all().order_by('-id')
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Order.objects.prefetch_related('items__product').filter(user=self.request.user).order_by('-id')
 
     def update(self, request, *args, **kwargs):
         """Restrict update to only allowed fields"""
