@@ -910,7 +910,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
     spotlight_products = SpotlightProductSerializer(source='user.spotlightproduct_set', many=True, read_only=True)
     posts = PostSerializer(source='user.post_set', many=True, read_only=True)
     reels = ReelSerializer(source='user.reel_set', many=True, read_only=True)
-    banners = BannerCampaignSerializer(source='user.banners', many=True, read_only=True)
+    banners = serializers.SerializerMethodField()
 
     is_store_open = serializers.SerializerMethodField() 
     store_rating = serializers.SerializerMethodField()
@@ -982,6 +982,17 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             # pass through request if available for nested serializer context
             context = getattr(self, 'context', {})
             return ReviewSerializer(qs, many=True, context=context).data
+        except Exception:
+            return []
+
+    def get_banners(self, obj):
+        """Return only approved banners for this store."""
+        try:
+            from vendor.models import BannerCampaign
+            qs = BannerCampaign.objects.filter(user=obj.user, is_approved=True).order_by('-created_at')
+            # pass through request if available for nested serializer context
+            context = getattr(self, 'context', {})
+            return BannerCampaignSerializer(qs, many=True, context=context).data
         except Exception:
             return []
 

@@ -550,6 +550,7 @@ class ProductRequestSerializer(serializers.ModelSerializer):
     from masters.serializers import product_category_serializer, product_subcategory_serializer
 
     store = serializers.SerializerMethodField()
+    city = serializers.SerializerMethodField()
 
     user_details = UserProfileSerializer(source = 'user', read_only = True)
     category_details = product_category_serializer(source = 'category', read_only = True)
@@ -568,5 +569,17 @@ class ProductRequestSerializer(serializers.ModelSerializer):
                 context = getattr(self, "context", {})
                 return VendorStoreLiteSerializer(store, context=context).data
         except vendor_store.DoesNotExist:
-            return None 
+            return None
+
+    def get_city(self, obj):
+        """Return user's default address city if type is personal, otherwise None."""
+        if obj.type == 'personal':
+            try:
+                from .models import Address
+                default_addr = Address.objects.filter(user=obj.user, is_default=True).first()
+                if default_addr:
+                    return default_addr.town_city
+            except Exception:
+                pass
+        return None 
         
