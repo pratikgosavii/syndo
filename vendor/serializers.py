@@ -945,7 +945,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
     
     def get_is_store_open(self, obj):
          # Store-level active check ✅
-        if not obj.is_active:
+        if not obj.is_offline:
             return False
 
         now = timezone.localtime()
