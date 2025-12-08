@@ -1181,7 +1181,7 @@ class StoreByCategoryView(APIView):
         )
 
         # Get all vendor stores of those users
-        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).distinct()
+        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True, is_online=True).distinct()
 
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
