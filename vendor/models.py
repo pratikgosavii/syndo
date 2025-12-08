@@ -876,6 +876,19 @@ class CompanyProfile(models.Model):
         return self.company_name
 
 
+class DeliveryDiscount(models.Model):
+    """Delivery discount settings per vendor"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True, related_name="delivery_discount")
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Discount percentage for delivery")
+    min_cart_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Minimum cart value to apply discount")
+    is_enabled = models.BooleanField(default=False, help_text="Enable/disable delivery discount")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Delivery Discount - {self.user.username if self.user else 'No User'} ({self.discount_percent}%)"
+
+
 class Expense(models.Model):
     
     PAYMENT_METHOD_CHOICES = [

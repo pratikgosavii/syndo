@@ -15,6 +15,7 @@ router.register(r'coupon', CouponViewSet, basename='CouponViewSet')
 router.register(r'banner-campaigns', BannerCampaignViewSet, basename='banner-campaign')
 router.register(r'onlineStoreSetting', OnlineStoreSettingViewSet, basename='OnlineStoreSettingViewSet')
 router.register(r'company-profile', CompanyProfileViewSet, basename='CompanyProfileViewSet')
+router.register(r'delivery-discount', DeliveryDiscountViewSet, basename='DeliveryDiscountViewSet')
 router.register(r'store-working-hour', StoreWorkingHourViewSet, basename='StoreWorkingHourViewSet')
 
 router.register(r'customer', customerViewSet, basename='customerViewSet')

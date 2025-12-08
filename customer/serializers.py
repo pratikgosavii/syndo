@@ -119,7 +119,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
+        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
     
     def create(self, validated_data):
         request = self.context.get("request")
@@ -307,8 +307,24 @@ class OrderSerializer(serializers.ModelSerializer):
         # convert values from validated_data to Decimal safely
         coupon = Decimal(str(validated_data.get("coupon", 0)))
 
-        # calculate final total
-        total_amount = item_total + tax_total + shipping_fee - coupon
+        # Check and apply delivery discount if vendor has it enabled
+        delivery_discount_amount = Decimal("0.00")
+        if vendor_user and shipping_fee > 0:
+            try:
+                from vendor.models import DeliveryDiscount
+                delivery_discount = DeliveryDiscount.objects.filter(user=vendor_user).first()
+                if delivery_discount and delivery_discount.is_enabled:
+                    # Check if cart value meets minimum requirement
+                    if item_total >= Decimal(str(delivery_discount.min_cart_value)):
+                        # Calculate discount on shipping fee
+                        discount_percent = Decimal(str(delivery_discount.discount_percent))
+                        delivery_discount_amount = (shipping_fee * discount_percent / Decimal("100")).quantize(Decimal("0.01"))
+            except Exception:
+                # If any error, continue without discount
+                pass
+
+        # calculate final total (subtract delivery discount from shipping fee)
+        total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
 
         # set calculated totals in order
         # order_id will be generated in Order.save() method
@@ -316,6 +332,7 @@ class OrderSerializer(serializers.ModelSerializer):
             **validated_data,
             item_total=item_total,
             tax_total=tax_total,
+            delivery_discount_amount=delivery_discount_amount,
             total_amount=total_amount,
         )
 

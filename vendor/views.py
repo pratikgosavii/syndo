@@ -22,8 +22,9 @@ from django.db.models import Sum
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework import viewsets, permissions
+from rest_framework.exceptions import ValidationError
 from integrations.uengage import notify_delivery_event, create_delivery_task
-from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile
+from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDiscount
 
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -2104,6 +2105,26 @@ class CompanyProfileViewSet(viewsets.ModelViewSet):
         # Check if profile already exists
         if CompanyProfile.objects.filter(user=self.request.user).exists():
             raise ValidationError({"detail": "Company profile already exists for this user."})
+        serializer.save(user=self.request.user)
+
+
+class DeliveryDiscountViewSet(viewsets.ModelViewSet):
+    queryset = DeliveryDiscount.objects.all()
+    serializer_class = DeliveryDiscountSerializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        # Return only delivery discount of logged-in user
+        return DeliveryDiscount.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Check if delivery discount already exists
+        if DeliveryDiscount.objects.filter(user=self.request.user).exists():
+            raise ValidationError({"detail": "Delivery discount already exists for this user."})
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        # Ensure user can only update their own delivery discount
         serializer.save(user=self.request.user)
 
 
