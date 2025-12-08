@@ -381,7 +381,7 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         return {"request": self.request}  # ✅ needed for following field
 
     def get_queryset(self):
-        qs = vendor_store.objects.filter(is_active=True)
+        qs = vendor_store.objects.filter(is_active=True, is_online=True)
         
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
@@ -870,8 +870,25 @@ class SpotlightProductView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        products = SpotlightProduct.objects.all()
-        serializer = SpotlightProductSerializer(products, many=True)
+        products = SpotlightProduct.objects.filter(
+            user__vendor_store__is_active=True,
+            user__vendor_store__is_online=True,
+        )
+        
+        # Filter by customer pincode, but exclude global suppliers from pincode check
+        # Use the user's default address (is_default=True)
+        user = request.user
+        default_addr = Address.objects.filter(user=user, is_default=True).first()
+        pincode = default_addr.pincode if default_addr else None
+        if pincode:
+            # Include spotlight products from global suppliers OR from vendors matching pincode coverage
+            # Global suppliers are visible everywhere, regular vendors only in their coverage area
+            products = products.filter(
+                Q(user__vendor_store__global_supplier=True) |  # Global suppliers: visible everywhere
+                Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+            )
+        
+        serializer = SpotlightProductSerializer(products.distinct(), many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -879,7 +896,10 @@ class reelsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        reels = Reel.objects.all()
+        reels = Reel.objects.filter(
+            user__vendor_store__is_active=True,
+            user__vendor_store__is_online=True,
+        )
         
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
@@ -1577,6 +1597,4 @@ class VendorCampaignsAPIView(APIView):
         notification_serializer = NotificationCampaignSerializer(notification_campaigns, many=True, context={'request': request})
         
         return Response({
-            "notification_campaigns": notification_serializer.data,
-           
-        }, status=status.HTTP_200_OK)
+        
