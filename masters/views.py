@@ -1043,7 +1043,7 @@ def approve_bannercampaign(request, banner_id):
     data.is_approved = True
     data.save()
     
-    return redirect('vendor_list_bannercampaign')
+    return redirect('admin_vendor_list_bannercampaign')
 
 
 
