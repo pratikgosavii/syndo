@@ -123,8 +123,12 @@
             <tr>
                 <td>{{ forloop.counter }}</td>
                 <td>
-                    {{ item.product.name }}<br>
-                    {% if item.product.size %}size - {{ item.product.size }}{% endif %}{% if item.product.color %}{% if item.product.size %}, {% endif %}color - {{ item.product.color }}{% endif %}{% if item.product.brand_name %}, brand - {{ item.product.brand_name }}{% endif %}
+                    {% if item.product %}{{ item.product.name }}{% else %}N/A{% endif %}<br>
+                    {% if item.product %}
+                        {% if item.product.size %}size - {{ item.product.size }}{% endif %}
+                        {% if item.product.color %}{% if item.product.size %}, {% endif %}color - {{ item.product.color }}{% endif %}
+                        {% if item.product.brand_name %}, brand - {{ item.product.brand_name }}{% endif %}
+                    {% endif %}
                 </td>
                 <td>{{ item.price }}</td>
                 <td>{{ item.tax_amount|default:"0" }}</td>

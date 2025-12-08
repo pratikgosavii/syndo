@@ -13,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.http.response import HttpResponseRedirect
+from django.http import HttpResponse
 from .serializers import *
 
 from users.permissions import *
@@ -948,8 +949,8 @@ def add_to_super_catalogue(request, product_id):
         "stock": p.stock,
 
         # optionals
-        "brand_name": p.brand_name,
-        "color": p.color,
+        "brand_name": getattr(p, "brand_name", None),
+        "color": getattr(p, "color", None),
         "size": getattr(p, "size", None),
         "batch_number": getattr(p, "batch_number", None),
         "expiry_date": getattr(p, "expiry_date", None),
@@ -3011,9 +3012,13 @@ def sale_invoice(request, sale_id):
     total_igst = 0
     items_with_tax = []
     for item in sale.items.all():
-        hsn = item.product.hsn or "N/A"
-        sgst_rate = item.product.sgst_rate or 9
-        cgst_rate = item.product.cgst_rate or 9
+        if not item.product:
+            # Skip items without a product
+            continue
+            
+        hsn = getattr(item.product, "hsn", None) or "N/A"
+        sgst_rate = getattr(item.product, "sgst_rate", None) or 9
+        cgst_rate = getattr(item.product, "cgst_rate", None) or 9
         taxable_val = float(item.amount)
 
         if hsn not in hsn_summary:
@@ -3035,8 +3040,8 @@ def sale_invoice(request, sale_id):
         total_igst += float(item.tax_amount or 0)
 
         items_with_tax.append({
-            "name": item.product.name,
-            "hsn": item.product.hsn or "N/A",
+            "name": getattr(item.product, "name", "N/A"),
+            "hsn": getattr(item.product, "hsn", None) or "N/A",
             "price": float(item.price),
             "quantity": int(item.quantity),
             "taxable_value": taxable_val,
@@ -3062,7 +3067,7 @@ def sale_invoice(request, sale_id):
     paid_amount = float(sale.advance_amount or 0)
     balance_amount = round(rounded_total - paid_amount, 2)
 
-    return render(request, template_name, {
+    context = {
         'sale_instance': sale,
         'wholesale': wholesale,
         'total_amount': total_amount,
@@ -3082,7 +3087,42 @@ def sale_invoice(request, sale_id):
         'paid_amount': paid_amount,
         'balance_amount': balance_amount,
         'items_with_tax': items_with_tax,
-    })
+    }
+    
+    # Generate PDF using html2pdf.app API
+    try:
+        import requests
+        from django.template.loader import get_template
+        from django.conf import settings
+        
+        # Render template to HTML string
+        template = get_template(template_name)
+        html_content = template.render(context, request)
+        
+        # Generate PDF using html2pdf.app
+        api_response = requests.post(
+            'https://api.html2pdf.app/v1/generate',
+            json={
+                'html': html_content,
+                'apiKey': getattr(settings, 'HTML2PDF_API_KEY', ''),
+                'options': {
+                    'printBackground': True,
+                    'margin': '1cm',
+                    'pageSize': 'A4'
+                }
+            }
+        )
+        
+        if api_response.status_code == 200:
+            response = HttpResponse(api_response.content, content_type='application/pdf')
+            filename = f"sale_invoice_{sale_id}_{sale_type}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        else:
+            return HttpResponse(f"Error generating PDF: {api_response.text}", status=500)
+    except Exception as e:
+        # Fallback to HTML if PDF generation fails
+        return render(request, template_name, context)
 
 
 def pos_wholesaless(request, sale_id):
