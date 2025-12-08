@@ -1185,12 +1185,25 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
 
 class NotificationCampaignSerializer(serializers.ModelSerializer):
-    store_details = VendorStoreSerializer2(source = "store", read_only = True)
+    store_details = serializers.SerializerMethodField()
+    product_details = product_serializer(source = "product", read_only = True)
 
     class Meta:
         model = NotificationCampaign
         fields = "__all__"
         read_only_fields = ["user", "status", "views", "clicks", "created_at"]
+
+    def get_store_details(self, obj):
+        """Return vendor store filtered by user."""
+        try:
+            from .models import vendor_store
+            store = vendor_store.objects.filter(user=obj.user).first()
+            if store:
+                context = getattr(self, 'context', {})
+                return VendorStoreSerializer2(store, context=context).data
+        except Exception:
+            pass
+        return None
 
     def validate(self, data):
         """
