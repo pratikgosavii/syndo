@@ -1597,4 +1597,6 @@ class VendorCampaignsAPIView(APIView):
         notification_serializer = NotificationCampaignSerializer(notification_campaigns, many=True, context={'request': request})
         
         return Response({
-        
+            "notification_campaigns": notification_serializer.data,
+           
+        }, status=status.HTTP_200_OK)
