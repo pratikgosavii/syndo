@@ -552,36 +552,47 @@ def log_stock_transaction(product_obj, txn_type, qty, ref_id=None):
 # -----------------------------------------------------------------------------
 # 🟢 PURCHASE (+ stock)
 # -----------------------------------------------------------------------------
+@receiver(post_save, sender=PurchaseItem)
+def increase_stock_on_purchase_create(sender, instance, created, **kwargs):
+    """Handle stock increase when a new PurchaseItem is created."""
+    if created:
+        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
+        log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
+
 @receiver(pre_save, sender=PurchaseItem)
 def update_stock_on_purchase_edit(sender, instance, **kwargs):
+    """Handle stock updates when an existing PurchaseItem is modified."""
+    # Skip if this is a new item (handled by post_save)
+    if instance.pk is None:
+        return
+    
     try:
         old = PurchaseItem.objects.get(pk=instance.pk)
         old_qty = old.quantity
         old_product = old.product
     except PurchaseItem.DoesNotExist:
-        old_qty = 0
-        old_product = None
+        return
 
     qty_diff = instance.quantity - old_qty
 
+    # If product changed, restore old product stock and increase new product stock
     if old_product and old_product != instance.product:
         product.objects.filter(id=old_product.id).update(stock_cached=F('stock_cached') - old_qty)
-        if instance.pk:
-            log_stock_transaction(old_product, "purchase", -old_qty, ref_id=instance.pk)
+        log_stock_transaction(old_product, "purchase", -old_qty, ref_id=instance.pk)
 
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
-        if instance.pk:
-            log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
+        log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
         return
 
+    # If quantity changed, adjust stock accordingly
     if qty_diff > 0:
+        # Quantity increased, increase stock
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + qty_diff)
-        if instance.pk:
-            log_stock_transaction(instance.product, "purchase", qty_diff, ref_id=instance.pk)
+        log_stock_transaction(instance.product, "purchase", qty_diff, ref_id=instance.pk)
     elif qty_diff < 0:
+        # Quantity decreased, reduce stock
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - abs(qty_diff))
-        if instance.pk:
-            log_stock_transaction(instance.product, "purchase", -abs(qty_diff), ref_id=instance.pk)
+        log_stock_transaction(instance.product, "purchase", -abs(qty_diff), ref_id=instance.pk)
 
 
 @receiver(post_delete, sender=PurchaseItem)
@@ -593,36 +604,47 @@ def restore_stock_on_purchase_delete(sender, instance, **kwargs):
 # -----------------------------------------------------------------------------
 # 🔵 SALE (POS)
 # -----------------------------------------------------------------------------
+@receiver(post_save, sender=SaleItem)
+def reduce_stock_on_sale_create(sender, instance, created, **kwargs):
+    """Handle stock reduction when a new SaleItem is created."""
+    if created:
+        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
+        log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
+
 @receiver(pre_save, sender=SaleItem)
 def update_stock_on_sale_edit(sender, instance, **kwargs):
+    """Handle stock updates when an existing SaleItem is modified."""
+    # Skip if this is a new item (handled by post_save)
+    if instance.pk is None:
+        return
+    
     try:
         old = SaleItem.objects.get(pk=instance.pk)
         old_qty = old.quantity
         old_product = old.product
     except SaleItem.DoesNotExist:
-        old_qty = 0
-        old_product = None
+        return
 
     qty_diff = instance.quantity - old_qty
 
+    # If product changed, restore old product stock and reduce new product stock
     if old_product and old_product != instance.product:
         product.objects.filter(id=old_product.id).update(stock_cached=F('stock_cached') + old_qty)
-        if instance.pk:
-            log_stock_transaction(old_product, "sale", old_qty, ref_id=instance.pk)
+        log_stock_transaction(old_product, "sale", old_qty, ref_id=instance.pk)
 
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
-        if instance.pk:
-            log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
+        log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
         return
 
+    # If quantity changed, adjust stock accordingly
     if qty_diff > 0:
+        # Quantity increased, reduce stock
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - qty_diff)
-        if instance.pk:
-            log_stock_transaction(instance.product, "sale", -qty_diff, ref_id=instance.pk)
+        log_stock_transaction(instance.product, "sale", -qty_diff, ref_id=instance.pk)
     elif qty_diff < 0:
+        # Quantity decreased, restore stock
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + abs(qty_diff))
-        if instance.pk:
-            log_stock_transaction(instance.product, "sale", abs(qty_diff), ref_id=instance.pk)
+        log_stock_transaction(instance.product, "sale", abs(qty_diff), ref_id=instance.pk)
 
 
 @receiver(post_delete, sender=SaleItem)
@@ -769,12 +791,4 @@ def restore_stock_on_order_delete(sender, instance, **kwargs):
     product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
     log_stock_transaction(instance.product, "sale", instance.quantity, ref_id=instance.pk)
 
-@receiver(post_save, sender=PurchaseItem)
-def log_purchase_item_on_create(sender, instance, created, **kwargs):
-    if created:
-        log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
 
-@receiver(post_save, sender=SaleItem)
-def log_sale_item_on_create(sender, instance, created, **kwargs):
-    if created:
-        log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
