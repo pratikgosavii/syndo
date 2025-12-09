@@ -201,7 +201,7 @@ def create_delivery_task(order) -> Dict:
         if not (pickup and drop):
             return {"ok": False, "status_code": None, "error": "missing_addresses", "message": "Pickup/Drop addresses missing"}
 
-        # storeId from CompanyProfile
+        # storeId from CompanyProfile, fallback to default "89" for testing
         store_id = None
         try:
             cp = vendor_user.user_company_profile if vendor_user else None
@@ -209,7 +209,8 @@ def create_delivery_task(order) -> Dict:
         except Exception:
             store_id = None
         if not store_id:
-            return {"ok": False, "status_code": None, "error": "missing_store_id", "message": "uEngage storeId missing in CompanyProfile"}
+            # Use default store_id "89" for testing if not set in CompanyProfile
+            store_id = "89"
 
         # Get vendor store for pickup coordinates
         vs = vendor_user.vendor_store.first() if vendor_user and getattr(vendor_user, "vendor_store", None) else None
@@ -345,7 +346,8 @@ def get_serviceability_for_order(order) -> Dict:
         except Exception:
             store_id = None
         if not store_id:
-            return {"ok": False, "status_code": None, "error": "missing_store_id", "message": "uEngage storeId missing in CompanyProfile"}
+            # Use default store_id "89" for testing if not set in CompanyProfile
+            store_id = "89"
         vs = vendor_user.vendor_store.first() if getattr(vendor_user, "vendor_store", None) else None
         p_lat = str(getattr(vs, "latitude", "") or "")
         p_lon = str(getattr(vs, "longitude", "") or "")
