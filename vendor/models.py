@@ -42,7 +42,7 @@ class coupon(models.Model):
     min_purchase = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     max_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     image = models.ImageField(upload_to='doctor_images/', null=True, blank=True)
-    start_date = models.DateTimeField(default=now)
+    start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     only_followers = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
