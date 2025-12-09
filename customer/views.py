@@ -1008,7 +1008,6 @@ class CartCouponAPIView(APIView):
         now = timezone.now()
         
         coupons = coupon.objects.filter(
-            user=user,
             is_active=True,
             start_date__lte=now,
             end_date__gte=now

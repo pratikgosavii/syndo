@@ -211,6 +211,28 @@ def create_delivery_task(order) -> Dict:
         if not store_id:
             return {"ok": False, "status_code": None, "error": "missing_store_id", "message": "uEngage storeId missing in CompanyProfile"}
 
+        # Get vendor store for pickup coordinates
+        vs = vendor_user.vendor_store.first() if vendor_user and getattr(vendor_user, "vendor_store", None) else None
+        pickup_lat = str(getattr(vs, "latitude", "") or "") if vs else ""
+        pickup_lon = str(getattr(vs, "longitude", "") or "") if vs else ""
+        pickup_city = getattr(cp, "city", "") or "" if cp else ""
+        
+        # Get drop coordinates
+        addr = getattr(order, "address", None)
+        drop_city = getattr(addr, "town_city", "") or "" if addr else ""
+        drop_lat = str(getattr(addr, "latitude", "") or "") if addr else ""
+        drop_lon = str(getattr(addr, "longitude", "") or "") if addr else ""
+        
+        # Build order items list
+        order_items = []
+        for item in order.items.all():
+            order_items.append({
+                "id": str(item.product.id) if item.product else "",
+                "name": item.product.name if item.product else "",
+                "quantity": item.quantity,
+                "price": float(item.price)
+            })
+        
         url = f"{UENGAGE_RIDER_BASE}/createTask"
         payload = {
             "storeId": str(store_id),
@@ -218,28 +240,28 @@ def create_delivery_task(order) -> Dict:
                 "name": pickup["name"],
                 "contact_number": pickup["phone"],
                 "address": pickup["address"],
-                "city": "",  # optional
-                "latitude": str(getattr(vendor_user.vendor_store.first(), "latitude", "") if vendor_user else ""),
-                "longitude": str(getattr(vendor_user.vendor_store.first(), "longitude", "") if vendor_user else ""),
+                "city": pickup_city,
+                "latitude": pickup_lat,
+                "longitude": pickup_lon,
             },
             "drop_details": {
                 "name": drop["name"],
                 "contact_number": drop["phone"],
                 "address": drop["address"],
-                "city": getattr(getattr(order, "address", None), "town_city", "") or "",
-                "latitude": str(getattr(getattr(order, "address", None), "latitude", "") or ""),
-                "longitude": str(getattr(getattr(order, "address", None), "longitude", "") or ""),
+                "city": drop_city,
+                "latitude": drop_lat,
+                "longitude": drop_lon,
             },
             "order_details": {
                 "order_total": str(order.total_amount or ""),
                 "paid": "true" if getattr(order, "is_paid", False) else "false",
                 "vendor_order_id": getattr(order, "order_id", ""),
-                "order_source": "app",
+                "order_source": "pos",
                 "customer_orderId": getattr(order, "order_id", ""),
             },
-            "order_items": [],
+            "order_items": order_items,
             "authentication": {
-                "delivery_otp": "",
+                "delivery_otp": "234",
                 "rto_otp": "true"
             }
         }

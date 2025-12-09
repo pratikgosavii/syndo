@@ -391,6 +391,27 @@ class OrderSerializer(serializers.ModelSerializer):
                 # ✅ CLEAR CART AFTER SUCCESSFUL ORDER CREATION
         Cart.objects.filter(user=request.user).delete()
 
+        # Check serviceability and create uEngage delivery task if available
+        if order.delivery_type == "instant_delivery" and order.address:
+            try:
+                from integrations.uengage import get_serviceability_for_order, create_delivery_task
+                
+                # Check if delivery is serviceable
+                serviceability_result = get_serviceability_for_order(order)
+                
+                if serviceability_result.get("ok"):
+                    # Service is available, create delivery task
+                    task_result = create_delivery_task(order)
+                    
+                    if task_result.get("ok") and task_result.get("task_id"):
+                        # Save task ID to order
+                        order.uengage_task_id = task_result.get("task_id")
+                        order.save(update_fields=["uengage_task_id"])
+            except Exception as e:
+                # Log error but don't fail order creation
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to create uEngage delivery task for order {order.order_id}: {str(e)}")
 
         return order
 
