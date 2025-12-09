@@ -1001,10 +1001,7 @@ class CartCouponAPIView(APIView):
 
 
     def get(self, request):
-        user, cart_items = self.get_cart_user(request.user)
-        if not user:
-            return Response({"coupons": []}, status=200)
-
+       
         now = timezone.now()
         
         coupons = coupon.objects.filter(
