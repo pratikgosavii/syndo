@@ -24,7 +24,7 @@ from rest_framework.views import APIView
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import ValidationError
 from integrations.uengage import notify_delivery_event, create_delivery_task
-from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDiscount
+from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDiscount, AutomateNotificationOnOrder
 
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -2118,13 +2118,49 @@ class DeliveryDiscountViewSet(viewsets.ModelViewSet):
         return DeliveryDiscount.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        # Check if delivery discount already exists
-        if DeliveryDiscount.objects.filter(user=self.request.user).exists():
-            raise ValidationError({"detail": "Delivery discount already exists for this user."})
-        serializer.save(user=self.request.user)
+        # Use get_or_create since there's only one delivery discount per vendor
+        delivery_discount, created = DeliveryDiscount.objects.get_or_create(
+            user=self.request.user,
+            defaults=serializer.validated_data
+        )
+        if not created:
+            # If it already exists, update it with new data
+            for key, value in serializer.validated_data.items():
+                setattr(delivery_discount, key, value)
+            delivery_discount.save()
+        # Update serializer instance to return the created/updated object
+        serializer.instance = delivery_discount
 
     def perform_update(self, serializer):
         # Ensure user can only update their own delivery discount
+        serializer.save(user=self.request.user)
+
+
+class AutomateNotificationOnOrderViewSet(viewsets.ModelViewSet):
+    queryset = AutomateNotificationOnOrder.objects.all()
+    serializer_class = AutomateNotificationOnOrderSerializer
+    permission_classes = [IsVendor]
+
+    def get_queryset(self):
+        # Return only automate notification settings of logged-in user
+        return AutomateNotificationOnOrder.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Use get_or_create since there's only one automate notification setting per vendor
+        automate_notification, created = AutomateNotificationOnOrder.objects.get_or_create(
+            user=self.request.user,
+            defaults=serializer.validated_data
+        )
+        if not created:
+            # If it already exists, update it with new data
+            for key, value in serializer.validated_data.items():
+                setattr(automate_notification, key, value)
+            automate_notification.save()
+        # Update serializer instance to return the created/updated object
+        serializer.instance = automate_notification
+
+    def perform_update(self, serializer):
+        # Ensure user can only update their own automate notification settings
         serializer.save(user=self.request.user)
 
 

@@ -889,6 +889,15 @@ class DeliveryDiscount(models.Model):
         return f"Delivery Discount - {self.user.username if self.user else 'No User'} ({self.discount_percent}%)"
 
 
+class AutomateNotificationOnOrder(models.Model):
+    """Automated notification settings for order events per vendor"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True, related_name="automate_notification_on_order")
+    message = models.TextField(blank=True, null=True, help_text="Notification message template")
+
+    def __str__(self):
+        return f"Automate Notification - {self.user.username if self.user else 'No User'}"
+
+
 class Expense(models.Model):
     
     PAYMENT_METHOD_CHOICES = [
