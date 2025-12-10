@@ -54,42 +54,41 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Address not found"}, status=status.HTTP_404_NOT_FOUND)
 
         delivery_type = request.data.get("delivery_type") or "self_pickup"
-        if delivery_type != "instant_delivery":
+        if delivery_type == "instant_delivery":
             # Only instant_delivery needs rider check
-            return Response({"ok": True, "message": "Serviceability not required for this delivery type"})
 
         # Build a lightweight order-like object for serviceability check
-        temp_order = SimpleNamespace(
-            order_id="TEMP",
-            address=addr,
-            items=SimpleNamespace(
-                select_related=lambda *args, **kwargs: SimpleNamespace(
-                    first=lambda: SimpleNamespace(product=first_product)
-                )
-            ),
-        )
+            temp_order = SimpleNamespace(
+                order_id="TEMP",
+                address=addr,
+                items=SimpleNamespace(
+                    select_related=lambda *args, **kwargs: SimpleNamespace(
+                        first=lambda: SimpleNamespace(product=first_product)
+                    )
+                ),
+            )
 
-        try:
-            svc_result = get_serviceability_for_order(temp_order)
-            ok = svc_result.get("ok")
-            svc = (svc_result.get("raw") or {}).get("serviceability") or {}
-            rider_ok = svc.get("riderServiceAble")
-            location_ok = svc.get("locationServiceAble")
+            try:
+                svc_result = get_serviceability_for_order(temp_order)
+                ok = svc_result.get("ok")
+                svc = (svc_result.get("raw") or {}).get("serviceability") or {}
+                rider_ok = svc.get("riderServiceAble")
+                location_ok = svc.get("locationServiceAble")
 
-            if ok:
-                return Response({"ok": True, "message": "Delivery boy available", "serviceability": svc_result})
+                if ok:
+                    return Response({"ok": True, "message": "Delivery boy available", "serviceability": svc_result})
 
-            # Not serviceable
-            if rider_ok is False:
-                msg = "No delivery boy present at the moment."
-            elif location_ok is False:
-                msg = "Delivery location not serviceable."
-            else:
-                msg = svc_result.get("message") or "Delivery not serviceable."
-            return Response({"ok": False, "message": msg, "serviceability": svc_result}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            print(f"💥 [check_delivery_availability] Exception: {e}")
-            return Response({"ok": False, "message": "Unable to confirm delivery availability. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
+                # Not serviceable
+                if rider_ok is False:
+                    msg = "No delivery boy present at the moment."
+                elif location_ok is False:
+                    msg = "Delivery location not serviceable."
+                else:
+                    msg = svc_result.get("message") or "Delivery not serviceable."
+                return Response({"ok": False, "message": msg, "serviceability": svc_result}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                print(f"💥 [check_delivery_availability] Exception: {e}")
+                return Response({"ok": False, "message": "Unable to confirm delivery availability. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
 
     def create(self, request, *args, **kwargs):
         """
