@@ -624,35 +624,56 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
 
-        # Auto-assign logic when order is accepted
+        # Auto-assign logic when order moves to ready_to_shipment (post-pack)
         try:
-            if "status" in data and data["status"] == "accepted":
+            if (
+                "status" in data
+                and data["status"] == "ready_to_shipment"
+                and previous_status != "ready_to_shipment"
+            ):
+                print("\n" + "=" * 80)
+                print("🚚 [Vendor OrderViewSet] Auto-assign on ready_to_shipment")
+                print(f"📦 Order ID: {instance.order_id}")
+                print(f"👤 Previous status: {previous_status}")
+
                 # Identify vendor user from first item
                 item0 = instance.items.select_related("product").first()
                 vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
+                print(f"🏪 Vendor user: {vendor_user}")
                 if vendor_user:
                     mode = DeliveryMode.objects.filter(user=vendor_user).first()
                 else:
                     mode = None
+                print(f"⚙️ Delivery mode: {mode}")
 
                 if mode and mode.is_auto_assign_enabled:
+                    print(f"✅ Auto-assign enabled (self_delivery={getattr(mode, 'is_self_delivery_enabled', False)})")
+                    # Skip if already assigned or task created
+                    if getattr(instance, "delivery_boy_id", None) or getattr(instance, "uengage_task_id", None):
+                        print("⏭️ Already has delivery_boy or uengage_task_id; skipping assignment")
                     # Prefer self delivery if enabled and rider available
-                    if getattr(mode, "is_self_delivery_enabled", False):
+                    elif getattr(mode, "is_self_delivery_enabled", False):
                         rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
+                        if rider:
+                            print(f"👷 Assigned self-delivery rider: {rider}")
+                            instance.delivery_boy = rider
+                            instance.save(update_fields=["delivery_boy"])
+                        else:
+                            print("⚠️ No active self-delivery rider found")
                     else:
                         rider = None
 
-                    if rider:
-                        instance.delivery_boy = rider
-                        instance.save(update_fields=["delivery_boy"])
-                    else:
-                        # Create external delivery task with uEngage
+                    # If no rider was set above, attempt external task creation
+                    if not getattr(instance, "delivery_boy_id", None) and not getattr(instance, "uengage_task_id", None):
+                        print("🌐 Creating external delivery task via uEngage")
                         res = create_delivery_task(instance)
+                        print(f"📊 uEngage response: {res}")
                         if res.get("ok"):
                             # persist task id and tracking across items
                             task_id = res.get("task_id")
                             tracking = res.get("tracking_url")
                             if task_id:
+                                print(f"💾 Saving uEngage task_id: {task_id}")
                                 instance.uengage_task_id = task_id
                                 instance.save(update_fields=["uengage_task_id"])
                             if tracking:
@@ -660,9 +681,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                                     if not it.tracking_link:
                                         it.tracking_link = tracking
                                         it.save(update_fields=["tracking_link"])
+                                print(f"🔗 Applied tracking link to items: {tracking}")
                         else:
                             # Could notify vendor here about failure; do not block
-                            pass
+                            print("💥 uEngage task creation failed or not ok; skipping assignment")
+                else:
+                    print("⏭️ Auto-assign disabled or mode missing; no assignment attempted")
+                print("=" * 80 + "\n")
         except Exception:
             pass
 
@@ -3266,8 +3291,8 @@ class UpdateOrderItemStatusAPIView(APIView):
         item = OrderItem.objects.get(id=order_item_id)
         status_value = request.data.get("status")
 
-        # Guard: cannot move to intransit unless rider or external task is set (when auto-assign enabled)
-        if status_value == "intransit":
+        # Guard: auto-assign rider/external task when moving to ready_to_shipment (instead of intransit)
+        if status_value == "ready_to_shipment":
             try:
                 order = item.order
                 item0 = order.items.select_related("product").first()
@@ -3300,6 +3325,7 @@ class UpdateOrderItemStatusAPIView(APIView):
             # Notify via uEngage for item-level delivery events
             try:
                 event_map = {
+                    "ready_to_shipment": "ready_to_deliver",
                     "intransit": "out_for_delivery",
                     "delivered": "delivered",
                     "ready_to_deliver": "ready_to_deliver",

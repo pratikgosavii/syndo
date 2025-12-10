@@ -166,6 +166,7 @@ class Order(models.Model):
     ORDER_STATUS = [
         ('not_accepted', 'Not Accepted'),
         ('accepted', 'Accepted'),
+        ('ready_to_shipment', 'Ready to Shipment'),
         ('cancelled', 'Cancelled'),
         ('completed', 'Completed'),
     ]
@@ -231,6 +232,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('ready_to_shipment', 'Ready to Shipment'),
         ('ready_to_deliver', 'Ready to Deliver'),
         ('intransit', 'In Transit'),
         ('delivered', 'Delivered'),

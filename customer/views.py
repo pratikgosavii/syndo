@@ -10,13 +10,15 @@ from users.models import *
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from .payments.cashfree import create_order_for, refresh_order_status
+from integrations.uengage import get_serviceability_for_order
 from rest_framework.decorators import action
 from .payments.cashfree import create_order_for, refresh_order_status
-from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store, VendorCoverage, NotificationCampaign
+from vendor.models import BannerCampaign, Post, Reel, SpotlightProduct, coupon, vendor_store, VendorCoverage, NotificationCampaign, product
 from masters.serializers import Pincode_serializer
 from vendor.serializers import BannerCampaignSerializer, PostSerializer, ReelSerializer, SpotlightProductSerializer, VendorStoreSerializer, coupon_serializer, NotificationCampaignSerializer
 from .models import *
 from .serializers import AddressSerializer, CartSerializer, OrderSerializer
+from types import SimpleNamespace
 
 from rest_framework import viewsets, permissions
 
@@ -24,11 +26,93 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @action(detail=False, methods=["post"], url_path="check-delivery-availability")
+    def check_delivery_availability(self, request):
+        """
+        Preflight check before taking payment: verifies serviceability/rider availability.
+        Body should mirror order creation payload (needs items[0].product and address id).
+        """
+        items = request.data.get("items") or []
+        if not items or not isinstance(items, list):
+            return Response({"detail": "No items provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        first_item = items[0] or {}
+        product_id = first_item.get("product")
+        if not product_id:
+            return Response({"detail": "Product id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            first_product = product.objects.select_related("user").get(id=product_id)
+        except product.DoesNotExist:
+            return Response({"detail": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        address_id = request.data.get("address")
+        if not address_id:
+            return Response({"detail": "Address is required for delivery check"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            addr = Address.objects.get(id=address_id, user=request.user)
+        except Address.DoesNotExist:
+            return Response({"detail": "Address not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        delivery_type = request.data.get("delivery_type") or "self_pickup"
+        if delivery_type != "instant_delivery":
+            # Only instant_delivery needs rider check
+            return Response({"ok": True, "message": "Serviceability not required for this delivery type"})
+
+        # Build a lightweight order-like object for serviceability check
+        temp_order = SimpleNamespace(
+            order_id="TEMP",
+            address=addr,
+            items=SimpleNamespace(
+                select_related=lambda *args, **kwargs: SimpleNamespace(
+                    first=lambda: SimpleNamespace(product=first_product)
+                )
+            ),
+        )
+
+        try:
+            svc_result = get_serviceability_for_order(temp_order)
+            ok = svc_result.get("ok")
+            svc = (svc_result.get("raw") or {}).get("serviceability") or {}
+            rider_ok = svc.get("riderServiceAble")
+            location_ok = svc.get("locationServiceAble")
+
+            if ok:
+                return Response({"ok": True, "message": "Delivery boy available", "serviceability": svc_result})
+
+            # Not serviceable
+            if rider_ok is False:
+                msg = "No delivery boy present at the moment."
+            elif location_ok is False:
+                msg = "Delivery location not serviceable."
+            else:
+                msg = svc_result.get("message") or "Delivery not serviceable."
+            return Response({"ok": False, "message": msg, "serviceability": svc_result}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"💥 [check_delivery_availability] Exception: {e}")
+            return Response({"ok": False, "message": "Unable to confirm delivery availability. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
+
     def create(self, request, *args, **kwargs):
         """
         Create order and immediately initiate Cashfree payment.
         Returns 201 with order payload + payment_session_id/payment_link.
         """
+        # Guard: prevent order placement when the vendor store is closed
+        items = request.data.get("items") or []
+        if not items or not isinstance(items, list):
+            return Response({"detail": "No items provided"}, status=status.HTTP_400_BAD_REQUEST)
+        first_item = items[0] or {}
+        product_id = first_item.get("product")
+        if not product_id:
+            return Response({"detail": "Product id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            first_product = product.objects.select_related("user").get(id=product_id)
+        except product.DoesNotExist:
+            return Response({"detail": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+        store = vendor_store.objects.filter(user=first_product.user).first()
+        if store:
+            if not VendorStoreSerializer().get_is_store_open(store):
+                return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         order = serializer.save(user=request.user)

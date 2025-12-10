@@ -4,6 +4,7 @@ import hmac
 import hashlib
 import base64
 import logging
+import re
 from django.conf import settings
 from customer.models import Order
 
@@ -43,6 +44,21 @@ def _cashfree_headers():
     }
 
 
+def _sanitize_order_id_for_cashfree(order_id: str) -> str:
+    """
+    Sanitize order_id to be Cashfree-compliant.
+    Cashfree accepts: alphanumeric, hyphens, underscores
+    Rejects: forward slashes, spaces, and other special characters
+    """
+    if not order_id:
+        return order_id
+    # Replace forward slashes with hyphens, remove spaces, keep alphanumeric, hyphens, underscores
+    sanitized = order_id.replace("/", "-").replace(" ", "-")
+    # Remove any other invalid characters (keep only alphanumeric, hyphens, underscores)
+    sanitized = re.sub(r'[^a-zA-Z0-9_-]', '', sanitized)
+    return sanitized
+
+
 def create_order_for(order: Order, customer_id=None, customer_email=None, customer_phone=None, return_url=None, notify_url=None):
     """
     Creates a Cashfree order for a given Order instance and stores payment_session_id.
@@ -65,8 +81,12 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         or ""
     )
 
+    # Sanitize order_id for Cashfree (remove/replace invalid characters like forward slashes)
+    cashfree_order_id = _sanitize_order_id_for_cashfree(order.order_id)
+    logger.info(f"Cashfree order_id sanitized: '{order.order_id}' -> '{cashfree_order_id}'")
+    
     payload = {
-        "order_id": order.order_id,
+        "order_id": cashfree_order_id,
         "order_amount": float(order.total_amount or 0),
         "order_currency": "INR",
         "customer_details": {
@@ -90,7 +110,8 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         logger.exception("Cashfree create order JSON parse error (status=%s): %s", resp.status_code, resp.text)
 
     if resp.status_code in (200, 201) and data.get("payment_session_id"):
-        order.cashfree_order_id = data.get("order_id", order.order_id)
+        # Cashfree returns the order_id we sent (sanitized version)
+        order.cashfree_order_id = data.get("order_id", cashfree_order_id)
         order.cashfree_session_id = data.get("payment_session_id")
         order.cashfree_status = "CREATED"
         order.payment_link = data.get("payment_link")
@@ -117,7 +138,8 @@ def refresh_order_status(order: Order):
     """
     Fetch order status from Cashfree and update local fields.
     """
-    order_id = order.cashfree_order_id or order.order_id
+    # Use cashfree_order_id if available (sanitized), otherwise sanitize the original order_id
+    order_id = order.cashfree_order_id or _sanitize_order_id_for_cashfree(order.order_id)
     if not order_id:
         return {"status": "ERROR", "message": "Missing order_id"}
 

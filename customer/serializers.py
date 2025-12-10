@@ -8,6 +8,7 @@ from vendor.serializers import product_serializer
 
 from django.utils import timezone
 import datetime
+from django.db import transaction
 
 class OrderPrintFileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -125,11 +126,13 @@ class OrderSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         items_data = request.data.get("items", [])
 
-        # calculate totals
-        item_total = Decimal("0.00")
-        tax_total = Decimal("0.00")
-        order_items = []
-        print_jobs_payload = []  # parallel array of print job payloads or None
+        with transaction.atomic():
+
+            # calculate totals
+            item_total = Decimal("0.00")
+            tax_total = Decimal("0.00")
+            order_items = []
+            print_jobs_payload = []  # parallel array of print job payloads or None
 
         for item in items_data:
             product_id = item.get("product")
@@ -323,97 +326,112 @@ class OrderSerializer(serializers.ModelSerializer):
                 # If any error, continue without discount
                 pass
 
-        # calculate final total (subtract delivery discount from shipping fee)
-        total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
+            # calculate final total (subtract delivery discount from shipping fee)
+            total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
 
-        # set calculated totals in order
-        # order_id will be generated in Order.save() method
-        order = Order.objects.create(
-            **validated_data,
-            item_total=item_total,
-            tax_total=tax_total,
-            delivery_discount_amount=delivery_discount_amount,
-            total_amount=total_amount,
-        )
-
-        # bulk create items with linked order
-        for oi in order_items:
-            oi.order = order
-        OrderItem.objects.bulk_create(order_items)
-
-        # After bulk create, attach print jobs (if any)
-        for oi, pj_payload in zip(order_items, print_jobs_payload):
-            if not pj_payload:
-                continue
-            # Resolve foreign keys if IDs provided
-            print_variant = None
-            customize_variant = None
-            if isinstance(pj_payload.get("print_variant"), int):
-                from vendor.models import PrintVariant as PV
-                try:
-                    print_variant = PV.objects.get(id=pj_payload["print_variant"])
-                except PV.DoesNotExist:
-                    print_variant = None
-            if isinstance(pj_payload.get("customize_variant"), int):
-                from vendor.models import CustomizePrintVariant as CPV
-                try:
-                    customize_variant = CPV.objects.get(id=pj_payload["customize_variant"])
-                except CPV.DoesNotExist:
-                    customize_variant = None
-
-            order_pj = OrderPrintJob.objects.create(
-                order_item=oi,
-                instructions=pj_payload.get("instructions"),
-                total_amount=pj_payload.get("total_amount") or 0,
-                print_type=pj_payload.get("print_type") or "single",
-                print_variant=print_variant,
-                customize_variant=customize_variant,
+            # set calculated totals in order
+            # order_id will be generated in Order.save() method
+            order = Order.objects.create(
+                **validated_data,
+                item_total=item_total,
+                tax_total=tax_total,
+                delivery_discount_amount=delivery_discount_amount,
+                total_amount=total_amount,
             )
 
-            # add-ons
-            addon_ids = pj_payload.get("add_ons") or []
-            if addon_ids:
-                from vendor.models import addon as Addon
-                valid_addons = Addon.objects.filter(id__in=addon_ids)
-                order_pj.add_ons.set(valid_addons)
+            # bulk create items with linked order
+            for oi in order_items:
+                oi.order = order
+            OrderItem.objects.bulk_create(order_items)
 
-            # files
-            files = pj_payload.get("files") or []
-            for f in files:
-                OrderPrintFile.objects.create(
-                    print_job=order_pj,
-                    file=f.get("file"),
-                    number_of_copies=f.get("number_of_copies", 1),
-                    page_count=f.get("page_count", 0),
-                    page_numbers=f.get("page_numbers", ""),
+            # Serviceability check (must have address + instant_delivery)
+            print("\n" + "=" * 80)
+            print("🛒 [OrderSerializer] Serviceability pre-check")
+            print(f"📦 Order ID: {order.order_id}")
+            print(f"🚚 Delivery Type: {order.delivery_type}")
+            print(f"🏠 Has Address: {bool(order.address)}")
+
+            if order.delivery_type == "instant_delivery" and order.address:
+                try:
+                    from integrations.uengage import get_serviceability_for_order
+
+                    print("🔍 Checking uEngage serviceability before finalizing order...")
+                    serviceability_result = get_serviceability_for_order(order)
+                    print(f"📊 Serviceability result: {serviceability_result}")
+
+                    ok = serviceability_result.get("ok")
+                    svc = (serviceability_result.get("raw") or {}).get("serviceability") or {}
+                    rider_ok = svc.get("riderServiceAble")
+                    location_ok = svc.get("locationServiceAble")
+
+                    if not ok:
+                        msg = "No delivery boy present at the moment."
+                        if location_ok is False:
+                            msg = "Delivery location not serviceable."
+                        raise serializers.ValidationError({"delivery": msg})
+                except serializers.ValidationError:
+                    raise
+                except Exception as e:
+                    print(f"💥 Serviceability check exception: {e}")
+                    raise serializers.ValidationError({"delivery": "Unable to confirm delivery availability. Please try again."})
+            else:
+                print("⏭️ Skipping serviceability: not instant_delivery or no address")
+
+            # After bulk create, attach print jobs (if any)
+            for oi, pj_payload in zip(order_items, print_jobs_payload):
+                if not pj_payload:
+                    continue
+                # Resolve foreign keys if IDs provided
+                print_variant = None
+                customize_variant = None
+                if isinstance(pj_payload.get("print_variant"), int):
+                    from vendor.models import PrintVariant as PV
+                    try:
+                        print_variant = PV.objects.get(id=pj_payload["print_variant"])
+                    except PV.DoesNotExist:
+                        print_variant = None
+                if isinstance(pj_payload.get("customize_variant"), int):
+                    from vendor.models import CustomizePrintVariant as CPV
+                    try:
+                        customize_variant = CPV.objects.get(id=pj_payload["customize_variant"])
+                    except CPV.DoesNotExist:
+                        customize_variant = None
+
+                order_pj = OrderPrintJob.objects.create(
+                    order_item=oi,
+                    instructions=pj_payload.get("instructions"),
+                    total_amount=pj_payload.get("total_amount") or 0,
+                    print_type=pj_payload.get("print_type") or "single",
+                    print_variant=print_variant,
+                    customize_variant=customize_variant,
                 )
 
-                # ✅ CLEAR CART AFTER SUCCESSFUL ORDER CREATION
-        Cart.objects.filter(user=request.user).delete()
+                # add-ons
+                addon_ids = pj_payload.get("add_ons") or []
+                if addon_ids:
+                    from vendor.models import addon as Addon
+                    valid_addons = Addon.objects.filter(id__in=addon_ids)
+                    order_pj.add_ons.set(valid_addons)
 
-        # Check serviceability and create uEngage delivery task if available
-        if order.delivery_type == "instant_delivery" and order.address:
-            try:
-                from integrations.uengage import get_serviceability_for_order, create_delivery_task
-                
-                # Check if delivery is serviceable
-                serviceability_result = get_serviceability_for_order(order)
-                
-                if serviceability_result.get("ok"):
-                    # Service is available, create delivery task
-                    task_result = create_delivery_task(order)
-                    
-                    if task_result.get("ok") and task_result.get("task_id"):
-                        # Save task ID to order
-                        order.uengage_task_id = task_result.get("task_id")
-                        order.save(update_fields=["uengage_task_id"])
-            except Exception as e:
-                # Log error but don't fail order creation
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to create uEngage delivery task for order {order.order_id}: {str(e)}")
+                # files
+                files = pj_payload.get("files") or []
+                for f in files:
+                    OrderPrintFile.objects.create(
+                        print_job=order_pj,
+                        file=f.get("file"),
+                        number_of_copies=f.get("number_of_copies", 1),
+                        page_count=f.get("page_count", 0),
+                        page_numbers=f.get("page_numbers", ""),
+                    )
 
-        return order
+            # ✅ CLEAR CART AFTER SUCCESSFUL ORDER CREATION
+            Cart.objects.filter(user=request.user).delete()
+
+            # Delivery task creation is deferred to vendor when status becomes ready_to_shipment
+            print("⏭️ Delivery task will be created when vendor marks ready_to_shipment.")
+            print("=" * 80 + "\n")
+
+            return order
 
     def update(self, instance, validated_data):
         allowed_fields = ["status", "delivery_boy", "is_paid"]
