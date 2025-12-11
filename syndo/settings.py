@@ -104,6 +104,57 @@ REST_FRAMEWORK = {
     ]
 }
 
+# Ensure a "logs" folder exists in your project root (for local dev)
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "%(asctime)s: %(levelname)s: %(message)s"
+        },
+    },
+    "handlers": {
+        "request_file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            # ✅ Use platform-safe path
+            "filename": os.path.join(LOG_DIR, "requests.log"),
+            "formatter": "verbose",
+        },
+        "webhook_file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(LOG_DIR, "webhook.log"),
+            "formatter": "verbose",
+        },
+        # Optional console handler (so you also see logs in terminal)
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["request_file", "console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "razorpay_webhook": {
+            "handlers": ["webhook_file", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "cashfree_webhook": {
+            "handlers": ["webhook_file", "console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
+
 
 # # firebase_config.py
 
@@ -156,15 +207,10 @@ WSGI_APPLICATION = 'syndo.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'syndodb',
-        'USER': 'syndouser',
-        'PASSWORD': 'StrongPassword@123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
-
 
 
 # Password validation
