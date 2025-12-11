@@ -932,30 +932,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = vendor_store
-        fields = [
-            'id', 'user',
-            'working_hours',
-            'spotlight_products',
-            'name',
-            'about',
-            'profile_image',
-            'banner_image',
-            'posts',
-            'reels',
-            'banners',
-            'storetag',
-            'latitude',
-            'longitude',
-            'is_location',
-            'is_active',
-            'is_online',
-            'is_store_open',
-            'is_offline',
-            'display_as_catalog',
-            'private_catalog',
-            'store_rating',
-            'reviews',
-        ]
+        fields = '__all__'
     
     def get_is_store_open(self, obj):
          # Store-level active check ✅
