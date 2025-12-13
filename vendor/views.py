@@ -2132,12 +2132,24 @@ class CompanyProfileViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": "Company profile already exists for this user."})
         company_profile = serializer.save(user=self.request.user)
         
-        # Update vendor_store profile_image if it doesn't have one
+        # Update vendor_store profile_image and name if they don't have values
         try:
             store = vendor_store.objects.get(user=self.request.user)
+            update_fields = []
+            
+            # Update profile_image if company has it and store doesn't
             if company_profile.profile_image and not store.profile_image:
                 store.profile_image = company_profile.profile_image
-                store.save(update_fields=['profile_image'])
+                update_fields.append('profile_image')
+            
+            # Update store name from brand_name if store doesn't have a name
+            if company_profile.brand_name and not store.name:
+                store.name = company_profile.brand_name
+                update_fields.append('name')
+            
+            # Save only if there are fields to update
+            if update_fields:
+                store.save(update_fields=update_fields)
         except vendor_store.DoesNotExist:
             pass  # Vendor store doesn't exist yet, skip
 
