@@ -508,6 +508,8 @@ class PrintJobSerializer(serializers.ModelSerializer):
         fields = ["print_type", "add_ons", "files", "total_amount"]
 
     def create(self, validated_data):
+        # Remove instructions if present (instructions moved to file level)
+        validated_data.pop("instructions", None)
         files_data = validated_data.pop("files", [])
         add_ons = validated_data.pop("add_ons", [])
         print_job = PrintJob.objects.create(**validated_data)
