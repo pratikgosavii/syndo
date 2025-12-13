@@ -842,6 +842,13 @@ class PurchaseItem(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
 
+    def save(self, *args, **kwargs):
+        # Calculate total from quantity and price
+        from decimal import Decimal
+        if self.quantity and self.price:
+            self.total = Decimal(str(self.quantity)) * Decimal(str(self.price))
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.purchase.id} ({self.product.name})"
 

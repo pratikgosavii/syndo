@@ -96,7 +96,8 @@ class AutomateNotificationOnOrderSerializer(serializers.ModelSerializer):
 class PurchaseItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseItem
-        fields = ['product']  # exclude 'purchase'
+        fields = ['product', 'quantity', 'price', 'total']  # include all needed fields
+        read_only_fields = ['total']  # total is calculated automatically
 
     
 
@@ -1187,11 +1188,19 @@ class PurchaseSerializer(serializers.ModelSerializer):
         )
 
         # Create purchase items
+        from decimal import Decimal
         for item_data in items_data:
+            # Ensure quantity and price have defaults if not provided
+            quantity = item_data.get('quantity', 1)
+            price = item_data.get('price', 0)
+            # Calculate total for this item (quantity * price)
+            item_data['total'] = Decimal(str(quantity)) * Decimal(str(price))
             PurchaseItem.objects.create(purchase=purchase, **item_data)
         
         # Calculate and save total_amount from all items
         purchase.calculate_total()
+        # Refresh instance to get updated total_amount in response
+        purchase.refresh_from_db()
 
         return purchase
 
@@ -1207,11 +1216,19 @@ class PurchaseSerializer(serializers.ModelSerializer):
         # Replace items only if provided
         if items_data is not None:
             instance.items.all().delete()
+            from decimal import Decimal
             for item_data in items_data:
+                # Ensure quantity and price have defaults if not provided
+                quantity = item_data.get('quantity', 1)
+                price = item_data.get('price', 0)
+                # Calculate total for this item (quantity * price)
+                item_data['total'] = Decimal(str(quantity)) * Decimal(str(price))
                 PurchaseItem.objects.create(purchase=instance, **item_data)
             
             # Calculate and save total_amount from all items
             instance.calculate_total()
+            # Refresh instance to get updated total_amount in response
+            instance.refresh_from_db()
 
         return instance
 

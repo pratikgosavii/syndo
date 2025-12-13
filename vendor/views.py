@@ -2281,19 +2281,22 @@ class PurchaseViewSet(viewsets.ModelViewSet):
                 PurchaseItem.objects.filter(purchase=instance).delete()
                 
                 # Create new items
+                from decimal import Decimal
                 for item_data in request.data['items']:
+                    quantity = item_data.get('quantity', 1)
+                    price = item_data.get('price', 0)
                     PurchaseItem.objects.create(
                         purchase=instance,
                         product_id=item_data['product'],
-                        quantity=item_data['quantity'],
-                        price=item_data['price'],
-                        total=item_data['quantity'] * item_data['price'],
+                        quantity=quantity,
+                        price=price,
+                        total=Decimal(str(quantity)) * Decimal(str(price)),
                     )
                 
                 # Calculate and save total_amount from all items
                 instance.calculate_total()
                 
-                # Refresh instance to get updated data
+                # Refresh instance to get updated total_amount in response
                 instance.refresh_from_db()
         
         return Response(serializer.data)
