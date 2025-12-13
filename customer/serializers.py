@@ -154,9 +154,6 @@ class OrderSerializer(serializers.ModelSerializer):
                 cart_item = Cart.objects.filter(user=request.user, product=product1).select_related("print_job").first()
                 if cart_item and hasattr(cart_item, "print_job"):
                     pj = cart_item.print_job
-                    # Note: instructions moved to file level in OrderPrintFile, 
-                    # but cart PrintJob still has it at job level
-                    job_instructions = getattr(pj, "instructions", None)
                     item_print_job = {
                         "total_amount": pj.total_amount,
                         "print_type": pj.print_type,
@@ -166,7 +163,7 @@ class OrderSerializer(serializers.ModelSerializer):
                         "files": [
                             {
                                 "file": pf.file,  # will be used directly
-                                "instructions": job_instructions,  # Use job-level instructions for all files (for backward compat)
+                                "instructions": getattr(pf, "instructions", None),  # Instructions now at file level
                                 "number_of_copies": pf.number_of_copies,
                                 "page_count": pf.page_count,
                                 "page_numbers": pf.page_numbers,
@@ -496,7 +493,7 @@ class FollowerSerializer(serializers.ModelSerializer):
 class PrintFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = PrintFile
-        fields = ["id", "file", "number_of_copies", "page_count", "page_numbers"]
+        fields = ["id", "file", "instructions", "number_of_copies", "page_count", "page_numbers"]
 
 
 # ---------- Print Job ----------
@@ -508,7 +505,7 @@ class PrintJobSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PrintJob
-        fields = ["instructions", "print_type", "add_ons", "files", "total_amount"]
+        fields = ["print_type", "add_ons", "files", "total_amount"]
 
     def create(self, validated_data):
         files_data = validated_data.pop("files", [])
