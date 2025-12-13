@@ -804,6 +804,9 @@ class Purchase(models.Model):
     vehicle_no = models.CharField(max_length=50, blank=True, null=True)
     transport_name = models.CharField(max_length=100, blank=True, null=True)
     no_of_parcels = models.PositiveIntegerField(blank=True, null=True)
+    
+    # Total amount calculated from purchase items
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.purchase_code:
@@ -815,13 +818,18 @@ class Purchase(models.Model):
                 user=self.user
             )
         super().save(*args, **kwargs)
-
-    @property
-    def total_amount(self):
-        """Calculate total amount from purchase items"""
+    
+    def calculate_total(self):
+        """Calculate and update total_amount from purchase items"""
         from django.db.models import Sum
         total = self.items.aggregate(total=Sum('total'))['total']
-        return total if total else 0
+        new_total = total if total else 0
+        # Use update() to avoid triggering save() and infinite recursion
+        # Only update if total changed to avoid unnecessary database writes
+        if self.total_amount != new_total:
+            Purchase.objects.filter(pk=self.pk).update(total_amount=new_total)
+            # Update instance in memory to keep it in sync
+            self.total_amount = new_total
 
     def __str__(self):
         return self.purchase_code or f"Purchase #{self.id}"

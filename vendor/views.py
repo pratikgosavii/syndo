@@ -2277,10 +2277,10 @@ class PurchaseViewSet(viewsets.ModelViewSet):
             
             # Handle purchase items if provided
             if 'items' in request.data:
-                # Delete existing items
+                # Delete existing items (signals will recalculate total)
                 PurchaseItem.objects.filter(purchase=instance).delete()
                 
-                # Create new items
+                # Create new items (signals will recalculate total after each item)
                 for item_data in request.data['items']:
                     PurchaseItem.objects.create(
                         purchase=instance,
@@ -2289,6 +2289,9 @@ class PurchaseViewSet(viewsets.ModelViewSet):
                         price=item_data['price'],
                         total=item_data['quantity'] * item_data['price'],
                     )
+                
+                # Ensure total is calculated after all items are updated
+                instance.calculate_total()
                 
                 # Refresh instance to get updated data
                 instance.refresh_from_db()
