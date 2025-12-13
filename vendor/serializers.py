@@ -291,10 +291,37 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
 
 class VendorStoreSerializer2(serializers.ModelSerializer):
+    is_store_open = serializers.SerializerMethodField()
 
     class Meta:
         model = vendor_store
         fields = '__all__'
+    
+    def get_is_store_open(self, obj):
+        # Store-level active check ✅
+        if not obj.is_offline:
+            return False
+
+        now = timezone.localtime()
+        # Get day name - try both lowercase and capitalized to handle case mismatch
+        today_lower = now.strftime('%A').lower()  # 'monday'
+        today_capitalized = now.strftime('%A')  # 'Monday'
+        current_time = now.time()
+
+        # Try both lowercase and capitalized day names to handle any case mismatch
+        working_hour = obj.user.working_hours.filter(day=today_capitalized).first()
+        if not working_hour:
+            # Try with lowercase
+            working_hour = obj.user.working_hours.filter(day=today_lower).first()
+        
+        if not working_hour or not working_hour.is_open:
+            return False  # closed today fully
+
+        if working_hour.open_time and working_hour.close_time:
+            # Check if current time is within working hours
+            return working_hour.open_time <= current_time <= working_hour.close_time
+
+        return True  # If no time is set but marked open
 
 
 

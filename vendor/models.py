@@ -565,7 +565,7 @@ class product(models.Model):
     # Pricing details
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     wholesale_price = models.DecimalField(max_digits=10, decimal_places=2)
-    sales_price = models.DecimalField(max_digits=10, decimal_places=2)    #pos
+    sales_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)    #pos
     mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  
    
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, null=True, blank=True)

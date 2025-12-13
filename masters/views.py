@@ -204,60 +204,77 @@ from firebase_admin import messaging
 
 def send_push_notification(user, title, body, campaign_id):
     """
-    Send the campaign notification to every FCM token that belongs to `user`.
+    Send the campaign notification only to users who follow the store.
+    Only sends to followers who have FCM tokens registered.
     """
     # Get campaign to access product and store (fetch once before loop)
     from vendor.models import NotificationCampaign
+    from customer.models import Follower
+    
     try:
-        campaign = NotificationCampaign.objects.select_related('product', 'store').get(id=campaign_id)
+        campaign = NotificationCampaign.objects.select_related('product', 'store', 'store__user').get(id=campaign_id)
         store_id = str(campaign.store.id) if campaign.store else ""
         product_id = str(campaign.product.id) if campaign.product else ""
+        
+        # Get store owner (vendor/user who owns the store)
+        store_owner = campaign.store.user if campaign.store else campaign.user
+        
     except NotificationCampaign.DoesNotExist:
-        store_id = ""
-        product_id = ""
+        print(f"❌ Campaign with id={campaign_id} not found")
+        return []
     
-    # Get all device tokens for the user, filtering out empty/None tokens
+    # Get all users who follow this store owner
+    follower_user_ids = Follower.objects.filter(
+        user=store_owner  # users who follow the store owner
+    ).values_list('follower_id', flat=True)
+    
+    if not follower_user_ids:
+        print(f"ℹ️ No followers found for store owner (user_id={store_owner.id})")
+        return []
+    
+    # Get all device tokens for followers, filtering out empty/None tokens
     device_tokens = DeviceToken.objects.filter(
-        user=user,
+        user_id__in=follower_user_ids,
         token__isnull=False
-    ).exclude(token='').values_list("token", flat=True)
+    ).exclude(token='').values_list('user_id', 'token')
     
-    tokens = [token for token in device_tokens if token and token.strip()]
-
-    if not tokens:
-        print(f"ℹ️ No valid device tokens registered for user_id={user.id}")
+    # Build map: user_id -> list of tokens
+    user_tokens_map = {}
+    for user_id, token in device_tokens:
+        if token and token.strip():
+            user_tokens_map.setdefault(user_id, []).append(token.strip())
+    
+    if not user_tokens_map:
+        print(f"ℹ️ No valid device tokens found for any followers of store owner (user_id={store_owner.id})")
         return []
 
     responses = []
-    for token in tokens:
-        # Skip if token is empty or whitespace
-        if not token or not token.strip():
-            print(f"⚠️ Skipping empty token for user_id={user.id}")
-            continue
-            
-        try:
-            message = messaging.Message(
-                notification=messaging.Notification(
-                    title=title,
-                    body=body,
-                ),
-                data={
-                    "campaign_id": str(campaign_id),
-                    "store_id": store_id,
-                    "product_id": product_id
-                },
-                token=token.strip(),  # Ensure no whitespace
-            )
-            
-            response = messaging.send(message)
-            responses.append(response)
-            print(
-                f"✅ Successfully sent message to user_id={user.id}, username={user.username or user.mobile}, token={token[:20]}...: {response}"
-            )
-        except Exception as e:
-            print(
-                f"❌ Error sending message to user_id={user.id}, username={user.username or user.mobile}, token={token[:20] if token else 'N/A'}...: {e}"
-            )
+    # Send notification to all tokens of all followers
+    for follower_user_id, tokens in user_tokens_map.items():
+        for token in tokens:
+            try:
+                message = messaging.Message(
+                    notification=messaging.Notification(
+                        title=title,
+                        body=body,
+                    ),
+                    data={
+                        "campaign_id": str(campaign_id),
+                        "store_id": store_id,
+                        "product_id": product_id
+                    },
+                    token=token,  # Token already stripped
+                )
+                
+                response = messaging.send(message)
+                responses.append(response)
+                print(
+                    f"✅ Successfully sent message to follower user_id={follower_user_id}, token={token[:20]}...: {response}"
+                )
+            except Exception as e:
+                print(
+                    f"❌ Error sending message to follower user_id={follower_user_id}, token={token[:20] if token else 'N/A'}...: {e}"
+                )
     return responses
 
 
