@@ -771,7 +771,7 @@ class Purchase(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
-    purchase_code = models.CharField(max_length=100, unique=True, blank=True, null=True)
+    purchase_code = models.CharField(max_length=100, blank=True, null=True)
 
     purchase_date = models.DateField()
     vendor = models.ForeignKey('vendor_vendors', on_delete=models.CASCADE)
