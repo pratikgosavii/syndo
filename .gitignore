@@ -9,5 +9,8 @@ media
 # Ignore wsgi.py
 syndo/wsgi.py
 
+# Logs
+logs/
+*.log
 
 *.json
