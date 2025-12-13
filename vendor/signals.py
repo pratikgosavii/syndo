@@ -357,6 +357,9 @@ def payment_ledger(sender, instance, created, **kwargs):
     reset_ledger_for_reference(BankLedger, "payment", instance.id)  # Keep for backward compatibility
 
     if instance.customer:
+        # Get payment_type display name (Cash, UPI, Cheque)
+        payment_type_display = instance.get_payment_type_display() if hasattr(instance, 'get_payment_type_display') else instance.payment_type.upper()
+        
         if instance.type == "received":
             adjust_ledger_to_target(
                 instance.customer,
@@ -364,16 +367,16 @@ def payment_ledger(sender, instance, created, **kwargs):
                 "payment",
                 instance.id,
                 amt,
-                f"Payment Received #{instance.id}"
+                f"Payment Received ({payment_type_display}) #{instance.id}"
             )
         elif instance.type == "gave":
             adjust_ledger_to_target(
                 instance.customer,
                 CustomerLedger,
-                "refund",
+                "payment",  # Using "payment" instead of "refund" since it's not in model choices
                 instance.id,
-                -amt,
-                f"Refund Given #{instance.id}"
+                -amt,  # Negative amount for refund/gave
+                f"Refund Given ({payment_type_display}) #{instance.id}"
             )
 
     if instance.vendor:
