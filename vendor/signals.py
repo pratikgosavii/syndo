@@ -402,23 +402,25 @@ def payment_ledger(sender, instance, created, **kwargs):
     if instance.payment_type == "cash" and instance.user is not None:
         if instance.type == "received":
             # You received payment → balance decreases (minus/subtract)
+            # Use negative amount to decrease balance
             adjust_ledger_to_target(
                 None,
                 CashLedger,
                 "withdrawal",
                 instance.id,
-                -abs(amt),  # Negative amount to decrease balance
+                -Decimal(str(amt)),  # Negative to decrease balance
                 f"Cash Payment Received #{instance.id}",
                 user=instance.user
             )
         elif instance.type == "gave":
             # You gave payment → balance increases (plus/add)
+            # Use positive amount to increase balance
             adjust_ledger_to_target(
                 None,
                 CashLedger,
                 "deposit",
                 instance.id,
-                abs(amt),  # Positive amount to increase balance
+                Decimal(str(amt)),  # Positive to increase balance
                 f"Cash Payment Given #{instance.id}",
                 user=instance.user
             )
@@ -427,22 +429,24 @@ def payment_ledger(sender, instance, created, **kwargs):
     if instance.bank and instance.payment_type in ["upi", "cheque"]:
         if instance.type == "received":
             # You received payment → bank balance decreases (minus/subtract)
+            # Use negative amount to decrease balance
             adjust_ledger_to_target(
                 instance.bank,
                 BankLedger,
                 "payment",
                 instance.id,
-                -abs(amt),  # Negative amount to decrease balance
+                -Decimal(str(amt)),  # Negative to decrease balance
                 f"Bank Payment Received #{instance.id}"
             )
         elif instance.type == "gave":
             # You gave payment → bank balance increases (plus/add)
+            # Use positive amount to increase balance
             adjust_ledger_to_target(
                 instance.bank,
                 BankLedger,
                 "payment",
                 instance.id,
-                abs(amt),  # Positive amount to increase balance
+                Decimal(str(amt)),  # Positive to increase balance
                 f"Bank Payment Given #{instance.id}"
             )
 
