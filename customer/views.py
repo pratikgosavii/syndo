@@ -745,6 +745,9 @@ class CartViewSet(viewsets.ModelViewSet):
                 except CustomizePrintVariant.DoesNotExist:
                     raise serializers.ValidationError({"customize_variant": "Invalid ID."})
 
+            # Remove instructions if present (instructions moved to file level)
+            print_job_data.pop("instructions", None)
+
             # ✅ Create or update print job
             print_job, _ = PrintJob.objects.update_or_create(
                 cart=cart_item, defaults=print_job_data
@@ -771,6 +774,7 @@ class CartViewSet(viewsets.ModelViewSet):
                 PrintFile.objects.create(
                     print_job=print_job,
                     file=uploaded_file,
+                    instructions=self.request.data.get(f"files[{index}].instructions"),
                     number_of_copies=self.request.data.get(f"files[{index}].number_of_copies", 1),
                     page_count=self.request.data.get(f"files[{index}].page_count", 0),
                     page_numbers=self.request.data.get(f"files[{index}].page_numbers", ""),
@@ -828,6 +832,9 @@ class CartViewSet(viewsets.ModelViewSet):
                     print_job_data["customize_variant"] = CustomizePrintVariant.objects.get(id=customize_variant_id)
                 except CustomizePrintVariant.DoesNotExist:
                     raise serializers.ValidationError({"customize_variant": "Invalid ID."})
+
+            # Remove instructions if present (instructions moved to file level)
+            print_job_data.pop("instructions", None)
 
             print_job = PrintJob.objects.create(cart=cart_item, **print_job_data)
 
