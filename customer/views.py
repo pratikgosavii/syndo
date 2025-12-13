@@ -855,6 +855,7 @@ class CartViewSet(viewsets.ModelViewSet):
                 PrintFile.objects.create(
                     print_job=print_job,
                     file=uploaded_file,
+                    instructions=request.data.get(f"files[{index}].instructions"),
                     number_of_copies=request.data.get(f"files[{index}].number_of_copies", 1),
                     page_count=request.data.get(f"files[{index}].page_count", 0),
                     page_numbers=request.data.get(f"files[{index}].page_numbers", ""),
