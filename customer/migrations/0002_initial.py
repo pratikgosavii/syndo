@@ -18,6 +18,13 @@ class Migration(migrations.Migration):
 
     operations = [
         # Note: user field for Address is already in 0001_initial.py, so we don't add it here
+        
+        # Delete orphaned Cart records (those without product/user) before adding foreign keys
+        migrations.RunPython(
+            lambda apps, schema_editor: apps.get_model('customer', 'Cart').objects.all().delete(),
+            reverse_code=migrations.RunPython.noop,
+        ),
+        
         migrations.AddField(
             model_name='cart',
             name='product',
@@ -28,6 +35,12 @@ class Migration(migrations.Migration):
             name='user',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='carts', to=settings.AUTH_USER_MODEL),
         ),
+        # Delete orphaned Favourite records before adding foreign keys
+        migrations.RunPython(
+            lambda apps, schema_editor: apps.get_model('customer', 'Favourite').objects.all().delete(),
+            reverse_code=migrations.RunPython.noop,
+        ),
+        
         migrations.AddField(
             model_name='favourite',
             name='product',
@@ -38,6 +51,12 @@ class Migration(migrations.Migration):
             name='user',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='favourites', to=settings.AUTH_USER_MODEL),
         ),
+        # Delete orphaned FavouriteStore records before adding foreign keys
+        migrations.RunPython(
+            lambda apps, schema_editor: apps.get_model('customer', 'FavouriteStore').objects.all().delete(),
+            reverse_code=migrations.RunPython.noop,
+        ),
+        
         migrations.AddField(
             model_name='favouritestore',
             name='store',
@@ -48,6 +67,12 @@ class Migration(migrations.Migration):
             name='user',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='favourites_user', to=settings.AUTH_USER_MODEL),
         ),
+        # Delete orphaned Follower records before adding foreign keys
+        migrations.RunPython(
+            lambda apps, schema_editor: apps.get_model('customer', 'Follower').objects.all().delete(),
+            reverse_code=migrations.RunPython.noop,
+        ),
+        
         migrations.AddField(
             model_name='follower',
             name='follower',
@@ -73,6 +98,12 @@ class Migration(migrations.Migration):
             name='user',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='orders', to=settings.AUTH_USER_MODEL),
         ),
+        # Delete orphaned OrderItem records before adding foreign keys
+        migrations.RunPython(
+            lambda apps, schema_editor: apps.get_model('customer', 'OrderItem').objects.all().delete(),
+            reverse_code=migrations.RunPython.noop,
+        ),
+        
         migrations.AddField(
             model_name='orderitem',
             name='order',
