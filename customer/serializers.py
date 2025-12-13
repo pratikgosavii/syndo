@@ -548,7 +548,9 @@ class CartSerializer(serializers.ModelSerializer):
         if product_instance.type == "print" and print_job_data:
             if hasattr(cart_item, "print_job"):
                 cart_item.print_job.delete()  # replace old job
-            PrintJobSerializer().create({**print_job_data, "cart": cart_item})
+            # Remove instructions from print_job_data if present (instructions moved to file level)
+            print_job_data_clean = {k: v for k, v in print_job_data.items() if k != "instructions"}
+            PrintJobSerializer().create({**print_job_data_clean, "cart": cart_item})
 
         return cart_item
 
