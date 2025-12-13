@@ -816,6 +816,13 @@ class Purchase(models.Model):
             )
         super().save(*args, **kwargs)
 
+    @property
+    def total_amount(self):
+        """Calculate total amount from purchase items"""
+        from django.db.models import Sum
+        total = self.items.aggregate(total=Sum('total'))['total']
+        return total if total else 0
+
     def __str__(self):
         return self.purchase_code or f"Purchase #{self.id}"
 

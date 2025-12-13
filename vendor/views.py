@@ -2289,6 +2289,9 @@ class PurchaseViewSet(viewsets.ModelViewSet):
                         price=item_data['price'],
                         total=item_data['quantity'] * item_data['price'],
                     )
+                
+                # Refresh instance to get updated data
+                instance.refresh_from_db()
         
         return Response(serializer.data)
 

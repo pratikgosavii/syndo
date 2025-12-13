@@ -1186,6 +1186,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
+        # Create purchase items - total will be calculated by property
         for item_data in items_data:
             PurchaseItem.objects.create(purchase=purchase, **item_data)
 
@@ -1200,7 +1201,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 setattr(instance, attr, value)
         instance.save()
 
-        # Replace items only if provided
+        # Replace items only if provided - total will be calculated by property
         if items_data is not None:
             instance.items.all().delete()
             for item_data in items_data:
