@@ -639,21 +639,6 @@ def restore_stock_on_purchase_delete(sender, instance, **kwargs):
     log_stock_transaction(instance.product, "purchase", -instance.quantity, ref_id=instance.pk)
 
 
-# -----------------------------------------------------------------------------
-# Recalculate Purchase total_amount when items change
-# -----------------------------------------------------------------------------
-@receiver(post_save, sender=PurchaseItem)
-def update_purchase_total_on_item_save(sender, instance, **kwargs):
-    """Recalculate purchase total_amount when PurchaseItem is created or updated."""
-    if instance.purchase:
-        instance.purchase.calculate_total()
-
-
-@receiver(post_delete, sender=PurchaseItem)
-def update_purchase_total_on_item_delete(sender, instance, **kwargs):
-    """Recalculate purchase total_amount when PurchaseItem is deleted."""
-    if instance.purchase:
-        instance.purchase.calculate_total()
 
 
 # -----------------------------------------------------------------------------

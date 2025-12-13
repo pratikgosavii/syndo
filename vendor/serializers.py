@@ -1186,11 +1186,11 @@ class PurchaseSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-        # Create purchase items - signals will calculate total after each item
+        # Create purchase items
         for item_data in items_data:
             PurchaseItem.objects.create(purchase=purchase, **item_data)
         
-        # Ensure total is calculated after all items are created
+        # Calculate and save total_amount from all items
         purchase.calculate_total()
 
         return purchase
@@ -1204,13 +1204,13 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 setattr(instance, attr, value)
         instance.save()
 
-        # Replace items only if provided - signals will calculate total after each item
+        # Replace items only if provided
         if items_data is not None:
             instance.items.all().delete()
             for item_data in items_data:
                 PurchaseItem.objects.create(purchase=instance, **item_data)
             
-            # Ensure total is calculated after all items are updated
+            # Calculate and save total_amount from all items
             instance.calculate_total()
 
         return instance
