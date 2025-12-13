@@ -17,13 +17,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Add user field to Address - only if table exists from old migrations (nullable to handle existing records)
-        # Note: If Address table is new, user field is already in 0001_initial.py
-        migrations.AddField(
-            model_name='address',
-            name='user',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='addresses', to=settings.AUTH_USER_MODEL),
-        ),
+        # Note: user field for Address is already in 0001_initial.py, so we don't add it here
         migrations.AddField(
             model_name='cart',
             name='product',
