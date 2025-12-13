@@ -352,7 +352,9 @@ def payment_ledger(sender, instance, created, **kwargs):
     reset_ledger_for_reference(VendorLedger, "refund", instance.id)
     reset_ledger_for_reference(CashLedger, "deposit", instance.id)
     reset_ledger_for_reference(CashLedger, "withdrawal", instance.id)
-    reset_ledger_for_reference(BankLedger, "payment", instance.id)
+    reset_ledger_for_reference(BankLedger, "deposit", instance.id)
+    reset_ledger_for_reference(BankLedger, "withdrawal", instance.id)
+    reset_ledger_for_reference(BankLedger, "payment", instance.id)  # Keep for backward compatibility
 
     if instance.customer:
         if instance.type == "received":
@@ -402,25 +404,23 @@ def payment_ledger(sender, instance, created, **kwargs):
     if instance.payment_type == "cash" and instance.user is not None:
         if instance.type == "received":
             # You received payment → balance decreases (minus/subtract)
-            # Use negative amount to decrease balance
             adjust_ledger_to_target(
                 None,
                 CashLedger,
                 "withdrawal",
                 instance.id,
-                -Decimal(str(amt)),  # Negative to decrease balance
+                -amt,  # Negative amount to decrease balance
                 f"Cash Payment Received #{instance.id}",
                 user=instance.user
             )
         elif instance.type == "gave":
             # You gave payment → balance increases (plus/add)
-            # Use positive amount to increase balance
             adjust_ledger_to_target(
                 None,
                 CashLedger,
                 "deposit",
                 instance.id,
-                Decimal(str(amt)),  # Positive to increase balance
+                amt,  # Positive amount to increase balance
                 f"Cash Payment Given #{instance.id}",
                 user=instance.user
             )
@@ -429,24 +429,22 @@ def payment_ledger(sender, instance, created, **kwargs):
     if instance.bank and instance.payment_type in ["upi", "cheque"]:
         if instance.type == "received":
             # You received payment → bank balance decreases (minus/subtract)
-            # Use negative amount to decrease balance
             adjust_ledger_to_target(
                 instance.bank,
                 BankLedger,
-                "payment",
+                "withdrawal",
                 instance.id,
-                -Decimal(str(amt)),  # Negative to decrease balance
+                -amt,  # Negative amount to decrease balance
                 f"Bank Payment Received #{instance.id}"
             )
         elif instance.type == "gave":
             # You gave payment → bank balance increases (plus/add)
-            # Use positive amount to increase balance
             adjust_ledger_to_target(
                 instance.bank,
                 BankLedger,
-                "payment",
+                "deposit",
                 instance.id,
-                Decimal(str(amt)),  # Positive to increase balance
+                amt,  # Positive amount to increase balance
                 f"Bank Payment Given #{instance.id}"
             )
 
@@ -543,7 +541,9 @@ def payment_delete_ledger(sender, instance, **kwargs):
     reset_ledger_for_reference(VendorLedger, "refund", instance.id)
     reset_ledger_for_reference(CashLedger, "deposit", instance.id)
     reset_ledger_for_reference(CashLedger, "withdrawal", instance.id)
-    reset_ledger_for_reference(BankLedger, "payment", instance.id)
+    reset_ledger_for_reference(BankLedger, "deposit", instance.id)
+    reset_ledger_for_reference(BankLedger, "withdrawal", instance.id)
+    reset_ledger_for_reference(BankLedger, "payment", instance.id)  # Keep for backward compatibility
 
 
 @receiver(post_delete, sender=CashTransfer)
