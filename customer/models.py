@@ -264,7 +264,6 @@ class OrderItem(models.Model):
 
 class OrderPrintJob(models.Model):
     order_item = models.OneToOneField("OrderItem", on_delete=models.CASCADE, related_name="print_job")
-    instructions = models.TextField(blank=True, null=True)
     total_amount = models.IntegerField(default=0)
     print_type = models.CharField(
         max_length=20,
@@ -287,6 +286,7 @@ class OrderPrintJob(models.Model):
 class OrderPrintFile(models.Model):
     print_job = models.ForeignKey(OrderPrintJob, on_delete=models.CASCADE, related_name="files")
     file = models.FileField(upload_to="order_print_jobs/files/")
+    instructions = models.TextField(blank=True, null=True)
     number_of_copies = models.PositiveIntegerField(default=1)
     page_count = models.PositiveIntegerField(default=0)
     page_numbers = models.CharField(max_length=255, blank=True, null=True)

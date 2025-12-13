@@ -13,7 +13,7 @@ from django.db import transaction
 class OrderPrintFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderPrintFile
-        fields = ["id", "file", "number_of_copies", "page_count", "page_numbers"]
+        fields = ["id", "file", "instructions", "number_of_copies", "page_count", "page_numbers"]
 
 
 class OrderPrintJobSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class OrderPrintJobSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderPrintJob
-        fields = ["instructions", "total_amount", "print_type", "print_variant", "customize_variant", "add_ons", "files"]
+        fields = ["total_amount", "print_type", "print_variant", "customize_variant", "add_ons", "files"]
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -154,8 +154,10 @@ class OrderSerializer(serializers.ModelSerializer):
                 cart_item = Cart.objects.filter(user=request.user, product=product1).select_related("print_job").first()
                 if cart_item and hasattr(cart_item, "print_job"):
                     pj = cart_item.print_job
+                    # Note: instructions moved to file level in OrderPrintFile, 
+                    # but cart PrintJob still has it at job level
+                    job_instructions = getattr(pj, "instructions", None)
                     item_print_job = {
-                        "instructions": pj.instructions,
                         "total_amount": pj.total_amount,
                         "print_type": pj.print_type,
                         "print_variant": getattr(pj.print_variant, "id", None),
@@ -164,6 +166,7 @@ class OrderSerializer(serializers.ModelSerializer):
                         "files": [
                             {
                                 "file": pf.file,  # will be used directly
+                                "instructions": job_instructions,  # Use job-level instructions for all files (for backward compat)
                                 "number_of_copies": pf.number_of_copies,
                                 "page_count": pf.page_count,
                                 "page_numbers": pf.page_numbers,
@@ -399,7 +402,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
                 order_pj = OrderPrintJob.objects.create(
                     order_item=oi,
-                    instructions=pj_payload.get("instructions"),
                     total_amount=pj_payload.get("total_amount") or 0,
                     print_type=pj_payload.get("print_type") or "single",
                     print_variant=print_variant,
@@ -419,6 +421,7 @@ class OrderSerializer(serializers.ModelSerializer):
                     OrderPrintFile.objects.create(
                         print_job=order_pj,
                         file=f.get("file"),
+                        instructions=f.get("instructions"),
                         number_of_copies=f.get("number_of_copies", 1),
                         page_count=f.get("page_count", 0),
                         page_numbers=f.get("page_numbers", ""),

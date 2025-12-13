@@ -2130,7 +2130,16 @@ class CompanyProfileViewSet(viewsets.ModelViewSet):
         # Check if profile already exists
         if CompanyProfile.objects.filter(user=self.request.user).exists():
             raise ValidationError({"detail": "Company profile already exists for this user."})
-        serializer.save(user=self.request.user)
+        company_profile = serializer.save(user=self.request.user)
+        
+        # Update vendor_store profile_image if it doesn't have one
+        try:
+            store = vendor_store.objects.get(user=self.request.user)
+            if company_profile.profile_image and not store.profile_image:
+                store.profile_image = company_profile.profile_image
+                store.save(update_fields=['profile_image'])
+        except vendor_store.DoesNotExist:
+            pass  # Vendor store doesn't exist yet, skip
 
 
 class DeliveryDiscountViewSet(viewsets.ModelViewSet):
@@ -4089,6 +4098,10 @@ class SaleViewSet(viewsets.ModelViewSet):
     queryset = Sale.objects.all()
     serializer_class = SaleSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Filter by logged-in user
+        return Sale.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         with transaction.atomic():
