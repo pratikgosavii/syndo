@@ -400,24 +400,13 @@ def payment_ledger(sender, instance, created, **kwargs):
             )
 
     # Cash/Bank ledger for payments
-    # If "received" → balance should MINUS (decrease) - subtract amount
-    # If "gave" → balance should PLUS (increase) - add amount
+    # If "gave" → balance should INCREASE (add amount) - you gave payment, cash/bank balance increases
+    # If "received" → balance should DECREASE (subtract amount) - you received payment, cash/bank balance decreases
     
     # Cash ledger for cash payments
     if instance.payment_type == "cash" and instance.user is not None:
-        if instance.type == "received":
-            # You received payment → balance decreases (minus/subtract)
-            adjust_ledger_to_target(
-                None,
-                CashLedger,
-                "withdrawal",
-                instance.id,
-                -amt,  # Negative amount to decrease balance
-                f"Cash Payment Received #{instance.id}",
-                user=instance.user
-            )
-        elif instance.type == "gave":
-            # You gave payment → balance increases (plus/add)
+        if instance.type == "gave":
+            # You gave payment → cash balance increases (add/plus)
             adjust_ledger_to_target(
                 None,
                 CashLedger,
@@ -427,10 +416,31 @@ def payment_ledger(sender, instance, created, **kwargs):
                 f"Cash Payment Given #{instance.id}",
                 user=instance.user
             )
+        elif instance.type == "received":
+            # You received payment → cash balance decreases (minus/subtract)
+            adjust_ledger_to_target(
+                None,
+                CashLedger,
+                "withdrawal",
+                instance.id,
+                -amt,  # Negative amount to decrease balance
+                f"Cash Payment Received #{instance.id}",
+                user=instance.user
+            )
     
     # Bank ledger for bank payments (upi/cheque)
     if instance.bank and instance.payment_type in ["upi", "cheque"]:
-        if instance.type == "received":
+        if instance.type == "gave":
+            # You gave payment → bank balance increases (add/plus)
+            adjust_ledger_to_target(
+                instance.bank,
+                BankLedger,
+                "deposit",
+                instance.id,
+                amt,  # Positive amount to increase balance
+                f"Bank Payment Given #{instance.id}"
+            )
+        elif instance.type == "received":
             # You received payment → bank balance decreases (minus/subtract)
             adjust_ledger_to_target(
                 instance.bank,
@@ -439,16 +449,6 @@ def payment_ledger(sender, instance, created, **kwargs):
                 instance.id,
                 -amt,  # Negative amount to decrease balance
                 f"Bank Payment Received #{instance.id}"
-            )
-        elif instance.type == "gave":
-            # You gave payment → bank balance increases (plus/add)
-            adjust_ledger_to_target(
-                instance.bank,
-                BankLedger,
-                "deposit",
-                instance.id,
-                amt,  # Positive amount to increase balance
-                f"Bank Payment Given #{instance.id}"
             )
 
 

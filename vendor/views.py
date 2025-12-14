@@ -594,8 +594,14 @@ class CashLedgerAPIView(APIView):
         ledger_entries = CashLedger.objects.filter(user=request.user).order_by("-created_at")
         serializer = CashLedgerSerializer(ledger_entries, many=True)
 
-        # Current cash balance (last balance_after or sum of all amounts)
-        cash_balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+        # Current cash balance from CashBalance model (updated by signals)
+        from .models import CashBalance
+        try:
+            balance_obj = CashBalance.objects.get(user=request.user)
+            cash_balance = balance_obj.balance or 0
+        except CashBalance.DoesNotExist:
+            # Fallback: calculate from ledger entries
+            cash_balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
         return Response({
             "cash_balance": cash_balance,
@@ -813,10 +819,17 @@ def list_customer(request):
 # ---- Customer Ledger ----
 class CustomerLedgerAPIView(APIView):
     def get(self, request, customer_id):
+        from .models import vendor_customers
+        
         ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
 
-        # Running balance
-        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+        # Get balance from customer model (updated by signals) or calculate from ledger
+        try:
+            customer = vendor_customers.objects.get(id=customer_id)
+            balance = customer.balance or 0
+        except vendor_customers.DoesNotExist:
+            # Fallback: calculate from ledger entries
+            balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
         serializer = CustomerLedgerSerializer(ledger_entries, many=True)
         return Response({
@@ -857,8 +870,17 @@ def bank_ledger(request, bank_id):
 
 
 def customer_ledger(request, customer_id):
+    from .models import vendor_customers
+    
     ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
-    balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+    
+    # Get balance from customer model (updated by signals) or calculate from ledger
+    try:
+        customer = vendor_customers.objects.get(id=customer_id)
+        balance = customer.balance or 0
+    except vendor_customers.DoesNotExist:
+        # Fallback: calculate from ledger entries
+        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
     return render(request, "customer_ledger.html", {
         "customer_id": customer_id,

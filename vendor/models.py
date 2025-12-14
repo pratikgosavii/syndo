@@ -389,6 +389,7 @@ class CustomerLedger(models.Model):
     TRANSACTION_TYPES = [
         ("sale", "Sale (POS)"),
         ("payment", "Payment Received"),
+        ("refund", "Refund Given"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
