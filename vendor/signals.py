@@ -305,15 +305,44 @@ def purchase_ledger(sender, instance, created, **kwargs):
     reset_ledger_for_reference(CashLedger, "purchase", instance.id)
 
     if instance.vendor:
-        amt = (instance.discount_amount or Decimal(0)) + (instance.advance_amount or Decimal(0))
-        adjust_ledger_to_target(
-            instance.vendor,
-            VendorLedger,
-            "purchase",
-            instance.id,
-            amt,
-            f"Purchase #{instance.id}"
-        )
+        total_amt = Decimal(instance.total_amount or 0)
+        balance_amt = Decimal(instance.balance_amount or 0)
+        
+        # Refresh vendor from database AFTER reset to get the correct current balance
+        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        
+        # For credit purchases, we only want to add balance_amount to vendor balance
+        # So we use balance_amount for the ledger target instead of discount_amount + advance_amount
+        if instance.payment_method == 'credit' and balance_amt > 0:
+            # Get balance before ledger update
+            balance_before = Decimal(vendor.balance or 0)
+            
+            # Use balance_amount for ledger entry
+            adjust_ledger_to_target(
+                vendor,
+                VendorLedger,
+                "purchase",
+                instance.id,
+                balance_amt,
+                f"Purchase #{instance.id} (Credit)"
+            )
+            
+            # Explicitly update vendor balance with balance_amount
+            vendor.refresh_from_db()
+            new_balance = balance_before + balance_amt
+            vendor.balance = int(new_balance)
+            vendor.save(update_fields=['balance'])
+        else:
+            # For non-credit purchases, use discount_amount + advance_amount
+            amt = (instance.discount_amount or Decimal(0)) + (instance.advance_amount or Decimal(0))
+            adjust_ledger_to_target(
+                vendor,
+                VendorLedger,
+                "purchase",
+                instance.id,
+                amt,
+                f"Purchase #{instance.id}"
+            )
 
     # Bank entry negative for purchase advance
     if instance.advance_bank:
