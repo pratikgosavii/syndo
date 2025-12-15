@@ -372,14 +372,9 @@ def payment_ledger(sender, instance, created, **kwargs):
     if instance.customer:
         # Refresh customer from database to get current balance
         customer = vendor_customers.objects.get(pk=instance.customer.pk)
+        balance_before_ledger = Decimal(customer.balance or 0)
         
         if instance.type == "received":
-            # Update customer balance first: received = subtract
-            current_balance = Decimal(customer.balance or 0)
-            new_balance = current_balance - amt
-            customer.balance = int(new_balance)
-            customer.save(update_fields=['balance'])
-            
             adjust_ledger_to_target(
                 customer,
                 CustomerLedger,
@@ -388,13 +383,15 @@ def payment_ledger(sender, instance, created, **kwargs):
                 amt,
                 f"Payment Received ({payment_type_display}) #{instance.id}"
             )
-        elif instance.type == "gave":
-            # Update customer balance first: gave = add
+            # Refresh to get balance after ledger update, then adjust
+            customer.refresh_from_db()
+            # Ledger system added amt, but we want to subtract amt for received
+            # So: balance_after_ledger - (amt that ledger added) - amt (what we want) = balance_before_ledger - amt
             current_balance = Decimal(customer.balance or 0)
-            new_balance = current_balance + amt
+            new_balance = balance_before_ledger - amt
             customer.balance = int(new_balance)
             customer.save(update_fields=['balance'])
-            
+        elif instance.type == "gave":
             adjust_ledger_to_target(
                 customer,
                 CustomerLedger,
@@ -403,18 +400,21 @@ def payment_ledger(sender, instance, created, **kwargs):
                 -amt,  # Negative amount for refund/gave
                 f"Refund Given ({payment_type_display}) #{instance.id}"
             )
+            # Refresh to get balance after ledger update, then adjust
+            customer.refresh_from_db()
+            # Ledger system subtracted amt, but we want to add amt for gave
+            # So: balance_after_ledger - (amt that ledger subtracted) + amt (what we want) = balance_before_ledger + amt
+            current_balance = Decimal(customer.balance or 0)
+            new_balance = balance_before_ledger + amt
+            customer.balance = int(new_balance)
+            customer.save(update_fields=['balance'])
 
     if instance.vendor:
         # Refresh vendor from database to get current balance
         vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        balance_before_ledger = Decimal(vendor.balance or 0)
         
         if instance.type == "gave":
-            # Update vendor balance first: gave = add
-            current_balance = Decimal(vendor.balance or 0)
-            new_balance = current_balance + amt
-            vendor.balance = int(new_balance)
-            vendor.save(update_fields=['balance'])
-            
             adjust_ledger_to_target(
                 vendor,
                 VendorLedger,
@@ -423,13 +423,14 @@ def payment_ledger(sender, instance, created, **kwargs):
                 -amt,
                 f"Payment Given ({payment_type_display}) #{instance.id}"
             )
-        elif instance.type == "received":
-            # Update vendor balance first: received = subtract
+            # Refresh to get balance after ledger update, then adjust
+            vendor.refresh_from_db()
+            # Ledger system subtracted amt, but we want to add amt for gave
             current_balance = Decimal(vendor.balance or 0)
-            new_balance = current_balance - amt
+            new_balance = balance_before_ledger + amt
             vendor.balance = int(new_balance)
             vendor.save(update_fields=['balance'])
-            
+        elif instance.type == "received":
             adjust_ledger_to_target(
                 vendor,
                 VendorLedger,
@@ -438,6 +439,13 @@ def payment_ledger(sender, instance, created, **kwargs):
                 amt,
                 f"Refund Received ({payment_type_display}) #{instance.id}"
             )
+            # Refresh to get balance after ledger update, then adjust
+            vendor.refresh_from_db()
+            # Ledger system added amt, but we want to subtract amt for received
+            current_balance = Decimal(vendor.balance or 0)
+            new_balance = balance_before_ledger - amt
+            vendor.balance = int(new_balance)
+            vendor.save(update_fields=['balance'])
 
     # Cash/Bank ledger for payments
     # If "gave" → balance should INCREASE (add amount) - you gave payment, cash/bank balance increases

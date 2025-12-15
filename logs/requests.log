@@ -425,3 +425,11 @@ Traceback (most recent call last):
   File "C:\Users\Pratik Gosavi\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\sqlite3\base.py", line 354, in execute
     return super().execute(query, params)
 django.db.utils.OperationalError: no such column: customer_review.user_id
+2025-12-15 17:38:12,751: WARNING: Unauthorized: /vendor/customer/11/ledger/
+2025-12-15 17:38:17,606: WARNING: Unauthorized: /vendor/customer/1/ledger/
+2025-12-15 17:38:25,316: WARNING: Unauthorized: /vendor/customer/1/ledger/
+2025-12-15 17:38:29,145: WARNING: Unauthorized: /vendor/customer/1/ledger/
+2025-12-15 17:38:41,217: WARNING: Unauthorized: /vendor/customer/1/ledger/
+2025-12-15 17:39:13,581: WARNING: Not Found: /favicon.ico
+2025-12-15 17:39:15,245: WARNING: Not Found: /firebase-messaging-sw.js
+2025-12-15 17:39:18,511: WARNING: Not Found: /firebase-messaging-sw.js
