@@ -14,3 +14,6 @@ logs/
 *.log
 
 *.json
+# Runtime logs
+logs/
+*.log

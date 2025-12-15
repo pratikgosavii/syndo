@@ -71,7 +71,13 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
     """
     Generic ledger creation function that ensures all balances and amounts are handled as Decimal.
     """
-    opening_balance = Decimal(parent.balance or 0) if parent else Decimal(0)   # >>> updated to support CashLedger
+    # Refresh parent from database to get latest balance (important after reset operations)
+    if parent:
+        parent.refresh_from_db()
+        opening_balance = Decimal(parent.balance or 0)
+    else:
+        opening_balance = Decimal(0)   # >>> updated to support CashLedger
+    
     amount = Decimal(amount or 0)
     balance_after = opening_balance + amount
 
@@ -222,26 +228,45 @@ def sale_ledger(sender, instance, created, **kwargs):
     reset_ledger_for_reference(CashLedger, "sale", instance.id)
 
     # For updates, adjust to target for current state
-    # Customer ledger → target is total_amount
+    # Customer ledger → for credit sales, use balance_amount; for others, use total_amount
     if instance.customer:
-        adjust_ledger_to_target(
-            instance.customer,
-            CustomerLedger,
-            "sale",
-            instance.id,
-            instance.total_amount,
-            f"Sale #{instance.id}"
-        )
-    
-    # If payment method is credit, add balance_amount to customer balance
-    if instance.customer and instance.payment_method == 'credit':
+        total_amt = Decimal(instance.total_amount or 0)
         balance_amt = Decimal(instance.balance_amount or 0)
-        if balance_amt > 0:
-            # Update customer balance directly
-            current_balance = Decimal(instance.customer.balance or 0)
-            new_balance = current_balance + balance_amt
-            instance.customer.balance = int(new_balance)
-            instance.customer.save(update_fields=['balance'])
+        print(total_amt, balance_amt)
+        # Refresh customer from database AFTER reset to get the correct current balance
+        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+        
+        # For credit sales, we only want to add balance_amount to customer balance
+        # So we use balance_amount for the ledger target instead of total_amount
+        if instance.payment_method == 'credit' and balance_amt > 0:
+            # Get balance before ledger update
+            balance_before = Decimal(customer.balance or 0)
+            
+            # Use balance_amount for ledger entry
+            adjust_ledger_to_target(
+                customer,
+                CustomerLedger,
+                "sale",
+                instance.id,
+                balance_amt,
+                f"Sale #{instance.id} (Credit)"
+            )
+            
+            # Explicitly update customer balance with balance_amount
+            customer.refresh_from_db()
+            new_balance = balance_before + balance_amt
+            customer.balance = int(new_balance)
+            customer.save(update_fields=['balance'])
+        else:
+            # For non-credit sales, use total_amount
+            adjust_ledger_to_target(
+                customer,
+                CustomerLedger,
+                "sale",
+                instance.id,
+                total_amt,
+                f"Sale #{instance.id}"
+            )
 
     # Bank ledger → target is advance_amount when bank is set
     if instance.advance_bank:
