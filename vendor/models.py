@@ -1343,11 +1343,51 @@ class ReminderSetting(models.Model):
     # Reminder days
     credit_bill_days = models.PositiveIntegerField(default=30)
     pending_invoice_days = models.PositiveIntegerField(default=30)
+    expiry_stock_days = models.PositiveIntegerField(default=30)
 
     def __str__(self):
         return f"ReminderSettings for {self.user.username}"
-    
 
+
+class Reminder(models.Model):
+    """
+    Stores reminders generated based on ReminderSetting for each user/vendor.
+    """
+    REMINDER_TYPE_CHOICES = [
+        ('credit_bill', 'Credit Bill'),
+        ('pending_invoice', 'Pending Invoice'),
+        ('low_stock', 'Low Stock'),
+        ('expiry_stock', 'Expiry Stock'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reminders')
+    reminder_type = models.CharField(max_length=20, choices=REMINDER_TYPE_CHOICES)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    
+    # Reference fields - can be Purchase, Sale, or Product
+    purchase = models.ForeignKey('Purchase', on_delete=models.CASCADE, null=True, blank=True)
+    sale = models.ForeignKey('Sale', on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey('product', on_delete=models.CASCADE, null=True, blank=True)
+    
+    # Additional info
+    due_date = models.DateField(null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    stock_quantity = models.IntegerField(null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+    
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'reminder_type', 'is_read']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_reminder_type_display()} - {self.title}"
 
 
 class NotificationCampaign(models.Model):
