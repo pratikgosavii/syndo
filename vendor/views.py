@@ -820,6 +820,7 @@ def list_customer(request):
 class CustomerLedgerAPIView(APIView):
     def get(self, request, customer_id):
         from .models import vendor_customers
+        from decimal import Decimal
         
         ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
 
@@ -831,8 +832,11 @@ class CustomerLedgerAPIView(APIView):
             # Fallback: calculate from ledger entries
             balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
-        # Add balance_amount from Sale records for this customer
-        sale_balance_amount = Sale.objects.filter(customer_id=customer_id).aggregate(
+        # Add balance_amount from Sale records for this customer (credit sales only)
+        sale_balance_amount = Sale.objects.filter(
+            customer_id=customer_id,
+            payment_method='credit'
+        ).aggregate(
             total=Sum("balance_amount")
         )["total"] or Decimal("0")
         
