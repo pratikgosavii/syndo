@@ -820,7 +820,6 @@ def list_customer(request):
 class CustomerLedgerAPIView(APIView):
     def get(self, request, customer_id):
         from .models import vendor_customers
-        from decimal import Decimal
         
         ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
 
