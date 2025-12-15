@@ -831,21 +831,12 @@ class CustomerLedgerAPIView(APIView):
         except vendor_customers.DoesNotExist:
             # Fallback: calculate from ledger entries
             balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
-
-        # Add balance_amount from Sale records for this customer (credit sales only)
-        sale_balance_amount = Sale.objects.filter(
-            customer_id=customer_id,
-            payment_method='credit'
-        ).aggregate(
-            total=Sum("balance_amount")
-        )["total"] or Decimal("0")
-        
+       
         # Convert balance to Decimal if it's not already
         if not isinstance(balance, Decimal):
             balance = Decimal(str(balance))
         
         # Add sale balance_amount to the balance
-        balance = balance + sale_balance_amount
 
         serializer = CustomerLedgerSerializer(ledger_entries, many=True)
         return Response({

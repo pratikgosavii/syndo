@@ -221,18 +221,27 @@ def sale_ledger(sender, instance, created, **kwargs):
     reset_ledger_for_reference(BankLedger, "sale", instance.id)
     reset_ledger_for_reference(CashLedger, "sale", instance.id)
 
-    # Customer ledger → only update for credit sales with balance_amount > 0
+    # For updates, adjust to target for current state
+    # Customer ledger → target is total_amount
+    if instance.customer:
+        adjust_ledger_to_target(
+            instance.customer,
+            CustomerLedger,
+            "sale",
+            instance.id,
+            instance.total_amount,
+            f"Sale #{instance.id}"
+        )
+    
+    # If payment method is credit, add balance_amount to customer balance
     if instance.customer and instance.payment_method == 'credit':
         balance_amt = Decimal(instance.balance_amount or 0)
         if balance_amt > 0:
-            adjust_ledger_to_target(
-                instance.customer,
-                CustomerLedger,
-                "sale",
-                instance.id,
-                balance_amt,
-                f"Sale #{instance.id}"
-            )
+            # Update customer balance directly
+            current_balance = Decimal(instance.customer.balance or 0)
+            new_balance = current_balance + balance_amt
+            instance.customer.balance = int(new_balance)
+            instance.customer.save(update_fields=['balance'])
 
     # Bank ledger → target is advance_amount when bank is set
     if instance.advance_bank:
@@ -370,6 +379,11 @@ def payment_ledger(sender, instance, created, **kwargs):
                 amt,
                 f"Payment Received ({payment_type_display}) #{instance.id}"
             )
+            # If payment received: subtract from customer balance
+            current_balance = Decimal(instance.customer.balance or 0)
+            new_balance = current_balance - amt
+            instance.customer.balance = int(new_balance)
+            instance.customer.save(update_fields=['balance'])
         elif instance.type == "gave":
             adjust_ledger_to_target(
                 instance.customer,
@@ -379,6 +393,11 @@ def payment_ledger(sender, instance, created, **kwargs):
                 -amt,  # Negative amount for refund/gave
                 f"Refund Given ({payment_type_display}) #{instance.id}"
             )
+            # If payment gave: add to customer balance
+            current_balance = Decimal(instance.customer.balance or 0)
+            new_balance = current_balance + amt
+            instance.customer.balance = int(new_balance)
+            instance.customer.save(update_fields=['balance'])
 
     if instance.vendor:
         if instance.type == "gave":
@@ -390,6 +409,11 @@ def payment_ledger(sender, instance, created, **kwargs):
                 -amt,
                 f"Payment Given ({payment_type_display}) #{instance.id}"
             )
+            # If payment gave: add to vendor balance
+            current_balance = Decimal(instance.vendor.balance or 0)
+            new_balance = current_balance + amt
+            instance.vendor.balance = int(new_balance)
+            instance.vendor.save(update_fields=['balance'])
         elif instance.type == "received":
             adjust_ledger_to_target(
                 instance.vendor,
@@ -399,6 +423,11 @@ def payment_ledger(sender, instance, created, **kwargs):
                 amt,
                 f"Refund Received ({payment_type_display}) #{instance.id}"
             )
+            # If payment received: subtract from vendor balance
+            current_balance = Decimal(instance.vendor.balance or 0)
+            new_balance = current_balance - amt
+            instance.vendor.balance = int(new_balance)
+            instance.vendor.save(update_fields=['balance'])
 
     # Cash/Bank ledger for payments
     # If "gave" → balance should INCREASE (add amount) - you gave payment, cash/bank balance increases
