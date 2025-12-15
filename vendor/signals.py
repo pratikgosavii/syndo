@@ -370,64 +370,74 @@ def payment_ledger(sender, instance, created, **kwargs):
     reset_ledger_for_reference(BankLedger, "payment", instance.id)  # Keep for backward compatibility
 
     if instance.customer:
+        # Refresh customer from database to get current balance
+        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+        
         if instance.type == "received":
+            # Update customer balance first: received = subtract
+            current_balance = Decimal(customer.balance or 0)
+            new_balance = current_balance - amt
+            customer.balance = int(new_balance)
+            customer.save(update_fields=['balance'])
+            
             adjust_ledger_to_target(
-                instance.customer,
+                customer,
                 CustomerLedger,
                 "payment",
                 instance.id,
                 amt,
                 f"Payment Received ({payment_type_display}) #{instance.id}"
             )
-            # If payment received: subtract from customer balance
-            current_balance = Decimal(instance.customer.balance or 0)
-            new_balance = current_balance - amt
-            instance.customer.balance = int(new_balance)
-            instance.customer.save(update_fields=['balance'])
         elif instance.type == "gave":
+            # Update customer balance first: gave = add
+            current_balance = Decimal(customer.balance or 0)
+            new_balance = current_balance + amt
+            customer.balance = int(new_balance)
+            customer.save(update_fields=['balance'])
+            
             adjust_ledger_to_target(
-                instance.customer,
+                customer,
                 CustomerLedger,
                 "refund",  # Using "refund" to differentiate from received payments
                 instance.id,
                 -amt,  # Negative amount for refund/gave
                 f"Refund Given ({payment_type_display}) #{instance.id}"
             )
-            # If payment gave: add to customer balance
-            current_balance = Decimal(instance.customer.balance or 0)
-            new_balance = current_balance + amt
-            instance.customer.balance = int(new_balance)
-            instance.customer.save(update_fields=['balance'])
 
     if instance.vendor:
+        # Refresh vendor from database to get current balance
+        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        
         if instance.type == "gave":
+            # Update vendor balance first: gave = add
+            current_balance = Decimal(vendor.balance or 0)
+            new_balance = current_balance + amt
+            vendor.balance = int(new_balance)
+            vendor.save(update_fields=['balance'])
+            
             adjust_ledger_to_target(
-                instance.vendor,
+                vendor,
                 VendorLedger,
                 "payment",
                 instance.id,
                 -amt,
                 f"Payment Given ({payment_type_display}) #{instance.id}"
             )
-            # If payment gave: add to vendor balance
-            current_balance = Decimal(instance.vendor.balance or 0)
-            new_balance = current_balance + amt
-            instance.vendor.balance = int(new_balance)
-            instance.vendor.save(update_fields=['balance'])
         elif instance.type == "received":
+            # Update vendor balance first: received = subtract
+            current_balance = Decimal(vendor.balance or 0)
+            new_balance = current_balance - amt
+            vendor.balance = int(new_balance)
+            vendor.save(update_fields=['balance'])
+            
             adjust_ledger_to_target(
-                instance.vendor,
+                vendor,
                 VendorLedger,
                 "refund",
                 instance.id,
                 amt,
                 f"Refund Received ({payment_type_display}) #{instance.id}"
             )
-            # If payment received: subtract from vendor balance
-            current_balance = Decimal(instance.vendor.balance or 0)
-            new_balance = current_balance - amt
-            instance.vendor.balance = int(new_balance)
-            instance.vendor.save(update_fields=['balance'])
 
     # Cash/Bank ledger for payments
     # If "gave" → balance should INCREASE (add amount) - you gave payment, cash/bank balance increases
