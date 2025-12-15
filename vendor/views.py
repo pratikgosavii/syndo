@@ -4331,6 +4331,39 @@ class ReminderSettingViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+class ReminderViewSet(viewsets.ModelViewSet):
+    serializer_class = ReminderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Filter reminders by the logged-in user
+        queryset = Reminder.objects.filter(user=self.request.user)
+        
+        # Optional: Filter by reminder_type if provided
+        reminder_type = self.request.query_params.get('reminder_type', None)
+        if reminder_type:
+            queryset = queryset.filter(reminder_type=reminder_type)
+        
+        # Optional: Filter by is_read status if provided
+        is_read = self.request.query_params.get('is_read', None)
+        if is_read is not None:
+            is_read_bool = is_read.lower() == 'true'
+            queryset = queryset.filter(is_read=is_read_bool)
+        
+        return queryset.order_by('-created_at')
+
+    def partial_update(self, request, *args, **kwargs):
+        """Allow updating is_read status"""
+        instance = self.get_object()
+        # Only allow updating is_read field
+        if 'is_read' in request.data:
+            instance.is_read = request.data['is_read']
+            instance.save(update_fields=['is_read'])
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        return Response({'detail': 'Only is_read field can be updated'}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class TaxSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = TaxSettingsSerializer
     permission_classes = [permissions.IsAuthenticated]

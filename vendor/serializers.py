@@ -1081,7 +1081,32 @@ class ReminderSettingSerializer(serializers.ModelSerializer):
             'pending_invoice_days',
             'low_stock_reminder',
             'expiry_stock_reminder',
+            'expiry_stock_days',
         ]
+
+
+class ReminderSerializer(serializers.ModelSerializer):
+    reminder_type_display = serializers.CharField(source='get_reminder_type_display', read_only=True)
+    
+    class Meta:
+        model = Reminder
+        fields = [
+            'id',
+            'reminder_type',
+            'reminder_type_display',
+            'title',
+            'message',
+            'purchase',
+            'sale',
+            'product',
+            'due_date',
+            'amount',
+            'stock_quantity',
+            'expiry_date',
+            'is_read',
+            'created_at',
+        ]
+        read_only_fields = ['user', 'created_at']
 
 
 class TaxSettingsSerializer(serializers.ModelSerializer):

@@ -57,6 +57,7 @@ router.register(r'invoicesettings', InvoiceSettingsViewSet, basename='invoiceset
 router.register(r'payments', PaymentViewSet, basename='payment')
 
 router.register(r'reminder-settings', ReminderSettingViewSet, basename='reminder-settings')
+router.register(r'reminders', ReminderViewSet, basename='reminders')
 router.register(r'orders', OrderViewSet, basename='orders')
 
 router.register(r'offer', OfferViewSet, basename="offer")
