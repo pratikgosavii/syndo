@@ -820,6 +820,7 @@ def list_customer(request):
 class CustomerLedgerAPIView(APIView):
     def get(self, request, customer_id):
         from .models import vendor_customers
+        from decimal import Decimal
         
         ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
 
@@ -830,6 +831,18 @@ class CustomerLedgerAPIView(APIView):
         except vendor_customers.DoesNotExist:
             # Fallback: calculate from ledger entries
             balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+        # Add balance_amount from Sale records for this customer
+        sale_balance_amount = Sale.objects.filter(customer_id=customer_id).aggregate(
+            total=Sum("balance_amount")
+        )["total"] or Decimal("0")
+        
+        # Convert balance to Decimal if it's not already
+        if not isinstance(balance, Decimal):
+            balance = Decimal(str(balance))
+        
+        # Add sale balance_amount to the balance
+        balance = balance + sale_balance_amount
 
         serializer = CustomerLedgerSerializer(ledger_entries, many=True)
         return Response({
