@@ -221,17 +221,18 @@ def sale_ledger(sender, instance, created, **kwargs):
     reset_ledger_for_reference(BankLedger, "sale", instance.id)
     reset_ledger_for_reference(CashLedger, "sale", instance.id)
 
-    # For updates, adjust to target for current state
-    # Customer ledger → target is total_amount
-    if instance.customer:
-        adjust_ledger_to_target(
-            instance.customer,
-            CustomerLedger,
-            "sale",
-            instance.id,
-            instance.total_amount,
-            f"Sale #{instance.id}"
-        )
+    # Customer ledger → only update for credit sales with balance_amount > 0
+    if instance.customer and instance.payment_method == 'credit':
+        balance_amt = Decimal(instance.balance_amount or 0)
+        if balance_amt > 0:
+            adjust_ledger_to_target(
+                instance.customer,
+                CustomerLedger,
+                "sale",
+                instance.id,
+                balance_amt,
+                f"Sale #{instance.id}"
+            )
 
     # Bank ledger → target is advance_amount when bank is set
     if instance.advance_bank:
