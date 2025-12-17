@@ -3557,7 +3557,7 @@ def auto_assign_delivery(request):
 
 
 
-from .models import CashBalance, vendor_bank, CashTransfer, CashAdjustHistory
+from .models import CashBalance, vendor_bank, CashTransfer
 
 @login_required
 def cash_in_hand(request):
@@ -3578,24 +3578,26 @@ def adjust_cash(request):
             amount = float(request.POST.get('amount'))
             print("Amount entered:", amount)
 
+            from .models import CashLedger
+            from .signals import create_ledger
+            
             balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
             previous_balance = Decimal(balance_obj.balance or 0)
             new_balance = Decimal(amount)
             delta = new_balance - previous_balance
 
-            # Write history to dedicated table
+            # Create CashLedger entry using the helper function (like all other ledger entries)
             if delta != 0:
-                CashAdjustHistory.objects.create(
-                    user=request.user,
-                    previous_balance=previous_balance,
-                    new_balance=new_balance,
-                    delta_amount=delta,
-                    note=f"Manual cash adjust: {previous_balance} -> {new_balance}",
+                description = f"Manual cash adjust: {previous_balance} → {new_balance}"
+                create_ledger(
+                    parent=None,
+                    ledger_model=CashLedger,
+                    transaction_type="adjustment",
+                    reference_id=None,
+                    amount=delta,
+                    description=description,
+                    user=request.user
                 )
-
-            # Apply the new balance
-            balance_obj.balance = new_balance
-            balance_obj.save()
             print('Balance updated successfully')
             
             return redirect('cash_in_hand')
@@ -3608,7 +3610,12 @@ def adjust_cash(request):
     return redirect('cash_in_hand')
 
 def adjust_cash_history(request):
-    data = CashAdjustHistory.objects.filter(user=request.user)
+    from .models import CashLedger
+    # Get adjustment entries from CashLedger instead of CashAdjustHistory
+    data = CashLedger.objects.filter(
+        user=request.user,
+        transaction_type="adjustment"
+    ).order_by('-created_at')
     return render(request, 'cash_adjust_history.html', {'data': data})
 
 from django.contrib import messages
@@ -3647,19 +3654,42 @@ def bank_transfer(request):
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import CashAdjustHistory
-from .serializers import CashAdjustHistorySerializer
-
 class CashAdjustHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
-        return Response(CashAdjustHistorySerializer(qs, many=True).data)
+        from .models import CashLedger
+        # Get adjustment entries from CashLedger instead of CashAdjustHistory
+        qs = CashLedger.objects.filter(
+            user=request.user,
+            transaction_type="adjustment"
+        ).order_by('-created_at')
+        
+        # Format response similar to CashAdjustHistory
+        data = []
+        for entry in qs:
+            previous_balance = Decimal(entry.opening_balance) / 100  # Convert from int to Decimal
+            new_balance = Decimal(entry.balance_after) / 100
+            delta = Decimal(entry.amount) / 100
+            data.append({
+                'id': entry.id,
+                'previous_balance': str(previous_balance),
+                'new_balance': str(new_balance),
+                'delta_amount': str(delta),
+                'note': entry.description,
+                'created_at': entry.created_at,
+            })
+        
+        return Response(data)
 
 @login_required(login_url='login_admin')
 def cash_adjust_history_view(request):
-    qs = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
+    from .models import CashLedger
+    # Get adjustment entries from CashLedger instead of CashAdjustHistory
+    qs = CashLedger.objects.filter(
+        user=request.user,
+        transaction_type="adjustment"
+    ).order_by('-created_at')
     
     context = {
         'data' : qs
@@ -3715,8 +3745,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
-from .models import CashBalance, CashTransfer, CashAdjustHistory, OnlineOrderLedger
-from .serializers import CashBalanceSerializer, CashTransferSerializer, CashAdjustHistorySerializer, OnlineOrderLedgerSerializer
+from .models import CashBalance, CashTransfer, OnlineOrderLedger
+from .serializers import CashBalanceSerializer, CashTransferSerializer, OnlineOrderLedgerSerializer
 from vendor.models import vendor_bank
 
 
@@ -3732,30 +3762,58 @@ class CashBalanceViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'], url_path='adjust')
     def adjust_cash(self, request):
         try:
+            from .models import CashLedger
+            from .signals import create_ledger
+            
             amount = Decimal(request.data.get('amount', 0))
-            print(amount)
+            note = request.data.get('note', '')
             balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
             previous = Decimal(balance_obj.balance or 0)
             new = amount
             delta = new - previous
+            
             if delta != 0:
-                CashAdjustHistory.objects.create(
-                    user=request.user,
-                    previous_balance=previous,
-                    new_balance=new,
-                    delta_amount=delta,
-                    note=f"API cash adjust: {previous} -> {new}",
+                # Create CashLedger entry using the helper function (like all other ledger entries)
+                description = note or f"Cash adjustment: {previous} → {new}"
+                create_ledger(
+                    parent=None,
+                    ledger_model=CashLedger,
+                    transaction_type="adjustment",
+                    reference_id=None,
+                    amount=delta,
+                    description=description,
+                    user=request.user
                 )
-            balance_obj.balance = new
-            balance_obj.save()
+            
             return Response({'message': 'Balance updated'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'], url_path='adjust-history')
     def list_adjust_history(self, request):
-        qs = CashAdjustHistory.objects.filter(user=request.user).order_by('-created_at')
-        return Response(CashAdjustHistorySerializer(qs, many=True).data)
+        from .models import CashLedger
+        # Get adjustment entries from CashLedger instead of CashAdjustHistory
+        qs = CashLedger.objects.filter(
+            user=request.user,
+            transaction_type="adjustment"
+        ).order_by('-created_at')
+        
+        # Format response similar to CashAdjustHistory
+        data = []
+        for entry in qs:
+            previous_balance = Decimal(entry.opening_balance) / 100  # Convert from int to Decimal
+            new_balance = Decimal(entry.balance_after) / 100
+            delta = Decimal(entry.amount) / 100
+            data.append({
+                'id': entry.id,
+                'previous_balance': str(previous_balance),
+                'new_balance': str(new_balance),
+                'delta_amount': str(delta),
+                'note': entry.description,
+                'created_at': entry.created_at,
+            })
+        
+        return Response(data)
 
 
 # -------------------------------

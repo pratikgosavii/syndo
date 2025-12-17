@@ -362,7 +362,7 @@ class CashLedger(models.Model):
         ("expense", "Expense"),
         ("deposit", "Cash Deposit"),
         ("withdrawal", "Cash Withdrawal"),
-        
+        ("adjustment", "Cash Adjustment"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
@@ -1188,21 +1188,6 @@ class CashBalance(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - Rs {self.balance}"
-
-
-class CashAdjustHistory(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cash_adjustments')
-    previous_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    new_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    delta_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    note = models.CharField(max_length=255, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"Adjust {self.delta_amount:+} (to {self.new_balance}) by {self.user.username}"
 
 
 class CashTransfer(models.Model):

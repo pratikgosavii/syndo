@@ -141,10 +141,6 @@ class CashBalanceSerializer(serializers.ModelSerializer):
         fields = ['balance', 'updated_at']
 
 
-class CashAdjustHistorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CashAdjustHistory
-        fields = ['id', 'previous_balance', 'new_balance', 'delta_amount', 'note', 'created_at']
 
 class OnlineOrderLedgerSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
