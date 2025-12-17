@@ -5,6 +5,63 @@ import django.db.models.deletion
 from django.conf import settings
 
 
+def add_user_id_column_if_missing(apps, schema_editor):
+    """
+    Add user_id column to customer_review table if it doesn't exist.
+    This handles production databases where the column is missing.
+    """
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        vendor = connection.vendor
+        
+        if vendor == 'sqlite':
+            # Check if column exists in SQLite
+            cursor.execute("PRAGMA table_info(customer_review)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'user_id' not in columns:
+                # SQLite doesn't support foreign key constraints in ALTER TABLE
+                # We'll add the column and Django will handle the relationship
+                cursor.execute(
+                    "ALTER TABLE customer_review ADD COLUMN user_id INTEGER NULL"
+                )
+        elif vendor == 'postgresql':
+            # Check if column exists in PostgreSQL
+            cursor.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='customer_review' AND column_name='user_id'
+            """)
+            if not cursor.fetchone():
+                # Get the users_user table name (might have schema prefix)
+                cursor.execute("""
+                    SELECT tablename FROM pg_tables 
+                    WHERE tablename = 'users_user'
+                """)
+                table_info = cursor.fetchone()
+                if table_info:
+                    cursor.execute("""
+                        ALTER TABLE customer_review 
+                        ADD COLUMN user_id INTEGER NULL 
+                        REFERENCES users_user(id) ON DELETE CASCADE
+                    """)
+        elif vendor == 'mysql':
+            # Check if column exists in MySQL
+            cursor.execute("""
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'customer_review' 
+                AND COLUMN_NAME = 'user_id'
+            """)
+            if not cursor.fetchone():
+                cursor.execute("""
+                    ALTER TABLE customer_review 
+                    ADD COLUMN user_id INT NULL,
+                    ADD CONSTRAINT customer_review_user_id_fk 
+                    FOREIGN KEY (user_id) REFERENCES users_user(id) ON DELETE CASCADE
+                """)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,22 +70,21 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # The user_id column already exists in the database
-        # This migration only updates Django's state to recognize it
-        migrations.SeparateDatabaseAndState(
-            state_operations=[
-                migrations.AddField(
-                    model_name='review',
-                    name='user',
-                    field=models.ForeignKey(
-                        blank=True,
-                        null=True,
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name='reviews',
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-            ],
-            database_operations=[],
+        # First, add the column to the database if it doesn't exist
+        migrations.RunPython(
+            add_user_id_column_if_missing,
+            migrations.RunPython.noop,  # Reverse migration doesn't need to do anything
+        ),
+        # Then, update Django's state to recognize the field
+        migrations.AddField(
+            model_name='review',
+            name='user',
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name='reviews',
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]
