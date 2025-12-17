@@ -292,6 +292,26 @@ def sale_ledger(sender, instance, created, **kwargs):
             f"Cash Sale #{instance.id}",
             user=instance.user
         )
+    
+    # Send SMS based on SMS settings and invoice type
+    try:
+        from .sms_utils import send_sale_sms
+        from .models import pos_wholesale
+        
+        # Check if there's a pos_wholesale (invoice) linked to this sale
+        wholesale_invoice = pos_wholesale.objects.filter(sale=instance).first()
+        
+        if wholesale_invoice:
+            # Get the invoice type
+            invoice_type = wholesale_invoice.invoice_type
+            
+            # Send SMS based on invoice type and SMS settings
+            send_sale_sms(instance, invoice_type)
+    except Exception as e:
+        # Don't fail the sale if SMS sending fails - just log the error
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to send SMS for sale {instance.id}: {str(e)}")
 
 
 # -------------------------------

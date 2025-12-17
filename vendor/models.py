@@ -1334,6 +1334,29 @@ class ReminderSetting(models.Model):
         return f"ReminderSettings for {self.user.username}"
 
 
+class SMSSetting(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sms_setting')
+    
+    # SMS Credits
+    available_credits = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    used_credits = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    # Message Enablement Toggles
+    enable_purchase_message = models.BooleanField(default=False)
+    enable_quote_message = models.BooleanField(default=False)
+    enable_credit_reminder_message = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "SMS Setting"
+        verbose_name_plural = "SMS Settings"
+    
+    def __str__(self):
+        return f"SMS Settings for {self.user.username}"
+
+
 class Reminder(models.Model):
     """
     Stores reminders generated based on ReminderSetting for each user/vendor.

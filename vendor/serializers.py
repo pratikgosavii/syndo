@@ -1081,6 +1081,19 @@ class ReminderSettingSerializer(serializers.ModelSerializer):
         ]
 
 
+class SMSSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SMSSetting
+        fields = [
+            'available_credits',
+            'used_credits',
+            'enable_purchase_message',
+            'enable_quote_message',
+            'enable_credit_reminder_message',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
 class ReminderSerializer(serializers.ModelSerializer):
     reminder_type_display = serializers.CharField(source='get_reminder_type_display', read_only=True)
     

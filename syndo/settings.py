@@ -302,3 +302,9 @@ UENGAGE_WEBHOOK_SECRET = os.getenv("UENGAGE_WEBHOOK_SECRET", "")
 # uEngage Flash Rider API (serviceability / create / track / cancel)
 UENGAGE_RIDER_BASE = os.getenv("UENGAGE_RIDER_BASE", "https://riderapi-staging.uengage.in")
 UENGAGE_ACCESS_TOKEN = os.getenv("UENGAGE_ACCESS_TOKEN", "grdgedhs")  # Test access token
+
+# --------------------
+# MSGClub SMS configuration
+# --------------------
+SMS_API_KEY = os.getenv("SMS_API_KEY", "f2d477bfa9ab62ba439e97d84bd3ba")  # Your MSGClub API key
+SMS_API_URL = os.getenv("SMS_API_URL", "msg.msgclub.net")  # SMS API host

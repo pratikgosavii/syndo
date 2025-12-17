@@ -4389,6 +4389,36 @@ class ReminderSettingViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+class SMSSettingViewSet(viewsets.ModelViewSet):
+    serializer_class = SMSSettingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return SMSSetting.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        # Use get_or_create to get existing instance or create new one
+        instance, _ = SMSSetting.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def list(self, request, *args, **kwargs):
+        # Use get_or_create to ensure instance exists
+        instance, _ = SMSSetting.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        # Use get_or_create to ensure instance exists
+        instance, _ = SMSSetting.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class ReminderViewSet(viewsets.ModelViewSet):
     serializer_class = ReminderSerializer
     permission_classes = [permissions.IsAuthenticated]
