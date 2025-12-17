@@ -532,7 +532,11 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
             filtered_stores = list(qs.select_related('user').prefetch_related('user__coverages__pincode'))
             for store in filtered_stores:
                 vendor_user = store.user
+                logger.info(f"--- {vendor_user} ---")
+
                 if vendor_user:
+                    logger.info(f"--- -------------- ---")
+
                     global_supplier = getattr(store, 'global_supplier', False)
                     coverages = vendor_user.coverages.all()
                     pincode_codes = [str(cov.pincode.code) for cov in coverages] if coverages else []
