@@ -13,16 +13,22 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='review',
-            name='user',
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name='reviews',
-                to=settings.AUTH_USER_MODEL,
-                db_column='user_id'
-            ),
+        # The user_id column already exists in the database
+        # This migration only updates Django's state to recognize it
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField(
+                    model_name='review',
+                    name='user',
+                    field=models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='reviews',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
+            database_operations=[],
         ),
     ]
