@@ -70,21 +70,28 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # First, add the column to the database if it doesn't exist
-        migrations.RunPython(
-            add_user_id_column_if_missing,
-            migrations.RunPython.noop,  # Reverse migration doesn't need to do anything
-        ),
-        # Then, update Django's state to recognize the field
-        migrations.AddField(
-            model_name='review',
-            name='user',
-            field=models.ForeignKey(
-                blank=True,
-                null=True,
-                on_delete=django.db.models.deletion.CASCADE,
-                related_name='reviews',
-                to=settings.AUTH_USER_MODEL,
-            ),
+        # Use SeparateDatabaseAndState to handle both cases:
+        # - If column exists: only update Django state
+        # - If column doesn't exist: add it via RunPython, then update state
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    add_user_id_column_if_missing,
+                    migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='review',
+                    name='user',
+                    field=models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='reviews',
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
         ),
     ]
