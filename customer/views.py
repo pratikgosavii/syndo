@@ -462,9 +462,12 @@ from rest_framework import filters
 
        
 from rest_framework import generics, mixins, filters
-
+import logging
+from django.db.models import Q
 
 from .serializers import VendorStoreLiteSerializer
+
+logger = logging.getLogger('django.request')
 
 class VendorStoreListAPIView(mixins.ListModelMixin,
                              mixins.RetrieveModelMixin,
@@ -479,15 +482,17 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         return {"request": self.request}  # ✅ needed for following field
 
     def get_queryset(self):
+        logger.info(f"[VendorStoreListAPIView] get_queryset called - User: {self.request.user.id if self.request.user.is_authenticated else 'Anonymous'}")
         qs = vendor_store.objects.filter(is_active=True, is_online=True)
+        logger.info(f"[VendorStoreListAPIView] Initial queryset count: {qs.count()}")
         
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
         user = self.request.user
         default_addr = Address.objects.filter(user=user, is_default=True).first()
-        print(default_addr)
         pincode = default_addr.pincode if default_addr else None
-        print(pincode)
+        logger.info(f"[VendorStoreListAPIView] User: {user.id if user.is_authenticated else 'Anonymous'}, Default address: {default_addr.id if default_addr else 'None'}, Pincode: {pincode}")
+        
         if pincode:
             # Include stores from global suppliers OR stores matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -495,12 +500,20 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
                 Q(global_supplier=True) |  # Global suppliers: visible everywhere
                 Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
             )
+            logger.info(f"[VendorStoreListAPIView] After pincode filter ({pincode}): {qs.count()} stores")
+        else:
+            logger.info(f"[VendorStoreListAPIView] No pincode filter applied")
         
+        final_count = qs.distinct().count()
+        logger.info(f"[VendorStoreListAPIView] Final queryset count (after distinct): {final_count}")
         return qs.distinct()
 
     def get(self, request, *args, **kwargs):
+        logger.info(f"[VendorStoreListAPIView] GET request - User: {request.user.id if request.user.is_authenticated else 'Anonymous'}, kwargs: {kwargs}")
         if "id" in kwargs:
+            logger.info(f"[VendorStoreListAPIView] Retrieving single store with id: {kwargs.get('id')}")
             return self.retrieve(request, *args, **kwargs)
+        logger.info(f"[VendorStoreListAPIView] Listing all stores")
         return self.list(request, *args, **kwargs)    # GET /stores/
  
 
