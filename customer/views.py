@@ -490,8 +490,18 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         logger.info(f"Request path: {self.request.path}")
         logger.info(f"Request method: {self.request.method}")
         
-        qs = vendor_store.objects.filter(is_active=True, is_online=True)
+        qs = vendor_store.objects.filter(is_active=True, is_online=True).select_related('user').prefetch_related('user__coverages__pincode')
         logger.info(f"Initial queryset count (is_active=True, is_online=True): {qs.count()}")
+        
+        # Log all vendors and their pincode coverages BEFORE filtering
+        logger.info("--- Vendors and their pincode coverages (BEFORE filtering) ---")
+        for store in qs:
+            vendor_user = store.user
+            if vendor_user:
+                global_supplier = getattr(store, 'global_supplier', False)
+                coverages = vendor_user.coverages.all()
+                pincode_codes = [str(cov.pincode.code) for cov in coverages] if coverages else []
+                logger.info(f"Vendor Store ID: {store.id}, User ID: {vendor_user.id}, Global Supplier: {global_supplier}, Pincode Coverages: {pincode_codes if pincode_codes else 'None'}")
         
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
@@ -503,19 +513,32 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         logger.info(f"Default address found: {default_addr is not None}")
         
         pincode = default_addr.pincode if default_addr else None
-        logger.info(f"Pincode: {pincode}")
+        logger.info(f"Customer pincode: {pincode}")
         
         if pincode:
-            logger.info(f"Filtering by pincode: {pincode}")
+            pincode_code = str(pincode.code) if hasattr(pincode, 'code') else str(pincode)
+            logger.info(f"Filtering by pincode code: {pincode_code}")
             # Include stores from global suppliers OR stores matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
             qs = qs.filter(
                 Q(global_supplier=True) |  # Global suppliers: visible everywhere
-                Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
+                Q(user__coverages__pincode__code=pincode_code)      # Regular vendors: only in coverage area
             )
             logger.info(f"Filtered queryset count (with pincode filter): {qs.count()}")
+            
+            # Log vendors AFTER filtering and why they matched
+            logger.info(f"--- Vendors AFTER filtering by pincode {pincode_code} ---")
+            filtered_stores = list(qs.select_related('user').prefetch_related('user__coverages__pincode'))
+            for store in filtered_stores:
+                vendor_user = store.user
+                if vendor_user:
+                    global_supplier = getattr(store, 'global_supplier', False)
+                    coverages = vendor_user.coverages.all()
+                    pincode_codes = [str(cov.pincode.code) for cov in coverages] if coverages else []
+                    matched_reason = "Global Supplier" if global_supplier else f"Pincode {pincode_code} in coverages"
+                    logger.info(f"Vendor Store ID: {store.id}, User ID: {vendor_user.id}, Matched Reason: {matched_reason}, All Coverages: {pincode_codes if pincode_codes else 'None'}")
         else:
-            logger.info("No pincode filter applied")
+            logger.info("No pincode filter applied - showing all active online stores")
         
         result = qs.distinct()
         logger.info(f"Final queryset count (after distinct): {result.count()}")
