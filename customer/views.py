@@ -516,7 +516,8 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         logger.info(f"Customer pincode: {pincode}")
         
         if pincode:
-            pincode_code = str(pincode.code) if hasattr(pincode, 'code') else str(pincode)
+            # pincode is a CharField (string) from Address model
+            pincode_code = str(pincode)
             logger.info(f"Filtering by pincode code: {pincode_code}")
             # Include stores from global suppliers OR stores matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
