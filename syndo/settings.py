@@ -142,6 +142,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
+        "customer.views": {
+            "handlers": ["request_file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "razorpay_webhook": {
             "handlers": ["webhook_file", "console"],
             "level": "DEBUG",

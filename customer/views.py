@@ -1,7 +1,11 @@
 from django.forms import ValidationError
 from django.shortcuts import render
+import logging
 
 # Create your views here.
+
+# Set up logger for customer views
+logger = logging.getLogger('customer.views')
 
 
 from masters.models import MainCategory, product_category, product_subcategory
@@ -56,7 +60,8 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         delivery_type = request.data.get("delivery_type") or "self_pickup"
         if delivery_type == "instant_delivery":
             # Only instant_delivery needs rider check
-            # Build a lightweight order-like object for serviceability check
+
+        # Build a lightweight order-like object for serviceability check
             temp_order = SimpleNamespace(
                 order_id="TEMP",
                 address=addr,
@@ -88,9 +93,6 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 print(f"💥 [check_delivery_availability] Exception: {e}")
                 return Response({"ok": False, "message": "Unable to confirm delivery availability. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
-        
-        # For non-instant delivery types (self_pickup, etc.), delivery is always available
-        return Response({"ok": True, "message": "Delivery check passed", "delivery_type": delivery_type})
 
     def create(self, request, *args, **kwargs):
         """
@@ -464,12 +466,10 @@ from rest_framework import filters
 
        
 from rest_framework import generics, mixins, filters
-import logging
 from django.db.models import Q
 
-from .serializers import VendorStoreLiteSerializer
 
-logger = logging.getLogger('django.request')
+from .serializers import VendorStoreLiteSerializer
 
 class VendorStoreListAPIView(mixins.ListModelMixin,
                              mixins.RetrieveModelMixin,
@@ -484,39 +484,59 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         return {"request": self.request}  # ✅ needed for following field
 
     def get_queryset(self):
-        logger.info(f"[VendorStoreListAPIView] get_queryset called - User: {self.request.user.id if self.request.user.is_authenticated else 'Anonymous'}")
+        logger.info("=== VendorStoreListAPIView.get_queryset() START ===")
+        logger.info(f"Request user: {self.request.user}")
+        logger.info(f"User authenticated: {self.request.user.is_authenticated}")
+        logger.info(f"Request path: {self.request.path}")
+        logger.info(f"Request method: {self.request.method}")
+        
         qs = vendor_store.objects.filter(is_active=True, is_online=True)
-        logger.info(f"[VendorStoreListAPIView] Initial queryset count: {qs.count()}")
+        logger.info(f"Initial queryset count (is_active=True, is_online=True): {qs.count()}")
         
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
         user = self.request.user
+        logger.info(f"User ID: {user.id if user.is_authenticated else 'Anonymous'}")
+        logger.info(f"User mobile: {getattr(user, 'mobile', 'N/A')}")
+        
         default_addr = Address.objects.filter(user=user, is_default=True).first()
+        logger.info(f"Default address found: {default_addr is not None}")
+        
         pincode = default_addr.pincode if default_addr else None
-        logger.info(f"[VendorStoreListAPIView] User: {user.id if user.is_authenticated else 'Anonymous'}, Default address: {default_addr.id if default_addr else 'None'}, Pincode: {pincode}")
+        logger.info(f"Pincode: {pincode}")
         
         if pincode:
+            logger.info(f"Filtering by pincode: {pincode}")
             # Include stores from global suppliers OR stores matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
             qs = qs.filter(
                 Q(global_supplier=True) |  # Global suppliers: visible everywhere
                 Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
             )
-            logger.info(f"[VendorStoreListAPIView] After pincode filter ({pincode}): {qs.count()} stores")
+            logger.info(f"Filtered queryset count (with pincode filter): {qs.count()}")
         else:
-            logger.info(f"[VendorStoreListAPIView] No pincode filter applied")
+            logger.info("No pincode filter applied")
         
-        final_count = qs.distinct().count()
-        logger.info(f"[VendorStoreListAPIView] Final queryset count (after distinct): {final_count}")
-        return qs.distinct()
+        result = qs.distinct()
+        logger.info(f"Final queryset count (after distinct): {result.count()}")
+        logger.info("=== VendorStoreListAPIView.get_queryset() END ===")
+        return result
 
     def get(self, request, *args, **kwargs):
-        logger.info(f"[VendorStoreListAPIView] GET request - User: {request.user.id if request.user.is_authenticated else 'Anonymous'}, kwargs: {kwargs}")
+        logger.info("=== VendorStoreListAPIView.get() START ===")
+        logger.info(f"Request path: {request.path}")
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"kwargs: {kwargs}")
+        
         if "id" in kwargs:
-            logger.info(f"[VendorStoreListAPIView] Retrieving single store with id: {kwargs.get('id')}")
-            return self.retrieve(request, *args, **kwargs)
-        logger.info(f"[VendorStoreListAPIView] Listing all stores")
-        return self.list(request, *args, **kwargs)    # GET /stores/
+            logger.info(f"Retrieving single store with id: {kwargs.get('id')}")
+            result = self.retrieve(request, *args, **kwargs)
+        else:
+            logger.info("Listing all stores")
+            result = self.list(request, *args, **kwargs)    # GET /stores/
+        
+        logger.info("=== VendorStoreListAPIView.get() END ===")
+        return result
  
 
 

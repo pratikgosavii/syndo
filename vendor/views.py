@@ -3580,7 +3580,7 @@ def adjust_cash(request):
 
             from .models import CashLedger
             from .signals import create_ledger
-            
+
             balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
             previous_balance = Decimal(balance_obj.balance or 0)
             new_balance = Decimal(amount)
