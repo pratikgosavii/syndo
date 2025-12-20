@@ -20,20 +20,35 @@ class Command(BaseCommand):
         # Get all users with ReminderSetting
         users_with_settings = User.objects.filter(remindersetting__isnull=False).distinct()
         
+        user_count = users_with_settings.count()
+        self.stdout.write(f'Found {user_count} user(s) with reminder settings configured')
+        
         if not users_with_settings.exists():
             self.stdout.write(self.style.WARNING('No users with reminder settings found.'))
             return
         
         total_reminders = 0
+        users_processed = 0
         
         for user in users_with_settings:
             try:
                 settings = ReminderSetting.objects.get(user=user)
+                self.stdout.write(f'\n--- Processing user: {user.username} (ID: {user.id}) ---')
+                self.stdout.write(f'  Credit Bill Reminder: {settings.credit_bill_reminder}')
+                self.stdout.write(f'  Pending Invoice Reminder: {settings.pending_invoice_reminder}')
+                self.stdout.write(f'  Low Stock Reminder: {settings.low_stock_reminder}')
+                self.stdout.write(f'  Expiry Stock Reminder: {settings.expiry_stock_reminder}')
+                
                 reminders_created = self.check_user_reminders(user, settings)
                 total_reminders += reminders_created
+                users_processed += 1
+                self.stdout.write(f'  → Created {reminders_created} reminder(s) for this user')
             except ReminderSetting.DoesNotExist:
+                self.stdout.write(self.style.WARNING(f'  ReminderSetting not found for user {user.username} (ID: {user.id}), skipping'))
                 continue
         
+        self.stdout.write(f'\n--- Summary ---')
+        self.stdout.write(f'Users processed: {users_processed}/{user_count}')
         self.stdout.write(
             self.style.SUCCESS(f'Successfully processed reminders. Total reminders created: {total_reminders}')
         )
