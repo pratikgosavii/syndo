@@ -5,7 +5,7 @@ Run: python manage.py check_reminders
 from django.core.management.base import BaseCommand
 from django.db.models import F
 from django.utils import timezone
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime, time as dt_time
 from decimal import Decimal
 from vendor.models import ReminderSetting, Reminder, Purchase, Sale, product
 from users.models import User
@@ -241,17 +241,33 @@ class Command(BaseCommand):
                 self.stdout.write(f"  - {p.name} (ID: {p.id}): expires today ({p.expiry_date})")
         
         for prod in expiring_products:
-            # Check if reminder already exists for this product (unread)
-            existing = Reminder.objects.filter(
+            # Check if reminder already exists for this product today (created today, regardless of read status)
+            today_start = timezone.make_aware(datetime.combine(today, dt_time.min))
+            today_end = timezone.make_aware(datetime.combine(today, dt_time.max))
+            
+            existing_today = Reminder.objects.filter(
                 user=user,
                 reminder_type='expiry_stock',
                 product=prod,
                 expiry_date=prod.expiry_date,
-                is_read=False
+                created_at__gte=today_start,
+                created_at__lte=today_end
             ).exists()
             
-            if existing:
-                self.stdout.write(f"[EXPIRY REMINDER] Skipping {prod.name} (ID: {prod.id}) - reminder already exists")
+            # Also check ALL existing reminders for debugging
+            all_existing = Reminder.objects.filter(
+                user=user,
+                reminder_type='expiry_stock',
+                product=prod,
+                expiry_date=prod.expiry_date
+            )
+            if all_existing.exists():
+                self.stdout.write(f"[EXPIRY REMINDER] Found {all_existing.count()} existing reminder(s) for {prod.name}:")
+                for rem in all_existing:
+                    self.stdout.write(f"  - Reminder ID: {rem.id}, created: {rem.created_at}, is_read: {rem.is_read}, title: {rem.title}")
+            
+            if existing_today:
+                self.stdout.write(f"[EXPIRY REMINDER] Skipping {prod.name} (ID: {prod.id}) - reminder already created today")
             else:
                 title = f"Expiry Alert: {prod.name}"
                 message = f"Product '{prod.name}' expires today on {prod.expiry_date}"
