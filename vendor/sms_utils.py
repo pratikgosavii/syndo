@@ -5,6 +5,7 @@ import http.client
 import json
 import logging
 from decimal import Decimal
+from datetime import datetime
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,13 @@ def send_sms_via_msgclub(phone_number, message):
     Returns:
         tuple: (success: bool, response_data: dict or error_message: str)
     """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"{'='*80}")
+    logger.info(f"[SMS LOG] [{timestamp}] Starting SMS send process")
+    logger.info(f"[SMS LOG] Phone Number: {phone_number}")
+    logger.info(f"[SMS LOG] Message: {message[:100]}{'...' if len(message) > 100 else ''}")
+    logger.info(f"{'='*80}")
+    
     try:
         from django.conf import settings
         
@@ -28,8 +36,12 @@ def send_sms_via_msgclub(phone_number, message):
         api_key = getattr(settings, 'SMS_API_KEY', '')
         api_host = getattr(settings, 'SMS_API_URL', 'msg.msgclub.net')
         
+        logger.info(f"[SMS LOG] API Host: {api_host}")
+        logger.info(f"[SMS LOG] API Key: {api_key[:10]}...{api_key[-5:] if len(api_key) > 15 else 'N/A'}")
+        
         if not api_key:
             error_msg = "SMS API key not configured"
+            logger.error(f"[SMS LOG] ❌ ERROR: {error_msg}")
             logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
             return False, error_msg
         
@@ -50,14 +62,22 @@ def send_sms_via_msgclub(phone_number, message):
             'api_key': api_key,
         }
        
-        
         query_string = urllib.parse.urlencode(params)
         full_endpoint = f"{endpoint}?{query_string}"
         
+        logger.info(f"[SMS LOG] Endpoint: {endpoint}")
+        logger.info(f"[SMS LOG] Full URL: http://{api_host}/{full_endpoint}")
+        logger.info(f"[SMS LOG] Sending GET request...")
+        
         conn.request("GET", full_endpoint, headers=headers)
         res = conn.getresponse()
+        status_code = res.status
         data = res.read()
         response_text = data.decode("utf-8")
+        
+        logger.info(f"[SMS LOG] Response Status Code: {status_code}")
+        logger.info(f"[SMS LOG] Response Headers: {dict(res.getheaders())}")
+        logger.info(f"[SMS LOG] Response Body: {response_text}")
         
         conn.close()
         
@@ -66,20 +86,32 @@ def send_sms_via_msgclub(phone_number, message):
         if response_text:
             try:
                 response_data = json.loads(response_text)
+                logger.info(f"[SMS LOG] ✅ SUCCESS: SMS sent successfully to {phone_number}")
+                logger.info(f"[SMS LOG] Response Data: {json.dumps(response_data, indent=2)}")
+                logger.info(f"{'='*80}")
                 logger.info(f"SMS sent successfully to {phone_number}. Response: {response_data}")
                 return True, response_data
             except json.JSONDecodeError:
                 # If response is not JSON, treat as success if it's not an error
+                logger.info(f"[SMS LOG] ✅ SUCCESS: SMS sent successfully to {phone_number}")
+                logger.info(f"[SMS LOG] Response (non-JSON): {response_text}")
+                logger.info(f"{'='*80}")
                 logger.info(f"SMS sent successfully to {phone_number}. Response: {response_text}")
                 return True, response_text
         else:
             error_msg = "Empty response from SMS API"
+            logger.error(f"[SMS LOG] ❌ ERROR: {error_msg}")
             logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
             return False, error_msg
             
     except Exception as e:
-        logger.error(f"Error sending SMS to {phone_number}: {str(e)}")
-        return False, str(e)
+        error_str = str(e)
+        logger.error(f"[SMS LOG] ❌ EXCEPTION: Error sending SMS to {phone_number}")
+        logger.error(f"[SMS LOG] Exception Type: {type(e).__name__}")
+        logger.error(f"[SMS LOG] Exception Message: {error_str}")
+        logger.error(f"{'='*80}")
+        logger.error(f"Error sending SMS to {phone_number}: {error_str}")
+        return False, error_str
 
 
 def send_sale_sms(sale, invoice_type='invoice'):
@@ -93,22 +125,43 @@ def send_sale_sms(sale, invoice_type='invoice'):
     Returns:
         tuple: (success: bool, message: str)
     """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"{'#'*80}")
+    logger.info(f"[SMS SALE LOG] [{timestamp}] Processing SMS for Sale #{sale.id}")
+    logger.info(f"[SMS SALE LOG] Invoice Type: {invoice_type}")
+    logger.info(f"{'#'*80}")
+    
     from .models import SMSSetting, vendor_customers
     
     # Check if sale has customer
     if not sale.customer:
+        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No customer associated with sale {sale.id}")
         logger.warning(f"SMS not sent for sale {sale.id}: No customer associated with sale")
         return False, "No customer associated with sale"
     
     # Check if user has SMS settings
     if not sale.user:
+        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No user associated with sale {sale.id}")
         logger.warning(f"SMS not sent for sale {sale.id}: No user associated with sale")
         return False, "No user associated with sale"
     
+    logger.info(f"[SMS SALE LOG] Sale ID: {sale.id}")
+    logger.info(f"[SMS SALE LOG] User: {sale.user.username} (ID: {sale.user.id})")
+    logger.info(f"[SMS SALE LOG] Customer: {sale.customer.name} (ID: {sale.customer.id})")
+    
     try:
-        sms_setting, _ = SMSSetting.objects.get_or_create(user=sale.user)
+        sms_setting, created = SMSSetting.objects.get_or_create(user=sale.user)
+        if created:
+            logger.info(f"[SMS SALE LOG] Created new SMS settings for user {sale.user.username}")
+        else:
+            logger.info(f"[SMS SALE LOG] Using existing SMS settings for user {sale.user.username}")
+        logger.info(f"[SMS SALE LOG] Available Credits: {sms_setting.available_credits}")
+        logger.info(f"[SMS SALE LOG] Used Credits: {sms_setting.used_credits}")
+        logger.info(f"[SMS SALE LOG] Enable Purchase Message: {sms_setting.enable_purchase_message}")
+        logger.info(f"[SMS SALE LOG] Enable Quote Message: {sms_setting.enable_quote_message}")
     except Exception as e:
         error_msg = f"Error getting SMS settings: {str(e)}"
+        logger.error(f"[SMS SALE LOG] ❌ ERROR: {error_msg}")
         logger.error(f"SMS not sent for sale {sale.id}: {error_msg}")
         return False, error_msg
     
@@ -125,12 +178,16 @@ def send_sale_sms(sale, invoice_type='invoice'):
         should_send = sms_setting.enable_quote_message
         setting_type = "quote message"
     
+    logger.info(f"[SMS SALE LOG] Checking {setting_type} setting: {should_send}")
+    
     if not should_send:
+        logger.info(f"[SMS SALE LOG] ❌ SKIPPED: {setting_type.capitalize()} is disabled for sale {sale.id}")
         logger.info(f"SMS not sent for sale {sale.id} (invoice_type: {invoice_type}): {setting_type.capitalize()} is disabled")
         return False, f"{setting_type.capitalize()} is disabled"
     
     # Check if there are available credits
     if sms_setting.available_credits <= 0:
+        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No SMS credits available (available: {sms_setting.available_credits})")
         logger.warning(f"SMS not sent for sale {sale.id}: No SMS credits available (available: {sms_setting.available_credits})")
         return False, "No SMS credits available"
     
@@ -138,13 +195,17 @@ def send_sale_sms(sale, invoice_type='invoice'):
     customer = sale.customer
     phone_number = getattr(customer, 'contact', None)
     
+    logger.info(f"[SMS SALE LOG] Customer Phone (raw): {phone_number}")
+    
     if not phone_number:
+        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: Customer phone number not found for customer {customer.id}")
         logger.warning(f"SMS not sent for sale {sale.id}: Customer phone number not found for customer {customer.id}")
         return False, "Customer phone number not found"
     
     # Clean phone number (remove any non-digit characters except +)
     import re
-    phone_number = re.sub(r'[^\d+]', '', str(phone_number))
+    phone_number_cleaned = re.sub(r'[^\d+]', '', str(phone_number))
+    logger.info(f"[SMS SALE LOG] Customer Phone (cleaned): {phone_number_cleaned}")
     
     # Prepare SMS message
     invoice_number = sale.invoice_number or f"#{sale.id}"
@@ -156,20 +217,32 @@ def send_sale_sms(sale, invoice_type='invoice'):
         invoice_type_display = invoice_type.replace('_', ' ').title()
         message = f"Dear {customer.name}, Your {invoice_type_display} {invoice_number} for ₹{total_amount} has been prepared. Please review."
     
+    logger.info(f"[SMS SALE LOG] Invoice Number: {invoice_number}")
+    logger.info(f"[SMS SALE LOG] Total Amount: ₹{total_amount}")
+    logger.info(f"[SMS SALE LOG] SMS Message: {message}")
+    logger.info(f"[SMS SALE LOG] Calling send_sms_via_msgclub()...")
+    
     # Send SMS
-    logger.info(f"Attempting to send SMS for sale {sale.id} to customer {customer.name} ({phone_number}), invoice_type: {invoice_type}")
-    success, response = send_sms_via_msgclub(phone_number, message)
+    logger.info(f"Attempting to send SMS for sale {sale.id} to customer {customer.name} ({phone_number_cleaned}), invoice_type: {invoice_type}")
+    success, response = send_sms_via_msgclub(phone_number_cleaned, message)
     
     if success:
         # Update SMS credits (deduct 1 credit for SMS sent)
+        old_credits = sms_setting.available_credits
         sms_setting.available_credits = max(Decimal('0'), sms_setting.available_credits - Decimal('1'))
         sms_setting.used_credits += Decimal('1')
         sms_setting.save(update_fields=['available_credits', 'used_credits'])
         
-        logger.info(f"SMS sent successfully for sale {sale.id} to {phone_number}. Remaining credits: {sms_setting.available_credits}")
+        logger.info(f"[SMS SALE LOG] ✅ SUCCESS: SMS sent for sale {sale.id}")
+        logger.info(f"[SMS SALE LOG] Credits: {old_credits} → {sms_setting.available_credits} (deducted 1)")
+        logger.info(f"[SMS SALE LOG] Used Credits: {sms_setting.used_credits}")
+        logger.info(f"{'#'*80}")
+        logger.info(f"SMS sent successfully for sale {sale.id} to {phone_number_cleaned}. Remaining credits: {sms_setting.available_credits}")
         return True, "SMS sent successfully"
     else:
         error_msg = f"Failed to send SMS: {response}"
-        logger.error(f"SMS failed for sale {sale.id} to {phone_number}: {error_msg}")
+        logger.error(f"[SMS SALE LOG] ❌ FAILED: {error_msg}")
+        logger.error(f"{'#'*80}")
+        logger.error(f"SMS failed for sale {sale.id} to {phone_number_cleaned}: {error_msg}")
         return False, error_msg
 

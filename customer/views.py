@@ -57,7 +57,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         if delivery_type == "instant_delivery":
             # Only instant_delivery needs rider check
 
-        # Build a lightweight order-like object for serviceability check
+            # Build a lightweight order-like object for serviceability check
             temp_order = SimpleNamespace(
                 order_id="TEMP",
                 address=addr,
@@ -89,6 +89,9 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 print(f"💥 [check_delivery_availability] Exception: {e}")
                 return Response({"ok": False, "message": "Unable to confirm delivery availability. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
+        else:
+            # For non-instant delivery types (self_pickup, general_delivery), no rider check needed
+            return Response({"ok": True, "message": "Delivery available for this delivery type"})
 
     def create(self, request, *args, **kwargs):
         """
