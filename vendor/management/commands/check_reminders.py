@@ -213,7 +213,12 @@ class Command(BaseCommand):
         """Check for products expiring today (on the exact expiry date)."""
         reminders_created = 0
         
-        self.stdout.write(f"[EXPIRY REMINDER] Checking expiry reminders for user {user.username}")
+        # Validate user
+        if not user:
+            self.stdout.write(self.style.ERROR("[EXPIRY REMINDER] User is None, skipping expiry check"))
+            return 0
+        
+        self.stdout.write(f"[EXPIRY REMINDER] Checking expiry reminders for user {user.username} (ID: {user.id})")
         self.stdout.write(f"[EXPIRY REMINDER] Today: {today}")
         self.stdout.write(f"[EXPIRY REMINDER] Looking for products expiring TODAY (exact date match)")
         
@@ -252,17 +257,24 @@ class Command(BaseCommand):
                 message = f"Product '{prod.name}' expires today on {prod.expiry_date}"
                 
                 self.stdout.write(f"[EXPIRY REMINDER] Creating reminder for {prod.name} (ID: {prod.id}, expires: {prod.expiry_date})")
+                self.stdout.write(f"[EXPIRY REMINDER] User: {user} (ID: {user.id if user else 'None'})")
                 
-                Reminder.objects.create(
-                    user=user,
-                    reminder_type='expiry_stock',
-                    title=title,
-                    message=message,
-                    product=prod,
-                    expiry_date=prod.expiry_date,
-                    stock_quantity=prod.stock
-                )
-                reminders_created += 1
+                try:
+                    reminder = Reminder.objects.create(
+                        user=user,
+                        reminder_type='expiry_stock',
+                        title=title,
+                        message=message,
+                        product=prod,
+                        expiry_date=prod.expiry_date,
+                        stock_quantity=prod.stock
+                    )
+                    self.stdout.write(f"[EXPIRY REMINDER] ✓ Successfully created reminder ID: {reminder.id}")
+                    reminders_created += 1
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f"[EXPIRY REMINDER] ✗ Failed to create reminder: {str(e)}"))
+                    import traceback
+                    self.stdout.write(self.style.ERROR(f"[EXPIRY REMINDER] Traceback: {traceback.format_exc()}"))
         
         if reminders_created == 0 and expiring_products.count() > 0:
             self.stdout.write(self.style.WARNING(f"[EXPIRY REMINDER] Found {expiring_products.count()} products expiring today but created 0 reminders (all may have existing reminders)"))
