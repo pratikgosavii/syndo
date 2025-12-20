@@ -84,6 +84,10 @@ class Command(BaseCommand):
         # Calculate the date threshold - bills due within X days or overdue
         threshold_date = today + timedelta(days=days_threshold)
         
+        self.stdout.write(f"[CREDIT BILL REMINDER] Checking credit bill reminders for user {user.username} (ID: {user.id})")
+        self.stdout.write(f"[CREDIT BILL REMINDER] Today: {today}")
+        self.stdout.write(f"[CREDIT BILL REMINDER] Threshold: {threshold_date} (within {days_threshold} days)")
+        
         # Get credit purchases with balance_amount > 0
         credit_purchases = Purchase.objects.filter(
             user=user,
@@ -91,14 +95,23 @@ class Command(BaseCommand):
             balance_amount__gt=0
         ).select_related('vendor')
         
+        total_credit_purchases = credit_purchases.count()
+        self.stdout.write(f"[CREDIT BILL REMINDER] Total credit purchases with balance > 0: {total_credit_purchases}")
+        
+        skipped_no_due_date = 0
+        skipped_not_in_threshold = 0
+        skipped_existing_reminder = 0
+        
         for purchase in credit_purchases:
             # Skip if due_date is not set
             if not purchase.due_date:
+                skipped_no_due_date += 1
+                self.stdout.write(f"[CREDIT BILL REMINDER] Skipping {purchase.purchase_code} - no due_date set")
                 continue
             
             # Check if due within threshold or overdue
             if purchase.due_date <= threshold_date:
-                # Check if reminder already exists for this purchase
+                # Check if reminder already exists for this purchase (unread)
                 existing = Reminder.objects.filter(
                     user=user,
                     reminder_type='credit_bill',
@@ -106,7 +119,10 @@ class Command(BaseCommand):
                     is_read=False
                 ).exists()
                 
-                if not existing:
+                if existing:
+                    skipped_existing_reminder += 1
+                    self.stdout.write(f"[CREDIT BILL REMINDER] Skipping {purchase.purchase_code} (due: {purchase.due_date}) - reminder already exists")
+                else:
                     vendor_name = purchase.vendor.name if purchase.vendor else 'Unknown Vendor'
                     days_overdue = (today - purchase.due_date).days if purchase.due_date < today else 0
                     
@@ -116,6 +132,8 @@ class Command(BaseCommand):
                     else:
                         days_until_due = (purchase.due_date - today).days
                         message = f"Credit bill from {vendor_name} is due in {days_until_due} day(s). Amount: ₹{purchase.balance_amount}"
+                    
+                    self.stdout.write(f"[CREDIT BILL REMINDER] Creating reminder for {purchase.purchase_code} (due: {purchase.due_date}, amount: ₹{purchase.balance_amount})")
                     
                     Reminder.objects.create(
                         user=user,
@@ -127,6 +145,13 @@ class Command(BaseCommand):
                         amount=purchase.balance_amount
                     )
                     reminders_created += 1
+            else:
+                skipped_not_in_threshold += 1
+                days_until_due = (purchase.due_date - today).days
+                self.stdout.write(f"[CREDIT BILL REMINDER] Skipping {purchase.purchase_code} (due: {purchase.due_date}, {days_until_due} days away) - not within threshold")
+        
+        if reminders_created == 0 and total_credit_purchases > 0:
+            self.stdout.write(f"[CREDIT BILL REMINDER] Summary: {skipped_no_due_date} skipped (no due_date), {skipped_not_in_threshold} skipped (not in threshold), {skipped_existing_reminder} skipped (reminder exists)")
         
         return reminders_created
 
