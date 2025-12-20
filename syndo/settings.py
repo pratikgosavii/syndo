@@ -157,6 +157,16 @@ LOGGING = {
             "level": "DEBUG",
             "propagate": False,
         },
+        "vendor.sms_utils": {
+            "handlers": ["request_file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "vendor.signals": {
+            "handlers": ["request_file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 

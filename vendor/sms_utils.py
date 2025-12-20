@@ -125,6 +125,17 @@ def send_sale_sms(sale, invoice_type='invoice'):
     Returns:
         tuple: (success: bool, message: str)
     """
+    # Ensure logger is properly initialized
+    if not logger.handlers:
+        # If no handlers, add a console handler as fallback
+        import logging
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s')
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        logger.setLevel(logging.INFO)
+    
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logger.info(f"{'#'*80}")
     logger.info(f"[SMS SALE LOG] [{timestamp}] Processing SMS for Sale #{sale.id}")

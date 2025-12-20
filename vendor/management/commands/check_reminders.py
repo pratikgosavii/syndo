@@ -210,20 +210,30 @@ class Command(BaseCommand):
         return reminders_created
 
     def check_expiry_stock(self, user, settings, today):
-        """Check for products expiring soon."""
+        """Check for products expiring today (on the exact expiry date)."""
         reminders_created = 0
         
-        # Calculate expiry threshold - products expiring within X days
-        days_threshold = getattr(settings, 'expiry_stock_days', 30)
-        expiry_threshold = today + timedelta(days=days_threshold)
+        self.stdout.write(f"[EXPIRY REMINDER] Checking expiry reminders for user {user.username}")
+        self.stdout.write(f"[EXPIRY REMINDER] Today: {today}")
+        self.stdout.write(f"[EXPIRY REMINDER] Looking for products expiring TODAY (exact date match)")
         
-        # Get products with expiry dates
+        # Debug: Count all products with expiry dates for this user
+        all_with_expiry = product.objects.filter(user=user, expiry_date__isnull=False).count()
+        self.stdout.write(f"[EXPIRY REMINDER] Total products with expiry_date: {all_with_expiry}")
+        
+        # Get products that expire TODAY (exact date match)
         expiring_products = product.objects.filter(
             user=user,
             expiry_date__isnull=False,
-            expiry_date__gte=today,
-            expiry_date__lte=expiry_threshold
+            expiry_date=today  # Exact date match - expires today
         )
+        
+        self.stdout.write(f"[EXPIRY REMINDER] Products expiring today: {expiring_products.count()}")
+        
+        # Debug: Show products that will get reminders
+        if expiring_products.exists():
+            for p in expiring_products:
+                self.stdout.write(f"  - {p.name} (ID: {p.id}): expires today ({p.expiry_date})")
         
         for prod in expiring_products:
             # Check if reminder already exists for this product (unread)
@@ -235,10 +245,13 @@ class Command(BaseCommand):
                 is_read=False
             ).exists()
             
-            if not existing:
-                days_until_expiry = (prod.expiry_date - today).days
+            if existing:
+                self.stdout.write(f"[EXPIRY REMINDER] Skipping {prod.name} (ID: {prod.id}) - reminder already exists")
+            else:
                 title = f"Expiry Alert: {prod.name}"
-                message = f"Product '{prod.name}' expires in {days_until_expiry} day(s) on {prod.expiry_date}"
+                message = f"Product '{prod.name}' expires today on {prod.expiry_date}"
+                
+                self.stdout.write(f"[EXPIRY REMINDER] Creating reminder for {prod.name} (ID: {prod.id}, expires: {prod.expiry_date})")
                 
                 Reminder.objects.create(
                     user=user,
@@ -250,6 +263,9 @@ class Command(BaseCommand):
                     stock_quantity=prod.stock
                 )
                 reminders_created += 1
+        
+        if reminders_created == 0 and expiring_products.count() > 0:
+            self.stdout.write(self.style.WARNING(f"[EXPIRY REMINDER] Found {expiring_products.count()} products expiring today but created 0 reminders (all may have existing reminders)"))
         
         return reminders_created
 

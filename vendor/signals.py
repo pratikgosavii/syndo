@@ -52,7 +52,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from decimal import Decimal
-from .models import BankTransfer, CashTransfer, Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger,   CashLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
+from .models import BankTransfer, CashTransfer, Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger,   CashLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors, pos_wholesale
 
 
 from django.db.models.signals import post_save
@@ -293,25 +293,6 @@ def sale_ledger(sender, instance, created, **kwargs):
             user=instance.user
         )
     
-    # Send SMS based on SMS settings and invoice type
-    try:
-        from .sms_utils import send_sale_sms
-        from .models import pos_wholesale
-        
-        # Check if there's a pos_wholesale (invoice) linked to this sale
-        wholesale_invoice = pos_wholesale.objects.filter(sale=instance).first()
-        
-        if wholesale_invoice:
-            # Get the invoice type
-            invoice_type = wholesale_invoice.invoice_type
-            
-            # Send SMS based on invoice type and SMS settings
-            send_sale_sms(instance, invoice_type)
-    except Exception as e:
-        # Don't fail the sale if SMS sending fails - just log the error
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Failed to send SMS for sale {instance.id}: {str(e)}")
 
 
 # -------------------------------
@@ -682,6 +663,41 @@ def bank_transfer_delete_ledger(sender, instance, **kwargs):
     reset_ledger_for_reference(BankLedger, "expense", instance.id)
     reset_ledger_for_reference(BankLedger, "deposit", instance.id)
 
+
+# -------------------------------
+# POS WHOLESALE → Send SMS
+# -------------------------------
+@receiver(post_save, sender=pos_wholesale)
+def pos_wholesale_sms(sender, instance, created, **kwargs):
+    """
+    Send SMS when a wholesale invoice is created or updated.
+    This ensures SMS is sent after the invoice is actually created.
+    """
+    try:
+        import logging
+        signal_logger = logging.getLogger(__name__)
+        from .sms_utils import send_sale_sms
+        from datetime import datetime
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        signal_logger.info(f"[SMS SIGNAL] [{timestamp}] pos_wholesale post_save signal triggered for Invoice #{instance.id}")
+        signal_logger.info(f"[SMS SIGNAL] Invoice Type: {instance.invoice_type}")
+        signal_logger.info(f"[SMS SIGNAL] Sale ID: {instance.sale.id if instance.sale else 'N/A'}")
+        
+        # Only send SMS when invoice is created (not on every update)
+        if created and instance.sale:
+            signal_logger.info(f"[SMS SIGNAL] New wholesale invoice created, calling send_sale_sms()...")
+            # Send SMS based on invoice type and SMS settings
+            send_sale_sms(instance.sale, instance.invoice_type)
+        else:
+            signal_logger.info(f"[SMS SIGNAL] Skipping SMS (created={created}, has_sale={bool(instance.sale)})")
+    except Exception as e:
+        # Don't fail the invoice if SMS sending fails - just log the error
+        import logging
+        logger = logging.getLogger(__name__)
+        error_msg = f"Failed to send SMS for wholesale invoice {instance.id}: {str(e)}"
+        logger.error(f"[SMS SIGNAL] ❌ EXCEPTION: {error_msg}")
+        logger.exception("SMS signal exception details")
 
 
 #-------------------------------------------------------
