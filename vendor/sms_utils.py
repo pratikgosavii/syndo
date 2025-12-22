@@ -197,10 +197,11 @@ def send_sale_sms(sale, invoice_type='invoice'):
         return False, f"{setting_type.capitalize()} is disabled"
     
     # Check if there are available credits
-    if sms_setting.available_credits <= 0:
-        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No SMS credits available (available: {sms_setting.available_credits})")
-        logger.warning(f"SMS not sent for sale {sale.id}: No SMS credits available (available: {sms_setting.available_credits})")
-        return False, "No SMS credits available"
+    # COMMENTED OUT: Credit check disabled as per requirement
+    # if sms_setting.available_credits <= 0:
+    #     logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No SMS credits available (available: {sms_setting.available_credits})")
+    #     logger.warning(f"SMS not sent for sale {sale.id}: No SMS credits available (available: {sms_setting.available_credits})")
+    #     return False, "No SMS credits available"
     
     # Get customer phone number
     customer = sale.customer
@@ -239,16 +240,17 @@ def send_sale_sms(sale, invoice_type='invoice'):
     
     if success:
         # Update SMS credits (deduct 1 credit for SMS sent)
-        old_credits = sms_setting.available_credits
-        sms_setting.available_credits = max(Decimal('0'), sms_setting.available_credits - Decimal('1'))
-        sms_setting.used_credits += Decimal('1')
-        sms_setting.save(update_fields=['available_credits', 'used_credits'])
+        # COMMENTED OUT: Credit deduction disabled as per requirement
+        # old_credits = sms_setting.available_credits
+        # sms_setting.available_credits = max(Decimal('0'), sms_setting.available_credits - Decimal('1'))
+        # sms_setting.used_credits += Decimal('1')
+        # sms_setting.save(update_fields=['available_credits', 'used_credits'])
         
         logger.info(f"[SMS SALE LOG] ✅ SUCCESS: SMS sent for sale {sale.id}")
-        logger.info(f"[SMS SALE LOG] Credits: {old_credits} → {sms_setting.available_credits} (deducted 1)")
-        logger.info(f"[SMS SALE LOG] Used Credits: {sms_setting.used_credits}")
+        # logger.info(f"[SMS SALE LOG] Credits: {old_credits} → {sms_setting.available_credits} (deducted 1)")
+        # logger.info(f"[SMS SALE LOG] Used Credits: {sms_setting.used_credits}")
         logger.info(f"{'#'*80}")
-        logger.info(f"SMS sent successfully for sale {sale.id} to {phone_number_cleaned}. Remaining credits: {sms_setting.available_credits}")
+        logger.info(f"SMS sent successfully for sale {sale.id} to {phone_number_cleaned}")
         return True, "SMS sent successfully"
     else:
         error_msg = f"Failed to send SMS: {response}"
