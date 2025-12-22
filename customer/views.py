@@ -1179,6 +1179,11 @@ class CartCouponAPIView(APIView):
         if coupon_instance.start_date > timezone.now() or coupon_instance.end_date < timezone.now():
             return Response({"error": "Coupon is not valid at this time."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Check customer_id: if set, must match request.user.id
+        if coupon_instance.customer_id is not None:
+            if coupon_instance.customer_id != request.user.id:
+                return Response({"error": "This coupon is not available for your account."}, status=status.HTTP_403_FORBIDDEN)
+
         # Only apply discount-type coupons
         if coupon_instance.coupon_type != "discount":
             return Response({"error": "This coupon cannot be applied to cart total."}, status=status.HTTP_400_BAD_REQUEST)
