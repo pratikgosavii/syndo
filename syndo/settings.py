@@ -278,6 +278,12 @@ AUTH_USER_MODEL = 'users.User'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# File Upload Size Limits
+# Increase Django's default upload size limits (default is 2.5MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB - for in-memory uploads
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB - for file uploads
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10240  # Increase if needed
+
 
 
 # Default primary key field type

@@ -45,6 +45,8 @@ router.register(r'store-reviews', StoreReviewViewSet, basename='store-reviews')
 
 router.register(r'notifcation-campaign', NotificationCampaignViewSet, basename='NotificationCampaignViewSet')
 
+router.register(r'vendor-dashboard', VendorDashboardViewSet, basename='vendor-dashboard')
+
 router.register(r'sales', SaleViewSet, basename='sale')
 
 router.register(r'deliverysettings', DeliverySettingsViewSet, basename='deliverysettings')

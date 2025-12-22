@@ -57,7 +57,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         if delivery_type == "instant_delivery":
             # Only instant_delivery needs rider check
 
-            # Build a lightweight order-like object for serviceability check
+        # Build a lightweight order-like object for serviceability check
             temp_order = SimpleNamespace(
                 order_id="TEMP",
                 address=addr,

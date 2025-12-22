@@ -714,7 +714,17 @@ class ReelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reel
         fields = '__all__'
-        read_only_fields = ['user']  
+        read_only_fields = ['user']
+    
+    def validate_media(self, value):
+        """Validate reel media file size (max 100MB)"""
+        max_size = 100 * 1024 * 1024  # 100MB in bytes
+        if value.size > max_size:
+            raise serializers.ValidationError(
+                f'File size too large. Maximum allowed size is {max_size / (1024 * 1024):.0f}MB. '
+                f'Your file is {value.size / (1024 * 1024):.2f}MB.'
+            )
+        return value  
 
 
     def get_store(self, obj):

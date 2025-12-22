@@ -2119,6 +2119,7 @@ class ReelViewSet(viewsets.ModelViewSet):
     queryset = Reel.objects.all()
     serializer_class = ReelSerializer
     permission_classes = [IsVendor]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # Enable file uploads
 
     def get_queryset(self):
         # Return only products of logged-in user
@@ -4060,8 +4061,172 @@ class OnlineOrderLedgerViewSet(viewsets.ReadOnlyModelViewSet):
 # -------------------------------
 # Store Reviews (vendor moderation)
 # -------------------------------
-from customer.models import Review
+from customer.models import Review, Order, OrderItem, Follower, Favourite
 from customer.serializers import ReviewSerializer
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q, Count, Sum, F
+from django.utils import timezone
+from datetime import timedelta, datetime
+from collections import defaultdict
+
+
+class VendorDashboardViewSet(viewsets.ViewSet):
+    """
+    Vendor Dashboard API - Provides comprehensive statistics for vendor dashboard
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['get'], url_path='dashboard')
+    def dashboard(self, request):
+        """
+        Get vendor dashboard statistics
+        
+        Query Parameters:
+        - product_id: Filter by specific product
+        - order_item_id: Filter by specific order item
+        - user_id: Filter by specific user (for sales)
+        """
+        user = request.user
+        
+        # Get filter parameters
+        product_id = request.query_params.get('product_id')
+        order_item_id = request.query_params.get('order_item_id')
+        user_id = request.query_params.get('user_id')
+        
+        # Build base querysets (no date filtering - get all data)
+        sale_qs = Sale.objects.filter(user=user)
+        purchase_qs = Purchase.objects.filter(user=user)
+        expense_qs = Expense.objects.filter(user=user)
+        order_qs = Order.objects.filter(user=user)
+        
+        # Apply product filter
+        if product_id:
+            sale_qs = sale_qs.filter(items__product_id=product_id).distinct()
+            order_qs = order_qs.filter(items__product_id=product_id).distinct()
+        
+        # Apply order_item filter
+        if order_item_id:
+            order_qs = order_qs.filter(items__id=order_item_id).distinct()
+        
+        # Apply user filter (for sales - customer)
+        if user_id:
+            sale_qs = sale_qs.filter(customer_id=user_id)
+        
+        # 1. Total Sales (POS Sales)
+        total_sales = sale_qs.aggregate(
+            total=Sum('total_amount')
+        )['total'] or 0
+        
+        # 2. Total Purchases
+        total_purchases = purchase_qs.aggregate(
+            total=Sum('total_amount')
+        )['total'] or 0
+        
+        # 3. Total Expenses
+        total_expenses = expense_qs.aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        
+        # 4. Offline Sales (POS Sales) - Same as total sales
+        offline_sales = total_sales
+        
+        # 5. Online Sales (Customer Orders)
+        online_sales = order_qs.aggregate(
+            total=Sum('total_amount')
+        )['total'] or 0
+        
+        # 6. Total Followers
+        total_followers = Follower.objects.filter(user=user).count()
+        
+        # 7. Followers Chart Data (per day)
+        followers_chart_data = self._get_followers_chart_data(user)
+        
+        # 8. Top Liked Products
+        top_liked_products = self._get_top_liked_products(user, request, limit=10)
+        
+        # 9. Low Stock Products
+        low_stock_products = self._get_low_stock_products(user, request)
+        
+        return Response({
+            'total_sales': float(total_sales),
+            'total_purchases': float(total_purchases),
+            'total_expenses': float(total_expenses),
+            'offline_sales': float(offline_sales),
+            'online_sales': float(online_sales),
+            'total_followers': total_followers,
+            'followers_chart': followers_chart_data,
+            'top_liked_products': top_liked_products,
+            'low_stock_products': low_stock_products,
+        })
+    
+    def _get_followers_chart_data(self, user, days=30):
+        """Get followers count per day for chart"""
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days)
+        
+        # Get all followers in the date range
+        followers = Follower.objects.filter(
+            user=user,
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date
+        ).extra(
+            select={'date': 'DATE(created_at)'}
+        ).values('date').annotate(count=Count('id')).order_by('date')
+        
+        # Create a dictionary for easy lookup
+        followers_dict = {}
+        for item in followers:
+            # Convert date to date object if it's a string
+            date_key = item['date']
+            if isinstance(date_key, str):
+                try:
+                    date_key = datetime.strptime(date_key, '%Y-%m-%d').date()
+                except ValueError:
+                    continue
+            followers_dict[date_key] = item['count']
+        
+        # Generate data for all days in range (fill missing days with 0)
+        chart_data = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            count = followers_dict.get(current_date, 0)
+            chart_data.append({
+                'date': date_str,
+                'count': count
+            })
+            current_date += timedelta(days=1)
+        
+        return chart_data
+    
+    def _get_top_liked_products(self, user, request, limit=10):
+        """Get top liked products for the vendor"""
+        from vendor.serializers import product_serializer
+        
+        # Get products with like counts
+        products = product.objects.filter(user=user).annotate(
+            like_count=Count('favourited_by')
+        ).order_by('-like_count')[:limit]
+        
+        return product_serializer(products, many=True, context={'request': request}).data
+    
+    def _get_low_stock_products(self, user, request):
+        """Get products with low stock (stock <= low_stock_quantity)"""
+        from vendor.serializers import product_serializer
+        
+        # Get products where stock is tracked and is low
+        low_stock = product.objects.filter(
+            user=user,
+            track_stock=True,
+            low_stock_alert=True
+        ).filter(
+            Q(stock__lte=F('low_stock_quantity')) | 
+            Q(stock__isnull=True, low_stock_quantity__isnull=False)
+        )
+        
+        return product_serializer(low_stock, many=True, context={'request': request}).data
 
 
 class StoreReviewViewSet(viewsets.ModelViewSet):
