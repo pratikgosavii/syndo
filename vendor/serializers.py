@@ -963,6 +963,7 @@ class VendorStoreSerializer(serializers.ModelSerializer):
     is_store_open = serializers.SerializerMethodField() 
     store_rating = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
+    total_visits = serializers.SerializerMethodField()  # ✅ NEW: Total store visits
 
     class Meta:
         model = vendor_store
@@ -1028,6 +1029,14 @@ class VendorStoreSerializer(serializers.ModelSerializer):
             return BannerCampaignSerializer(qs, many=True, context=context).data
         except Exception:
             return []
+    
+    def get_total_visits(self, obj):
+        """Get total number of visits to this store."""
+        try:
+            from vendor.models import StoreVisit
+            return StoreVisit.objects.filter(store=obj).count()
+        except Exception:
+            return 0
 
     
 class DeliverySettingsSerializer(serializers.ModelSerializer):

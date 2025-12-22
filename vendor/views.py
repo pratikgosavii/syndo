@@ -4149,6 +4149,18 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         # 9. Low Stock Products
         low_stock_products = self._get_low_stock_products(user, request)
         
+        # 10. Total Stock Value (MRP × Stock for all products)
+        total_stock_value = self._calculate_total_stock_value(user)
+        
+        # 11. Cash in Hand
+        cash_in_hand = self._get_cash_in_hand(user)
+        
+        # 12. Total Bank Balance (Sum of all vendor banks)
+        total_bank_balance = self._get_total_bank_balance(user)
+        
+        # 13. Total Store Visits
+        total_store_visits = self._get_total_store_visits(user)
+        
         return Response({
             'total_sales': float(total_sales),
             'total_purchases': float(total_purchases),
@@ -4159,6 +4171,10 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             'followers_chart': followers_chart_data,
             'top_liked_products': top_liked_products,
             'low_stock_products': low_stock_products,
+            'total_stock_value': float(total_stock_value),
+            'cash_in_hand': float(cash_in_hand),
+            'total_bank_balance': float(total_bank_balance),
+            'total_store_visits': total_store_visits,
         })
     
     def _get_followers_chart_data(self, user, days=30):
@@ -4227,6 +4243,77 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         )
         
         return product_serializer(low_stock, many=True, context={'request': request}).data
+    
+    def _calculate_total_stock_value(self, user):
+        """Calculate total stock value: Sum of (MRP × Stock) for all products"""
+        from decimal import Decimal
+        
+        # Get all products for the user that have stock tracking enabled
+        products = product.objects.filter(
+            user=user,
+            track_stock=True
+        ).exclude(
+            Q(mrp__isnull=True) | Q(mrp=0) | Q(stock__isnull=True) | Q(stock=0)
+        )
+        
+        total_value = Decimal('0')
+        
+        for prod in products:
+            # Calculate: MRP × Stock
+            mrp = prod.mrp or Decimal('0')
+            stock_qty = prod.stock or 0
+            
+            if mrp > 0 and stock_qty > 0:
+                product_value = mrp * Decimal(str(stock_qty))
+                total_value += product_value
+        
+        return total_value
+    
+    def _get_cash_in_hand(self, user):
+        """Get cash in hand from CashBalance model"""
+        from .models import CashBalance
+        from decimal import Decimal
+        
+        cash_balance, _ = CashBalance.objects.get_or_create(
+            user=user,
+            defaults={'balance': Decimal('0.00')}
+        )
+        
+        return cash_balance.balance or Decimal('0.00')
+    
+    def _get_total_bank_balance(self, user):
+        """Calculate total balance of all vendor banks"""
+        from decimal import Decimal
+        
+        # Get all active vendor banks for the user
+        banks = vendor_bank.objects.filter(
+            user=user,
+            is_active=True
+        )
+        
+        total_balance = Decimal('0')
+        
+        for bank in banks:
+            # vendor_bank.balance is BigIntegerField
+            # Convert to Decimal (balance is stored as integer, representing actual rupees)
+            bank_balance = bank.balance or 0
+            if bank_balance:
+                total_balance += Decimal(str(bank_balance))
+        
+        return total_balance
+    
+    def _get_total_store_visits(self, user):
+        """Get total number of visits to the vendor's store"""
+        from .models import StoreVisit
+        
+        try:
+            # Get the vendor's store
+            store = vendor_store.objects.filter(user=user).first()
+            if store:
+                return StoreVisit.objects.filter(store=store).count()
+            return 0
+        except Exception:
+            return 0
 
 
 class StoreReviewViewSet(viewsets.ModelViewSet):

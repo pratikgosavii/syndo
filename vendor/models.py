@@ -1531,3 +1531,21 @@ class OnlineOrderLedger(models.Model):
 
     def __str__(self):
         return f"OrderItem #{self.order_item_id} | {self.product.name} | {self.status}"
+
+
+class StoreVisit(models.Model):
+    """Track store visits by customers"""
+    store = models.ForeignKey(vendor_store, on_delete=models.CASCADE, related_name='visits')
+    visitor = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='store_visits')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['store', '-created_at']),
+            models.Index(fields=['visitor', '-created_at']),
+        ]
+
+    def __str__(self):
+        visitor_name = self.visitor.username if self.visitor else 'Anonymous'
+        return f"Visit to {self.store.name} by {visitor_name} at {self.created_at}"

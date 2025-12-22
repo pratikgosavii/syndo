@@ -501,8 +501,28 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
 
     def get(self, request, *args, **kwargs):
         if "id" in kwargs:
+            # Track store visit when retrieving a single store
+            self._track_store_visit(request, kwargs.get("id"))
             return self.retrieve(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)    # GET /stores/
+    
+    def _track_store_visit(self, request, store_id):
+        """Record a visit to the store"""
+        try:
+            from vendor.models import StoreVisit
+            
+            store = vendor_store.objects.get(id=store_id, is_active=True)
+            
+            # Only track if user is authenticated
+            if request.user.is_authenticated:
+                StoreVisit.objects.create(
+                    store=store,
+                    visitor=request.user
+                )
+        except vendor_store.DoesNotExist:
+            pass  # Store doesn't exist or is inactive, skip tracking
+        except Exception:
+            pass  # Silently fail to not break the API
  
 
 
