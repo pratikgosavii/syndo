@@ -1129,7 +1129,9 @@ class CartCouponAPIView(APIView):
         
         # Filter coupons to include:
         # 1. Coupons from vendors whose products are in the cart
-        # 2. OR coupons where customer_id matches request.user.id
+        # 2. customer_id logic: 
+        #    - If customer_id is NULL/blank → return to all users
+        #    - If customer_id is set → only return if it matches request.user.id
         now = timezone.now()
         
         # Base conditions that apply to all coupons
@@ -1139,15 +1141,20 @@ class CartCouponAPIView(APIView):
             end_date__gte=now
         )
         
-        # Build OR conditions
+        # Customer ID filter: 
+        # Return coupon if customer_id is NULL OR customer_id matches request.user.id
+        customer_filter = Q(customer_id__isnull=True) | Q(customer_id=request.user.id)
+        
+        # Build OR conditions for vendor filter
         or_conditions = Q()
         
         # Condition 1: Coupons from vendors whose products are in the cart
         if vendor_ids:
-            or_conditions |= Q(user__id__in=vendor_ids) & base_conditions
+            or_conditions |= Q(user__id__in=vendor_ids) & base_conditions & customer_filter
         
-        # Condition 2: Coupons where customer_id matches request.user.id
-        or_conditions |= Q(customer_id=request.user.id) & base_conditions
+        # If cart is empty, still return coupons with matching customer_id (if any)
+        if not vendor_ids:
+            or_conditions = base_conditions & customer_filter
         
         coupons = coupon.objects.filter(or_conditions).distinct()
 
