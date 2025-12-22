@@ -1162,8 +1162,8 @@ class CartCouponAPIView(APIView):
         return Response({"coupons": serializer.data}, status=200)
 
     def post(self, request):
-        coupon_code = request.data.get("coupon_code")
-        if not coupon_code:
+        coupon_id = request.data.get("coupon_id")
+        if not coupon_id:
             return Response({"error": "coupon_code is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         user, cart_items = self.get_cart_user(request.user)
@@ -1171,7 +1171,7 @@ class CartCouponAPIView(APIView):
             return Response({"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            coupon_instance = coupon.objects.get(user=user, code=coupon_code, is_active=True)
+            coupon_instance = coupon.objects.get(user=user, id=coupon_id, is_active=True)
         except coupon.DoesNotExist:
             return Response({"error": "Invalid or inactive coupon"}, status=status.HTTP_404_NOT_FOUND)
 
