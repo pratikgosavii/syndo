@@ -4314,6 +4314,84 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             return 0
         except Exception:
             return 0
+    
+    @action(detail=False, methods=['get'], url_path='store-insights')
+    def store_insights(self, request):
+        """
+        Get store insights - users who visited and followed the store
+        
+        Query Parameters:
+        - limit: Number of recent items to return (default: 20)
+        - days: Number of days to look back (default: 30)
+        """
+        from .models import StoreVisit
+        from customer.models import Follower
+        
+        user = request.user
+        limit = int(request.query_params.get('limit', 20))
+        days = int(request.query_params.get('days', 30))
+        
+        # Get the vendor's store
+        try:
+            store = vendor_store.objects.get(user=user)
+        except vendor_store.DoesNotExist:
+            return Response({
+                'error': 'Store not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Calculate date threshold
+        date_threshold = timezone.now() - timedelta(days=days)
+        
+        # Get recent store visitors
+        recent_visits = StoreVisit.objects.filter(
+            store=store,
+            created_at__gte=date_threshold
+        ).select_related('visitor').order_by('-created_at')[:limit]
+        
+        # Get recent followers
+        recent_followers = Follower.objects.filter(
+            user=user,
+            created_at__gte=date_threshold
+        ).select_related('follower').order_by('-created_at')[:limit]
+        
+        # Serialize visitors
+        visitors_data = []
+        for visit in recent_visits:
+            visitor = visit.visitor
+            visitors_data.append({
+                'user': {
+                    'id': visitor.id,
+                    'username': visitor.username,
+                    'first_name': visitor.first_name or '',
+                    'last_name': visitor.last_name or '',
+                    'email': visitor.email,
+                },
+                'visited_at': visit.created_at,
+                'message': f"{visitor.username or visitor.email} visited your store"
+            })
+        
+        # Serialize followers
+        followers_data = []
+        for follow in recent_followers:
+            follower_user = follow.follower
+            followers_data.append({
+                'user': {
+                    'id': follower_user.id,
+                    'username': follower_user.username,
+                    'first_name': follower_user.first_name or '',
+                    'last_name': follower_user.last_name or '',
+                    'email': follower_user.email,
+                },
+                'followed_at': follow.created_at,
+                'message': f"{follower_user.username or follower_user.email} followed your store"
+            })
+        
+        return Response({
+            'recent_visitors': visitors_data,
+            'recent_followers': followers_data,
+            'total_visitors_count': len(visitors_data),
+            'total_followers_count': len(followers_data),
+        })
 
 
 class StoreReviewViewSet(viewsets.ModelViewSet):
