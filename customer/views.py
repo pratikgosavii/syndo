@@ -1115,10 +1115,26 @@ class CartCouponAPIView(APIView):
 
 
     def get(self, request):
-       
+        # Get cart items for the user
+        cart_items = Cart.objects.filter(user=request.user).select_related('product', 'product__user')
+        
+        if not cart_items.exists():
+            return Response({"coupons": [], "message": "Cart is empty"}, status=200)
+        
+        # Get unique vendor IDs from cart products
+        vendor_ids = set()
+        for item in cart_items:
+            if item.product and item.product.user:
+                vendor_ids.add(item.product.user.id)
+        
+        if not vendor_ids:
+            return Response({"coupons": [], "message": "No valid products in cart"}, status=200)
+        
+        # Filter coupons to only include coupons from vendors whose products are in the cart
         now = timezone.now()
         
         coupons = coupon.objects.filter(
+            user__id__in=vendor_ids,
             is_active=True,
             start_date__lte=now,
             end_date__gte=now
