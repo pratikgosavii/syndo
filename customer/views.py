@@ -1414,6 +1414,23 @@ class HomeScreenView(APIView):
                     Q(user__vendor_store__global_supplier=True) |  # Global suppliers: visible everywhere
                     Q(user__coverages__pincode__code=pincode)      # Regular vendors: only in coverage area
                 )
+            
+            # Filter out products from private catalog stores if user is not following
+            from customer.models import Follower
+            if user.is_authenticated:
+                # Get all store owners the user is following
+                following_store_user_ids = set(
+                    Follower.objects.filter(follower=user)
+                    .values_list('user_id', flat=True)
+                )
+                # Exclude products from private catalog stores where user is not following
+                products_qs = products_qs.exclude(
+                    Q(user__vendor_store__private_catalog=True) & 
+                    ~Q(user_id__in=following_store_user_ids)
+                )
+            else:
+                # Anonymous users: exclude all products from private catalog stores
+                products_qs = products_qs.exclude(user__vendor_store__private_catalog=True)
 
             products_qs = products_qs.select_related(
                 'user', 'category', 'sub_category'
@@ -1490,10 +1507,35 @@ class HomeScreenView(APIView):
             # then pick up to 6 random stores for this main category
             # -------------------------
             user_ids = set([p.user_id for p in products if p.user_id])
-            stores_qs = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).only('id', 'name', 'profile_image')
+            stores_qs = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).only('id', 'name', 'profile_image', 'private_catalog', 'user')
             stores_list = list(stores_qs)
-            # pick random up to 6
-            random_stores = random.sample(stores_list, min(6, len(stores_list)))
+            
+            # Filter stores based on private_catalog setting
+            # If store has private_catalog=True, only show if user is following that store
+            filtered_stores = []
+            if request.user.is_authenticated:
+                # Get all stores the user is following (for private catalog check)
+                following_store_user_ids = set(
+                    Follower.objects.filter(follower=request.user)
+                    .values_list('user_id', flat=True)
+                )
+                
+                for store in stores_list:
+                    # If store is private, check if user is following
+                    if store.private_catalog:
+                        if store.user_id in following_store_user_ids:
+                            filtered_stores.append(store)
+                        # else: skip this store (not following)
+                    else:
+                        # Public store, include it
+                        filtered_stores.append(store)
+            else:
+                # Anonymous user: only show public stores (not private_catalog)
+                filtered_stores = [s for s in stores_list if not s.private_catalog]
+            
+            # pick random up to 6 from filtered stores
+            random_stores = random.sample(filtered_stores, min(6, len(filtered_stores))) if filtered_stores else []
+            
             # ✅ Get approved banner campaigns (latest or random as per your choice)
             stores_data = []
             for s in random_stores:
