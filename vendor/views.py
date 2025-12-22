@@ -4161,6 +4161,9 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         # 13. Total Store Visits
         total_store_visits = self._get_total_store_visits(user)
         
+        # 14. Store Insights (Recent Visitors and Followers)
+        store_insights = self._get_store_insights(user, limit=20, days=30)
+        
         return Response({
             'total_sales': float(total_sales),
             'total_purchases': float(total_purchases),
@@ -4175,6 +4178,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             'cash_in_hand': float(cash_in_hand),
             'total_bank_balance': float(total_bank_balance),
             'total_store_visits': total_store_visits,
+            'store_insights': store_insights,  # ✅ NEW: Recent visitors and followers
         })
     
     def _get_followers_chart_data(self, user, days=30):
@@ -4314,6 +4318,83 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             return 0
         except Exception:
             return 0
+    
+    def _get_store_insights(self, user, limit=20, days=30):
+        """Get store insights - recent visitors and followers"""
+        from .models import StoreVisit
+        from customer.models import Follower
+        
+        try:
+            # Get the vendor's store
+            store = vendor_store.objects.filter(user=user).first()
+            if not store:
+                return {
+                    'recent_visitors': [],
+                    'recent_followers': [],
+                    'total_visitors_count': 0,
+                    'total_followers_count': 0,
+                }
+            
+            # Calculate date threshold
+            date_threshold = timezone.now() - timedelta(days=days)
+            
+            # Get recent store visitors
+            recent_visits = StoreVisit.objects.filter(
+                store=store,
+                created_at__gte=date_threshold
+            ).select_related('visitor').order_by('-created_at')[:limit]
+            
+            # Get recent followers
+            recent_followers = Follower.objects.filter(
+                user=user,
+                created_at__gte=date_threshold
+            ).select_related('follower').order_by('-created_at')[:limit]
+            
+            # Serialize visitors
+            visitors_data = []
+            for visit in recent_visits:
+                visitor = visit.visitor
+                visitors_data.append({
+                    'user': {
+                        'id': visitor.id,
+                        'username': visitor.username,
+                        'first_name': visitor.first_name or '',
+                        'last_name': visitor.last_name or '',
+                        'email': visitor.email,
+                    },
+                    'visited_at': visit.created_at,
+                    'message': f"{visitor.username or visitor.email} visited your store"
+                })
+            
+            # Serialize followers
+            followers_data = []
+            for follow in recent_followers:
+                follower_user = follow.follower
+                followers_data.append({
+                    'user': {
+                        'id': follower_user.id,
+                        'username': follower_user.username,
+                        'first_name': follower_user.first_name or '',
+                        'last_name': follower_user.last_name or '',
+                        'email': follower_user.email,
+                    },
+                    'followed_at': follow.created_at,
+                    'message': f"{follower_user.username or follower_user.email} followed your store"
+                })
+            
+            return {
+                'recent_visitors': visitors_data,
+                'recent_followers': followers_data,
+                'total_visitors_count': len(visitors_data),
+                'total_followers_count': len(followers_data),
+            }
+        except Exception:
+            return {
+                'recent_visitors': [],
+                'recent_followers': [],
+                'total_visitors_count': 0,
+                'total_followers_count': 0,
+            }
     
     @action(detail=False, methods=['get'], url_path='store-insights')
     def store_insights(self, request):
