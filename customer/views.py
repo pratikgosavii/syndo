@@ -1729,7 +1729,27 @@ class ChatInitAPIView(APIView):
             if not is_allowed:
                 return Response({"error": "Only customer↔vendor chats allowed"}, status=403)
 
-            members = [user_id, str(other.id)]
+            # Get vendor store name if other user is a vendor
+            other_name = other.username
+            if getattr(other, "is_vendor", False):
+                try:
+                    store = vendor_store.objects.get(user=other)
+                    other_name = store.name if store.name else other.username
+                except vendor_store.DoesNotExist:
+                    other_name = other.username
+
+            # Create or update the Stream user for the other user (vendor)
+            other_user_id_str = str(other.id)
+            other_app_role = "customer" if getattr(other, "is_customer", False) else ("vendor" if getattr(other, "is_vendor", False) else "user")
+            
+            client.upsert_user({
+                "id": other_user_id_str,
+                "name": other_name,  # Use vendor store name if vendor, otherwise username
+                "role": "user",
+                "app_role": other_app_role,
+            })
+
+            members = [user_id, other_user_id_str]
             channel = client.channel("messaging", data={"members": members, "distinct": True})
             resp = channel.create(user_id)
             channel_id = resp.get("channel", {}).get("id")
