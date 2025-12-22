@@ -1194,19 +1194,23 @@ class CartCouponAPIView(APIView):
         # Check minimum purchase condition
         if coupon_instance.min_purchase and total_cart_amount < coupon_instance.min_purchase:
             return Response({
-                "error": f"Cart total must be at least {coupon_instance.min_purchase} to use this coupon."
+                "error": f"Cart value is less to apply this coupon. Minimum cart value required is {coupon_instance.min_purchase}."
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Calculate discount
         discount_amount = 0
         if coupon_instance.type == "percent" and coupon_instance.discount_percentage:
             discount_amount = (total_cart_amount * coupon_instance.discount_percentage) / 100
+            # Apply max_discount limit if set
             if coupon_instance.max_discount:
                 discount_amount = min(discount_amount, coupon_instance.max_discount)
         elif coupon_instance.type == "amount" and coupon_instance.discount_amount:
             discount_amount = coupon_instance.discount_amount
+            # Apply max_discount limit if set (for amount type coupons too)
+            if coupon_instance.max_discount:
+                discount_amount = min(discount_amount, coupon_instance.max_discount)
 
-        # Ensure discount does not exceed total
+        # Ensure discount does not exceed cart total
         discount_amount = min(discount_amount, total_cart_amount)
         final_total = total_cart_amount - discount_amount
 
