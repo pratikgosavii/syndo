@@ -1142,21 +1142,21 @@ class CartCouponAPIView(APIView):
         )
         
         # Customer ID filter: 
-        # Return coupon if customer_id is NULL OR customer_id matches request.user.id
+        # - If customer_id is NULL/blank → return to all users (no restriction)
+        # - If customer_id is set → only return if it matches request.user.id
         customer_filter = Q(customer_id__isnull=True) | Q(customer_id=request.user.id)
         
-        # Build OR conditions for vendor filter
-        or_conditions = Q()
-        
-        # Condition 1: Coupons from vendors whose products are in the cart
-        if vendor_ids:
-            or_conditions |= Q(user__id__in=vendor_ids) & base_conditions & customer_filter
-        
-        # If cart is empty, still return coupons with matching customer_id (if any)
+        # Only return coupons if cart has products from vendors
         if not vendor_ids:
-            or_conditions = base_conditions & customer_filter
+            return Response({"coupons": [], "message": "Cart is empty"}, status=200)
         
-        coupons = coupon.objects.filter(or_conditions).distinct()
+        # Filter coupons from vendors whose products are in cart
+        # AND apply customer_id filter
+        coupons = coupon.objects.filter(
+            user__id__in=vendor_ids
+        ).filter(
+            base_conditions & customer_filter
+        ).distinct()
 
         serializer = coupon_serializer(coupons, many=True)
         return Response({"coupons": serializer.data}, status=200)
