@@ -1115,30 +1115,41 @@ class CartCouponAPIView(APIView):
 
 
     def get(self, request):
+        from django.db.models import Q
+        
         # Get cart items for the user
         cart_items = Cart.objects.filter(user=request.user).select_related('product', 'product__user')
         
-        if not cart_items.exists():
-            return Response({"coupons": [], "message": "Cart is empty"}, status=200)
-        
         # Get unique vendor IDs from cart products
         vendor_ids = set()
-        for item in cart_items:
-            if item.product and item.product.user:
-                vendor_ids.add(item.product.user.id)
+        if cart_items.exists():
+            for item in cart_items:
+                if item.product and item.product.user:
+                    vendor_ids.add(item.product.user.id)
         
-        if not vendor_ids:
-            return Response({"coupons": [], "message": "No valid products in cart"}, status=200)
-        
-        # Filter coupons to only include coupons from vendors whose products are in the cart
+        # Filter coupons to include:
+        # 1. Coupons from vendors whose products are in the cart
+        # 2. OR coupons where customer_id matches request.user.id
         now = timezone.now()
         
-        coupons = coupon.objects.filter(
-            user__id__in=vendor_ids,
+        # Base conditions that apply to all coupons
+        base_conditions = Q(
             is_active=True,
             start_date__lte=now,
             end_date__gte=now
         )
+        
+        # Build OR conditions
+        or_conditions = Q()
+        
+        # Condition 1: Coupons from vendors whose products are in the cart
+        if vendor_ids:
+            or_conditions |= Q(user__id__in=vendor_ids) & base_conditions
+        
+        # Condition 2: Coupons where customer_id matches request.user.id
+        or_conditions |= Q(customer_id=request.user.id) & base_conditions
+        
+        coupons = coupon.objects.filter(or_conditions).distinct()
 
         serializer = coupon_serializer(coupons, many=True)
         return Response({"coupons": serializer.data}, status=200)
