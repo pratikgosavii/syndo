@@ -1470,6 +1470,19 @@ class VendorCoverage(models.Model):
 from django.db import models
 
 
+class OfferMedia(models.Model):
+    """Multiple media files for Offer"""
+    offer = models.ForeignKey('Offer', on_delete=models.CASCADE, related_name='media_files')
+    media = models.ImageField(upload_to="offers/media/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Media for {self.offer.heading}"
+
+
 class Offer(models.Model):
    
 
@@ -1487,7 +1500,6 @@ class Offer(models.Model):
     heading = models.CharField(max_length=255)
     selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True, null=True)
-    media = models.ImageField(upload_to="offers/media/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     valid_till = models.DateTimeField(blank=True, null=True)
 
@@ -1549,3 +1561,22 @@ class StoreVisit(models.Model):
     def __str__(self):
         visitor_name = self.visitor.username if self.visitor else 'Anonymous'
         return f"Visit to {self.store.name} by {visitor_name} at {self.created_at}"
+
+
+# -------------------------------
+# Order Notification Message (per vendor)
+# -------------------------------
+class OrderNotificationMessage(models.Model):
+    """Order notification message template per vendor"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="order_notification_message")
+    message = models.TextField(help_text="Notification message to send when a new order is received")
+    is_active = models.BooleanField(default=True, help_text="Enable/disable order notifications")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Order Notification Message"
+        verbose_name_plural = "Order Notification Messages"
+
+    def __str__(self):
+        return f"Order notification for {self.user.username}"

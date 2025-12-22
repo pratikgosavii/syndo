@@ -5000,3 +5000,49 @@ class OfferViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(seller=self.request.user)
+
+
+class OrderNotificationMessageViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing order notification messages per vendor"""
+    from .serializers import OrderNotificationMessageSerializer
+    
+    serializer_class = OrderNotificationMessageSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Return only the notification message for the logged-in vendor
+        return OrderNotificationMessage.objects.filter(user=self.request.user)
+    
+    def list(self, request, *args, **kwargs):
+        """Get or create order notification message for the vendor"""
+        # Use get_or_create to ensure one message per vendor
+        notification_message, created = OrderNotificationMessage.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'message': 'You have received a new order!',
+                'is_active': True
+            }
+        )
+        serializer = self.get_serializer(notification_message)
+        return Response(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Get order notification message for the vendor"""
+        # Use get_or_create to ensure one message per vendor
+        notification_message, created = OrderNotificationMessage.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'message': 'You have received a new order!',
+                'is_active': True
+            }
+        )
+        serializer = self.get_serializer(notification_message)
+        return Response(serializer.data)
+    
+    def perform_create(self, serializer):
+        """Set the user when creating"""
+        serializer.save(user=self.request.user)
+    
+    def perform_update(self, serializer):
+        """Update the notification message"""
+        serializer.save()

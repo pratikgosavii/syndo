@@ -167,6 +167,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "customer.serializers": {
+            "handlers": ["request_file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 

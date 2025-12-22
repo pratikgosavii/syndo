@@ -435,7 +435,20 @@ class Review(models.Model):
 
 
 
-        
+
+class ProductRequestImage(models.Model):
+    """Multiple photos for ProductRequest"""
+    request = models.ForeignKey('ProductRequest', on_delete=models.CASCADE, related_name='photos')
+    photo = models.ImageField(upload_to="requests/photos/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Photo for {self.request.product_name}"
+
+
 class ProductRequest(models.Model):
     TYPE_CHOICES = [
         ('personal', 'Personal use'),
@@ -449,7 +462,6 @@ class ProductRequest(models.Model):
     sub_category = models.ForeignKey("masters.product_subcategory", related_name='sdfsdsa', on_delete=models.CASCADE)
     budget = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    photo = models.ImageField(upload_to="requests/photos/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

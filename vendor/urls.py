@@ -64,6 +64,7 @@ router.register(r'sms-settings', SMSSettingViewSet, basename='sms-settings')
 router.register(r'orders', OrderViewSet, basename='orders')
 
 router.register(r'offer', OfferViewSet, basename="offer")
+router.register(r'order-notification-message', OrderNotificationMessageViewSet, basename="order-notification-message")
 
 
 router.register(r'coverage', VendorCoverageViewSet, basename='vendor-coverage')

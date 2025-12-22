@@ -1,6 +1,9 @@
 from typing import Any
+import logging
 from rest_framework import serializers
 from .models import *
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -111,6 +114,79 @@ from django.db.models import Max
 
 from decimal import Decimal
 from users.serializer import UserProfileSerializer
+
+
+def send_order_notification_to_customer(order):
+    """
+    Send push notification to customer when a new order is placed.
+    Gets notification message from each vendor whose products are in the order.
+    """
+    from firebase_admin import messaging
+    from users.models import DeviceToken
+    from vendor.models import OrderNotificationMessage
+    
+    # Get customer (order user)
+    customer = order.user
+    if not customer:
+        logger.warning("No customer found for order, skipping notification")
+        return
+    
+    # Get all unique vendors from order items
+    order_items = order.items.select_related('product', 'product__user').all()
+    vendor_ids = set()
+    for item in order_items:
+        if item.product and item.product.user:
+            vendor_ids.add(item.product.user.id)
+    
+    if not vendor_ids:
+        logger.warning("No vendors found in order items, skipping notification")
+        return
+    
+    # Get device token for customer
+    try:
+        device_token_obj = DeviceToken.objects.get(user=customer)
+        if not device_token_obj.token or not device_token_obj.token.strip():
+            logger.warning(f"No device token found for customer {customer.id}, skipping notification")
+            return
+        customer_token = device_token_obj.token.strip()
+    except DeviceToken.DoesNotExist:
+        logger.warning(f"No device token found for customer {customer.id}, skipping notification")
+        return
+    
+    # Send notification for each vendor (if they have a notification message configured)
+    for vendor_id in vendor_ids:
+        try:
+            # Get vendor's order notification message
+            notification_msg = OrderNotificationMessage.objects.filter(
+                user_id=vendor_id,
+                is_active=True
+            ).first()
+            
+            if not notification_msg or not notification_msg.message:
+                logger.info(f"No active notification message for vendor {vendor_id}, skipping")
+                continue
+            
+            # Send push notification
+            try:
+                message = messaging.Message(
+                    notification=messaging.Notification(
+                        title="New Order",
+                        body=notification_msg.message,
+                    ),
+                    data={
+                        "order_id": str(order.order_id),
+                        "type": "new_order"
+                    },
+                    token=customer_token,
+                )
+                
+                response = messaging.send(message)
+                logger.info(f"Successfully sent order notification to customer {customer.id} for vendor {vendor_id}: {response}")
+            except Exception as e:
+                logger.error(f"Error sending notification to customer {customer.id} for vendor {vendor_id}: {e}")
+        except Exception as e:
+            logger.error(f"Error processing notification for vendor {vendor_id}: {e}")
+
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
@@ -427,6 +503,13 @@ class OrderSerializer(serializers.ModelSerializer):
             # ✅ CLEAR CART AFTER SUCCESSFUL ORDER CREATION
             Cart.objects.filter(user=request.user).delete()
 
+            # Send push notifications to customer for each vendor's order notification message
+            try:
+                send_order_notification_to_customer(order)
+            except Exception as e:
+                logger.error(f"Error sending order notification: {e}", exc_info=True)
+                # Don't fail order creation if notification fails
+
             # Delivery task creation is deferred to vendor when status becomes ready_to_shipment
             print("⏭️ Delivery task will be created when vendor marks ready_to_shipment.")
             print("=" * 80 + "\n")
@@ -611,15 +694,22 @@ class ProductRequestSerializer(serializers.ModelSerializer):
 
     store = serializers.SerializerMethodField()
     city = serializers.SerializerMethodField()
+    photos = serializers.SerializerMethodField()
 
     user_details = UserProfileSerializer(source = 'user', read_only = True)
     category_details = product_category_serializer(source = 'category', read_only = True)
     sub_category_details = product_subcategory_serializer(source = 'sub_category', read_only = True)
+    
     class Meta:
         model = ProductRequest
         fields = "__all__"
         read_only_fields = ["user", "created_at"]
 
+    def get_photos(self, obj):
+        """Return list of photo URLs for this request"""
+        from .models import ProductRequestImage
+        photos = ProductRequestImage.objects.filter(request=obj)
+        return [photo.photo.url for photo in photos]
 
     def get_store(self, obj):
         try:
@@ -641,5 +731,68 @@ class ProductRequestSerializer(serializers.ModelSerializer):
                     return default_addr.town_city
             except Exception:
                 pass
-        return None 
+        return None
+
+    def create(self, validated_data):
+        """Create ProductRequest and handle multiple photo uploads"""
+        from .models import ProductRequestImage
+        
+        # Get user from context if not in validated_data (set by perform_create)
+        user = validated_data.pop('user', None)
+        if not user:
+            request_obj = self.context.get('request')
+            if request_obj and hasattr(request_obj, 'user'):
+                user = request_obj.user
+        
+        # Create the ProductRequest instance
+        request_instance = ProductRequest.objects.create(user=user, **validated_data)
+        
+        # Handle multiple photo uploads
+        request_obj = self.context.get('request')
+        if request_obj and hasattr(request_obj, 'FILES'):
+            # Support multiple field names: photos, photos[], photo, photo[]
+            photo_files = []
+            for key in request_obj.FILES.keys():
+                if key in ('photos', 'photos[]', 'photo', 'photo[]'):
+                    photo_files.extend(request_obj.FILES.getlist(key))
+                elif key.startswith('photos[') or key.startswith('photo['):
+                    photo_files.extend(request_obj.FILES.getlist(key))
+            
+            # Create ProductRequestImage for each uploaded photo
+            for photo_file in photo_files:
+                ProductRequestImage.objects.create(
+                    request=request_instance,
+                    photo=photo_file
+                )
+        
+        return request_instance
+
+    def update(self, instance, validated_data):
+        """Update ProductRequest and handle photo uploads"""
+        from .models import ProductRequestImage
+        
+        # Update the ProductRequest instance
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Handle new photo uploads
+        request_obj = self.context.get('request')
+        if request_obj and hasattr(request_obj, 'FILES'):
+            # Support multiple field names: photos, photos[], photo, photo[]
+            photo_files = []
+            for key in request_obj.FILES.keys():
+                if key in ('photos', 'photos[]', 'photo', 'photo[]'):
+                    photo_files.extend(request_obj.FILES.getlist(key))
+                elif key.startswith('photos[') or key.startswith('photo['):
+                    photo_files.extend(request_obj.FILES.getlist(key))
+            
+            # Create ProductRequestImage for each uploaded photo
+            for photo_file in photo_files:
+                ProductRequestImage.objects.create(
+                    request=instance,
+                    photo=photo_file
+                )
+        
+        return instance 
         

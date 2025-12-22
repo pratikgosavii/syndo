@@ -1387,11 +1387,18 @@ class OfferSerializer(serializers.ModelSerializer):
     request_details = ProductRequestSerializer(source = "request", read_only = True)
     seller_user_details = UserProfileSerializer(source = 'seller', read_only = True)
     store = serializers.SerializerMethodField()
+    media = serializers.SerializerMethodField()
 
     class Meta:
         model = Offer
         fields = "__all__"
         read_only_fields = ["seller", "created_at", "valid_till"]
+
+    def get_media(self, obj):
+        """Return list of media URLs for this offer"""
+        from .models import OfferMedia
+        media_files = OfferMedia.objects.filter(offer=obj)
+        return [media.media.url for media in media_files]
 
     def get_store(self, obj):
         try:
@@ -1402,6 +1409,76 @@ class OfferSerializer(serializers.ModelSerializer):
                 return VendorStoreSerializer2(store).data
         except:
             return None
+
+    def create(self, validated_data):
+        """Create Offer and handle multiple media uploads"""
+        from .models import OfferMedia
+        
+        # Seller is set by perform_create in the viewset
+        # Get it from request context (perform_create sets it via serializer.save(seller=...))
+        request_obj = self.context.get('request')
+        seller = request_obj.user if request_obj else None
+        
+        # Create the Offer instance
+        offer_instance = Offer.objects.create(seller=seller, **validated_data)
+        
+        # Handle multiple media uploads
+        request_obj = self.context.get('request')
+        if request_obj and hasattr(request_obj, 'FILES'):
+            # Support multiple field names: media, media[], medias, medias[]
+            media_files = []
+            for key in request_obj.FILES.keys():
+                if key in ('media', 'media[]', 'medias', 'medias[]'):
+                    media_files.extend(request_obj.FILES.getlist(key))
+                elif key.startswith('media[') or key.startswith('medias['):
+                    media_files.extend(request_obj.FILES.getlist(key))
+            
+            # Create OfferMedia for each uploaded file
+            for media_file in media_files:
+                OfferMedia.objects.create(
+                    offer=offer_instance,
+                    media=media_file
+                )
+        
+        return offer_instance
+
+    def update(self, instance, validated_data):
+        """Update Offer and handle media uploads"""
+        from .models import OfferMedia
+        
+        # Update the Offer instance
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Handle new media uploads
+        request_obj = self.context.get('request')
+        if request_obj and hasattr(request_obj, 'FILES'):
+            # Support multiple field names: media, media[], medias, medias[]
+            media_files = []
+            for key in request_obj.FILES.keys():
+                if key in ('media', 'media[]', 'medias', 'medias[]'):
+                    media_files.extend(request_obj.FILES.getlist(key))
+                elif key.startswith('media[') or key.startswith('medias['):
+                    media_files.extend(request_obj.FILES.getlist(key))
+            
+            # Create OfferMedia for each uploaded file
+            for media_file in media_files:
+                OfferMedia.objects.create(
+                    offer=instance,
+                    media=media_file
+                )
+        
+        return instance
+
+
+class OrderNotificationMessageSerializer(serializers.ModelSerializer):
+    """Serializer for Order Notification Message"""
+    
+    class Meta:
+        model = OrderNotificationMessage
+        fields = ['id', 'message', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
         
 
 

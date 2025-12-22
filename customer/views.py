@@ -1164,7 +1164,7 @@ class CartCouponAPIView(APIView):
     def post(self, request):
         coupon_id = request.data.get("coupon_id")
         if not coupon_id:
-            return Response({"error": "coupon_code is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "coupon_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         user, cart_items = self.get_cart_user(request.user)
         if not cart_items.exists():
