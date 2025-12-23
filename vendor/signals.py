@@ -360,6 +360,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
         vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
         
         if instance.payment_method == 'credit' and balance_amt > 0:
+            # For credit purchases, use balance_amount (amount still owed)
             create_ledger(
                 vendor,
                 VendorLedger,
@@ -369,13 +370,14 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 f"Purchase #{instance.id} (Credit)"
             )
         else:
-            amt = (instance.discount_amount or Decimal(0)) + (instance.advance_amount or Decimal(0))
+            # For cash/UPI/cheque purchases, use total_amount (includes all charges)
+            # total_amount already includes: items + delivery_shipping_charges + packaging_charges
             create_ledger(
                 vendor,
                 VendorLedger,
                 "purchase",
                 instance.id,
-                amt,
+                total_amt,
                 f"Purchase #{instance.id}"
             )
 
@@ -392,8 +394,9 @@ def purchase_ledger(sender, instance, created, **kwargs):
         )
 
     # Cash ledger for purchase
+    # For cash purchases, deduct the full total_amount (includes all charges)
     if instance.payment_method == "cash" and instance.user is not None:
-        target = -(instance.advance_amount or Decimal(0))
+        target = -(instance.total_amount or Decimal(0))
         create_ledger(
             None,
             CashLedger,

@@ -823,10 +823,20 @@ class Purchase(models.Model):
         super().save(*args, **kwargs)
     
     def calculate_total(self):
-        """Calculate and update total_amount from purchase items"""
+        """Calculate and update total_amount from purchase items + other charges"""
         from django.db.models import Sum
-        total = self.items.aggregate(total=Sum('total'))['total']
-        new_total = total if total else 0
+        from decimal import Decimal
+        
+        # Sum of all purchase items
+        items_total = self.items.aggregate(total=Sum('total'))['total'] or Decimal(0)
+        
+        # Add other charges
+        delivery_charges = Decimal(self.delivery_shipping_charges or 0)
+        packaging_charges = Decimal(self.packaging_charges or 0)
+        
+        # Calculate final total: items + delivery + packaging
+        new_total = items_total + delivery_charges + packaging_charges
+        
         # Use update() to avoid triggering save() and infinite recursion
         # Only update if total changed to avoid unnecessary database writes
         if self.total_amount != new_total:
