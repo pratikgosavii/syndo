@@ -936,10 +936,23 @@ class SaleSerializer(serializers.ModelSerializer):
         return instance
 
     def _recalculate_totals(self, sale):
+        from decimal import Decimal
+        
         total_items = sum(item.quantity for item in sale.items.all())
         total_amount_before_discount = sum(item.quantity * item.price for item in sale.items.all())
         discount_amount = total_amount_before_discount * (sale.discount_percentage or 0) / 100
-        total_amount = total_amount_before_discount - discount_amount
+        base_total_amount = total_amount_before_discount - discount_amount
+        
+        # Add delivery and packaging charges from pos_wholesale if it exists (for wholesale sales)
+        delivery_charges = Decimal(0)
+        packaging_charges = Decimal(0)
+        wholesale = sale.wholesales.first()
+        if wholesale:
+            delivery_charges = Decimal(wholesale.delivery_charges or 0)
+            packaging_charges = Decimal(wholesale.packaging_charges or 0)
+        
+        # Final total includes: items (after discount) + delivery + packaging
+        total_amount = base_total_amount + delivery_charges + packaging_charges
         advance_amount = sale.advance_amount or 0
 
         sale.total_items = total_items
