@@ -62,7 +62,7 @@ import logging
 from .models import Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors
 
 from decimal import Decimal
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_delete
 from django.db.models import Sum
 from django.dispatch import receiver
 
@@ -1131,5 +1131,103 @@ def update_online_order_ledger_on_return(sender, instance, created, **kwargs):
 def restore_stock_on_order_delete(sender, instance, **kwargs):
     product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
     log_stock_transaction(instance.product, "sale", instance.quantity, ref_id=instance.pk)
+
+
+# -------------------------------
+# USER DELETE → Cleanup related ledger entries
+# -------------------------------
+@receiver(pre_delete, sender='users.User')
+def user_delete_cleanup(sender, instance, **kwargs):
+    """
+    Cleanup ledger entries and related objects before User deletion.
+    This prevents foreign key constraint errors by ensuring all related
+    ledger entries are deleted before the User is deleted.
+    """
+    from .models import CashLedger, CashBalance, BankLedger, CustomerLedger, VendorLedger
+    from .models import vendor_bank, vendor_customers, vendor_vendors
+    
+    # Delete all CashLedger entries for this user
+    # This must be done in pre_delete to avoid constraint issues
+    CashLedger.objects.filter(user=instance).delete()
+    
+    # Delete CashBalance for this user
+    CashBalance.objects.filter(user=instance).delete()
+    
+    # Update bank balances that reference this user
+    # Recalculate balances from remaining entries after related deletions
+    banks = vendor_bank.objects.filter(user=instance)
+    for bank in banks:
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+    
+    # Update customer balances that might be affected
+    customers = vendor_customers.objects.filter(user=instance)
+    for customer in customers:
+        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        customer.balance = int(remaining_total)
+        customer.save(update_fields=['balance'])
+    
+    # Update vendor balances that might be affected
+    vendors = vendor_vendors.objects.filter(user=instance)
+    for vendor in vendors:
+        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        vendor.balance = int(remaining_total)
+        vendor.save(update_fields=['balance'])
+
+
+# -------------------------------
+# USER DELETE → Cleanup related ledger entries
+# -------------------------------
+@receiver(pre_delete, sender='users.User')
+def user_delete_cleanup(sender, instance, **kwargs):
+    """
+    Cleanup ledger entries and related objects before User deletion.
+    This prevents foreign key constraint errors by ensuring all related
+    ledger entries are deleted before the User is deleted.
+    """
+    from .models import CashLedger, CashBalance, BankLedger, CustomerLedger, VendorLedger
+    from .models import vendor_bank, vendor_customers, vendor_vendors
+    
+    # Delete all CashLedger entries for this user
+    # This must be done in pre_delete to avoid constraint issues
+    CashLedger.objects.filter(user=instance).delete()
+    
+    # Delete CashBalance for this user
+    CashBalance.objects.filter(user=instance).delete()
+    
+    # Update bank balances that reference this user
+    # Recalculate balances from remaining entries after related deletions
+    banks = vendor_bank.objects.filter(user=instance)
+    for bank in banks:
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+    
+    # Update customer balances that might be affected
+    customers = vendor_customers.objects.filter(user=instance)
+    for customer in customers:
+        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        customer.balance = int(remaining_total)
+        customer.save(update_fields=['balance'])
+    
+    # Update vendor balances that might be affected
+    vendors = vendor_vendors.objects.filter(user=instance)
+    for vendor in vendors:
+        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        vendor.balance = int(remaining_total)
+        vendor.save(update_fields=['balance'])
 
 
