@@ -4851,6 +4851,42 @@ class SaleViewSet(viewsets.ModelViewSet):
         # Filter by logged-in user
         return Sale.objects.filter(user=self.request.user)
 
+    def list(self, request, *args, **kwargs):
+        """List sales with online order ledgers"""
+        response = super().list(request, *args, **kwargs)
+        
+        # Get all online order ledgers for this vendor
+        online_ledgers = OnlineOrderLedger.objects.filter(
+            user=request.user
+        ).order_by('-created_at')
+        
+        online_ledgers_data = OnlineOrderLedgerSerializer(
+            online_ledgers, many=True, context={'request': request}
+        ).data
+        
+        # Add online_order_ledgers to response
+        response.data['online_order_ledgers'] = online_ledgers_data
+        
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a single sale with online order ledgers"""
+        response = super().retrieve(request, *args, **kwargs)
+        
+        # Get all online order ledgers for this vendor
+        online_ledgers = OnlineOrderLedger.objects.filter(
+            user=request.user
+        ).order_by('-created_at')
+        
+        online_ledgers_data = OnlineOrderLedgerSerializer(
+            online_ledgers, many=True, context={'request': request}
+        ).data
+        
+        # Add online_order_ledgers to response
+        response.data['online_order_ledgers'] = online_ledgers_data
+        
+        return response
+
     def perform_create(self, serializer):
         with transaction.atomic():
             instance = serializer.save(user=self.request.user)
