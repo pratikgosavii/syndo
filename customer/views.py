@@ -505,7 +505,7 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
             self._track_store_visit(request, kwargs.get("id"))
             return self.retrieve(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)    # GET /stores/
-    
+ 
     def _track_store_visit(self, request, store_id):
         """Record a visit to the store"""
         try:

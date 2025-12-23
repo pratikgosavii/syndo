@@ -63,6 +63,7 @@ from .models import Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger
 
 from decimal import Decimal
 from django.db.models.signals import post_save, post_delete
+from django.db.models import Sum
 from django.dispatch import receiver
 
 # -------------------------------
@@ -223,28 +224,48 @@ def adjust_ledger_to_target(parent, ledger_model, transaction_type, reference_id
 # -------------------------------
 @receiver(post_save, sender=Sale)
 def sale_ledger(sender, instance, created, **kwargs):
-    # Always reset previous entries for this reference, then adjust to target
-    reset_ledger_for_reference(CustomerLedger, "sale", instance.id)
-    reset_ledger_for_reference(BankLedger, "sale", instance.id)
-    reset_ledger_for_reference(CashLedger, "sale", instance.id)
+    # Delete old entries for this reference to ensure clean updates
+    # This prevents confusion from multiple entries (original + reversals + new)
+    CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+    BankLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
 
-    # For updates, adjust to target for current state
+    # Recalculate balances from ALL remaining ledger entries (not just this transaction)
+    # This ensures balances are correct before creating new entries
+    if instance.customer:
+        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        customer.balance = int(remaining_total)
+        customer.save(update_fields=['balance'])
+
+    if instance.advance_bank:
+        bank = instance.advance_bank
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+
+    if instance.user:
+        from .models import CashBalance
+        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        cash_balance.balance = Decimal(remaining_total or 0)
+        cash_balance.save()
+
+    # Create new ledger entries (create_ledger will update balances automatically)
     # Customer ledger → for credit sales, use balance_amount; for others, use total_amount
     if instance.customer:
         total_amt = Decimal(instance.total_amount or 0)
         balance_amt = Decimal(instance.balance_amount or 0)
-        print(total_amt, balance_amt)
-        # Refresh customer from database AFTER reset to get the correct current balance
         customer = vendor_customers.objects.get(pk=instance.customer.pk)
         
-        # For credit sales, we only want to add balance_amount to customer balance
-        # So we use balance_amount for the ledger target instead of total_amount
         if instance.payment_method == 'credit' and balance_amt > 0:
-            # Get balance before ledger update
-            balance_before = Decimal(customer.balance or 0)
-            
-            # Use balance_amount for ledger entry
-            adjust_ledger_to_target(
+            create_ledger(
                 customer,
                 CustomerLedger,
                 "sale",
@@ -252,15 +273,8 @@ def sale_ledger(sender, instance, created, **kwargs):
                 balance_amt,
                 f"Sale #{instance.id} (Credit)"
             )
-            
-            # Explicitly update customer balance with balance_amount
-            customer.refresh_from_db()
-            new_balance = balance_before + balance_amt
-            customer.balance = int(new_balance)
-            customer.save(update_fields=['balance'])
         else:
-            # For non-credit sales, use total_amount
-            adjust_ledger_to_target(
+            create_ledger(
                 customer,
                 CustomerLedger,
                 "sale",
@@ -270,10 +284,9 @@ def sale_ledger(sender, instance, created, **kwargs):
             )
 
     # Bank ledger → target is advance_amount when bank is set
-    # This handles both: direct bank payments AND credit sales with bank advance
     if instance.advance_bank:
         target_amt = instance.advance_amount or Decimal(0)
-        adjust_ledger_to_target(
+        create_ledger(
             instance.advance_bank,
             BankLedger,
             "sale",
@@ -287,14 +300,12 @@ def sale_ledger(sender, instance, created, **kwargs):
     # 2. Credit sales with cash advance (advance_payment_method == "cash")
     cash_amount = Decimal(0)
     if instance.payment_method == "cash":
-        # Direct cash sale - use total_amount
         cash_amount = instance.total_amount or Decimal(0)
     elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
-        # Credit sale with cash advance - use advance_amount
         cash_amount = instance.advance_amount or Decimal(0)
     
     if cash_amount > 0 and instance.user is not None:
-        adjust_ledger_to_target(
+        create_ledger(
             None,
             CashLedger,
             "sale",
@@ -311,26 +322,45 @@ def sale_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
-    # Always reset previous entries for this reference, then adjust current
-    reset_ledger_for_reference(VendorLedger, "purchase", instance.id)
-    reset_ledger_for_reference(BankLedger, "purchase", instance.id)
-    reset_ledger_for_reference(CashLedger, "purchase", instance.id)
+    # Delete old entries for this reference to ensure clean updates
+    VendorLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+    BankLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
 
+    # Recalculate balances from ALL remaining ledger entries
+    if instance.vendor:
+        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        vendor.balance = int(remaining_total)
+        vendor.save(update_fields=['balance'])
+
+    if instance.advance_bank:
+        bank = instance.advance_bank
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+
+    if instance.user:
+        from .models import CashBalance
+        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        cash_balance.balance = Decimal(remaining_total or 0)
+        cash_balance.save()
+
+    # Create new ledger entries
     if instance.vendor:
         total_amt = Decimal(instance.total_amount or 0)
         balance_amt = Decimal(instance.balance_amount or 0)
-        
-        # Refresh vendor from database AFTER reset to get the correct current balance
         vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
         
-        # For credit purchases, we only want to add balance_amount to vendor balance
-        # So we use balance_amount for the ledger target instead of discount_amount + advance_amount
         if instance.payment_method == 'credit' and balance_amt > 0:
-            # Get balance before ledger update
-            balance_before = Decimal(vendor.balance or 0)
-            
-            # Use balance_amount for ledger entry
-            adjust_ledger_to_target(
+            create_ledger(
                 vendor,
                 VendorLedger,
                 "purchase",
@@ -338,16 +368,9 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 balance_amt,
                 f"Purchase #{instance.id} (Credit)"
             )
-            
-            # Explicitly update vendor balance with balance_amount
-            vendor.refresh_from_db()
-            new_balance = balance_before + balance_amt
-            vendor.balance = int(new_balance)
-            vendor.save(update_fields=['balance'])
         else:
-            # For non-credit purchases, use discount_amount + advance_amount
             amt = (instance.discount_amount or Decimal(0)) + (instance.advance_amount or Decimal(0))
-            adjust_ledger_to_target(
+            create_ledger(
                 vendor,
                 VendorLedger,
                 "purchase",
@@ -359,7 +382,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
     # Bank entry negative for purchase advance
     if instance.advance_bank:
         target = -(instance.advance_amount or Decimal(0))
-        adjust_ledger_to_target(
+        create_ledger(
             instance.advance_bank,
             BankLedger,
             "purchase",
@@ -371,7 +394,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
     # Cash ledger for purchase
     if instance.payment_method == "cash" and instance.user is not None:
         target = -(instance.advance_amount or Decimal(0))
-        adjust_ledger_to_target(
+        create_ledger(
             None,
             CashLedger,
             "purchase",
@@ -387,12 +410,31 @@ def purchase_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Expense)
 def expense_ledger(sender, instance, created, **kwargs):
-    # Reset then adjust current
-    reset_ledger_for_reference(BankLedger, "expense", instance.id)
-    reset_ledger_for_reference(CashLedger, "expense", instance.id)
+    # Delete old entries for this reference to ensure clean updates
+    BankLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
 
+    # Recalculate balances from ALL remaining ledger entries
     if instance.bank:
-        adjust_ledger_to_target(
+        bank = instance.bank
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+
+    if instance.user:
+        from .models import CashBalance
+        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        cash_balance.balance = Decimal(remaining_total or 0)
+        cash_balance.save()
+
+    # Create new ledger entries
+    if instance.bank:
+        create_ledger(
             instance.bank,
             BankLedger,
             "expense",
@@ -403,7 +445,7 @@ def expense_ledger(sender, instance, created, **kwargs):
 
     # Cash ledger
     if instance.payment_method == "cash" and instance.user is not None:
-        adjust_ledger_to_target(
+        create_ledger(
             None,
             CashLedger,
             "expense",
@@ -424,24 +466,38 @@ def payment_ledger(sender, instance, created, **kwargs):
     # Get payment_type display name (Cash, UPI, Cheque) - calculate once for reuse
     payment_type_display = instance.get_payment_type_display() if hasattr(instance, 'get_payment_type_display') else instance.payment_type.upper()
 
-    # Reset all possible previous effects for this reference to handle updates
-    reset_ledger_for_reference(CustomerLedger, "payment", instance.id)
-    reset_ledger_for_reference(CustomerLedger, "refund", instance.id)
-    reset_ledger_for_reference(VendorLedger, "payment", instance.id)
-    reset_ledger_for_reference(VendorLedger, "refund", instance.id)
-    reset_ledger_for_reference(CashLedger, "deposit", instance.id)
-    reset_ledger_for_reference(CashLedger, "withdrawal", instance.id)
-    reset_ledger_for_reference(BankLedger, "deposit", instance.id)
-    reset_ledger_for_reference(BankLedger, "withdrawal", instance.id)
-    reset_ledger_for_reference(BankLedger, "payment", instance.id)  # Keep for backward compatibility
+    # Delete old entries for this reference to ensure clean updates
+    CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
+    VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal"], reference_id=instance.id).delete()
+    BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
 
+    # Recalculate balances from ALL remaining ledger entries
     if instance.customer:
-        # Refresh customer from database to get current balance
         customer = vendor_customers.objects.get(pk=instance.customer.pk)
-        balance_before_ledger = Decimal(customer.balance or 0)
+        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        customer.balance = int(remaining_total)
+        customer.save(update_fields=['balance'])
+
+    if instance.vendor:
+        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        vendor.balance = int(remaining_total)
+        vendor.save(update_fields=['balance'])
+
+    # Note: Payment logic is inverted - ledger amounts don't match balance changes
+    # This is intentional to maintain backward compatibility
+    if instance.customer:
+        customer = vendor_customers.objects.get(pk=instance.customer.pk)
         
         if instance.type == "received":
-            adjust_ledger_to_target(
+            # Customer received payment (paid vendor) - balance decreases
+            # Ledger adds amt, then we manually subtract from balance
+            create_ledger(
                 customer,
                 CustomerLedger,
                 "payment",
@@ -449,39 +505,30 @@ def payment_ledger(sender, instance, created, **kwargs):
                 amt,
                 f"Payment Received ({payment_type_display}) #{instance.id}"
             )
-            # Refresh to get balance after ledger update, then adjust
             customer.refresh_from_db()
-            # Ledger system added amt, but we want to subtract amt for received
-            # So: balance_after_ledger - (amt that ledger added) - amt (what we want) = balance_before_ledger - amt
-            current_balance = Decimal(customer.balance or 0)
-            new_balance = balance_before_ledger - amt
-            customer.balance = int(new_balance)
+            customer.balance = int(Decimal(customer.balance or 0) - amt)
             customer.save(update_fields=['balance'])
         elif instance.type == "gave":
-            adjust_ledger_to_target(
+            # Customer gave refund - balance increases
+            # Ledger subtracts amt, then we manually add to balance
+            create_ledger(
                 customer,
                 CustomerLedger,
-                "refund",  # Using "refund" to differentiate from received payments
+                "refund",
                 instance.id,
-                -amt,  # Negative amount for refund/gave
+                -amt,
                 f"Refund Given ({payment_type_display}) #{instance.id}"
             )
-            # Refresh to get balance after ledger update, then adjust
             customer.refresh_from_db()
-            # Ledger system subtracted amt, but we want to add amt for gave
-            # So: balance_after_ledger - (amt that ledger subtracted) + amt (what we want) = balance_before_ledger + amt
-            current_balance = Decimal(customer.balance or 0)
-            new_balance = balance_before_ledger + amt
-            customer.balance = int(new_balance)
+            customer.balance = int(Decimal(customer.balance or 0) + amt)
             customer.save(update_fields=['balance'])
 
     if instance.vendor:
-        # Refresh vendor from database to get current balance
         vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-        balance_before_ledger = Decimal(vendor.balance or 0)
         
         if instance.type == "gave":
-            adjust_ledger_to_target(
+            # Vendor gave payment - balance increases
+            create_ledger(
                 vendor,
                 VendorLedger,
                 "payment",
@@ -489,15 +536,12 @@ def payment_ledger(sender, instance, created, **kwargs):
                 -amt,
                 f"Payment Given ({payment_type_display}) #{instance.id}"
             )
-            # Refresh to get balance after ledger update, then adjust
             vendor.refresh_from_db()
-            # Ledger system subtracted amt, but we want to add amt for gave
-            current_balance = Decimal(vendor.balance or 0)
-            new_balance = balance_before_ledger + amt
-            vendor.balance = int(new_balance)
+            vendor.balance = int(Decimal(vendor.balance or 0) + amt)
             vendor.save(update_fields=['balance'])
         elif instance.type == "received":
-            adjust_ledger_to_target(
+            # Vendor received payment - balance decreases
+            create_ledger(
                 vendor,
                 VendorLedger,
                 "refund",
@@ -505,12 +549,8 @@ def payment_ledger(sender, instance, created, **kwargs):
                 amt,
                 f"Refund Received ({payment_type_display}) #{instance.id}"
             )
-            # Refresh to get balance after ledger update, then adjust
             vendor.refresh_from_db()
-            # Ledger system added amt, but we want to subtract amt for received
-            current_balance = Decimal(vendor.balance or 0)
-            new_balance = balance_before_ledger - amt
-            vendor.balance = int(new_balance)
+            vendor.balance = int(Decimal(vendor.balance or 0) - amt)
             vendor.save(update_fields=['balance'])
 
     # Cash/Bank ledger for payments
@@ -599,12 +639,19 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=BankTransfer)
 def bank_transfer_ledger(sender, instance, created, **kwargs):
+    # Delete old entries for this reference to ensure clean updates
+    # This prevents confusion from multiple entries for the same transaction
+    BankLedger.objects.filter(
+        transaction_type__in=["transfered", "deposit"],
+        reference_id=instance.id
+    ).delete()
+
     amt = Decimal(instance.amount or 0)
 
     # Deduct from source bank
     if instance.from_bank:
         to_name = instance.to_bank.name if getattr(instance, 'to_bank', None) else 'destination bank'
-        adjust_ledger_to_target(
+        create_ledger(
             instance.from_bank,
             BankLedger,
             "transfered",
@@ -616,7 +663,7 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
     # Add to destination bank
     if instance.to_bank:
         from_name = instance.from_bank.name if getattr(instance, 'from_bank', None) else 'source bank'
-        adjust_ledger_to_target(
+        create_ledger(
             instance.to_bank,
             BankLedger,
             "deposit",
@@ -671,6 +718,9 @@ def cash_transfer_delete_ledger(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=BankTransfer)
 def bank_transfer_delete_ledger(sender, instance, **kwargs):
+    # Use reset_ledger_for_reference to create reversing entries
+    # This ensures bank balances are correctly updated when transfer is deleted
+    # Note: This creates reversal entries, but on delete it's acceptable for audit trail
     reset_ledger_for_reference(BankLedger, "transfered", instance.id)
     reset_ledger_for_reference(BankLedger, "deposit", instance.id)
 

@@ -731,7 +731,7 @@ class ProductRequestSerializer(serializers.ModelSerializer):
                     return default_addr.town_city
             except Exception:
                 pass
-        return None
+        return None 
 
     def create(self, validated_data):
         """Create ProductRequest and handle multiple photo uploads"""

@@ -714,8 +714,8 @@ class ReelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reel
         fields = '__all__'
-        read_only_fields = ['user']
-    
+        read_only_fields = ['user']  
+
     def validate_media(self, value):
         """Validate reel media file size (max 100MB)"""
         max_size = 100 * 1024 * 1024  # 100MB in bytes
@@ -1409,7 +1409,7 @@ class OfferSerializer(serializers.ModelSerializer):
                 return VendorStoreSerializer2(store).data
         except:
             return None
-
+        
     def create(self, validated_data):
         """Create Offer and handle multiple media uploads"""
         from .models import OfferMedia
