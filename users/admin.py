@@ -49,10 +49,19 @@ class CustomUserAdmin(UserAdmin):
                 customer_ids = list(vendor_customers.objects.filter(user=user).values_list('id', flat=True))
                 vendor_ids = list(vendor_vendors.objects.filter(user=user).values_list('id', flat=True))
                 
-                # IMPORTANT: Delete transactions FIRST, then ledger entries
-                # This ensures transaction delete signals run first and clean up their own ledger entries
+                # IMPORTANT: Delete in correct order to avoid constraint errors
+                # 1. Delete child items and related objects first
+                from vendor.models import PurchaseItem, SaleItem, Reminder, pos_wholesale
+                PurchaseItem.objects.filter(purchase__user=user).delete()
+                SaleItem.objects.filter(user=user).delete()
+                SaleItem.objects.filter(sale__user=user).delete()
+                Reminder.objects.filter(user=user).delete()
+                Reminder.objects.filter(purchase__user=user).delete()
+                Reminder.objects.filter(sale__user=user).delete()
+                pos_wholesale.objects.filter(user=user).delete()
+                pos_wholesale.objects.filter(sale__user=user).delete()
                 
-                # 1. Delete transactions that reference banks/customers/vendors
+                # 2. Delete transactions that reference banks/customers/vendors
                 if bank_ids:
                     BankTransfer.objects.filter(from_bank_id__in=bank_ids).delete()
                     BankTransfer.objects.filter(to_bank_id__in=bank_ids).delete()
@@ -69,10 +78,15 @@ class CustomUserAdmin(UserAdmin):
                     Purchase.objects.filter(vendor_id__in=vendor_ids).delete()
                     Payment.objects.filter(vendor_id__in=vendor_ids).delete()
                 
-                # 2. Delete CashTransfer entries for this user
+                # 3. Delete transactions that directly reference User
+                Purchase.objects.filter(user=user).delete()
+                Sale.objects.filter(user=user).delete()
+                Expense.objects.filter(user=user).delete()
+                Payment.objects.filter(user=user).delete()
                 CashTransfer.objects.filter(user=user).delete()
+                BankTransfer.objects.filter(user=user).delete()
                 
-                # 3. Now delete any remaining ledger entries (in case some weren't cleaned up by signals)
+                # 4. Delete ALL ledger entries (before Django's CASCADE tries to delete them)
                 CashLedger.objects.filter(user=user).delete()
                 CashBalance.objects.filter(user=user).delete()
                 

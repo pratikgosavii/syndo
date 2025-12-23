@@ -63,13 +63,21 @@ class User(AbstractUser):
             customer_ids = list(vendor_customers.objects.filter(user=self).values_list('id', flat=True))
             vendor_ids = list(vendor_vendors.objects.filter(user=self).values_list('id', flat=True))
             
-            # IMPORTANT: Delete transactions FIRST, then ledger entries
-            # This ensures transaction delete signals run first and clean up their own ledger entries
+            # IMPORTANT: Delete in the correct order to avoid constraint errors
+            # 1. Delete child items and related objects first (they have FK to transactions)
+            from vendor.models import PurchaseItem, SaleItem, Reminder, pos_wholesale
+            PurchaseItem.objects.filter(purchase__user=self).delete()
+            SaleItem.objects.filter(user=self).delete()
+            SaleItem.objects.filter(sale__user=self).delete()
+            Reminder.objects.filter(user=self).delete()
+            Reminder.objects.filter(purchase__user=self).delete()
+            Reminder.objects.filter(sale__user=self).delete()
+            pos_wholesale.objects.filter(user=self).delete()
+            pos_wholesale.objects.filter(sale__user=self).delete()
             
-            # 1. Delete transactions that reference banks/customers/vendors
+            # 2. Delete transactions that reference banks/customers/vendors
             # These will trigger their own delete signals which will clean up ledger entries
             if bank_ids:
-                # Delete transactions that reference these banks
                 BankTransfer.objects.filter(from_bank_id__in=bank_ids).delete()
                 BankTransfer.objects.filter(to_bank_id__in=bank_ids).delete()
                 Purchase.objects.filter(advance_bank_id__in=bank_ids).delete()
@@ -78,36 +86,32 @@ class User(AbstractUser):
                 Payment.objects.filter(bank_account_id__in=bank_ids).delete()
             
             if customer_ids:
-                # Delete transactions that reference these customers
                 Sale.objects.filter(customer_id__in=customer_ids).delete()
                 Payment.objects.filter(customer_id__in=customer_ids).delete()
             
             if vendor_ids:
-                # Delete transactions that reference these vendors
                 Purchase.objects.filter(vendor_id__in=vendor_ids).delete()
                 Payment.objects.filter(vendor_id__in=vendor_ids).delete()
             
-            # 2. Delete CashTransfer entries for this user
+            # 3. Delete transactions that directly reference User
+            Purchase.objects.filter(user=self).delete()
+            Sale.objects.filter(user=self).delete()
+            Expense.objects.filter(user=self).delete()
+            Payment.objects.filter(user=self).delete()
             CashTransfer.objects.filter(user=self).delete()
+            BankTransfer.objects.filter(user=self).delete()
             
-            # 3. Now delete any remaining ledger entries (in case some weren't cleaned up by signals)
+            # 4. Now delete any remaining ledger entries (in case some weren't cleaned up by signals)
             # Delete ALL ledger entries (before Django's CASCADE tries to delete them)
-            
-            # Delete CashLedger entries (direct FK to User)
             CashLedger.objects.filter(user=self).delete()
-            
-            # Delete CashBalance (direct FK to User)
             CashBalance.objects.filter(user=self).delete()
             
-            # Delete BankLedger entries (FK to vendor_bank which will be CASCADE deleted)
             if bank_ids:
                 BankLedger.objects.filter(bank_id__in=bank_ids).delete()
             
-            # Delete CustomerLedger entries (FK to vendor_customers which will be CASCADE deleted)
             if customer_ids:
                 CustomerLedger.objects.filter(customer_id__in=customer_ids).delete()
             
-            # Delete VendorLedger entries (FK to vendor_vendors which will be CASCADE deleted)
             if vendor_ids:
                 VendorLedger.objects.filter(vendor_id__in=vendor_ids).delete()
             
