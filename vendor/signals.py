@@ -52,7 +52,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from decimal import Decimal
-from .models import BankTransfer, CashTransfer, Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger,   CashLedger, VendorLedger, vendor_bank, vendor_customers, vendor_vendors, pos_wholesale
+from .models import BankTransfer, CashTransfer, Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger,   CashLedger, VendorLedger, ExpenseLedger, vendor_bank, vendor_customers, vendor_vendors, pos_wholesale
 
 
 from django.db.models.signals import post_save
@@ -409,11 +409,12 @@ def purchase_ledger(sender, instance, created, **kwargs):
 
 
 # -------------------------------
-# EXPENSE → Bank Ledger (+ CashLedger)
+# EXPENSE → ExpenseLedger + Bank Ledger (+ CashLedger)
 # -------------------------------
 @receiver(post_save, sender=Expense)
 def expense_ledger(sender, instance, created, **kwargs):
     # Delete old entries for this reference to ensure clean updates
+    ExpenseLedger.objects.filter(expense=instance).delete()
     BankLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
     CashLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
 
@@ -435,7 +436,20 @@ def expense_ledger(sender, instance, created, **kwargs):
         cash_balance.balance = Decimal(remaining_total or 0)
         cash_balance.save()
 
-    # Create new ledger entries
+    # Create ExpenseLedger entry (dedicated expense ledger with category)
+    if instance.user and instance.category:
+        ExpenseLedger.objects.create(
+            user=instance.user,
+            expense=instance,
+            category=instance.category,
+            amount=instance.amount or Decimal(0),
+            payment_method=instance.payment_method,
+            bank=instance.bank,
+            expense_date=instance.expense_date,
+            description=instance.description or ''
+        )
+
+    # Create BankLedger entry (for bank balance tracking)
     if instance.bank:
         create_ledger(
             instance.bank,
@@ -446,7 +460,7 @@ def expense_ledger(sender, instance, created, **kwargs):
             f"Expense #{instance.id}"
         )
 
-    # Cash ledger
+    # Create CashLedger entry (for cash balance tracking)
     if instance.payment_method == "cash" and instance.user is not None:
         create_ledger(
             None,
@@ -750,6 +764,7 @@ def purchase_delete_ledger(sender, instance, **kwargs):
 @receiver(post_delete, sender=Expense)
 def expense_delete_ledger(sender, instance, **kwargs):
     # Delete ledger entries directly (consistent with save handler)
+    ExpenseLedger.objects.filter(expense=instance).delete()
     BankLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
     CashLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
 

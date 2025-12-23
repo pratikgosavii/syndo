@@ -1547,6 +1547,43 @@ class OnlineOrderLedger(models.Model):
         return f"OrderItem #{self.order_item_id} | {self.product.name} | {self.status}"
 
 
+# -------------------------------
+# Expense Ledger (per vendor)
+# -------------------------------
+class ExpenseLedger(models.Model):
+    """Dedicated ledger for expenses with category tracking"""
+    PAYMENT_METHOD_CHOICES = [
+        ('upi', 'UPI'),
+        ('cheque', 'Cheque'),
+        ('cash', 'Cash'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="expense_ledgers")
+    expense = models.ForeignKey('Expense', on_delete=models.CASCADE, related_name="ledger_entries")
+    category = models.ForeignKey("masters.expense_category", on_delete=models.CASCADE, related_name="expense_ledgers")
+    
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True, null=True)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.SET_NULL, blank=True, null=True, related_name="expense_ledgers")
+    
+    expense_date = models.DateField()
+    description = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['category', '-created_at']),
+            models.Index(fields=['expense_date']),
+        ]
+
+    def __str__(self):
+        return f"Expense #{self.expense.id} | {self.category} | {self.amount}"
+
+
 class StoreVisit(models.Model):
     """Track store visits by customers"""
     store = models.ForeignKey(vendor_store, on_delete=models.CASCADE, related_name='visits')

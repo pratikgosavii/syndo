@@ -3718,8 +3718,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
-from .models import CashBalance, CashTransfer, OnlineOrderLedger
-from .serializers import CashBalanceSerializer, CashTransferSerializer, OnlineOrderLedgerSerializer
+from .models import CashBalance, CashTransfer, OnlineOrderLedger, ExpenseLedger
+from .serializers import CashBalanceSerializer, CashTransferSerializer, OnlineOrderLedgerSerializer, ExpenseLedgerSerializer
 from vendor.models import vendor_bank
 
 
@@ -3841,13 +3841,10 @@ class DayBookAPIView(APIView):
         payments_total = abs(self._sum_amount(VendorLedger.objects.filter(
             vendor__user=user, transaction_type='payment', created_at__range=(start, end)
         )))
-        expenses_bank = abs(self._sum_amount(BankLedgerModel.objects.filter(
-            bank__user=user, transaction_type='expense', created_at__range=(start, end)
+        # Use ExpenseLedger for expense totals (more accurate with category)
+        expenses_total = abs(self._sum_amount(ExpenseLedger.objects.filter(
+            user=user, expense_date__range=(start.date(), end.date())
         )))
-        expenses_cash = abs(self._sum_amount(CashLedgerModel.objects.filter(
-            user=user, transaction_type='expense', created_at__range=(start, end)
-        )))
-        expenses_total = expenses_bank + expenses_cash
 
         stock_count = StockTransaction.objects.filter(
             product__user=user, created_at__range=(start, end)
@@ -3955,9 +3952,9 @@ def daybook_report(request):
     purchases_total = _sum_amount(VendorLedger.objects.filter(vendor__user=user, transaction_type='purchase', created_at__range=(start, end)))
     receipts_total = _sum_amount(CustomerLedger.objects.filter(customer__user=user, transaction_type='payment', created_at__range=(start, end)))
     payments_total = abs(_sum_amount(VendorLedger.objects.filter(vendor__user=user, transaction_type='payment', created_at__range=(start, end))))
-    expenses_bank = abs(_sum_amount(BankLedgerModel.objects.filter(bank__user=user, transaction_type='expense', created_at__range=(start, end))))
-    expenses_cash = abs(_sum_amount(CashLedgerModel.objects.filter(user=user, transaction_type='expense', created_at__range=(start, end))))
-    expenses_total = expenses_bank + expenses_cash
+    # Use ExpenseLedger for expense totals (more accurate with category)
+    from .models import ExpenseLedger
+    expenses_total = abs(_sum_amount(ExpenseLedger.objects.filter(user=user, expense_date=date_iso)))
 
     stock_count = StockTransaction.objects.filter(product__user=user, created_at__range=(start, end)).count()
 
@@ -3999,9 +3996,23 @@ def daybook_report(request):
             'description': e.description or ''
         }
 
+    def entry_from_expense(e):
+        amt = float(e.amount or 0)
+        medium = 'Cash' if e.payment_method == 'cash' else (f"Bank - {e.bank.name}" if e.bank else 'Unknown')
+        return {
+            'type': 'expense',
+            'medium': medium,
+            'debit': abs(amt),
+            'credit': 0,
+            'time': e.created_at,
+            'reference_id': e.expense_id,
+            'description': f"{e.category.name}: {e.description or ''}".strip()
+        }
+
     cash_entries = [entry_from_cash(e) for e in CashLedgerModel.objects.filter(user=user, created_at__range=(start, end)).order_by('created_at')]
     bank_entries = [entry_from_bank(e) for e in BankLedgerModel.objects.filter(bank__user=user, created_at__range=(start, end)).order_by('created_at')]
-    entries = sorted(cash_entries + bank_entries, key=lambda x: x['time'])
+    expense_entries = [entry_from_expense(e) for e in ExpenseLedger.objects.filter(user=user, expense_date=date_iso).order_by('created_at')]
+    entries = sorted(cash_entries + bank_entries + expense_entries, key=lambda x: x['time'])
 
     context = {
         'date': date_iso,
@@ -4028,6 +4039,55 @@ class OnlineOrderLedgerViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return OnlineOrderLedger.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+class ExpenseLedgerViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ExpenseLedgerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ExpenseLedger.objects.filter(user=self.request.user).order_by('-created_at')
+    
+    def list(self, request, *args, **kwargs):
+        """List expense ledgers with optional filtering"""
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Optional query parameters
+        category_id = request.query_params.get('category', None)
+        start_date = request.query_params.get('start_date', None)
+        end_date = request.query_params.get('end_date', None)
+        
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        
+        if start_date:
+            queryset = queryset.filter(expense_date__gte=start_date)
+        
+        if end_date:
+            queryset = queryset.filter(expense_date__lte=end_date)
+        
+        # Calculate total amount
+        from django.db.models import Sum
+        from decimal import Decimal
+        total_amount = queryset.aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        
+        # Paginate the queryset
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                'results': serializer.data,
+                'total_amount': float(total_amount)
+            })
+        
+        # If no pagination, return all results
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'total_amount': float(total_amount)
+        })
     
     def list(self, request, *args, **kwargs):
         """List online order ledgers with total sum"""

@@ -148,6 +148,21 @@ class OnlineOrderLedgerSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ExpenseLedgerSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    bank_name = serializers.CharField(source='bank.name', read_only=True)
+    expense_id = serializers.IntegerField(source='expense.id', read_only=True)
+
+    class Meta:
+        model = ExpenseLedger
+        fields = [
+            'id', 'expense_id', 'expense', 'category', 'category_name',
+            'amount', 'payment_method', 'bank', 'bank_name',
+            'expense_date', 'description', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class vendor_bank_serializer(serializers.ModelSerializer):
     class Meta:
         model = vendor_bank
