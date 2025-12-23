@@ -85,13 +85,6 @@ class DeliveryDiscountSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'created_at', 'updated_at']
 
 
-class AutomateNotificationOnOrderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AutomateNotificationOnOrder
-        fields = '__all__'
-        read_only_fields = ['user']  
-
-
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
     class Meta:
