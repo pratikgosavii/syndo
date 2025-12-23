@@ -4865,7 +4865,15 @@ class SaleViewSet(viewsets.ModelViewSet):
         ).data
         
         # Add online_order_ledgers to response
-        response.data['online_order_ledgers'] = online_ledgers_data
+        # Handle both paginated and non-paginated responses
+        if isinstance(response.data, dict):
+            response.data['online_order_ledgers'] = online_ledgers_data
+        else:
+            # If response.data is a list (non-paginated), convert to dict
+            response.data = {
+                'results': response.data,
+                'online_order_ledgers': online_ledgers_data
+            }
         
         return response
 
@@ -4883,7 +4891,15 @@ class SaleViewSet(viewsets.ModelViewSet):
         ).data
         
         # Add online_order_ledgers to response
-        response.data['online_order_ledgers'] = online_ledgers_data
+        # retrieve() always returns a dict, but check to be safe
+        if isinstance(response.data, dict):
+            response.data['online_order_ledgers'] = online_ledgers_data
+        else:
+            # If somehow it's not a dict, wrap it
+            response.data = {
+                'data': response.data,
+                'online_order_ledgers': online_ledgers_data
+            }
         
         return response
 
