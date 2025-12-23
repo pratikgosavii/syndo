@@ -849,7 +849,7 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = [
-            'id', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
+            'id', 'invoice_number', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
             'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details',
             'balance_amount', 'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
