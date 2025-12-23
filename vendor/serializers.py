@@ -1414,10 +1414,12 @@ class OfferSerializer(serializers.ModelSerializer):
         """Create Offer and handle multiple media uploads"""
         from .models import OfferMedia
         
-        # Seller is set by perform_create in the viewset
-        # Get it from request context (perform_create sets it via serializer.save(seller=...))
-        request_obj = self.context.get('request')
-        seller = request_obj.user if request_obj else None
+        # Seller is passed from perform_create via serializer.save(seller=...)
+        # If not provided, fallback to request.user
+        seller = validated_data.pop('seller', None)
+        if not seller:
+            request_obj = self.context.get('request')
+            seller = request_obj.user if request_obj else None
         
         # Create the Offer instance
         offer_instance = Offer.objects.create(seller=seller, **validated_data)
