@@ -4164,6 +4164,15 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         # 14. Store Insights (Recent Visitors and Followers)
         store_insights = self._get_store_insights(user, limit=20, days=30)
         
+        # 15. Top 4 Reminders
+        top_reminders = self._get_top_reminders(user, limit=4)
+        
+        # 16. Activity Feed (Product Likes, Followers, Product Requests)
+        activity = self._get_activity_feed(user, request, limit=10)
+        
+        # 17. Sales and Expense Chart Data (Monthly)
+        sales_expense_chart = self._get_sales_expense_chart_data(user)
+        
         return Response({
             'total_sales': float(total_sales),
             'total_purchases': float(total_purchases),
@@ -4179,6 +4188,9 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             'total_bank_balance': float(total_bank_balance),
             'total_store_visits': total_store_visits,
             'store_insights': store_insights,  # ✅ NEW: Recent visitors and followers
+            'top_reminders': top_reminders,  # ✅ NEW: Top 4 reminders
+            'activity': activity,  # ✅ NEW: Activity feed (likes, follows, product requests)
+            'sales_expense_chart': sales_expense_chart,  # ✅ NEW: Monthly sales and expense chart data
         })
     
     def _get_followers_chart_data(self, user, days=30):
@@ -4394,6 +4406,192 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 'recent_followers': [],
                 'total_visitors_count': 0,
                 'total_followers_count': 0,
+            }
+    
+    def _get_top_reminders(self, user, limit=4):
+        """Get top reminders for the vendor (most recent, unread first)"""
+        from .models import Reminder
+        from .serializers import ReminderSerializer
+        
+        try:
+            # Get top reminders: unread first, then by most recent
+            reminders = Reminder.objects.filter(
+                user=user
+            ).order_by('is_read', '-created_at')[:limit]
+            
+            # Serialize reminders
+            serializer = ReminderSerializer(reminders, many=True)
+            return serializer.data
+        except Exception:
+            return []
+    
+    def _get_activity_feed(self, user, request, limit=10):
+        """Get activity feed: product likes, followers, and top 4 product requests"""
+        from customer.models import Favourite, Follower, ProductRequest
+        from customer.serializers import ProductRequestSerializer
+        
+        activities = []
+        
+        try:
+            # 1. Get recent product likes (users who liked vendor's products)
+            recent_likes = Favourite.objects.filter(
+                product__user=user
+            ).select_related('user', 'product').order_by('-created_at')[:limit]
+            
+            for like in recent_likes:
+                image_url = None
+                if like.product.image:
+                    try:
+                        image_url = request.build_absolute_uri(like.product.image.url)
+                    except:
+                        image_url = like.product.image.url if like.product.image else None
+                
+                activities.append({
+                    'type': 'product_like',
+                    'message': f"{like.user.username or like.user.email} liked your product '{like.product.name}'",
+                    'user': {
+                        'id': like.user.id,
+                        'username': like.user.username,
+                        'first_name': like.user.first_name or '',
+                        'last_name': like.user.last_name or '',
+                        'email': like.user.email,
+                    },
+                    'product': {
+                        'id': like.product.id,
+                        'name': like.product.name,
+                        'image': image_url,
+                    },
+                    'created_at': like.created_at,
+                })
+            
+            # 2. Get recent followers
+            recent_followers = Follower.objects.filter(
+                user=user
+            ).select_related('follower').order_by('-created_at')[:limit]
+            
+            for follow in recent_followers:
+                activities.append({
+                    'type': 'follow',
+                    'message': f"{follow.follower.username or follow.follower.email} followed you",
+                    'user': {
+                        'id': follow.follower.id,
+                        'username': follow.follower.username,
+                        'first_name': follow.follower.first_name or '',
+                        'last_name': follow.follower.last_name or '',
+                        'email': follow.follower.email,
+                    },
+                    'created_at': follow.created_at,
+                })
+            
+            # 3. Get top 4 product requests (most recent)
+            product_requests = ProductRequest.objects.all().select_related(
+                'user', 'category', 'sub_category'
+            ).order_by('-created_at')[:4]
+            
+            product_requests_data = []
+            for req in product_requests:
+                serializer = ProductRequestSerializer(req, context={'request': request})
+                product_requests_data.append(serializer.data)
+            
+            # 4. Get total product request count
+            total_product_requests_count = ProductRequest.objects.all().count()
+            
+            # Sort all activities by created_at (most recent first)
+            activities.sort(key=lambda x: x['created_at'], reverse=True)
+            
+            # Take top 'limit' activities
+            top_activities = activities[:limit]
+            
+            return {
+                'activities': top_activities,
+                'top_product_requests': product_requests_data,
+                'total_product_requests_count': total_product_requests_count,
+            }
+        except Exception as e:
+            return {
+                'activities': [],
+                'top_product_requests': [],
+                'total_product_requests_count': 0,
+            }
+    
+    def _get_sales_expense_chart_data(self, user, months=12):
+        """Get monthly sales and expense data for chart"""
+        from django.db.models import Sum
+        from django.db.models.functions import TruncMonth
+        from decimal import Decimal
+        
+        try:
+            # Get current date and calculate start date (N months ago)
+            end_date = timezone.now().date()
+            start_date = end_date - timedelta(days=months * 30)  # Approximate months
+            
+            # Get monthly sales data
+            sales_data = Sale.objects.filter(
+                user=user,
+                created_at__date__gte=start_date
+            ).annotate(
+                month=TruncMonth('created_at')
+            ).values('month').annotate(
+                total=Sum('total_amount')
+            ).order_by('month')
+            
+            # Get monthly expense data
+            expense_data = Expense.objects.filter(
+                user=user,
+                expense_date__gte=start_date
+            ).annotate(
+                month=TruncMonth('expense_date')
+            ).values('month').annotate(
+                total=Sum('amount')
+            ).order_by('month')
+            
+            # Create dictionaries for easy lookup
+            sales_dict = {}
+            for item in sales_data:
+                month_key = item['month'].strftime('%Y-%m') if item['month'] else None
+                if month_key:
+                    sales_dict[month_key] = float(item['total'] or 0)
+            
+            expense_dict = {}
+            for item in expense_data:
+                month_key = item['month'].strftime('%Y-%m') if item['month'] else None
+                if month_key:
+                    expense_dict[month_key] = float(item['total'] or 0)
+            
+            # Generate data for all months (fill missing months with 0)
+            chart_data = []
+            current_date = start_date.replace(day=1)  # Start from first day of month
+            
+            while current_date <= end_date:
+                month_key = current_date.strftime('%Y-%m')
+                month_label = current_date.strftime('%b %Y')  # e.g., "Jan 2025"
+                
+                sales_amount = sales_dict.get(month_key, 0.0)
+                expense_amount = expense_dict.get(month_key, 0.0)
+                
+                chart_data.append({
+                    'month': month_key,
+                    'month_label': month_label,
+                    'sales': sales_amount,
+                    'expenses': expense_amount,
+                })
+                
+                # Move to next month
+                if current_date.month == 12:
+                    current_date = current_date.replace(year=current_date.year + 1, month=1)
+                else:
+                    current_date = current_date.replace(month=current_date.month + 1)
+            
+            return {
+                'sales': [{'month': item['month'], 'month_label': item['month_label'], 'amount': item['sales']} for item in chart_data],
+                'expenses': [{'month': item['month'], 'month_label': item['month_label'], 'amount': item['expenses']} for item in chart_data],
+                'combined': chart_data,  # Combined data for easier chart rendering
+            }
+        except Exception as e:
+            return {
+                'sales': [],
+                'expenses': [],
+                'combined': [],
             }
     
     
