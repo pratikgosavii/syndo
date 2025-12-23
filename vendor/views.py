@@ -4070,6 +4070,120 @@ from django.db.models import Q, Count, Sum, F
 from django.utils import timezone
 from datetime import timedelta, datetime
 from collections import defaultdict
+class TopRatedProductsAPIView(APIView):
+    """
+    API to return top-rated, top-liked, most-bought, and low-stock products
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Get product analytics for the vendor:
+        - Top rated products (by review count)
+        - Top liked products (by favourite count)
+        - Most bought products (by order item count)
+        - Low stock products
+        
+        Query Parameters:
+        - limit: Number of products to return for each category (default: 20)
+        """
+        from django.db.models import Count, Q, F
+        from .serializers import product_serializer
+        from rest_framework import status
+        
+        user = request.user
+        limit = int(request.query_params.get('limit', 20))
+        
+        try:
+            # 1. Top Rated Products (by review count)
+            top_rated = product.objects.filter(
+                user=user,
+                is_active=True
+            ).annotate(
+                review_count=Count(
+                    'items__product_reviews',
+                    filter=Q(items__product_reviews__is_visible=True),
+                    distinct=True
+                )
+            ).filter(
+                review_count__gt=0
+            ).order_by('-review_count')[:limit]
+            
+            top_rated_serializer = product_serializer(top_rated, many=True, context={'request': request})
+            top_rated_data = top_rated_serializer.data
+            for i, prod in enumerate(top_rated_data):
+                prod['review_count'] = top_rated[i].review_count
+            
+            # 2. Top Liked Products (by favourite count)
+            top_liked = product.objects.filter(
+                user=user,
+                is_active=True
+            ).annotate(
+                like_count=Count('favourited_by')
+            ).filter(
+                like_count__gt=0
+            ).order_by('-like_count')[:limit]
+            
+            top_liked_serializer = product_serializer(top_liked, many=True, context={'request': request})
+            top_liked_data = top_liked_serializer.data
+            for i, prod in enumerate(top_liked_data):
+                prod['like_count'] = top_liked[i].like_count
+            
+            # 3. Most Bought Products (by order item count)
+            most_bought = product.objects.filter(
+                user=user,
+                is_active=True
+            ).annotate(
+                order_count=Count('items', distinct=True)
+            ).filter(
+                order_count__gt=0
+            ).order_by('-order_count')[:limit]
+            
+            most_bought_serializer = product_serializer(most_bought, many=True, context={'request': request})
+            most_bought_data = most_bought_serializer.data
+            for i, prod in enumerate(most_bought_data):
+                prod['order_count'] = most_bought[i].order_count
+            
+            # 4. Low Stock Products
+            low_stock = product.objects.filter(
+                user=user,
+                track_stock=True,
+                low_stock_alert=True,
+                is_active=True
+            ).filter(
+                Q(stock__lte=F('low_stock_quantity')) | 
+                Q(stock__isnull=True, low_stock_quantity__isnull=False)
+            )
+            
+            low_stock_serializer = product_serializer(low_stock, many=True, context={'request': request})
+            low_stock_data = low_stock_serializer.data
+            
+            return Response({
+                'top_rated': {
+                    'count': len(top_rated_data),
+                    'results': top_rated_data
+                },
+                'top_liked': {
+                    'count': len(top_liked_data),
+                    'results': top_liked_data
+                },
+                'most_bought': {
+                    'count': len(most_bought_data),
+                    'results': most_bought_data
+                },
+                'low_stock': {
+                    'count': len(low_stock_data),
+                    'results': low_stock_data
+                }
+            })
+        except Exception as e:
+            return Response({
+                'error': str(e),
+                'top_rated': {'count': 0, 'results': []},
+                'top_liked': {'count': 0, 'results': []},
+                'most_bought': {'count': 0, 'results': []},
+                'low_stock': {'count': 0, 'results': []}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class VendorDashboardViewSet(viewsets.ViewSet):
@@ -4143,13 +4257,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         # 7. Followers Chart Data (per day)
         followers_chart_data = self._get_followers_chart_data(user)
         
-        # 8. Top Liked Products
-        top_liked_products = self._get_top_liked_products(user, request, limit=10)
-        
-        # 9. Low Stock Products
-        low_stock_products = self._get_low_stock_products(user, request)
-        
-        # 10. Total Stock Value (MRP × Stock for all products)
+        # 8. Total Stock Value (MRP × Stock for all products)
         total_stock_value = self._calculate_total_stock_value(user)
         
         # 11. Cash in Hand
@@ -4181,8 +4289,6 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             'online_sales': float(online_sales),
             'total_followers': total_followers,
             'followers_chart': followers_chart_data,
-            'top_liked_products': top_liked_products,
-            'low_stock_products': low_stock_products,
             'total_stock_value': float(total_stock_value),
             'cash_in_hand': float(cash_in_hand),
             'total_bank_balance': float(total_bank_balance),

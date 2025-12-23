@@ -225,6 +225,9 @@ urlpatterns = [
 
     path('tax-setting/', tax_setting, name='tax_setting'),
     path('invoice-setting/', invoice_setting, name='invoice_setting'),
+    
+    # Top Rated Products API
+    path('top-rated-products/', TopRatedProductsAPIView.as_view(), name='top_rated_products'),
 
 ]  + router.urls
 

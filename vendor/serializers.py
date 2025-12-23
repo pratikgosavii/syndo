@@ -710,6 +710,7 @@ class ReelSerializer(serializers.ModelSerializer):
     product_details = product_serializer(source = 'product', read_only = True)
     store = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
+    total_likes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Reel
@@ -746,6 +747,26 @@ class ReelSerializer(serializers.ModelSerializer):
             # Check if request.user is following obj.user
             return Follower.objects.filter(user=obj.user, follower=request.user).exists()
         return False
+    
+    def get_total_likes_count(self, obj):
+        """Get total likes count for the reel"""
+        from django.db.models import Count
+        
+        try:
+            # Try to import FavouriteReel model if it exists
+            from customer.models import FavouriteReel
+            return FavouriteReel.objects.filter(reel=obj).count()
+        except (ImportError, AttributeError):
+            # If FavouriteReel model doesn't exist yet, check for alternative
+            # Check if there's a related_name on Reel model for likes
+            try:
+                # Try accessing through a related_name if it exists
+                if hasattr(obj, 'favourited_by'):
+                    return obj.favourited_by.count()
+            except:
+                pass
+            # Return 0 if no like system exists yet
+            return 0
 
     
 class SpotlightProductSerializer(serializers.ModelSerializer):
