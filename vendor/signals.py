@@ -270,6 +270,7 @@ def sale_ledger(sender, instance, created, **kwargs):
             )
 
     # Bank ledger → target is advance_amount when bank is set
+    # This handles both: direct bank payments AND credit sales with bank advance
     if instance.advance_bank:
         target_amt = instance.advance_amount or Decimal(0)
         adjust_ledger_to_target(
@@ -281,16 +282,25 @@ def sale_ledger(sender, instance, created, **kwargs):
             f"Sale #{instance.id}"
         )
 
-    # Cash ledger → target is advance_amount or total when cash
-    if instance.payment_method == "cash" and instance.user is not None:
-        target_cash = instance.advance_amount or instance.total_amount or Decimal(0)
+    # Cash ledger → handles:
+    # 1. Direct cash sales (payment_method == "cash")
+    # 2. Credit sales with cash advance (advance_payment_method == "cash")
+    cash_amount = Decimal(0)
+    if instance.payment_method == "cash":
+        # Direct cash sale - use total_amount
+        cash_amount = instance.total_amount or Decimal(0)
+    elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
+        # Credit sale with cash advance - use advance_amount
+        cash_amount = instance.advance_amount or Decimal(0)
+    
+    if cash_amount > 0 and instance.user is not None:
         adjust_ledger_to_target(
             None,
             CashLedger,
             "sale",
             instance.id,
-            target_cash,
-            f"Cash Sale #{instance.id}",
+            cash_amount,
+            f"Sale #{instance.id}" + (" (Cash Advance)" if instance.payment_method == "credit" else ""),
             user=instance.user
         )
     
@@ -597,7 +607,7 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
         adjust_ledger_to_target(
             instance.from_bank,
             BankLedger,
-            "expense",
+            "transfered",
             instance.id,
             -amt,
             f"Transfer to {to_name}"
@@ -661,7 +671,7 @@ def cash_transfer_delete_ledger(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=BankTransfer)
 def bank_transfer_delete_ledger(sender, instance, **kwargs):
-    reset_ledger_for_reference(BankLedger, "expense", instance.id)
+    reset_ledger_for_reference(BankLedger, "transfered", instance.id)
     reset_ledger_for_reference(BankLedger, "deposit", instance.id)
 
 
