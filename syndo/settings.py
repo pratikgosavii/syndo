@@ -188,8 +188,8 @@ cred = credentials.Certificate(firebase_key_path)
 initialize_app(cred)
 
 
-STREAM_API_KEY = "c7wwttj85hg7"
-STREAM_API_SECRET = "cgptvrzsttwj9vcebwy25k7y6aqkd6nxh56gkwxhsj3djs989g7k5wraprep926d"
+STREAM_API_KEY = "e484k6yk9w25"
+STREAM_API_SECRET = "vnpzcmbj77np8gr2w2e9ucj6sgmmy3c9939cjrheqj2wat69gckwfjdsesnnqn3k"
 
 
 from datetime import timedelta

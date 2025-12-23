@@ -43,6 +43,46 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
+    
+    def delete(self, using=None, keep_parents=False):
+        """
+        Override delete method to ensure all ledger entries are deleted
+        before Django's CASCADE deletion tries to process them.
+        This prevents foreign key constraint errors.
+        """
+        from django.db import transaction
+        from vendor.models import CashLedger, CashBalance, BankLedger, CustomerLedger, VendorLedger
+        from vendor.models import vendor_bank, vendor_customers, vendor_vendors
+        
+        with transaction.atomic():
+            # Get all related object IDs BEFORE any deletions
+            bank_ids = list(vendor_bank.objects.filter(user=self).values_list('id', flat=True))
+            customer_ids = list(vendor_customers.objects.filter(user=self).values_list('id', flat=True))
+            vendor_ids = list(vendor_vendors.objects.filter(user=self).values_list('id', flat=True))
+            
+            # Delete ALL ledger entries FIRST (before Django's CASCADE tries to delete them)
+            # This prevents foreign key constraint errors
+            
+            # 1. Delete CashLedger entries (direct FK to User)
+            CashLedger.objects.filter(user=self).delete()
+            
+            # 2. Delete CashBalance (direct FK to User)
+            CashBalance.objects.filter(user=self).delete()
+            
+            # 3. Delete BankLedger entries (FK to vendor_bank which will be CASCADE deleted)
+            if bank_ids:
+                BankLedger.objects.filter(bank_id__in=bank_ids).delete()
+            
+            # 4. Delete CustomerLedger entries (FK to vendor_customers which will be CASCADE deleted)
+            if customer_ids:
+                CustomerLedger.objects.filter(customer_id__in=customer_ids).delete()
+            
+            # 5. Delete VendorLedger entries (FK to vendor_vendors which will be CASCADE deleted)
+            if vendor_ids:
+                VendorLedger.objects.filter(vendor_id__in=vendor_ids).delete()
+            
+            # Now call the parent delete method which will handle CASCADE deletion
+            return super().delete(using=using, keep_parents=keep_parents)
 
 
 class UserRole(models.Model):
