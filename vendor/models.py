@@ -1001,6 +1001,10 @@ class Sale(models.Model):
     advance_bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, null=True, blank=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True)
 
+    # Delivery and packaging charges
+    delivery_shipping_charges = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    packaging_charges = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
     credit_date = models.DateTimeField(auto_now_add=False, null=True, blank=True)
     is_wholesale_rate = models.BooleanField(default=False)
     invoice_number = models.CharField(max_length=100, blank=True, null=True)
