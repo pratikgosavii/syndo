@@ -678,36 +678,138 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_delete, sender=Sale)
 def sale_delete_ledger(sender, instance, **kwargs):
-    # Reverse customer, bank, cash ledgers for this sale
-    reset_ledger_for_reference(CustomerLedger, "sale", instance.id)
-    reset_ledger_for_reference(BankLedger, "sale", instance.id)
-    reset_ledger_for_reference(CashLedger, "sale", instance.id)
+    # Delete ledger entries directly (consistent with save handler)
+    CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+    BankLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+
+    # Recalculate balances from ALL remaining ledger entries
+    if instance.customer:
+        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        customer.balance = int(remaining_total)
+        customer.save(update_fields=['balance'])
+
+    if instance.advance_bank:
+        bank = instance.advance_bank
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+
+    if instance.user:
+        from .models import CashBalance
+        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        cash_balance.balance = Decimal(remaining_total or 0)
+        cash_balance.save()
 
 
 @receiver(post_delete, sender=Purchase)
 def purchase_delete_ledger(sender, instance, **kwargs):
-    reset_ledger_for_reference(VendorLedger, "purchase", instance.id)
-    reset_ledger_for_reference(BankLedger, "purchase", instance.id)
-    reset_ledger_for_reference(CashLedger, "purchase", instance.id)
+    # Delete ledger entries directly (consistent with save handler)
+    VendorLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+    BankLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+
+    # Recalculate balances from ALL remaining ledger entries
+    if instance.vendor:
+        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        vendor.balance = int(remaining_total)
+        vendor.save(update_fields=['balance'])
+
+    if instance.advance_bank:
+        bank = instance.advance_bank
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+
+    if instance.user:
+        from .models import CashBalance
+        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        cash_balance.balance = Decimal(remaining_total or 0)
+        cash_balance.save()
 
 
 @receiver(post_delete, sender=Expense)
 def expense_delete_ledger(sender, instance, **kwargs):
-    reset_ledger_for_reference(BankLedger, "expense", instance.id)
-    reset_ledger_for_reference(CashLedger, "expense", instance.id)
+    # Delete ledger entries directly (consistent with save handler)
+    BankLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type="expense", reference_id=instance.id).delete()
+
+    # Recalculate balances from ALL remaining ledger entries
+    if instance.bank:
+        bank = instance.bank
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
+
+    if instance.user:
+        from .models import CashBalance
+        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        cash_balance.balance = Decimal(remaining_total or 0)
+        cash_balance.save()
 
 
 @receiver(post_delete, sender=Payment)
 def payment_delete_ledger(sender, instance, **kwargs):
-    reset_ledger_for_reference(CustomerLedger, "payment", instance.id)
-    reset_ledger_for_reference(CustomerLedger, "refund", instance.id)
-    reset_ledger_for_reference(VendorLedger, "payment", instance.id)
-    reset_ledger_for_reference(VendorLedger, "refund", instance.id)
-    reset_ledger_for_reference(CashLedger, "deposit", instance.id)
-    reset_ledger_for_reference(CashLedger, "withdrawal", instance.id)
-    reset_ledger_for_reference(BankLedger, "deposit", instance.id)
-    reset_ledger_for_reference(BankLedger, "withdrawal", instance.id)
-    reset_ledger_for_reference(BankLedger, "payment", instance.id)  # Keep for backward compatibility
+    # Delete ledger entries directly (consistent with save handler)
+    CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
+    VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal"], reference_id=instance.id).delete()
+    BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
+
+    # Recalculate balances from ALL remaining ledger entries
+    if instance.customer:
+        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        customer.balance = int(remaining_total)
+        customer.save(update_fields=['balance'])
+
+    if instance.vendor:
+        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        vendor.balance = int(remaining_total)
+        vendor.save(update_fields=['balance'])
+
+    if instance.user:
+        from .models import CashBalance
+        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        cash_balance.balance = Decimal(remaining_total or 0)
+        cash_balance.save()
+
+    if hasattr(instance, 'bank_account') and instance.bank_account:
+        bank = instance.bank_account
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = int(remaining_total)
+        bank.save(update_fields=['balance'])
 
 
 @receiver(post_delete, sender=CashTransfer)
