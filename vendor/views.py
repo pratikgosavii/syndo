@@ -5343,9 +5343,29 @@ class OrderNotificationMessageViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(notification_message)
         return Response(serializer.data)
     
-    def perform_create(self, serializer):
-        """Set the user when creating"""
-        serializer.save(user=self.request.user)
+    def create(self, request, *args, **kwargs):
+        """Create or update order notification message (OneToOne relationship)"""
+        from rest_framework import status
+        
+        # Use get_or_create since it's OneToOneField - only one message per vendor
+        notification_message, created = OrderNotificationMessage.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'message': request.data.get('message', 'You have received a new order!'),
+                'is_active': request.data.get('is_active', True)
+            }
+        )
+        
+        # If it already exists, update it with the new data
+        if not created:
+            serializer = self.get_serializer(notification_message, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        
+        # If it was created, return the created object
+        serializer = self.get_serializer(notification_message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     def perform_update(self, serializer):
         """Update the notification message"""
