@@ -852,7 +852,6 @@ class SaleSerializer(serializers.ModelSerializer):
             'id', 'invoice_number', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
             'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details',
             'balance_amount', 'credit_date', 'is_wholesale_rate',
-            'delivery_shipping_charges', 'packaging_charges',
             'items', 'total_items', 'total_amount_before_discount',
             'discount_amount', 'total_amount', 'wholesale_invoice_details',
             'wholesale_invoice', 'bank_details', 'customer_details', 'created_at'
@@ -944,16 +943,13 @@ class SaleSerializer(serializers.ModelSerializer):
         discount_amount = total_amount_before_discount * (sale.discount_percentage or 0) / 100
         base_total_amount = total_amount_before_discount - discount_amount
         
-        # Add delivery and packaging charges from Sale model (direct fields)
-        delivery_charges = Decimal(sale.delivery_shipping_charges or 0)
-        packaging_charges = Decimal(sale.packaging_charges or 0)
-        
-        # Fallback: If not set on Sale, check pos_wholesale (for backward compatibility)
-        if delivery_charges == 0 and packaging_charges == 0:
-            wholesale = sale.wholesales.first()
-            if wholesale:
-                delivery_charges = Decimal(wholesale.delivery_charges or 0)
-                packaging_charges = Decimal(wholesale.packaging_charges or 0)
+        # Add delivery and packaging charges from pos_wholesale if it exists
+        delivery_charges = Decimal(0)
+        packaging_charges = Decimal(0)
+        wholesale = sale.wholesales.first()
+        if wholesale:
+            delivery_charges = Decimal(wholesale.delivery_charges or 0)
+            packaging_charges = Decimal(wholesale.packaging_charges or 0)
         
         # Final total includes: items (after discount) + delivery + packaging
         total_amount = base_total_amount + delivery_charges + packaging_charges
