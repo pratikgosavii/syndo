@@ -4028,6 +4028,35 @@ class OnlineOrderLedgerViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return OnlineOrderLedger.objects.filter(user=self.request.user).order_by('-created_at')
+    
+    def list(self, request, *args, **kwargs):
+        """List online order ledgers with total sum"""
+        from django.db.models import Sum
+        from decimal import Decimal
+        from rest_framework.response import Response
+        
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Calculate total sum of all amounts
+        total_sum = queryset.aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        
+        # Paginate the queryset
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                'results': serializer.data,
+                'total_sum': float(total_sum)
+            })
+        
+        # If no pagination, return all results
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'total_sum': float(total_sum)
+        })
 
 
 # -------------------------------
