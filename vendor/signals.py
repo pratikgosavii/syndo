@@ -1141,93 +1141,50 @@ def user_delete_cleanup(sender, instance, **kwargs):
     """
     Cleanup ledger entries and related objects before User deletion.
     This prevents foreign key constraint errors by ensuring all related
-    ledger entries are deleted before the User is deleted.
+    ledger entries are deleted before Django's CASCADE deletion processes them.
+    
+    The issue: When User is deleted, Django CASCADE deletes:
+    - vendor_bank -> which CASCADE deletes BankLedger
+    - vendor_customers -> which CASCADE deletes CustomerLedger  
+    - vendor_vendors -> which CASCADE deletes VendorLedger
+    
+    But if there are other constraints or the deletion order is wrong, it fails.
+    Solution: Delete all ledger entries FIRST, before Django processes CASCADE.
     """
     from .models import CashLedger, CashBalance, BankLedger, CustomerLedger, VendorLedger
     from .models import vendor_bank, vendor_customers, vendor_vendors
+    from django.db import transaction
     
-    # Delete all CashLedger entries for this user
-    # This must be done in pre_delete to avoid constraint issues
-    CashLedger.objects.filter(user=instance).delete()
-    
-    # Delete CashBalance for this user
-    CashBalance.objects.filter(user=instance).delete()
-    
-    # Update bank balances that reference this user
-    # Recalculate balances from remaining entries after related deletions
-    banks = vendor_bank.objects.filter(user=instance)
-    for bank in banks:
-        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        bank.balance = int(remaining_total)
-        bank.save(update_fields=['balance'])
-    
-    # Update customer balances that might be affected
-    customers = vendor_customers.objects.filter(user=instance)
-    for customer in customers:
-        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        customer.balance = int(remaining_total)
-        customer.save(update_fields=['balance'])
-    
-    # Update vendor balances that might be affected
-    vendors = vendor_vendors.objects.filter(user=instance)
-    for vendor in vendors:
-        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        vendor.balance = int(remaining_total)
-        vendor.save(update_fields=['balance'])
-
-
-# -------------------------------
-# USER DELETE → Cleanup related ledger entries
-# -------------------------------
-@receiver(pre_delete, sender='users.User')
-def user_delete_cleanup(sender, instance, **kwargs):
-    """
-    Cleanup ledger entries and related objects before User deletion.
-    This prevents foreign key constraint errors by ensuring all related
-    ledger entries are deleted before the User is deleted.
-    """
-    from .models import CashLedger, CashBalance, BankLedger, CustomerLedger, VendorLedger
-    from .models import vendor_bank, vendor_customers, vendor_vendors
-    
-    # Delete all CashLedger entries for this user
-    # This must be done in pre_delete to avoid constraint issues
-    CashLedger.objects.filter(user=instance).delete()
-    
-    # Delete CashBalance for this user
-    CashBalance.objects.filter(user=instance).delete()
-    
-    # Update bank balances that reference this user
-    # Recalculate balances from remaining entries after related deletions
-    banks = vendor_bank.objects.filter(user=instance)
-    for bank in banks:
-        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        bank.balance = int(remaining_total)
-        bank.save(update_fields=['balance'])
-    
-    # Update customer balances that might be affected
-    customers = vendor_customers.objects.filter(user=instance)
-    for customer in customers:
-        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        customer.balance = int(remaining_total)
-        customer.save(update_fields=['balance'])
-    
-    # Update vendor balances that might be affected
-    vendors = vendor_vendors.objects.filter(user=instance)
-    for vendor in vendors:
-        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        vendor.balance = int(remaining_total)
-        vendor.save(update_fields=['balance'])
+    # Use a transaction to ensure atomicity
+    with transaction.atomic():
+        # Get all related object IDs BEFORE any deletions
+        bank_ids = list(vendor_bank.objects.filter(user=instance).values_list('id', flat=True))
+        customer_ids = list(vendor_customers.objects.filter(user=instance).values_list('id', flat=True))
+        vendor_ids = list(vendor_vendors.objects.filter(user=instance).values_list('id', flat=True))
+        
+        # Delete ALL ledger entries FIRST (before Django's CASCADE tries to delete them)
+        # This prevents foreign key constraint errors
+        
+        # 1. Delete CashLedger entries (direct FK to User)
+        CashLedger.objects.filter(user=instance).delete()
+        
+        # 2. Delete CashBalance (direct FK to User)
+        CashBalance.objects.filter(user=instance).delete()
+        
+        # 3. Delete BankLedger entries (FK to vendor_bank which will be CASCADE deleted)
+        if bank_ids:
+            BankLedger.objects.filter(bank_id__in=bank_ids).delete()
+        
+        # 4. Delete CustomerLedger entries (FK to vendor_customers which will be CASCADE deleted)
+        if customer_ids:
+            CustomerLedger.objects.filter(customer_id__in=customer_ids).delete()
+        
+        # 5. Delete VendorLedger entries (FK to vendor_vendors which will be CASCADE deleted)
+        if vendor_ids:
+            VendorLedger.objects.filter(vendor_id__in=vendor_ids).delete()
+        
+        # Note: We don't update balances here because the banks/customers/vendors
+        # will be deleted by CASCADE anyway. Updating them might cause additional
+        # constraint issues during the deletion process.
 
 
