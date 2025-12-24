@@ -64,6 +64,7 @@ from .models import Sale, Purchase, Expense, Payment, BankLedger, CustomerLedger
 from decimal import Decimal
 from django.db.models.signals import post_save, post_delete, pre_delete
 from django.db.models import Sum
+from django.db import transaction
 from django.dispatch import receiver
 
 # -------------------------------
@@ -301,6 +302,10 @@ def adjust_ledger_to_target(parent, ledger_model, transaction_type, reference_id
 # -------------------------------
 @receiver(post_save, sender=Sale)
 def sale_ledger(sender, instance, created, **kwargs):
+    """
+    Signal handler for Sale model to create ledger entries.
+    Wrapped in transaction.atomic() to prevent database locks in SQLite.
+    """
     print("=" * 80)
     print(f"[SALE_LEDGER] Signal triggered for Sale ID: {instance.id}")
     print(f"[SALE_LEDGER] Created: {created}")
@@ -336,112 +341,114 @@ def sale_ledger(sender, instance, created, **kwargs):
         print(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
         print("=" * 80)
     
-    # Refresh instance from database to ensure we have latest values, especially for related fields
-    instance.refresh_from_db()
-    print("[SALE_LEDGER] Instance refreshed from database")
-    
-    # Delete old entries for this reference to ensure clean updates
-    # This prevents confusion from multiple entries (original + reversals + new)
-    print("[SALE_LEDGER] Deleting old ledger entries...")
-    CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-    BankLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-    CashLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-    print("[SALE_LEDGER] Old ledger entries deleted")
-
-    # Recalculate balances from ALL remaining ledger entries (not just this transaction)
-    # This ensures balances are correct before creating new entries
-    # Customer balance = opening_balance + sum of all ledger entries
-    if instance.customer:
-        customer = vendor_customers.objects.get(pk=instance.customer.pk)
-        ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        # Customer balance = opening_balance + sum of ledger entries
-        customer.balance = int(Decimal(customer.opening_balance or 0) + Decimal(ledger_total))
-        customer.save(update_fields=['balance'])
-
-    if instance.advance_bank:
-        bank = instance.advance_bank
-        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        bank.balance = int(remaining_total)
-        bank.save(update_fields=['balance'])
-
-    if instance.user:
-        from .models import CashBalance
-        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
-        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        cash_balance.balance = Decimal(remaining_total or 0)
-        cash_balance.save()
-
-    # Create new ledger entries (create_ledger will update balances automatically)
-    # Customer ledger → for credit sales, store total_bill_amount and use balance_amount for balance; for others, use total_amount
-    if instance.customer:
-        total_amt = Decimal(instance.total_amount or 0)
-        balance_amt = Decimal(instance.balance_amount or 0)
-        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+    # Wrap all database operations in a transaction to reduce lock time
+    with transaction.atomic():
+        # Refresh instance from database to ensure we have latest values, especially for related fields
+        instance.refresh_from_db()
+        print("[SALE_LEDGER] Instance refreshed from database")
         
-        if instance.payment_method == 'credit' and balance_amt > 0:
-            # For credit sales: store total_bill_amount separately, but use balance_amount for balance calculation
-            customer.refresh_from_db()
-            # Opening balance = customer's opening_balance + sum of existing ledger entries
-            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-            opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
-            balance_after = opening_balance + balance_amt
-            
-            CustomerLedger.objects.create(
-                customer=customer,
-                transaction_type="sale",
-                reference_id=instance.id,
-                description=f"Sale #{instance.id} (Credit)",
-                opening_balance=int(opening_balance),
-                amount=int(balance_amt),  # This affects the balance (due amount)
-                balance_after=int(balance_after),
-                total_bill_amount=int(total_amt),  # Store total bill amount
-            )
-            
-            # Update customer balance
-            customer.balance = int(balance_after)
-            customer.save()
-        else:
-            # For non-credit sales, total_bill_amount equals amount (fully paid)
-            customer.refresh_from_db()
-            # Opening balance = customer's opening_balance + sum of existing ledger entries
-            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-            opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
-            balance_after = opening_balance + total_amt
-            
-            CustomerLedger.objects.create(
-                customer=customer,
-                transaction_type="sale",
-                reference_id=instance.id,
-                description=f"Sale #{instance.id}",
-                opening_balance=int(opening_balance),
-                amount=int(total_amt),
-                balance_after=int(balance_after),
-                total_bill_amount=int(total_amt),  # For non-credit, total_bill = amount
-            )
-            
-            # Update customer balance
-            customer.balance = int(balance_after)
-            customer.save()
+        # Delete old entries for this reference to ensure clean updates
+        # This prevents confusion from multiple entries (original + reversals + new)
+        print("[SALE_LEDGER] Deleting old ledger entries...")
+        CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+        BankLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+        CashLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+        print("[SALE_LEDGER] Old ledger entries deleted")
 
-    # Bank ledger → for credit sales with bank advance payment
-    # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
-    print("[SALE_LEDGER] Checking bank ledger creation...")
-    print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-    print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
-    print(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
-    
-    if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
-        print("[SALE_LEDGER] ✓ Credit sale with bank advance detected")
+        # Recalculate balances from ALL remaining ledger entries (not just this transaction)
+        # This ensures balances are correct before creating new entries
+        # Customer balance = opening_balance + sum of all ledger entries
+        if instance.customer:
+            customer = vendor_customers.objects.get(pk=instance.customer.pk)
+            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            # Customer balance = opening_balance + sum of ledger entries
+            customer.balance = int(Decimal(customer.opening_balance or 0) + Decimal(ledger_total))
+            customer.save(update_fields=['balance'])
+
+        if instance.advance_bank:
+            bank = instance.advance_bank
+            remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            bank.balance = int(remaining_total)
+            bank.save(update_fields=['balance'])
+
+        if instance.user:
+            from .models import CashBalance
+            cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+            remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            cash_balance.balance = Decimal(remaining_total or 0)
+            cash_balance.save()
+
+        # Create new ledger entries (create_ledger will update balances automatically)
+        # Customer ledger → for credit sales, store total_bill_amount and use balance_amount for balance; for others, use total_amount
+        if instance.customer:
+            total_amt = Decimal(instance.total_amount or 0)
+            balance_amt = Decimal(instance.balance_amount or 0)
+            customer = vendor_customers.objects.get(pk=instance.customer.pk)
+            
+            if instance.payment_method == 'credit' and balance_amt > 0:
+                # For credit sales: store total_bill_amount separately, but use balance_amount for balance calculation
+                customer.refresh_from_db()
+                # Opening balance = customer's opening_balance + sum of existing ledger entries
+                ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                    total=Sum('amount')
+                )['total'] or 0
+                opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
+                balance_after = opening_balance + balance_amt
+                
+                CustomerLedger.objects.create(
+                    customer=customer,
+                    transaction_type="sale",
+                    reference_id=instance.id,
+                    description=f"Sale #{instance.id} (Credit)",
+                    opening_balance=int(opening_balance),
+                    amount=int(balance_amt),  # This affects the balance (due amount)
+                    balance_after=int(balance_after),
+                    total_bill_amount=int(total_amt),  # Store total bill amount
+                )
+                
+                # Update customer balance
+                customer.balance = int(balance_after)
+                customer.save()
+            else:
+                # For non-credit sales, total_bill_amount equals amount (fully paid)
+                customer.refresh_from_db()
+                # Opening balance = customer's opening_balance + sum of existing ledger entries
+                ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                    total=Sum('amount')
+                )['total'] or 0
+                opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
+                balance_after = opening_balance + total_amt
+                
+                CustomerLedger.objects.create(
+                    customer=customer,
+                    transaction_type="sale",
+                    reference_id=instance.id,
+                    description=f"Sale #{instance.id}",
+                    opening_balance=int(opening_balance),
+                    amount=int(total_amt),
+                    balance_after=int(balance_after),
+                    total_bill_amount=int(total_amt),  # For non-credit, total_bill = amount
+                )
+                
+                # Update customer balance
+                customer.balance = int(balance_after)
+                customer.save()
+
+            # Bank ledger → for credit sales with bank advance payment
+        # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
+        print("[SALE_LEDGER] Checking bank ledger creation...")
+        print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+        print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+        print(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
+        
+        if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
+            print("[SALE_LEDGER] ✓ Credit sale with bank advance detected")
         # Check both advance_amount and advance_payment_amount fields
         advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
         print(f"[SALE_LEDGER] Advance Amount (from advance_amount): {instance.advance_amount}")
@@ -484,54 +491,54 @@ def sale_ledger(sender, instance, created, **kwargs):
                 import traceback
                 print(f"[SALE_LEDGER] Traceback: {traceback.format_exc()}")
                 print("=" * 80)
+            else:
+                print("[SALE_LEDGER] ✗ Bank ledger NOT created - conditions not met:")
+                print(f"[SALE_LEDGER]   - Advance Amount > 0: {advance_amt > 0}")
+                print(f"[SALE_LEDGER]   - Advance Bank exists: {instance.advance_bank is not None}")
         else:
-            print("[SALE_LEDGER] ✗ Bank ledger NOT created - conditions not met:")
-            print(f"[SALE_LEDGER]   - Advance Amount > 0: {advance_amt > 0}")
-            print(f"[SALE_LEDGER]   - Advance Bank exists: {instance.advance_bank is not None}")
-    else:
-        print("[SALE_LEDGER] ✗ Not a credit sale with bank advance")
-        print(f"[SALE_LEDGER]   - Payment Method == 'credit': {instance.payment_method == 'credit'}")
-        print(f"[SALE_LEDGER]   - Advance Payment Method == 'bank': {instance.advance_payment_method == 'bank'}")
+            print("[SALE_LEDGER] ✗ Not a credit sale with bank advance")
+            print(f"[SALE_LEDGER]   - Payment Method == 'credit': {instance.payment_method == 'credit'}")
+            print(f"[SALE_LEDGER]   - Advance Payment Method == 'bank': {instance.advance_payment_method == 'bank'}")
 
-    # Cash ledger → handles:
-    # 1. Direct cash sales (payment_method == "cash")
-    # 2. Credit sales with cash advance (advance_payment_method == "cash")
-    print("[SALE_LEDGER] Checking cash ledger creation...")
-    print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-    print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
-    print(f"[SALE_LEDGER] User: {instance.user}")
-    
-    cash_amount = Decimal(0)
-    if instance.payment_method == "cash":
-        # Full amount goes to cash for direct cash sales
-        cash_amount = Decimal(instance.total_amount or 0)
-        print(f"[SALE_LEDGER] ✓ Direct cash sale detected - Cash Amount: {cash_amount}")
-    elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
-        # Only advance amount goes to cash for credit sales with cash advance
-        print("[SALE_LEDGER] ✓ Credit sale with cash advance detected")
-        # Check both advance_amount and advance_payment_amount fields
-        advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
-        print(f"[SALE_LEDGER] Advance Amount (from advance_amount): {instance.advance_amount}")
-        print(f"[SALE_LEDGER] Advance Amount (from advance_payment_amount): {instance.advance_payment_amount}")
-        print(f"[SALE_LEDGER] Calculated Advance Amount: {advance_amt}")
-        print(f"[SALE_LEDGER] Advance Amount > 0: {advance_amt > 0}")
+        # Cash ledger → handles:
+        # 1. Direct cash sales (payment_method == "cash")
+        # 2. Credit sales with cash advance (advance_payment_method == "cash")
+        print("[SALE_LEDGER] Checking cash ledger creation...")
+        print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+        print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+        print(f"[SALE_LEDGER] User: {instance.user}")
         
-        if advance_amt > 0:
-            cash_amount = advance_amt
-            print(f"[SALE_LEDGER] ✓ Cash amount set to advance amount: {cash_amount}")
+        cash_amount = Decimal(0)
+        if instance.payment_method == "cash":
+            # Full amount goes to cash for direct cash sales
+            cash_amount = Decimal(instance.total_amount or 0)
+            print(f"[SALE_LEDGER] ✓ Direct cash sale detected - Cash Amount: {cash_amount}")
+        elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
+            # Only advance amount goes to cash for credit sales with cash advance
+            print("[SALE_LEDGER] ✓ Credit sale with cash advance detected")
+            # Check both advance_amount and advance_payment_amount fields
+            advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
+            print(f"[SALE_LEDGER] Advance Amount (from advance_amount): {instance.advance_amount}")
+            print(f"[SALE_LEDGER] Advance Amount (from advance_payment_amount): {instance.advance_payment_amount}")
+            print(f"[SALE_LEDGER] Calculated Advance Amount: {advance_amt}")
+            print(f"[SALE_LEDGER] Advance Amount > 0: {advance_amt > 0}")
+            
+            if advance_amt > 0:
+                cash_amount = advance_amt
+                print(f"[SALE_LEDGER] ✓ Cash amount set to advance amount: {cash_amount}")
+            else:
+                print("[SALE_LEDGER] ✗ Advance amount is 0 or None - cash amount not set")
         else:
-            print("[SALE_LEDGER] ✗ Advance amount is 0 or None - cash amount not set")
-    else:
-        print("[SALE_LEDGER] ✗ Not a cash sale or credit sale with cash advance")
-        print(f"[SALE_LEDGER]   - Payment Method: {instance.payment_method}")
-        print(f"[SALE_LEDGER]   - Advance Payment Method: {instance.advance_payment_method}")
-    
-    print(f"[SALE_LEDGER] Final Cash Amount: {cash_amount}")
-    print(f"[SALE_LEDGER] Cash Amount > 0: {cash_amount > 0}")
-    print(f"[SALE_LEDGER] User is not None: {instance.user is not None}")
-    
-    if cash_amount > 0 and instance.user is not None:
-        print("=" * 80)
+            print("[SALE_LEDGER] ✗ Not a cash sale or credit sale with cash advance")
+            print(f"[SALE_LEDGER]   - Payment Method: {instance.payment_method}")
+            print(f"[SALE_LEDGER]   - Advance Payment Method: {instance.advance_payment_method}")
+        
+        print(f"[SALE_LEDGER] Final Cash Amount: {cash_amount}")
+        print(f"[SALE_LEDGER] Cash Amount > 0: {cash_amount > 0}")
+        print(f"[SALE_LEDGER] User is not None: {instance.user is not None}")
+        
+        if cash_amount > 0 and instance.user is not None:
+            print("=" * 80)
         print("[SALE_LEDGER] >>>>>> CREATING CASH LEDGER ENTRY <<<<<<")
         print(f"[SALE_LEDGER] User: {instance.user} (ID: {instance.user.id})")
         print(f"[SALE_LEDGER] Username: {instance.user.username}")
@@ -567,14 +574,15 @@ def sale_ledger(sender, instance, created, **kwargs):
             import traceback
             print(f"[SALE_LEDGER] Traceback: {traceback.format_exc()}")
             print("=" * 80)
-    else:
-        print("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:")
-        print(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}")
-        print(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}")
-    
-    print("=" * 80)
-    print("[SALE_LEDGER] Signal processing completed")
-    print("=" * 80)
+        else:
+            print("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:")
+            print(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}")
+            print(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}")
+        
+        print("=" * 80)
+        print("[SALE_LEDGER] Signal processing completed")
+        print("=" * 80)
+        # Transaction block ends here - all database operations are atomic
     
 
 

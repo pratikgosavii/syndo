@@ -919,11 +919,32 @@ class SaleSerializer(serializers.ModelSerializer):
 
             # Wholesale - create before recalculating totals so charges are included
             if sale.is_wholesale_rate and wholesale_data:
-                pos_wholesale.objects.create(
-                    user=sale.user,
-                    sale=sale,
-                    **wholesale_data
-                )
+                # Use update_or_create to handle unique constraint on (user, invoice_number)
+                # If invoice_number is provided, use it for lookup; otherwise use sale
+                invoice_number = wholesale_data.get('invoice_number')
+                if invoice_number:
+                    # Lookup by user and invoice_number (unique constraint)
+                    invoice, created = pos_wholesale.objects.update_or_create(
+                        user=sale.user,
+                        invoice_number=invoice_number,
+                        defaults={
+                            'sale': sale,
+                            **wholesale_data
+                        }
+                    )
+                else:
+                    # No invoice_number provided, use get_or_create with sale
+                    # This will create a new record and invoice_number will be auto-generated in save()
+                    invoice, created = pos_wholesale.objects.get_or_create(
+                        user=sale.user,
+                        sale=sale,
+                        defaults=wholesale_data
+                    )
+                    # Update all fields from wholesale_data in case it already existed
+                    if not created:
+                        for attr, value in wholesale_data.items():
+                            setattr(invoice, attr, value)
+                        invoice.save()
 
             # Totals - recalculate after wholesale is created
             self._recalculate_totals(sale)
