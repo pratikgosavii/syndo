@@ -969,11 +969,20 @@ class SaleSerializer(serializers.ModelSerializer):
         validated_data = self._normalize(validated_data)
         items_data = validated_data.pop('items', None)
         wholesale_data = validated_data.pop('wholesale_invoice', None)
+        
+        # Log validated_data to debug advance_payment_method
+        import logging
+        logger = logging.getLogger('vendor.signals')
+        logger.debug(f"[SALE_SERIALIZER] Updating sale ID: {instance.id}")
+        logger.debug(f"[SALE_SERIALIZER] advance_payment_method in validated_data: {'advance_payment_method' in validated_data}")
+        if 'advance_payment_method' in validated_data:
+            logger.debug(f"[SALE_SERIALIZER] advance_payment_method value: {validated_data.get('advance_payment_method')}")
 
         # Update base fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        logger.debug(f"[SALE_SERIALIZER] Sale advance_payment_method after update: {instance.advance_payment_method}")
 
         # Replace items if sent
         if items_data is not None:
