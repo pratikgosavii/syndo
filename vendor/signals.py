@@ -311,6 +311,18 @@ def sale_ledger(sender, instance, created, **kwargs):
     Wrapped in transaction.atomic() to prevent database locks in SQLite.
     """
     try:
+        # Auto-detect advance_payment_method if not set but advance_amount > 0
+        if instance.payment_method == "credit" and not instance.advance_payment_method:
+            advance_amt = Decimal(instance.advance_amount or 0)
+            if advance_amt > 0:
+                if instance.advance_bank:
+                    instance.advance_payment_method = "bank"
+                    logger.info(f"[SALE_LEDGER] Auto-detected advance_payment_method: bank (advance_bank is set)")
+                else:
+                    instance.advance_payment_method = "cash"
+                    logger.info(f"[SALE_LEDGER] Auto-detected advance_payment_method: cash (advance_bank is not set)")
+                instance.save(update_fields=['advance_payment_method'])
+        
         logger.info("=" * 80)
         logger.info(f"[SALE_LEDGER] Signal triggered for Sale ID: {instance.id}")
         logger.info(f"[SALE_LEDGER] Created: {created}")

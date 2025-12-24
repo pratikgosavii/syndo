@@ -879,7 +879,7 @@ class SaleSerializer(serializers.ModelSerializer):
         model = Sale
         fields = [
             'id', 'invoice_number', 'payment_method', 'company_profile', 'customer', 'company_profile_detials', 'customer_detials',
-            'discount_percentage', 'advance_amount', 'advance_bank', 'advance_bank_details',
+            'discount_percentage', 'advance_amount', 'advance_payment_method', 'advance_bank', 'advance_bank_details',
             'balance_amount', 'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
             'discount_amount', 'total_amount', 'total_taxable_amount', 'total_gst_amount',
@@ -895,6 +895,10 @@ class SaleSerializer(serializers.ModelSerializer):
         for k, v in list(data.items()):
             if v == "":
                 data[k] = None
+        # Ensure advance_payment_method is preserved (don't convert to None if it's a valid choice)
+        if 'advance_payment_method' in data and data['advance_payment_method'] in ['cash', 'bank']:
+            # Keep the value as is
+            pass
         return data
 
     def create(self, validated_data):
@@ -902,12 +906,22 @@ class SaleSerializer(serializers.ModelSerializer):
         items_data = validated_data.pop('items', [])
         wholesale_data = validated_data.pop('wholesale_invoice', None)
         validated_data.pop('user', None)
+        
+        # Log validated_data to debug advance_payment_method
+        import logging
+        logger = logging.getLogger('vendor.signals')
+        logger.debug(f"[SALE_SERIALIZER] Creating sale with validated_data keys: {list(validated_data.keys())}")
+        logger.debug(f"[SALE_SERIALIZER] advance_payment_method in validated_data: {'advance_payment_method' in validated_data}")
+        if 'advance_payment_method' in validated_data:
+            logger.debug(f"[SALE_SERIALIZER] advance_payment_method value: {validated_data.get('advance_payment_method')}")
 
         with transaction.atomic():
             sale = Sale.objects.create(
                 user=self.context['request'].user,
                 **validated_data
             )
+            logger.debug(f"[SALE_SERIALIZER] Sale created with ID: {sale.id}")
+            logger.debug(f"[SALE_SERIALIZER] Sale advance_payment_method after create: {sale.advance_payment_method}")
 
             # Create Sale Items
             for item in items_data:
