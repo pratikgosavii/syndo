@@ -505,110 +505,99 @@ def sale_ledger(sender, instance, created, **kwargs):
                 logger.debug(f"[SALE_LEDGER]   - Payment Method == 'credit': {instance.payment_method == 'credit'}")
                 logger.debug(f"[SALE_LEDGER]   - Advance Payment Method == 'bank': {instance.advance_payment_method == 'bank'}")
 
-        # Cash ledger → handles:
-        # 1. Direct cash sales (payment_method == "cash")
-        # 2. Credit sales with cash advance (advance_payment_method == "cash")
-        print("[SALE_LEDGER] Checking cash ledger creation...")
-        print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-        print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
-        print(f"[SALE_LEDGER] User: {instance.user}")
-        
-        cash_amount = Decimal(0)
-        if instance.payment_method == "cash":
-            # Full amount goes to cash for direct cash sales
-            cash_amount = Decimal(instance.total_amount or 0)
-            print(f"[SALE_LEDGER] ✓ Direct cash sale detected - Cash Amount: {cash_amount}")
-        elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
-            # Only advance amount goes to cash for credit sales with cash advance
-            print("[SALE_LEDGER] ✓ Credit sale with cash advance detected")
-            # Check both advance_amount and advance_payment_amount fields
-            advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
-            print(f"[SALE_LEDGER] Advance Amount (from advance_amount): {instance.advance_amount}")
-            print(f"[SALE_LEDGER] Advance Amount (from advance_payment_amount): {instance.advance_payment_amount}")
-            print(f"[SALE_LEDGER] Calculated Advance Amount: {advance_amt}")
-            print(f"[SALE_LEDGER] Advance Amount > 0: {advance_amt > 0}")
+            # Cash ledger → handles:
+            # 1. Direct cash sales (payment_method == "cash")
+            # 2. Credit sales with cash advance (advance_payment_method == "cash")
+            logger.debug("[SALE_LEDGER] Checking cash ledger creation...")
+            logger.debug(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+            logger.debug(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+            logger.debug(f"[SALE_LEDGER] User: {instance.user}")
             
-            if advance_amt > 0:
-                cash_amount = advance_amt
-                print(f"[SALE_LEDGER] ✓ Cash amount set to advance amount: {cash_amount}")
+            cash_amount = Decimal(0)
+            if instance.payment_method == "cash":
+                # Full amount goes to cash for direct cash sales
+                cash_amount = Decimal(instance.total_amount or 0)
+                logger.info(f"[SALE_LEDGER] ✓ Direct cash sale detected - Cash Amount: {cash_amount}")
+            elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
+                # Only advance amount goes to cash for credit sales with cash advance
+                logger.info("[SALE_LEDGER] ✓ Credit sale with cash advance detected")
+                # Check both advance_amount and advance_payment_amount fields
+                advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
+                logger.debug(f"[SALE_LEDGER] Advance Amount (from advance_amount): {instance.advance_amount}")
+                logger.debug(f"[SALE_LEDGER] Advance Amount (from advance_payment_amount): {instance.advance_payment_amount}")
+                logger.debug(f"[SALE_LEDGER] Calculated Advance Amount: {advance_amt}")
+                logger.debug(f"[SALE_LEDGER] Advance Amount > 0: {advance_amt > 0}")
+                
+                if advance_amt > 0:
+                    cash_amount = advance_amt
+                    logger.info(f"[SALE_LEDGER] ✓ Cash amount set to advance amount: {cash_amount}")
+                else:
+                    logger.warning("[SALE_LEDGER] ✗ Advance amount is 0 or None - cash amount not set")
             else:
-                print("[SALE_LEDGER] ✗ Advance amount is 0 or None - cash amount not set")
-        else:
-            print("[SALE_LEDGER] ✗ Not a cash sale or credit sale with cash advance")
-            print(f"[SALE_LEDGER]   - Payment Method: {instance.payment_method}")
-            print(f"[SALE_LEDGER]   - Advance Payment Method: {instance.advance_payment_method}")
+                logger.debug("[SALE_LEDGER] ✗ Not a cash sale or credit sale with cash advance")
+                logger.debug(f"[SALE_LEDGER]   - Payment Method: {instance.payment_method}")
+                logger.debug(f"[SALE_LEDGER]   - Advance Payment Method: {instance.advance_payment_method}")
+            
+            logger.debug(f"[SALE_LEDGER] Final Cash Amount: {cash_amount}")
+            logger.debug(f"[SALE_LEDGER] Cash Amount > 0: {cash_amount > 0}")
+            logger.debug(f"[SALE_LEDGER] User is not None: {instance.user is not None}")
+            
+            if cash_amount > 0 and instance.user is not None:
+                logger.info("=" * 80)
+                logger.info("[SALE_LEDGER] >>>>>> CREATING CASH LEDGER ENTRY <<<<<<")
+                logger.info(f"[SALE_LEDGER] User: {instance.user} (ID: {instance.user.id})")
+                logger.info(f"[SALE_LEDGER] Username: {instance.user.username}")
+                logger.info(f"[SALE_LEDGER] Amount: {cash_amount}")
+                logger.info(f"[SALE_LEDGER] Transaction Type: sale")
+                logger.info(f"[SALE_LEDGER] Reference ID: {instance.id}")
+                description = f"Sale #{instance.id}" + (" (Cash Advance)" if instance.payment_method == "credit" else "")
+                logger.info(f"[SALE_LEDGER] Description: {description}")
+                logger.info(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+                logger.info("[SALE_LEDGER] Calling create_ledger() for CashLedger...")
+                logger.info("=" * 80)
+                
+                try:
+                    create_ledger(
+                        None,
+                        CashLedger,
+                        "sale",
+                        instance.id,
+                        cash_amount,
+                        description,
+                        user=instance.user
+                    )
+                    logger.info("=" * 80)
+                    logger.info("[SALE_LEDGER] ✓✓✓ CASH LEDGER ENTRY CREATED SUCCESSFULLY ✓✓✓")
+                    logger.info(f"[SALE_LEDGER] User: {instance.user}")
+                    logger.info(f"[SALE_LEDGER] Amount: {cash_amount}")
+                    logger.info("=" * 80)
+                except Exception as e:
+                    logger.error("=" * 80)
+                    logger.error(f"[SALE_LEDGER] ✗✗✗ ERROR CREATING CASH LEDGER ✗✗✗")
+                    logger.error(f"[SALE_LEDGER] Error: {str(e)}")
+                    logger.error(f"[SALE_LEDGER] Error Type: {type(e).__name__}")
+                    import traceback
+                    logger.error(f"[SALE_LEDGER] Traceback: {traceback.format_exc()}")
+                    logger.error("=" * 80)
+            else:
+                logger.warning("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:")
+                logger.warning(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}")
+                logger.warning(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}")
         
-        print(f"[SALE_LEDGER] Final Cash Amount: {cash_amount}")
-        print(f"[SALE_LEDGER] Cash Amount > 0: {cash_amount > 0}")
-        print(f"[SALE_LEDGER] User is not None: {instance.user is not None}")
-        
-        if cash_amount > 0 and instance.user is not None:
-            print("=" * 80, flush=True)
-            logger.info("=" * 80)
-            print("[SALE_LEDGER] >>>>>> CREATING CASH LEDGER ENTRY <<<<<<", flush=True)
-            logger.info("[SALE_LEDGER] >>>>>> CREATING CASH LEDGER ENTRY <<<<<<")
-        print(f"[SALE_LEDGER] User: {instance.user} (ID: {instance.user.id})")
-        print(f"[SALE_LEDGER] Username: {instance.user.username}")
-        print(f"[SALE_LEDGER] Amount: {cash_amount}")
-        print(f"[SALE_LEDGER] Transaction Type: sale")
-        print(f"[SALE_LEDGER] Reference ID: {instance.id}")
-        description = f"Sale #{instance.id}" + (" (Cash Advance)" if instance.payment_method == "credit" else "")
-        print(f"[SALE_LEDGER] Description: {description}")
-        print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-        print("[SALE_LEDGER] Calling create_ledger() for CashLedger...")
-        print("=" * 80)
-        
-        try:
-            create_ledger(
-                None,
-                CashLedger,
-                "sale",
-                instance.id,
-                cash_amount,
-                description,
-                user=instance.user
-            )
-            print("=" * 80)
-            print("[SALE_LEDGER] ✓✓✓ CASH LEDGER ENTRY CREATED SUCCESSFULLY ✓✓✓")
-            print(f"[SALE_LEDGER] User: {instance.user}")
-            print(f"[SALE_LEDGER] Amount: {cash_amount}")
-            print("=" * 80)
-        except Exception as e:
-            print("=" * 80)
-            print(f"[SALE_LEDGER] ✗✗✗ ERROR CREATING CASH LEDGER ✗✗✗")
-            print(f"[SALE_LEDGER] Error: {str(e)}")
-            print(f"[SALE_LEDGER] Error Type: {type(e).__name__}")
-            import traceback
-            print(f"[SALE_LEDGER] Traceback: {traceback.format_exc()}")
-            print("=" * 80)
-        else:
-            print("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:", flush=True)
-            logger.info("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:")
-            print(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}", flush=True)
-            logger.info(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}")
-            print(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}", flush=True)
-            logger.info(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}")
-        
-        print("=" * 80, flush=True)
         logger.info("=" * 80)
-        print("[SALE_LEDGER] Signal processing completed", flush=True)
         logger.info("[SALE_LEDGER] Signal processing completed")
-        print("=" * 80, flush=True)
         logger.info("=" * 80)
         # Transaction block ends here - all database operations are atomic
     except Exception as e:
         import traceback
         error_msg = f"[SALE_LEDGER] ERROR IN SIGNAL: {str(e)}"
-        print("=" * 80, flush=True)
-        print(error_msg, flush=True)
-        print(f"[SALE_LEDGER] Error Type: {type(e).__name__}", flush=True)
-        print(f"[SALE_LEDGER] Traceback:", flush=True)
-        traceback_str = traceback.format_exc()
-        print(traceback_str, flush=True)
-        print("=" * 80, flush=True)
+        logger.error("=" * 80)
         logger.error(error_msg)
-        logger.error(f"Error Type: {type(e).__name__}")
+        logger.error(f"[SALE_LEDGER] Error Type: {type(e).__name__}")
+        logger.error(f"[SALE_LEDGER] Traceback:")
+        traceback_str = traceback.format_exc()
         logger.error(traceback_str)
+        logger.error("=" * 80)
         # Re-raise to ensure Django knows about the error
         raise
     
