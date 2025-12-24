@@ -398,6 +398,7 @@ class CustomerLedger(models.Model):
     opening_balance = models.BigIntegerField(default=0)
     amount = models.BigIntegerField()
     balance_after = models.BigIntegerField()
+    total_bill_amount = models.BigIntegerField(default=0, help_text="Total bill amount for credit sales (includes advance payment)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
