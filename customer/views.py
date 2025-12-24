@@ -31,6 +31,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         """
         Preflight check before taking payment: verifies serviceability/rider availability.
         Body should mirror order creation payload (needs items[0].product and address id).
+        Only runs if vendor has auto_assign enabled.
         """
         items = request.data.get("items") or []
         if not items or not isinstance(items, list):
@@ -45,6 +46,19 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         except product.DoesNotExist:
             return Response({"detail": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Check if vendor has auto_assign enabled
+        vendor_user = first_product.user
+        if vendor_user:
+            from vendor.models import DeliveryMode
+            delivery_mode = DeliveryMode.objects.filter(user=vendor_user).first()
+            if not delivery_mode or not delivery_mode.is_auto_assign_enabled:
+                # Auto-assign is disabled, skip serviceability check
+                return Response({
+                    "ok": True,
+                    "message": "Auto-assign is disabled for this vendor. Delivery will be assigned manually.",
+                    "auto_assign_enabled": False
+                })
+
         address_id = request.data.get("address")
         if not address_id:
             return Response({"detail": "Address is required for delivery check"}, status=status.HTTP_400_BAD_REQUEST)
@@ -55,9 +69,8 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
 
         delivery_type = request.data.get("delivery_type") or "self_pickup"
         if delivery_type == "instant_delivery":
-            # Only instant_delivery needs rider check
-
-        # Build a lightweight order-like object for serviceability check
+            # Only instant_delivery needs rider check (and only if auto_assign is enabled)
+            # Build a lightweight order-like object for serviceability check
             temp_order = SimpleNamespace(
                 order_id="TEMP",
                 address=addr,
@@ -76,7 +89,12 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
                 location_ok = svc.get("locationServiceAble")
 
                 if ok:
-                    return Response({"ok": True, "message": "Delivery boy available", "serviceability": svc_result})
+                    return Response({
+                        "ok": True,
+                        "message": "Delivery boy available",
+                        "serviceability": svc_result,
+                        "auto_assign_enabled": True
+                    })
 
                 # Not serviceable
                 if rider_ok is False:
@@ -85,13 +103,29 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
                     msg = "Delivery location not serviceable."
                 else:
                     msg = svc_result.get("message") or "Delivery not serviceable."
-                return Response({"ok": False, "message": msg, "serviceability": svc_result}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "ok": False,
+                    "message": msg,
+                    "serviceability": svc_result,
+                    "auto_assign_enabled": True
+                }, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 print(f"💥 [check_delivery_availability] Exception: {e}")
-                return Response({"ok": False, "message": "Unable to confirm delivery availability. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
+                return Response({
+                    "ok": False,
+                    "message": "Unable to confirm delivery availability. Please try again.",
+                    "auto_assign_enabled": True
+                }, status=status.HTTP_502_BAD_GATEWAY)
         else:
             # For non-instant delivery types (self_pickup, general_delivery), no rider check needed
-            return Response({"ok": True, "message": "Delivery available for this delivery type"})
+            # Get delivery_mode for response
+            from vendor.models import DeliveryMode
+            delivery_mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
+            return Response({
+                "ok": True,
+                "message": "Delivery available for this delivery type",
+                "auto_assign_enabled": delivery_mode.is_auto_assign_enabled if delivery_mode else False
+            })
 
     def create(self, request, *args, **kwargs):
         """
