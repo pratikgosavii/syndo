@@ -836,12 +836,20 @@ class CustomerLedgerAPIView(APIView):
         if not isinstance(balance, Decimal):
             balance = Decimal(str(balance))
         
-        # Add sale balance_amount to the balance
+        # Calculate total sales (sum of total_amount from all POS sales for this customer)
+        total_sales = Sale.objects.filter(customer_id=customer_id).aggregate(
+            total=Sum("total_amount")
+        )["total"] or Decimal(0)
+        
+        # Convert to Decimal if needed
+        if not isinstance(total_sales, Decimal):
+            total_sales = Decimal(str(total_sales))
 
         serializer = CustomerLedgerSerializer(ledger_entries, many=True)
         return Response({
             "customer_id": customer_id,
             "balance": balance,
+            "total_sales": float(total_sales),
             "ledger": serializer.data
         })
 
