@@ -224,6 +224,9 @@ def adjust_ledger_to_target(parent, ledger_model, transaction_type, reference_id
 # -------------------------------
 @receiver(post_save, sender=Sale)
 def sale_ledger(sender, instance, created, **kwargs):
+    # Refresh instance from database to ensure we have latest values, especially for related fields
+    instance.refresh_from_db()
+    
     # Delete old entries for this reference to ensure clean updates
     # This prevents confusion from multiple entries (original + reversals + new)
     CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
@@ -317,9 +320,10 @@ def sale_ledger(sender, instance, created, **kwargs):
 
     # Bank ledger → for credit sales with bank advance payment
     # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
-    if instance.payment_method == "credit" and instance.advance_payment_method == "bank" and instance.advance_bank:
-        advance_amt = Decimal(instance.advance_amount or 0)
-        if advance_amt > 0:
+    if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
+        # Check both advance_amount and advance_payment_amount fields
+        advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
+        if advance_amt > 0 and instance.advance_bank:
             create_ledger(
                 instance.advance_bank,
                 BankLedger,
@@ -335,10 +339,11 @@ def sale_ledger(sender, instance, created, **kwargs):
     cash_amount = Decimal(0)
     if instance.payment_method == "cash":
         # Full amount goes to cash for direct cash sales
-        cash_amount = instance.total_amount or Decimal(0)
+        cash_amount = Decimal(instance.total_amount or 0)
     elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
         # Only advance amount goes to cash for credit sales with cash advance
-        advance_amt = Decimal(instance.advance_amount or 0)
+        # Check both advance_amount and advance_payment_amount fields
+        advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
         if advance_amt > 0:
             cash_amount = advance_amt
     
