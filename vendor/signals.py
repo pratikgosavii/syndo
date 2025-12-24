@@ -232,12 +232,14 @@ def sale_ledger(sender, instance, created, **kwargs):
 
     # Recalculate balances from ALL remaining ledger entries (not just this transaction)
     # This ensures balances are correct before creating new entries
+    # Customer balance = opening_balance + sum of all ledger entries
     if instance.customer:
         customer = vendor_customers.objects.get(pk=instance.customer.pk)
-        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+        ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        customer.balance = int(remaining_total)
+        # Customer balance = opening_balance + sum of ledger entries
+        customer.balance = int(Decimal(customer.opening_balance or 0) + Decimal(ledger_total))
         customer.save(update_fields=['balance'])
 
     if instance.advance_bank:
@@ -267,7 +269,11 @@ def sale_ledger(sender, instance, created, **kwargs):
         if instance.payment_method == 'credit' and balance_amt > 0:
             # For credit sales: store total_bill_amount separately, but use balance_amount for balance calculation
             customer.refresh_from_db()
-            opening_balance = Decimal(customer.balance or 0)
+            # Opening balance = customer's opening_balance + sum of existing ledger entries
+            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
             balance_after = opening_balance + balance_amt
             
             CustomerLedger.objects.create(
@@ -287,7 +293,11 @@ def sale_ledger(sender, instance, created, **kwargs):
         else:
             # For non-credit sales, total_bill_amount equals amount (fully paid)
             customer.refresh_from_db()
-            opening_balance = Decimal(customer.balance or 0)
+            # Opening balance = customer's opening_balance + sum of existing ledger entries
+            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
             balance_after = opening_balance + total_amt
             
             CustomerLedger.objects.create(
