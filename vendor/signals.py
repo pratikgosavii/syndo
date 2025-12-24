@@ -145,14 +145,14 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
         
         try:
             ledger_entry = ledger_model.objects.create(
-                user=user,
-                transaction_type=transaction_type,
-                reference_id=reference_id,
-                description=description,
-                opening_balance=opening_balance_int,
-                amount=amount_int,
-                balance_after=balance_after_int,
-            )
+            user=user,
+            transaction_type=transaction_type,
+            reference_id=reference_id,
+            description=description,
+            opening_balance=opening_balance_int,
+            amount=amount_int,
+            balance_after=balance_after_int,
+        )
             logger.info(f"[CREATE_LEDGER] ✓✓✓ CashLedger entry created successfully ✓✓✓")
             logger.info(f"[CREATE_LEDGER] Ledger Entry ID: {ledger_entry.id}")
             logger.debug(f"[CREATE_LEDGER] Ledger Entry: {ledger_entry}")
@@ -191,14 +191,14 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
             ledger_entry = ledger_model.objects.create(
                 **{
                     parent_field: parent,
-                    "transaction_type": transaction_type,
-                    "reference_id": reference_id,
-                    "description": description,
-                    "opening_balance": opening_balance_int,
-                    "amount": amount_int,
-                    "balance_after": balance_after_int,
-                }
-            )
+                "transaction_type": transaction_type,
+                "reference_id": reference_id,
+                "description": description,
+                "opening_balance": opening_balance_int,
+                "amount": amount_int,
+                "balance_after": balance_after_int,
+            }
+        )
             logger.info(f"[CREATE_LEDGER] ✓✓✓ {ledger_model.__name__} entry created successfully ✓✓✓")
             logger.info(f"[CREATE_LEDGER] Ledger Entry ID: {ledger_entry.id}")
             logger.debug(f"[CREATE_LEDGER] Ledger Entry: {ledger_entry}")
@@ -401,61 +401,61 @@ def sale_ledger(sender, instance, created, **kwargs):
             cash_balance.balance = Decimal(remaining_total or 0)
             cash_balance.save()
 
-        # Create new ledger entries (create_ledger will update balances automatically)
-        # Customer ledger → for credit sales, store total_bill_amount and use balance_amount for balance; for others, use total_amount
-        if instance.customer:
-            total_amt = Decimal(instance.total_amount or 0)
-            balance_amt = Decimal(instance.balance_amount or 0)
-            customer = vendor_customers.objects.get(pk=instance.customer.pk)
-            
-            if instance.payment_method == 'credit' and balance_amt > 0:
-                # For credit sales: store total_bill_amount separately, but use balance_amount for balance calculation
-                customer.refresh_from_db()
-                # Opening balance = customer's opening_balance + sum of existing ledger entries
-                ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                    total=Sum('amount')
-                )['total'] or 0
-                opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
-                balance_after = opening_balance + balance_amt
+            # Create new ledger entries (create_ledger will update balances automatically)
+            # Customer ledger → for credit sales, store total_bill_amount and use balance_amount for balance; for others, use total_amount
+            if instance.customer:
+                total_amt = Decimal(instance.total_amount or 0)
+                balance_amt = Decimal(instance.balance_amount or 0)
+                customer = vendor_customers.objects.get(pk=instance.customer.pk)
                 
-                CustomerLedger.objects.create(
-                    customer=customer,
-                    transaction_type="sale",
-                    reference_id=instance.id,
-                    description=f"Sale #{instance.id} (Credit)",
-                    opening_balance=int(opening_balance),
-                    amount=int(balance_amt),  # This affects the balance (due amount)
-                    balance_after=int(balance_after),
-                    total_bill_amount=int(total_amt),  # Store total bill amount
-                )
-                
-                # Update customer balance
-                customer.balance = int(balance_after)
-                customer.save()
-            else:
-                # For non-credit sales, total_bill_amount equals amount (fully paid)
-                customer.refresh_from_db()
-                # Opening balance = customer's opening_balance + sum of existing ledger entries
-                ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                    total=Sum('amount')
-                )['total'] or 0
-                opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
-                balance_after = opening_balance + total_amt
-                
-                CustomerLedger.objects.create(
-                    customer=customer,
-                    transaction_type="sale",
-                    reference_id=instance.id,
-                    description=f"Sale #{instance.id}",
-                    opening_balance=int(opening_balance),
-                    amount=int(total_amt),
-                    balance_after=int(balance_after),
-                    total_bill_amount=int(total_amt),  # For non-credit, total_bill = amount
-                )
-                
-                # Update customer balance
-                customer.balance = int(balance_after)
-                customer.save()
+                if instance.payment_method == 'credit' and balance_amt > 0:
+                    # For credit sales: store total_bill_amount separately, but use balance_amount for balance calculation
+                    customer.refresh_from_db()
+                    # Opening balance = customer's opening_balance + sum of existing ledger entries
+                    ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                        total=Sum('amount')
+                    )['total'] or 0
+                    opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
+                    balance_after = opening_balance + balance_amt
+                    
+                    CustomerLedger.objects.create(
+                        customer=customer,
+                        transaction_type="sale",
+                        reference_id=instance.id,
+                        description=f"Sale #{instance.id} (Credit)",
+                        opening_balance=int(opening_balance),
+                        amount=int(balance_amt),  # This affects the balance (due amount)
+                        balance_after=int(balance_after),
+                        total_bill_amount=int(total_amt),  # Store total bill amount
+                    )
+                    
+                    # Update customer balance
+                    customer.balance = int(balance_after)
+                    customer.save()
+                else:
+                    # For non-credit sales, total_bill_amount equals amount (fully paid)
+                    customer.refresh_from_db()
+                    # Opening balance = customer's opening_balance + sum of existing ledger entries
+                    ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                        total=Sum('amount')
+                    )['total'] or 0
+                    opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
+                    balance_after = opening_balance + total_amt
+                    
+                    CustomerLedger.objects.create(
+                        customer=customer,
+                        transaction_type="sale",
+                        reference_id=instance.id,
+                        description=f"Sale #{instance.id}",
+                        opening_balance=int(opening_balance),
+                        amount=int(total_amt),
+                        balance_after=int(balance_after),
+                        total_bill_amount=int(total_amt),  # For non-credit, total_bill = amount
+                    )
+                    
+                    # Update customer balance
+                    customer.balance = int(balance_after)
+                    customer.save()
 
             # Bank ledger → for credit sales with bank advance payment
             # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
@@ -781,144 +781,191 @@ def payment_ledger(sender, instance, created, **kwargs):
     # Get payment_type display name (Cash, UPI, Cheque) - calculate once for reuse
     payment_type_display = instance.get_payment_type_display() if hasattr(instance, 'get_payment_type_display') else instance.payment_type.upper()
 
-    # Delete old entries for this reference to ensure clean updates
-    CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-    VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-    CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal"], reference_id=instance.id).delete()
-    BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
+    logger.info("=" * 80)
+    logger.info(f"[PAYMENT_LEDGER] Signal triggered for Payment ID: {instance.id}")
+    logger.info(f"[PAYMENT_LEDGER] Type: {instance.type}")
+    logger.info(f"[PAYMENT_LEDGER] Payment Type: {instance.payment_type}")
+    logger.info(f"[PAYMENT_LEDGER] Amount: {amt}")
+    logger.info(f"[PAYMENT_LEDGER] Customer: {instance.customer}")
+    logger.info(f"[PAYMENT_LEDGER] Vendor: {instance.vendor}")
+    logger.info(f"[PAYMENT_LEDGER] Bank: {instance.bank}")
+    logger.info("=" * 80)
 
-    # Recalculate balances from ALL remaining ledger entries
-    if instance.customer:
-        customer = vendor_customers.objects.get(pk=instance.customer.pk)
-        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        customer.balance = int(remaining_total)
-        customer.save(update_fields=['balance'])
-
-    if instance.vendor:
-        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        vendor.balance = int(remaining_total)
-        vendor.save(update_fields=['balance'])
-
-    # Note: Payment logic is inverted - ledger amounts don't match balance changes
-    # This is intentional to maintain backward compatibility
-    if instance.customer:
-        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+    # Wrap all database operations in a transaction
+    with transaction.atomic():
+        # Refresh instance from database to ensure we have latest values
+        instance.refresh_from_db()
+        logger.debug("[PAYMENT_LEDGER] Instance refreshed from database")
         
-        if instance.type == "received":
-            # Customer received payment (paid vendor) - balance decreases
-            # Ledger adds amt, then we manually subtract from balance
-            create_ledger(
-                customer,
-                CustomerLedger,
-                "payment",
-                instance.id,
-                amt,
-                f"Payment Received ({payment_type_display}) #{instance.id}"
-            )
-            customer.refresh_from_db()
-            customer.balance = int(Decimal(customer.balance or 0) - amt)
-            customer.save(update_fields=['balance'])
-        elif instance.type == "gave":
-            # Customer gave refund - balance increases
-            # Ledger subtracts amt, then we manually add to balance
-            create_ledger(
-                customer,
-                CustomerLedger,
-                "refund",
-                instance.id,
-                -amt,
-                f"Refund Given ({payment_type_display}) #{instance.id}"
-            )
-            customer.refresh_from_db()
-            customer.balance = int(Decimal(customer.balance or 0) + amt)
-            customer.save(update_fields=['balance'])
+        # Delete old entries for this reference to ensure clean updates
+        logger.debug("[PAYMENT_LEDGER] Deleting old ledger entries...")
+        CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
+        VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
+        CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal"], reference_id=instance.id).delete()
+        BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
+        logger.debug("[PAYMENT_LEDGER] Old ledger entries deleted")
 
-    if instance.vendor:
-        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+        # Recalculate balances from ALL remaining ledger entries (not just this transaction)
+        # This ensures balances are correct before creating new entries
+        # Customer balance = opening_balance + sum of all ledger entries
+        if instance.customer:
+            customer = vendor_customers.objects.get(pk=instance.customer.pk)
+            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            # Customer balance = opening_balance + sum of ledger entries
+            customer.balance = int(Decimal(customer.opening_balance or 0) + Decimal(ledger_total))
+            customer.save(update_fields=['balance'])
+            logger.debug(f"[PAYMENT_LEDGER] Customer balance recalculated: {customer.balance} (opening: {customer.opening_balance}, ledger: {ledger_total})")
+
+        if instance.vendor:
+            vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+            remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            vendor.balance = int(remaining_total)
+            vendor.save(update_fields=['balance'])
+            logger.debug(f"[PAYMENT_LEDGER] Vendor balance recalculated: {vendor.balance}")
+
+        # Customer ledger
+        if instance.customer:
+            customer = vendor_customers.objects.get(pk=instance.customer.pk)
+            customer.refresh_from_db()
+            
+            # Get existing ledger entries to check if this is the first one
+            existing_ledgers = CustomerLedger.objects.filter(customer=customer)
+            is_first_ledger = not existing_ledgers.exists()
+            
+            if instance.type == "received":
+                # Customer paid you (received payment) - customer balance DECREASES
+                # Ledger entry should be negative to decrease balance
+                logger.info(f"[PAYMENT_LEDGER] Creating customer ledger for RECEIVED payment")
+                logger.info(f"[PAYMENT_LEDGER] Is first ledger: {is_first_ledger}")
+                logger.info(f"[PAYMENT_LEDGER] Customer opening_balance: {customer.opening_balance}")
+                
+                # Calculate opening balance for this ledger entry
+                ledger_total_before = CustomerLedger.objects.filter(customer=customer).aggregate(
+                    total=Sum('amount')
+                )['total'] or 0
+                opening_balance_for_entry = Decimal(customer.opening_balance or 0) + Decimal(ledger_total_before)
+                
+                create_ledger(
+                    customer,
+                    CustomerLedger,
+                    "payment",
+                    instance.id,
+                    -amt,  # Negative amount to decrease customer balance
+                    f"Payment Received ({payment_type_display}) #{instance.id}"
+                )
+                logger.info(f"[PAYMENT_LEDGER] Customer ledger created with amount: -{amt}")
+            elif instance.type == "gave":
+                # You gave refund to customer - customer balance INCREASES
+                # Ledger entry should be positive to increase balance
+                logger.info(f"[PAYMENT_LEDGER] Creating customer ledger for GAVE payment (refund)")
+                logger.info(f"[PAYMENT_LEDGER] Is first ledger: {is_first_ledger}")
+                logger.info(f"[PAYMENT_LEDGER] Customer opening_balance: {customer.opening_balance}")
+                
+                create_ledger(
+                    customer,
+                    CustomerLedger,
+                    "refund",
+                    instance.id,
+                    amt,  # Positive amount to increase customer balance
+                    f"Refund Given ({payment_type_display}) #{instance.id}"
+                )
+                logger.info(f"[PAYMENT_LEDGER] Customer ledger created with amount: {amt}")
+
+        # Vendor ledger
+        if instance.vendor:
+            vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+            
+            if instance.type == "gave":
+                # You gave payment to vendor - vendor balance INCREASES
+                create_ledger(
+                    vendor,
+                    VendorLedger,
+                    "payment",
+                    instance.id,
+                    -amt,  # Negative amount in vendor ledger means you owe less (vendor balance increases)
+                    f"Payment Given ({payment_type_display}) #{instance.id}"
+                )
+                logger.info(f"[PAYMENT_LEDGER] Vendor ledger created with amount: -{amt}")
+            elif instance.type == "received":
+                # Vendor gave you refund - vendor balance DECREASES
+                create_ledger(
+                    vendor,
+                    VendorLedger,
+                    "refund",
+                    instance.id,
+                    amt,  # Positive amount in vendor ledger means you owe more (vendor balance decreases)
+                    f"Refund Received ({payment_type_display}) #{instance.id}"
+                )
+                logger.info(f"[PAYMENT_LEDGER] Vendor ledger created with amount: {amt}")
+
+        # Cash/Bank ledger for payments
+        # CORRECTED LOGIC:
+        # If "received" → you received money, so cash/bank balance should INCREASE (positive amount)
+        # If "gave" → you gave money, so cash/bank balance should DECREASE (negative amount)
         
-        if instance.type == "gave":
-            # Vendor gave payment - balance increases
-            create_ledger(
-                vendor,
-                VendorLedger,
-                "payment",
-                instance.id,
-                -amt,
-                f"Payment Given ({payment_type_display}) #{instance.id}"
-            )
-            vendor.refresh_from_db()
-            vendor.balance = int(Decimal(vendor.balance or 0) + amt)
-            vendor.save(update_fields=['balance'])
-        elif instance.type == "received":
-            # Vendor received payment - balance decreases
-            create_ledger(
-                vendor,
-                VendorLedger,
-                "refund",
-                instance.id,
-                amt,
-                f"Refund Received ({payment_type_display}) #{instance.id}"
-            )
-            vendor.refresh_from_db()
-            vendor.balance = int(Decimal(vendor.balance or 0) - amt)
-            vendor.save(update_fields=['balance'])
-
-    # Cash/Bank ledger for payments
-    # If "gave" → balance should INCREASE (add amount) - you gave payment, cash/bank balance increases
-    # If "received" → balance should DECREASE (subtract amount) - you received payment, cash/bank balance decreases
-    
-    # Cash ledger for cash payments
-    if instance.payment_type == "cash" and instance.user is not None:
-        if instance.type == "gave":
-            # You gave payment → cash balance increases (add/plus)
-            adjust_ledger_to_target(
-                None,
-                CashLedger,
-                "deposit",
-                instance.id,
-                amt,  # Positive amount to increase balance
-                f"Cash Payment Given #{instance.id}",
-                user=instance.user
-            )
-        elif instance.type == "received":
-            # You received payment → cash balance decreases (minus/subtract)
-            adjust_ledger_to_target(
-                None,
-                CashLedger,
-                "withdrawal",
-                instance.id,
-                -amt,  # Negative amount to decrease balance
-                f"Cash Payment Received #{instance.id}",
-                user=instance.user
-            )
-    
-    # Bank ledger for bank payments (upi/cheque)
-    if instance.bank and instance.payment_type in ["upi", "cheque"]:
-        if instance.type == "gave":
-            # You gave payment → bank balance increases (add/plus)
-            adjust_ledger_to_target(
-                instance.bank,
-                BankLedger,
-                "deposit",
-                instance.id,
-                amt,  # Positive amount to increase balance
-                f"Bank Payment Given #{instance.id}"
-            )
-        elif instance.type == "received":
-            # You received payment → bank balance decreases (minus/subtract)
-            adjust_ledger_to_target(
-                instance.bank,
-                BankLedger,
-                "withdrawal",
-                instance.id,
-                -amt,  # Negative amount to decrease balance
-                f"Bank Payment Received #{instance.id}"
-            )
+        # Cash ledger for cash payments
+        if instance.payment_type == "cash" and instance.user is not None:
+            if instance.type == "received":
+                # You received payment → cash balance INCREASES (add/plus)
+                logger.info(f"[PAYMENT_LEDGER] Creating cash ledger for RECEIVED payment (cash)")
+                adjust_ledger_to_target(
+                    None,
+                    CashLedger,
+                    "deposit",
+                    instance.id,
+                    amt,  # Positive amount to INCREASE balance
+                    f"Cash Payment Received #{instance.id}",
+                    user=instance.user
+                )
+                logger.info(f"[PAYMENT_LEDGER] Cash ledger created with amount: {amt} (INCREASE)")
+            elif instance.type == "gave":
+                # You gave payment → cash balance DECREASES (minus/subtract)
+                logger.info(f"[PAYMENT_LEDGER] Creating cash ledger for GAVE payment (cash)")
+                adjust_ledger_to_target(
+                    None,
+                    CashLedger,
+                    "withdrawal",
+                    instance.id,
+                    -amt,  # Negative amount to DECREASE balance
+                    f"Cash Payment Given #{instance.id}",
+                    user=instance.user
+                )
+                logger.info(f"[PAYMENT_LEDGER] Cash ledger created with amount: -{amt} (DECREASE)")
+        
+        # Bank ledger for bank payments (upi/cheque)
+        if instance.bank and instance.payment_type in ["upi", "cheque"]:
+            if instance.type == "received":
+                # You received payment → bank balance INCREASES (add/plus)
+                logger.info(f"[PAYMENT_LEDGER] Creating bank ledger for RECEIVED payment (bank)")
+                adjust_ledger_to_target(
+                    instance.bank,
+                    BankLedger,
+                    "deposit",
+                    instance.id,
+                    amt,  # Positive amount to INCREASE balance
+                    f"Bank Payment Received #{instance.id}"
+                )
+                logger.info(f"[PAYMENT_LEDGER] Bank ledger created with amount: {amt} (INCREASE)")
+            elif instance.type == "gave":
+                # You gave payment → bank balance DECREASES (minus/subtract)
+                logger.info(f"[PAYMENT_LEDGER] Creating bank ledger for GAVE payment (bank)")
+                adjust_ledger_to_target(
+                    instance.bank,
+                    BankLedger,
+                    "withdrawal",
+                    instance.id,
+                    -amt,  # Negative amount to DECREASE balance
+                    f"Bank Payment Given #{instance.id}"
+                )
+                logger.info(f"[PAYMENT_LEDGER] Bank ledger created with amount: -{amt} (DECREASE)")
+        
+        logger.info("=" * 80)
+        logger.info("[PAYMENT_LEDGER] Signal processing completed")
+        logger.info("=" * 80)
 
 
 # -------------------------------
