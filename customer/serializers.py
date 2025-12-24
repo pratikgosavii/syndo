@@ -209,197 +209,197 @@ class OrderSerializer(serializers.ModelSerializer):
             order_items = []
             print_jobs_payload = []  # parallel array of print job payloads or None
 
-            for item in items_data:
-                product_id = item.get("product")
-                quantity = int(item.get("quantity", 1))
+        for item in items_data:
+            product_id = item.get("product")
+            quantity = int(item.get("quantity", 1))
 
-                # fetch product
-                try:
-                    product1 = product.objects.get(id=product_id)
-                except product.DoesNotExist:
-                    raise serializers.ValidationError(
-                        {"items": [f"Product with id {product_id} does not exist."]}
-                    )
-
-                # Gather print job payload either from request item or from cart (fallback)
-                item_print_job = item.get("print_job")
-                is_print_product = getattr(product1, "product_type", None) == "print"
-                
-                if item_print_job is None and is_print_product:
-                    cart_item = Cart.objects.filter(user=request.user, product=product1).select_related("print_job").first()
-                    if cart_item and hasattr(cart_item, "print_job"):
-                        pj = cart_item.print_job
-                        item_print_job = {
-                            "total_amount": pj.total_amount,
-                            "print_type": pj.print_type,
-                            "print_variant": getattr(pj.print_variant, "id", None),
-                            "customize_variant": getattr(pj.customize_variant, "id", None),
-                            "add_ons": list[Any](pj.add_ons.values_list("id", flat=True)),
-                            "files": [
-                                {
-                                    "file": pf.file,  # will be used directly
-                                    "instructions": getattr(pf, "instructions", None),  # Instructions now at file level
-                                    "number_of_copies": pf.number_of_copies,
-                                    "page_count": pf.page_count,
-                                    "page_numbers": pf.page_numbers,
-                                }
-                                for pf in pj.files.all()
-                            ],
-                        }
-                print_jobs_payload.append(item_print_job)
-
-                # Calculate pricing based on product type
-                if is_print_product and item_print_job:
-                    # For print products: get price from variant if available, otherwise use product sales_price
-                    unit_price = None
-                    
-                    # Check for print_variant first
-                    print_variant_id = item_print_job.get("print_variant")
-                    if print_variant_id:
-                        try:
-                            from vendor.models import PrintVariant
-                            print_variant = PrintVariant.objects.get(id=print_variant_id)
-                            if print_variant.price:
-                                unit_price = Decimal(str(print_variant.price))
-                        except Exception:
-                            pass
-                    
-                    # If no print_variant price, check customize_variant
-                    if unit_price is None:
-                        customize_variant_id = item_print_job.get("customize_variant")
-                        if customize_variant_id:
-                            try:
-                                from vendor.models import CustomizePrintVariant
-                                customize_variant = CustomizePrintVariant.objects.get(id=customize_variant_id)
-                                if customize_variant.price:
-                                    unit_price = Decimal(str(customize_variant.price))
-                            except Exception:
-                                pass
-                    
-                    # Fallback to product sales_price if no variant price found
-                    if unit_price is None:
-                        unit_price = Decimal(str(product1.sales_price))
-                    
-                    # For print products: calculate based on total pages
-                    # Total pages = sum of (page_count * number_of_copies) for all files
-                    total_pages = Decimal("0")
-                    files_data = item_print_job.get("files", [])
-                    for file_data in files_data:
-                        page_count = Decimal(str(file_data.get("page_count", 0)))
-                        number_of_copies = Decimal(str(file_data.get("number_of_copies", 1)))
-                        total_pages += page_count * number_of_copies
-                    
-                    # Use variant price (or product sales_price) per page * total_pages
-                    line_total = unit_price * total_pages
-                else:
-                    # For regular products: use sales_price * quantity
-                    unit_price = Decimal(str(product1.sales_price))
-                    line_total = unit_price * quantity
-                
-                item_total += line_total
-
-                # Add GST to tax_total only if product price is NOT tax inclusive
-                try:
-                    gst_rate = Decimal(str(getattr(product1, "gst", 0) or 0))
-                except Exception:
-                    gst_rate = Decimal("0")
-                if not getattr(product1, "tax_inclusive", False) and gst_rate > 0:
-                    line_tax = (line_total * gst_rate / Decimal("100"))
-                    # Round to 2 decimals for currency
-                    line_tax = line_tax.quantize(Decimal("0.01"))
-                    tax_total += line_tax
-
-                # Store the calculated unit_price (variant price for print products, sales_price for regular)
-                order_items.append(
-                    OrderItem(
-                        product=product1,
-                        quantity=quantity,
-                        price=unit_price,
-                    )
+            # fetch product
+            try:
+                product1 = product.objects.get(id=product_id)
+            except product.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"items": [f"Product with id {product_id} does not exist."]}
                 )
 
-            # generate order_id
-            # order_id will be generated in Order.save() method
+            # Gather print job payload either from request item or from cart (fallback)
+            item_print_job = item.get("print_job")
+            is_print_product = getattr(product1, "product_type", None) == "print"
+            
+            if item_print_job is None and is_print_product:
+                cart_item = Cart.objects.filter(user=request.user, product=product1).select_related("print_job").first()
+                if cart_item and hasattr(cart_item, "print_job"):
+                    pj = cart_item.print_job
+                    item_print_job = {
+                        "total_amount": pj.total_amount,
+                        "print_type": pj.print_type,
+                        "print_variant": getattr(pj.print_variant, "id", None),
+                        "customize_variant": getattr(pj.customize_variant, "id", None),
+                        "add_ons": list[Any](pj.add_ons.values_list("id", flat=True)),
+                        "files": [
+                            {
+                                "file": pf.file,  # will be used directly
+                                "instructions": getattr(pf, "instructions", None),  # Instructions now at file level
+                                "number_of_copies": pf.number_of_copies,
+                                "page_count": pf.page_count,
+                                "page_numbers": pf.page_numbers,
+                            }
+                            for pf in pj.files.all()
+                        ],
+                    }
+            print_jobs_payload.append(item_print_job)
 
-            # Compute shipping using vendor DeliverySettings and distance between store and order address
-            def _to_float(val, default=None):
-                try:
-                    return float(val)
-                except Exception:
-                    return default
+            # Calculate pricing based on product type
+            if is_print_product and item_print_job:
+                # For print products: get price from variant if available, otherwise use product sales_price
+                unit_price = None
+                
+                # Check for print_variant first
+                print_variant_id = item_print_job.get("print_variant")
+                if print_variant_id:
+                    try:
+                        from vendor.models import PrintVariant
+                        print_variant = PrintVariant.objects.get(id=print_variant_id)
+                        if print_variant.price:
+                            unit_price = Decimal(str(print_variant.price))
+                    except Exception:
+                        pass
+                
+                # If no print_variant price, check customize_variant
+                if unit_price is None:
+                    customize_variant_id = item_print_job.get("customize_variant")
+                    if customize_variant_id:
+                        try:
+                            from vendor.models import CustomizePrintVariant
+                            customize_variant = CustomizePrintVariant.objects.get(id=customize_variant_id)
+                            if customize_variant.price:
+                                unit_price = Decimal(str(customize_variant.price))
+                        except Exception:
+                            pass
+                
+                # Fallback to product sales_price if no variant price found
+                if unit_price is None:
+                    unit_price = Decimal(str(product1.sales_price))
+                
+                # For print products: calculate based on total pages
+                # Total pages = sum of (page_count * number_of_copies) for all files
+                total_pages = Decimal("0")
+                files_data = item_print_job.get("files", [])
+                for file_data in files_data:
+                    page_count = Decimal(str(file_data.get("page_count", 0)))
+                    number_of_copies = Decimal(str(file_data.get("number_of_copies", 1)))
+                    total_pages += page_count * number_of_copies
+                
+                # Use variant price (or product sales_price) per page * total_pages
+                line_total = unit_price * total_pages
+            else:
+                # For regular products: use sales_price * quantity
+                unit_price = Decimal(str(product1.sales_price))
+                line_total = unit_price * quantity
+            
+            item_total += line_total
 
-            # Determine vendor (assumes all items from one vendor; fallbacks to first item's vendor)
-            vendor_user = None
-            if order_items:
-                vendor_user = order_items[0].product.user
+            # Add GST to tax_total only if product price is NOT tax inclusive
+            try:
+                gst_rate = Decimal(str(getattr(product1, "gst", 0) or 0))
+            except Exception:
+                gst_rate = Decimal("0")
+            if not getattr(product1, "tax_inclusive", False) and gst_rate > 0:
+                line_tax = (line_total * gst_rate / Decimal("100"))
+                # Round to 2 decimals for currency
+                line_tax = line_tax.quantize(Decimal("0.01"))
+                tax_total += line_tax
 
-            # Resolve address from validated_data
-            addr = validated_data.get("address")
-            delivery_type = validated_data.get("delivery_type") or "self_pickup"
-            shipping_fee = Decimal("0.00")
-            if vendor_user:
-                # Load settings once
-                ds = DeliverySettings.objects.filter(user=vendor_user).only(
-                    "general_delivery_charge", "instant_per_km_charge", "instant_min_base_fare"
-                ).first()
-                if delivery_type == "general_delivery":
-                    # Flat general delivery charge
-                    shipping_fee = Decimal(str(getattr(ds, "general_delivery_charge", 50.00)))
-                elif delivery_type == "instant_delivery":
-                    base_fare = Decimal(str(getattr(ds, "instant_min_base_fare", 30.00)))
-                    per_km = Decimal(str(getattr(ds, "instant_per_km_charge", 10.00)))
+            # Store the calculated unit_price (variant price for print products, sales_price for regular)
+            order_items.append(
+                OrderItem(
+                    product=product1,
+                    quantity=quantity,
+                    price=unit_price,
+                )
+            )
 
-                    # Need coordinates to compute distance; if missing, fall back to base fare
-                    dist_km = None
-                    if addr:
-                        # vendor store coords
-                        store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
-                        lat1 = _to_float(getattr(store, "latitude", None)) if store else None
-                        lon1 = _to_float(getattr(store, "longitude", None)) if store else None
-                        # customer address coords
-                        lat2 = _to_float(getattr(addr, "latitude", None))
-                        lon2 = _to_float(getattr(addr, "longitude", None))
+        # generate order_id
+        # order_id will be generated in Order.save() method
 
-                        if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
-                            # Haversine distance in km
-                            import math
-                            R = 6371.0
-                            dlat = math.radians(lat2 - lat1)
-                            dlon = math.radians(lon2 - lon1)
-                            a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-                            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-                            dist_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
+        # Compute shipping using vendor DeliverySettings and distance between store and order address
+        def _to_float(val, default=None):
+            try:
+                return float(val)
+            except Exception:
+                return default
 
-                    if dist_km is not None:
-                        calculated = (per_km * dist_km).quantize(Decimal("0.01"))
-                        shipping_fee = max(base_fare, calculated)
-                    else:
-                        shipping_fee = base_fare
+        # Determine vendor (assumes all items from one vendor; fallbacks to first item's vendor)
+        vendor_user = None
+        if order_items:
+            vendor_user = order_items[0].product.user
+
+        # Resolve address from validated_data
+        addr = validated_data.get("address")
+        delivery_type = validated_data.get("delivery_type") or "self_pickup"
+        shipping_fee = Decimal("0.00")
+        if vendor_user:
+            # Load settings once
+            ds = DeliverySettings.objects.filter(user=vendor_user).only(
+                "general_delivery_charge", "instant_per_km_charge", "instant_min_base_fare"
+            ).first()
+            if delivery_type == "general_delivery":
+                # Flat general delivery charge
+                shipping_fee = Decimal(str(getattr(ds, "general_delivery_charge", 50.00)))
+            elif delivery_type == "instant_delivery":
+                base_fare = Decimal(str(getattr(ds, "instant_min_base_fare", 30.00)))
+                per_km = Decimal(str(getattr(ds, "instant_per_km_charge", 10.00)))
+
+                # Need coordinates to compute distance; if missing, fall back to base fare
+                dist_km = None
+                if addr:
+                    # vendor store coords
+                    store = vendor_store.objects.filter(user=vendor_user).only("latitude", "longitude").first()
+                    lat1 = _to_float(getattr(store, "latitude", None)) if store else None
+                    lon1 = _to_float(getattr(store, "longitude", None)) if store else None
+                    # customer address coords
+                    lat2 = _to_float(getattr(addr, "latitude", None))
+                    lon2 = _to_float(getattr(addr, "longitude", None))
+
+                    if lat1 is not None and lon1 is not None and lat2 is not None and lon2 is not None:
+                        # Haversine distance in km
+                        import math
+                        R = 6371.0
+                        dlat = math.radians(lat2 - lat1)
+                        dlon = math.radians(lon2 - lon1)
+                        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+                        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                        dist_km = Decimal(str(R * c)).quantize(Decimal("0.01"))
+
+                if dist_km is not None:
+                    calculated = (per_km * dist_km).quantize(Decimal("0.01"))
+                    shipping_fee = max(base_fare, calculated)
                 else:
-                    # self_pickup or on_shop_order => no shipping
-                    shipping_fee = Decimal("0.00")
+                    shipping_fee = base_fare
+            else:
+                # self_pickup or on_shop_order => no shipping
+                shipping_fee = Decimal("0.00")
 
-            # ensure shipping fee in validated_data reflects computed value
-            validated_data["shipping_fee"] = shipping_fee
+        # ensure shipping fee in validated_data reflects computed value
+        validated_data["shipping_fee"] = shipping_fee
 
-            # convert values from validated_data to Decimal safely
-            coupon = Decimal(str(validated_data.get("coupon", 0)))
+        # convert values from validated_data to Decimal safely
+        coupon = Decimal(str(validated_data.get("coupon", 0)))
 
-            # Check and apply delivery discount if vendor has it enabled
-            delivery_discount_amount = Decimal("0.00")
-            if vendor_user and shipping_fee > 0:
-                try:
-                    from vendor.models import DeliveryDiscount
-                    delivery_discount = DeliveryDiscount.objects.filter(user=vendor_user).first()
-                    if delivery_discount and delivery_discount.is_enabled:
-                        # Check if cart value meets minimum requirement
-                        if item_total >= Decimal(str(delivery_discount.min_cart_value)):
-                            # Calculate discount on shipping fee
-                            discount_percent = Decimal(str(delivery_discount.discount_percent))
-                            delivery_discount_amount = (shipping_fee * discount_percent / Decimal("100")).quantize(Decimal("0.01"))
-                except Exception:
-                    # If any error, continue without discount
-                    pass
+        # Check and apply delivery discount if vendor has it enabled
+        delivery_discount_amount = Decimal("0.00")
+        if vendor_user and shipping_fee > 0:
+            try:
+                from vendor.models import DeliveryDiscount
+                delivery_discount = DeliveryDiscount.objects.filter(user=vendor_user).first()
+                if delivery_discount and delivery_discount.is_enabled:
+                    # Check if cart value meets minimum requirement
+                    if item_total >= Decimal(str(delivery_discount.min_cart_value)):
+                        # Calculate discount on shipping fee
+                        discount_percent = Decimal(str(delivery_discount.discount_percent))
+                        delivery_discount_amount = (shipping_fee * discount_percent / Decimal("100")).quantize(Decimal("0.01"))
+            except Exception:
+                # If any error, continue without discount
+                pass
 
             # calculate final total (subtract delivery discount from shipping fee)
             total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount

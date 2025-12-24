@@ -70,7 +70,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         delivery_type = request.data.get("delivery_type") or "self_pickup"
         if delivery_type == "instant_delivery":
             # Only instant_delivery needs rider check (and only if auto_assign is enabled)
-            # Build a lightweight order-like object for serviceability check
+        # Build a lightweight order-like object for serviceability check
             temp_order = SimpleNamespace(
                 order_id="TEMP",
                 address=addr,

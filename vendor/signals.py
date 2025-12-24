@@ -289,13 +289,13 @@ def sale_ledger(sender, instance, created, **kwargs):
         target_amt = instance.advance_amount or Decimal(0)
         if target_amt > 0:
             create_ledger(
-                instance.advance_bank,
-                BankLedger,
-                "sale",
-                instance.id,
-                target_amt,
+            instance.advance_bank,
+            BankLedger,
+            "sale",
+            instance.id,
+            target_amt,
                 f"Sale #{instance.id} (Bank Advance)"
-            )
+        )
 
     # Cash ledger → handles:
     # 1. Direct cash sales (payment_method == "cash")

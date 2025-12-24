@@ -917,16 +917,16 @@ class SaleSerializer(serializers.ModelSerializer):
                     **item
                 )
 
-            # Totals
-            self._recalculate_totals(sale)
-
-            # Wholesale
+            # Wholesale - create before recalculating totals so charges are included
             if sale.is_wholesale_rate and wholesale_data:
                 pos_wholesale.objects.create(
                     user=sale.user,
                     sale=sale,
                     **wholesale_data
                 )
+
+            # Totals - recalculate after wholesale is created
+            self._recalculate_totals(sale)
 
         return sale
 
@@ -950,10 +950,7 @@ class SaleSerializer(serializers.ModelSerializer):
                     **item
                 )
 
-        # Recalculate totals
-        self._recalculate_totals(instance)
-
-        # Wholesale
+        # Wholesale - update before recalculating totals so charges are included
         if instance.is_wholesale_rate and wholesale_data is not None:
             invoice, _ = pos_wholesale.objects.get_or_create(
                 user=instance.user, sale=instance
@@ -961,6 +958,9 @@ class SaleSerializer(serializers.ModelSerializer):
             for attr, value in wholesale_data.items():
                 setattr(invoice, attr, value)
             invoice.save()
+
+        # Recalculate totals - recalculate after wholesale is updated
+        self._recalculate_totals(instance)
 
         return instance
 
