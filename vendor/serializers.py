@@ -869,6 +869,9 @@ class SaleSerializer(serializers.ModelSerializer):
     company_profile_detials = CompanyProfileSerializer(source="company_profile", read_only=True)
     customer_detials = vendor_customers_serializer(source="customer", read_only=True)
     advance_bank_details = vendor_bank_serializer(source="advance_bank", read_only=True)
+    
+    # Explicitly define advance_payment_method to ensure it's always included in response
+    advance_payment_method = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     total_items = serializers.IntegerField(read_only=True)
     total_amount_before_discount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
