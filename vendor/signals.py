@@ -283,25 +283,29 @@ def sale_ledger(sender, instance, created, **kwargs):
                 f"Sale #{instance.id}"
             )
 
-    # Bank ledger → target is advance_amount when bank is set
-    if instance.advance_bank:
+    # Bank ledger → for credit sales with bank advance payment
+    # Only create if advance_payment_method is "bank" AND advance_bank is set
+    if instance.payment_method == "credit" and instance.advance_payment_method == "bank" and instance.advance_bank:
         target_amt = instance.advance_amount or Decimal(0)
-        create_ledger(
-            instance.advance_bank,
-            BankLedger,
-            "sale",
-            instance.id,
-            target_amt,
-            f"Sale #{instance.id}"
-        )
+        if target_amt > 0:
+            create_ledger(
+                instance.advance_bank,
+                BankLedger,
+                "sale",
+                instance.id,
+                target_amt,
+                f"Sale #{instance.id} (Bank Advance)"
+            )
 
     # Cash ledger → handles:
     # 1. Direct cash sales (payment_method == "cash")
     # 2. Credit sales with cash advance (advance_payment_method == "cash")
     cash_amount = Decimal(0)
     if instance.payment_method == "cash":
+        # Full amount goes to cash for direct cash sales
         cash_amount = instance.total_amount or Decimal(0)
     elif instance.payment_method == "credit" and instance.advance_payment_method == "cash":
+        # Only advance amount goes to cash for credit sales with cash advance
         cash_amount = instance.advance_amount or Decimal(0)
     
     if cash_amount > 0 and instance.user is not None:
