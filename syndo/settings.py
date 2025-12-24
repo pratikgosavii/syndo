@@ -130,6 +130,12 @@ LOGGING = {
             "filename": os.path.join(LOG_DIR, "webhook.log"),
             "formatter": "verbose",
         },
+        "signals_file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(LOG_DIR, "signals.log"),
+            "formatter": "verbose",
+        },
         # Optional console handler (so you also see logs in terminal)
         "console": {
             "class": "logging.StreamHandler",
@@ -163,8 +169,8 @@ LOGGING = {
             "propagate": False,
         },
         "vendor.signals": {
-            "handlers": ["request_file", "console"],
-            "level": "INFO",
+            "handlers": ["signals_file", "console"],
+            "level": "DEBUG",
             "propagate": False,
         },
         "customer.serializers": {

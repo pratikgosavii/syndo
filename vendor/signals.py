@@ -66,6 +66,10 @@ from django.db.models.signals import post_save, post_delete, pre_delete
 from django.db.models import Sum
 from django.db import transaction
 from django.dispatch import receiver
+import logging
+
+# Get logger for signals
+logger = logging.getLogger('vendor.signals')
 
 # -------------------------------
 # LEDGER CREATION HELPER
@@ -74,42 +78,42 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
     """
     Generic ledger creation function that ensures all balances and amounts are handled as Decimal.
     """
-    print(f"[CREATE_LEDGER] Called for {ledger_model.__name__}")
-    print(f"[CREATE_LEDGER] Parent: {parent}")
-    print(f"[CREATE_LEDGER] Transaction Type: {transaction_type}")
-    print(f"[CREATE_LEDGER] Reference ID: {reference_id}")
-    print(f"[CREATE_LEDGER] Amount: {amount}")
-    print(f"[CREATE_LEDGER] Description: {description}")
-    print(f"[CREATE_LEDGER] User: {user}")
+    logger.debug(f"[CREATE_LEDGER] Called for {ledger_model.__name__}")
+    logger.debug(f"[CREATE_LEDGER] Parent: {parent}")
+    logger.debug(f"[CREATE_LEDGER] Transaction Type: {transaction_type}")
+    logger.debug(f"[CREATE_LEDGER] Reference ID: {reference_id}")
+    logger.debug(f"[CREATE_LEDGER] Amount: {amount}")
+    logger.debug(f"[CREATE_LEDGER] Description: {description}")
+    logger.debug(f"[CREATE_LEDGER] User: {user}")
     
     # Refresh parent from database to get latest balance (important after reset operations)
     if parent:
         parent.refresh_from_db()
         opening_balance = Decimal(parent.balance or 0)
-        print(f"[CREATE_LEDGER] Parent balance (from DB): {opening_balance}")
+        logger.debug(f"[CREATE_LEDGER] Parent balance (from DB): {opening_balance}")
     else:
         opening_balance = Decimal(0)   # >>> updated to support CashLedger
-        print(f"[CREATE_LEDGER] No parent (CashLedger) - opening balance: {opening_balance}")
+        logger.debug(f"[CREATE_LEDGER] No parent (CashLedger) - opening balance: {opening_balance}")
     
     amount = Decimal(amount or 0)
     balance_after = opening_balance + amount
-    print(f"[CREATE_LEDGER] Amount (Decimal): {amount}")
-    print(f"[CREATE_LEDGER] Balance After: {balance_after}")
+    logger.debug(f"[CREATE_LEDGER] Amount (Decimal): {amount}")
+    logger.debug(f"[CREATE_LEDGER] Balance After: {balance_after}")
 
     # Convert Decimal to integer for BigIntegerField
     amount_int = int(amount)
     opening_balance_int = int(opening_balance)
     balance_after_int = int(balance_after)
-    print(f"[CREATE_LEDGER] Amount (int): {amount_int}")
-    print(f"[CREATE_LEDGER] Opening Balance (int): {opening_balance_int}")
-    print(f"[CREATE_LEDGER] Balance After (int): {balance_after_int}")
+    logger.debug(f"[CREATE_LEDGER] Amount (int): {amount_int}")
+    logger.debug(f"[CREATE_LEDGER] Opening Balance (int): {opening_balance_int}")
+    logger.debug(f"[CREATE_LEDGER] Balance After (int): {balance_after_int}")
 
     # >>> NEW : Special case for CashLedger (no FK field)
     if ledger_model.__name__ == "CashLedger":
-        print("[CREATE_LEDGER] Processing CashLedger...")
+        logger.debug("[CREATE_LEDGER] Processing CashLedger...")
         # Guard: require user to attribute cash ledger entries
         if user is None:
-            print("[CREATE_LEDGER] ✗ User is None - returning without creating CashLedger")
+            logger.warning("[CREATE_LEDGER] ✗ User is None - returning without creating CashLedger")
             return
         # Get or create CashBalance for the user
         from .models import CashBalance
@@ -117,8 +121,8 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
             user=user,
             defaults={'balance': Decimal('0.00')}
         )
-        print(f"[CREATE_LEDGER] CashBalance {'created' if created else 'retrieved'}: {cash_balance}")
-        print(f"[CREATE_LEDGER] CashBalance balance: {cash_balance.balance}")
+        logger.debug(f"[CREATE_LEDGER] CashBalance {'created' if created else 'retrieved'}: {cash_balance}")
+        logger.debug(f"[CREATE_LEDGER] CashBalance balance: {cash_balance.balance}")
         
         # Update opening balance from actual cash balance
         opening_balance = Decimal(cash_balance.balance or 0)
@@ -127,17 +131,17 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
         # Convert to int for BigIntegerField
         opening_balance_int = int(opening_balance)
         balance_after_int = int(balance_after)
-        print(f"[CREATE_LEDGER] Updated Opening Balance: {opening_balance_int}")
-        print(f"[CREATE_LEDGER] Updated Balance After: {balance_after_int}")
+        logger.debug(f"[CREATE_LEDGER] Updated Opening Balance: {opening_balance_int}")
+        logger.debug(f"[CREATE_LEDGER] Updated Balance After: {balance_after_int}")
         
-        print(f"[CREATE_LEDGER] Creating CashLedger entry with data:")
-        print(f"[CREATE_LEDGER]   - user: {user} (ID: {user.id})")
-        print(f"[CREATE_LEDGER]   - transaction_type: {transaction_type}")
-        print(f"[CREATE_LEDGER]   - reference_id: {reference_id}")
-        print(f"[CREATE_LEDGER]   - description: {description}")
-        print(f"[CREATE_LEDGER]   - opening_balance: {opening_balance_int}")
-        print(f"[CREATE_LEDGER]   - amount: {amount_int}")
-        print(f"[CREATE_LEDGER]   - balance_after: {balance_after_int}")
+        logger.debug(f"[CREATE_LEDGER] Creating CashLedger entry with data:")
+        logger.debug(f"[CREATE_LEDGER]   - user: {user} (ID: {user.id})")
+        logger.debug(f"[CREATE_LEDGER]   - transaction_type: {transaction_type}")
+        logger.debug(f"[CREATE_LEDGER]   - reference_id: {reference_id}")
+        logger.debug(f"[CREATE_LEDGER]   - description: {description}")
+        logger.debug(f"[CREATE_LEDGER]   - opening_balance: {opening_balance_int}")
+        logger.debug(f"[CREATE_LEDGER]   - amount: {amount_int}")
+        logger.debug(f"[CREATE_LEDGER]   - balance_after: {balance_after_int}")
         
         try:
             ledger_entry = ledger_model.objects.create(
@@ -149,39 +153,39 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
                 amount=amount_int,
                 balance_after=balance_after_int,
             )
-            print(f"[CREATE_LEDGER] ✓✓✓ CashLedger entry created successfully ✓✓✓")
-            print(f"[CREATE_LEDGER] Ledger Entry ID: {ledger_entry.id}")
-            print(f"[CREATE_LEDGER] Ledger Entry: {ledger_entry}")
+            logger.info(f"[CREATE_LEDGER] ✓✓✓ CashLedger entry created successfully ✓✓✓")
+            logger.info(f"[CREATE_LEDGER] Ledger Entry ID: {ledger_entry.id}")
+            logger.debug(f"[CREATE_LEDGER] Ledger Entry: {ledger_entry}")
         except Exception as e:
-            print(f"[CREATE_LEDGER] ✗✗✗ ERROR creating CashLedger entry ✗✗✗")
-            print(f"[CREATE_LEDGER] Error: {str(e)}")
-            print(f"[CREATE_LEDGER] Error Type: {type(e).__name__}")
+            logger.error(f"[CREATE_LEDGER] ✗✗✗ ERROR creating CashLedger entry ✗✗✗")
+            logger.error(f"[CREATE_LEDGER] Error: {str(e)}")
+            logger.error(f"[CREATE_LEDGER] Error Type: {type(e).__name__}")
             import traceback
-            print(f"[CREATE_LEDGER] Traceback: {traceback.format_exc()}")
+            logger.error(f"[CREATE_LEDGER] Traceback: {traceback.format_exc()}")
             raise
         
         # Update cash balance
         cash_balance.balance = balance_after
         cash_balance.save()
-        print(f"[CREATE_LEDGER] ✓ CashBalance updated to: {balance_after}")
+        logger.debug(f"[CREATE_LEDGER] ✓ CashBalance updated to: {balance_after}")
     else:
-        print(f"[CREATE_LEDGER] Processing {ledger_model.__name__}...")
+        logger.debug(f"[CREATE_LEDGER] Processing {ledger_model.__name__}...")
         parent_field = ledger_model.__name__.replace("Ledger", "").lower()
-        print(f"[CREATE_LEDGER] Parent field name: {parent_field}")
-        print(f"[CREATE_LEDGER] Parent object: {parent}")
+        logger.debug(f"[CREATE_LEDGER] Parent field name: {parent_field}")
+        logger.debug(f"[CREATE_LEDGER] Parent object: {parent}")
         if parent:
-            print(f"[CREATE_LEDGER] Parent ID: {parent.id}")
+            logger.debug(f"[CREATE_LEDGER] Parent ID: {parent.id}")
             if hasattr(parent, 'bank_name'):
-                print(f"[CREATE_LEDGER] Bank Name: {parent.bank_name}")
+                logger.debug(f"[CREATE_LEDGER] Bank Name: {parent.bank_name}")
         
-        print(f"[CREATE_LEDGER] Creating {ledger_model.__name__} with data:")
-        print(f"[CREATE_LEDGER]   - {parent_field}: {parent}")
-        print(f"[CREATE_LEDGER]   - transaction_type: {transaction_type}")
-        print(f"[CREATE_LEDGER]   - reference_id: {reference_id}")
-        print(f"[CREATE_LEDGER]   - description: {description}")
-        print(f"[CREATE_LEDGER]   - opening_balance: {opening_balance_int}")
-        print(f"[CREATE_LEDGER]   - amount: {amount_int}")
-        print(f"[CREATE_LEDGER]   - balance_after: {balance_after_int}")
+        logger.debug(f"[CREATE_LEDGER] Creating {ledger_model.__name__} with data:")
+        logger.debug(f"[CREATE_LEDGER]   - {parent_field}: {parent}")
+        logger.debug(f"[CREATE_LEDGER]   - transaction_type: {transaction_type}")
+        logger.debug(f"[CREATE_LEDGER]   - reference_id: {reference_id}")
+        logger.debug(f"[CREATE_LEDGER]   - description: {description}")
+        logger.debug(f"[CREATE_LEDGER]   - opening_balance: {opening_balance_int}")
+        logger.debug(f"[CREATE_LEDGER]   - amount: {amount_int}")
+        logger.debug(f"[CREATE_LEDGER]   - balance_after: {balance_after_int}")
         
         try:
             ledger_entry = ledger_model.objects.create(
@@ -195,26 +199,26 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
                     "balance_after": balance_after_int,
                 }
             )
-            print(f"[CREATE_LEDGER] ✓✓✓ {ledger_model.__name__} entry created successfully ✓✓✓")
-            print(f"[CREATE_LEDGER] Ledger Entry ID: {ledger_entry.id}")
-            print(f"[CREATE_LEDGER] Ledger Entry: {ledger_entry}")
+            logger.info(f"[CREATE_LEDGER] ✓✓✓ {ledger_model.__name__} entry created successfully ✓✓✓")
+            logger.info(f"[CREATE_LEDGER] Ledger Entry ID: {ledger_entry.id}")
+            logger.debug(f"[CREATE_LEDGER] Ledger Entry: {ledger_entry}")
         except Exception as e:
-            print(f"[CREATE_LEDGER] ✗✗✗ ERROR creating {ledger_model.__name__} entry ✗✗✗")
-            print(f"[CREATE_LEDGER] Error: {str(e)}")
-            print(f"[CREATE_LEDGER] Error Type: {type(e).__name__}")
+            logger.error(f"[CREATE_LEDGER] ✗✗✗ ERROR creating {ledger_model.__name__} entry ✗✗✗")
+            logger.error(f"[CREATE_LEDGER] Error: {str(e)}")
+            logger.error(f"[CREATE_LEDGER] Error Type: {type(e).__name__}")
             import traceback
-            print(f"[CREATE_LEDGER] Traceback: {traceback.format_exc()}")
+            logger.error(f"[CREATE_LEDGER] Traceback: {traceback.format_exc()}")
             raise
 
         # Update parent balance (bank, customer, vendor)
-        print(f"[CREATE_LEDGER] Updating parent balance...")
-        print(f"[CREATE_LEDGER] Old balance: {parent.balance}")
+        logger.debug(f"[CREATE_LEDGER] Updating parent balance...")
+        logger.debug(f"[CREATE_LEDGER] Old balance: {parent.balance}")
         parent.balance = balance_after_int
         parent.save()
-        print(f"[CREATE_LEDGER] ✓ Parent balance updated to: {balance_after_int}")
-        print(f"[CREATE_LEDGER] New balance (from DB): {parent.balance}")
+        logger.debug(f"[CREATE_LEDGER] ✓ Parent balance updated to: {balance_after_int}")
+        logger.debug(f"[CREATE_LEDGER] New balance (from DB): {parent.balance}")
     
-    print(f"[CREATE_LEDGER] Function completed successfully")
+    logger.debug(f"[CREATE_LEDGER] Function completed successfully")
 
 
 # -------------------------------
@@ -306,54 +310,55 @@ def sale_ledger(sender, instance, created, **kwargs):
     Signal handler for Sale model to create ledger entries.
     Wrapped in transaction.atomic() to prevent database locks in SQLite.
     """
-    print("=" * 80)
-    print(f"[SALE_LEDGER] Signal triggered for Sale ID: {instance.id}")
-    print(f"[SALE_LEDGER] Created: {created}")
-    print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-    print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
-    print(f"[SALE_LEDGER] Advance Amount: {instance.advance_amount}")
-    print(f"[SALE_LEDGER] Advance Payment Amount: {instance.advance_payment_amount}")
-    print(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
-    print(f"[SALE_LEDGER] Total Amount: {instance.total_amount}")
-    print(f"[SALE_LEDGER] Balance Amount: {instance.balance_amount}")
-    print(f"[SALE_LEDGER] User: {instance.user}")
-    print(f"[SALE_LEDGER] Customer: {instance.customer}")
-    
-    # Check if this is a credit sale with cash advance
-    if instance.payment_method == "credit" and instance.advance_payment_method == "cash":
-        print("=" * 80)
-        print("[SALE_LEDGER] *** CREDIT SALE WITH CASH ADVANCE DETECTED ***")
-        print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-        print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
-        print(f"[SALE_LEDGER] Advance Amount: {instance.advance_amount}")
-        print(f"[SALE_LEDGER] Advance Payment Amount: {instance.advance_payment_amount}")
-        print(f"[SALE_LEDGER] User: {instance.user}")
-        print("=" * 80)
-    
-    # Check if this is a credit sale with bank advance
-    if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
-        print("=" * 80)
-        print("[SALE_LEDGER] *** CREDIT SALE WITH BANK ADVANCE DETECTED ***")
-        print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-        print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
-        print(f"[SALE_LEDGER] Advance Amount: {instance.advance_amount}")
-        print(f"[SALE_LEDGER] Advance Payment Amount: {instance.advance_payment_amount}")
-        print(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
-        print("=" * 80)
-    
-    # Wrap all database operations in a transaction to reduce lock time
-    with transaction.atomic():
-        # Refresh instance from database to ensure we have latest values, especially for related fields
-        instance.refresh_from_db()
-        print("[SALE_LEDGER] Instance refreshed from database")
+    try:
+        logger.info("=" * 80)
+        logger.info(f"[SALE_LEDGER] Signal triggered for Sale ID: {instance.id}")
+        logger.info(f"[SALE_LEDGER] Created: {created}")
+        logger.info(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+        logger.info(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+        logger.info(f"[SALE_LEDGER] Advance Amount: {instance.advance_amount}")
+        logger.info(f"[SALE_LEDGER] Advance Payment Amount: {instance.advance_payment_amount}")
+        logger.info(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
+        logger.info(f"[SALE_LEDGER] Total Amount: {instance.total_amount}")
+        logger.info(f"[SALE_LEDGER] Balance Amount: {instance.balance_amount}")
+        logger.info(f"[SALE_LEDGER] User: {instance.user}")
+        logger.info(f"[SALE_LEDGER] Customer: {instance.customer}")
         
-        # Delete old entries for this reference to ensure clean updates
-        # This prevents confusion from multiple entries (original + reversals + new)
-        print("[SALE_LEDGER] Deleting old ledger entries...")
-        CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-        BankLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-        CashLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-        print("[SALE_LEDGER] Old ledger entries deleted")
+        # Check if this is a credit sale with cash advance
+        if instance.payment_method == "credit" and instance.advance_payment_method == "cash":
+            logger.info("=" * 80)
+            logger.info("[SALE_LEDGER] *** CREDIT SALE WITH CASH ADVANCE DETECTED ***")
+            logger.info(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+            logger.info(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+            logger.info(f"[SALE_LEDGER] Advance Amount: {instance.advance_amount}")
+            logger.info(f"[SALE_LEDGER] Advance Payment Amount: {instance.advance_payment_amount}")
+            logger.info(f"[SALE_LEDGER] User: {instance.user}")
+            logger.info("=" * 80)
+        
+        # Check if this is a credit sale with bank advance
+        if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
+            logger.info("=" * 80)
+            logger.info("[SALE_LEDGER] *** CREDIT SALE WITH BANK ADVANCE DETECTED ***")
+            logger.info(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+            logger.info(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+            logger.info(f"[SALE_LEDGER] Advance Amount: {instance.advance_amount}")
+            logger.info(f"[SALE_LEDGER] Advance Payment Amount: {instance.advance_payment_amount}")
+            logger.info(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
+            logger.info("=" * 80)
+        
+        # Wrap all database operations in a transaction to reduce lock time
+        with transaction.atomic():
+            # Refresh instance from database to ensure we have latest values, especially for related fields
+            instance.refresh_from_db()
+            logger.info("[SALE_LEDGER] Instance refreshed from database")
+            
+            # Delete old entries for this reference to ensure clean updates
+            # This prevents confusion from multiple entries (original + reversals + new)
+            logger.debug("[SALE_LEDGER] Deleting old ledger entries...")
+            CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+            BankLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+            CashLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+            logger.debug("[SALE_LEDGER] Old ledger entries deleted")
 
         # Recalculate balances from ALL remaining ledger entries (not just this transaction)
         # This ensures balances are correct before creating new entries
@@ -441,64 +446,64 @@ def sale_ledger(sender, instance, created, **kwargs):
                 customer.save()
 
             # Bank ledger → for credit sales with bank advance payment
-        # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
-        print("[SALE_LEDGER] Checking bank ledger creation...")
-        print(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
-        print(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
-        print(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
-        
-        if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
-            print("[SALE_LEDGER] ✓ Credit sale with bank advance detected")
-        # Check both advance_amount and advance_payment_amount fields
-        advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
-        print(f"[SALE_LEDGER] Advance Amount (from advance_amount): {instance.advance_amount}")
-        print(f"[SALE_LEDGER] Advance Amount (from advance_payment_amount): {instance.advance_payment_amount}")
-        print(f"[SALE_LEDGER] Calculated Advance Amount: {advance_amt}")
-        print(f"[SALE_LEDGER] Advance Amount > 0: {advance_amt > 0}")
-        print(f"[SALE_LEDGER] Advance Bank exists: {instance.advance_bank is not None}")
-        
-        if advance_amt > 0 and instance.advance_bank:
-            print("=" * 80)
-            print("[SALE_LEDGER] >>>>>> CREATING BANK LEDGER ENTRY <<<<<<")
-            print(f"[SALE_LEDGER] Bank: {instance.advance_bank} (ID: {instance.advance_bank.id})")
-            print(f"[SALE_LEDGER] Bank Name: {instance.advance_bank.bank_name if hasattr(instance.advance_bank, 'bank_name') else 'N/A'}")
-            print(f"[SALE_LEDGER] Amount: {advance_amt}")
-            print(f"[SALE_LEDGER] Transaction Type: sale")
-            print(f"[SALE_LEDGER] Reference ID: {instance.id}")
-            print(f"[SALE_LEDGER] Description: Sale #{instance.id} (Bank Advance)")
-            print("[SALE_LEDGER] Calling create_ledger() for BankLedger...")
-            print("=" * 80)
+            # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
+            logger.debug("[SALE_LEDGER] Checking bank ledger creation...")
+            logger.debug(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
+            logger.debug(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+            logger.debug(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
             
-            try:
-                create_ledger(
-                    instance.advance_bank,
-                    BankLedger,
-                    "sale",
-                    instance.id,
-                    advance_amt,
-                    f"Sale #{instance.id} (Bank Advance)"
-                )
-                print("=" * 80)
-                print("[SALE_LEDGER] ✓✓✓ BANK LEDGER ENTRY CREATED SUCCESSFULLY ✓✓✓")
-                print(f"[SALE_LEDGER] Bank: {instance.advance_bank}")
-                print(f"[SALE_LEDGER] Amount: {advance_amt}")
-                print("=" * 80)
-            except Exception as e:
-                print("=" * 80)
-                print(f"[SALE_LEDGER] ✗✗✗ ERROR CREATING BANK LEDGER ✗✗✗")
-                print(f"[SALE_LEDGER] Error: {str(e)}")
-                print(f"[SALE_LEDGER] Error Type: {type(e).__name__}")
-                import traceback
-                print(f"[SALE_LEDGER] Traceback: {traceback.format_exc()}")
-                print("=" * 80)
+            if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
+                logger.info("[SALE_LEDGER] ✓ Credit sale with bank advance detected")
+                # Check both advance_amount and advance_payment_amount fields
+                advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
+                logger.debug(f"[SALE_LEDGER] Advance Amount (from advance_amount): {instance.advance_amount}")
+                logger.debug(f"[SALE_LEDGER] Advance Amount (from advance_payment_amount): {instance.advance_payment_amount}")
+                logger.debug(f"[SALE_LEDGER] Calculated Advance Amount: {advance_amt}")
+                logger.debug(f"[SALE_LEDGER] Advance Amount > 0: {advance_amt > 0}")
+                logger.debug(f"[SALE_LEDGER] Advance Bank exists: {instance.advance_bank is not None}")
+                
+                if advance_amt > 0 and instance.advance_bank:
+                    logger.info("=" * 80)
+                    logger.info("[SALE_LEDGER] >>>>>> CREATING BANK LEDGER ENTRY <<<<<<")
+                    logger.info(f"[SALE_LEDGER] Bank: {instance.advance_bank} (ID: {instance.advance_bank.id})")
+                    logger.info(f"[SALE_LEDGER] Bank Name: {instance.advance_bank.bank_name if hasattr(instance.advance_bank, 'bank_name') else 'N/A'}")
+                    logger.info(f"[SALE_LEDGER] Amount: {advance_amt}")
+                    logger.info(f"[SALE_LEDGER] Transaction Type: sale")
+                    logger.info(f"[SALE_LEDGER] Reference ID: {instance.id}")
+                    logger.info(f"[SALE_LEDGER] Description: Sale #{instance.id} (Bank Advance)")
+                    logger.info("[SALE_LEDGER] Calling create_ledger() for BankLedger...")
+                    logger.info("=" * 80)
+                    
+                    try:
+                        create_ledger(
+                            instance.advance_bank,
+                            BankLedger,
+                            "sale",
+                            instance.id,
+                            advance_amt,
+                            f"Sale #{instance.id} (Bank Advance)"
+                        )
+                        logger.info("=" * 80)
+                        logger.info("[SALE_LEDGER] ✓✓✓ BANK LEDGER ENTRY CREATED SUCCESSFULLY ✓✓✓")
+                        logger.info(f"[SALE_LEDGER] Bank: {instance.advance_bank}")
+                        logger.info(f"[SALE_LEDGER] Amount: {advance_amt}")
+                        logger.info("=" * 80)
+                    except Exception as e:
+                        logger.error("=" * 80)
+                        logger.error(f"[SALE_LEDGER] ✗✗✗ ERROR CREATING BANK LEDGER ✗✗✗")
+                        logger.error(f"[SALE_LEDGER] Error: {str(e)}")
+                        logger.error(f"[SALE_LEDGER] Error Type: {type(e).__name__}")
+                        import traceback
+                        logger.error(f"[SALE_LEDGER] Traceback: {traceback.format_exc()}")
+                        logger.error("=" * 80)
+                else:
+                    logger.warning("[SALE_LEDGER] ✗ Bank ledger NOT created - conditions not met:")
+                    logger.warning(f"[SALE_LEDGER]   - Advance Amount > 0: {advance_amt > 0}")
+                    logger.warning(f"[SALE_LEDGER]   - Advance Bank exists: {instance.advance_bank is not None}")
             else:
-                print("[SALE_LEDGER] ✗ Bank ledger NOT created - conditions not met:")
-                print(f"[SALE_LEDGER]   - Advance Amount > 0: {advance_amt > 0}")
-                print(f"[SALE_LEDGER]   - Advance Bank exists: {instance.advance_bank is not None}")
-        else:
-            print("[SALE_LEDGER] ✗ Not a credit sale with bank advance")
-            print(f"[SALE_LEDGER]   - Payment Method == 'credit': {instance.payment_method == 'credit'}")
-            print(f"[SALE_LEDGER]   - Advance Payment Method == 'bank': {instance.advance_payment_method == 'bank'}")
+                logger.debug("[SALE_LEDGER] ✗ Not a credit sale with bank advance")
+                logger.debug(f"[SALE_LEDGER]   - Payment Method == 'credit': {instance.payment_method == 'credit'}")
+                logger.debug(f"[SALE_LEDGER]   - Advance Payment Method == 'bank': {instance.advance_payment_method == 'bank'}")
 
         # Cash ledger → handles:
         # 1. Direct cash sales (payment_method == "cash")
@@ -538,8 +543,10 @@ def sale_ledger(sender, instance, created, **kwargs):
         print(f"[SALE_LEDGER] User is not None: {instance.user is not None}")
         
         if cash_amount > 0 and instance.user is not None:
-            print("=" * 80)
-        print("[SALE_LEDGER] >>>>>> CREATING CASH LEDGER ENTRY <<<<<<")
+            print("=" * 80, flush=True)
+            logger.info("=" * 80)
+            print("[SALE_LEDGER] >>>>>> CREATING CASH LEDGER ENTRY <<<<<<", flush=True)
+            logger.info("[SALE_LEDGER] >>>>>> CREATING CASH LEDGER ENTRY <<<<<<")
         print(f"[SALE_LEDGER] User: {instance.user} (ID: {instance.user.id})")
         print(f"[SALE_LEDGER] Username: {instance.user.username}")
         print(f"[SALE_LEDGER] Amount: {cash_amount}")
@@ -575,14 +582,35 @@ def sale_ledger(sender, instance, created, **kwargs):
             print(f"[SALE_LEDGER] Traceback: {traceback.format_exc()}")
             print("=" * 80)
         else:
-            print("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:")
-            print(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}")
-            print(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}")
+            print("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:", flush=True)
+            logger.info("[SALE_LEDGER] ✗ Cash ledger NOT created - conditions not met:")
+            print(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}", flush=True)
+            logger.info(f"[SALE_LEDGER]   - Cash Amount > 0: {cash_amount > 0}")
+            print(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}", flush=True)
+            logger.info(f"[SALE_LEDGER]   - User is not None: {instance.user is not None}")
         
-        print("=" * 80)
-        print("[SALE_LEDGER] Signal processing completed")
-        print("=" * 80)
+        print("=" * 80, flush=True)
+        logger.info("=" * 80)
+        print("[SALE_LEDGER] Signal processing completed", flush=True)
+        logger.info("[SALE_LEDGER] Signal processing completed")
+        print("=" * 80, flush=True)
+        logger.info("=" * 80)
         # Transaction block ends here - all database operations are atomic
+    except Exception as e:
+        import traceback
+        error_msg = f"[SALE_LEDGER] ERROR IN SIGNAL: {str(e)}"
+        print("=" * 80, flush=True)
+        print(error_msg, flush=True)
+        print(f"[SALE_LEDGER] Error Type: {type(e).__name__}", flush=True)
+        print(f"[SALE_LEDGER] Traceback:", flush=True)
+        traceback_str = traceback.format_exc()
+        print(traceback_str, flush=True)
+        print("=" * 80, flush=True)
+        logger.error(error_msg)
+        logger.error(f"Error Type: {type(e).__name__}")
+        logger.error(traceback_str)
+        # Re-raise to ensure Django knows about the error
+        raise
     
 
 
