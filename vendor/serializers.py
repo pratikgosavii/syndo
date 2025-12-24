@@ -883,7 +883,6 @@ class SaleSerializer(serializers.ModelSerializer):
             'balance_amount', 'credit_date', 'is_wholesale_rate',
             'items', 'total_items', 'total_amount_before_discount',
             'discount_amount', 'total_amount', 'total_taxable_amount', 'total_gst_amount',
-            'total_sgst_amount', 'total_cgst_amount', 'total_igst_amount',
             'wholesale_invoice_details', 'wholesale_invoice', 'bank_details', 'customer_details', 'created_at'
         ]
 
@@ -977,38 +976,12 @@ class SaleSerializer(serializers.ModelSerializer):
         # Calculate GST totals from SaleItems
         total_taxable_amount = Decimal(0)
         total_gst_amount = Decimal(0)
-        total_sgst_amount = Decimal(0)
-        total_cgst_amount = Decimal(0)
-        total_igst_amount = Decimal(0)
-        
-        # Determine if CGST/SGST or IGST based on vendor and customer state
-        is_same_state = False
-        if sale.company_profile and sale.company_profile.state and sale.customer:
-            vendor_state = sale.company_profile.state.name
-            customer_state = getattr(sale.customer, 'billing_state', None) or getattr(sale.customer, 'dispatch_state', None)
-            if vendor_state and customer_state:
-                is_same_state = str(vendor_state).strip().lower() == str(customer_state).strip().lower()
         
         for item in sale.items.all():
             # Sum taxable amounts (amount field from SaleItem)
             total_taxable_amount += Decimal(item.amount or 0)
             # Sum GST amounts (tax_amount field from SaleItem)
             total_gst_amount += Decimal(item.tax_amount or 0)
-            
-            # Calculate SGST/CGST or IGST
-            if item.product:
-                gst_rate = Decimal(item.product.gst or 0)
-                item_taxable = Decimal(item.amount or 0)
-                item_gst = Decimal(item.tax_amount or 0)
-                
-                if is_same_state:
-                    # CGST + SGST (split equally)
-                    half_gst = item_gst / Decimal(2)
-                    total_sgst_amount += half_gst
-                    total_cgst_amount += half_gst
-                else:
-                    # IGST (full GST amount)
-                    total_igst_amount += item_gst
         
         # Add delivery and packaging charges from pos_wholesale if it exists
         delivery_charges = Decimal(0)
@@ -1027,9 +1000,6 @@ class SaleSerializer(serializers.ModelSerializer):
         sale.discount_amount = discount_amount
         sale.total_taxable_amount = total_taxable_amount
         sale.total_gst_amount = total_gst_amount
-        sale.total_sgst_amount = total_sgst_amount
-        sale.total_cgst_amount = total_cgst_amount
-        sale.total_igst_amount = total_igst_amount
         sale.total_amount = total_amount
         sale.balance_amount = total_amount - advance_amount
         sale.save()
