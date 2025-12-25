@@ -403,12 +403,12 @@ def sale_ledger(sender, instance, created, **kwargs):
 
             # Create new ledger entries (create_ledger will update balances automatically)
             # Customer ledger → for credit sales, store total_bill_amount and use balance_amount for balance; for others, use total_amount
-            if instance.customer:
-                total_amt = Decimal(instance.total_amount or 0)
-                balance_amt = Decimal(instance.balance_amount or 0)
-                customer = vendor_customers.objects.get(pk=instance.customer.pk)
-                
-                if instance.payment_method == 'credit' and balance_amt > 0:
+    if instance.customer:
+        total_amt = Decimal(instance.total_amount or 0)
+        balance_amt = Decimal(instance.balance_amount or 0)
+        customer = vendor_customers.objects.get(pk=instance.customer.pk)
+        
+        if instance.payment_method == 'credit' and balance_amt > 0:
                     # For credit sales: store total_bill_amount separately, but use balance_amount for balance calculation
                     customer.refresh_from_db()
                     # Opening balance = customer's opening_balance + sum of existing ledger entries
@@ -432,7 +432,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                     # Update customer balance
                     customer.balance = int(balance_after)
                     customer.save()
-                else:
+        else:
                     # For non-credit sales, total_bill_amount equals amount (fully paid)
                     customer.refresh_from_db()
                     # Opening balance = customer's opening_balance + sum of existing ledger entries
@@ -488,10 +488,10 @@ def sale_ledger(sender, instance, created, **kwargs):
                     
                     try:
                         create_ledger(
-                            instance.advance_bank,
-                            BankLedger,
-                            "sale",
-                            instance.id,
+            instance.advance_bank,
+            BankLedger,
+            "sale",
+            instance.id,
                             advance_amt,
                             f"Sale #{instance.id} (Bank Advance)"
                         )
@@ -570,14 +570,14 @@ def sale_ledger(sender, instance, created, **kwargs):
                 
                 try:
                     create_ledger(
-                        None,
-                        CashLedger,
-                        "sale",
-                        instance.id,
+            None,
+            CashLedger,
+            "sale",
+            instance.id,
                         cash_amount,
                         description,
-                        user=instance.user
-                    )
+            user=instance.user
+        )
                     logger.info("=" * 80)
                     logger.info("[SALE_LEDGER] ✓✓✓ CASH LEDGER ENTRY CREATED SUCCESSFULLY ✓✓✓")
                     logger.info(f"[SALE_LEDGER] User: {instance.user}")
@@ -820,12 +820,13 @@ def payment_ledger(sender, instance, created, **kwargs):
 
         if instance.vendor:
             vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-            remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+            ledger_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
                 total=Sum('amount')
             )['total'] or 0
-            vendor.balance = int(remaining_total)
+            # Vendor balance = opening_balance + sum of ledger entries
+            vendor.balance = int(Decimal(vendor.opening_balance or 0) + Decimal(ledger_total))
             vendor.save(update_fields=['balance'])
-            logger.debug(f"[PAYMENT_LEDGER] Vendor balance recalculated: {vendor.balance}")
+            logger.debug(f"[PAYMENT_LEDGER] Vendor balance recalculated: {vendor.balance} (opening: {vendor.opening_balance}, ledger: {ledger_total})")
 
         # Customer ledger
         if instance.customer:
@@ -878,9 +879,25 @@ def payment_ledger(sender, instance, created, **kwargs):
         # Vendor ledger
         if instance.vendor:
             vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+            vendor.refresh_from_db()
+            
+            # Get existing ledger entries to check if this is the first one
+            existing_ledgers = VendorLedger.objects.filter(vendor=vendor)
+            is_first_ledger = not existing_ledgers.exists()
             
             if instance.type == "gave":
                 # You gave payment to vendor - vendor balance INCREASES
+                # Ledger entry should be negative to decrease what you owe (vendor balance increases)
+                logger.info(f"[PAYMENT_LEDGER] Creating vendor ledger for GAVE payment")
+                logger.info(f"[PAYMENT_LEDGER] Is first ledger: {is_first_ledger}")
+                logger.info(f"[PAYMENT_LEDGER] Vendor opening_balance: {vendor.opening_balance}")
+                
+                # Calculate opening balance for this ledger entry
+                ledger_total_before = VendorLedger.objects.filter(vendor=vendor).aggregate(
+                    total=Sum('amount')
+                )['total'] or 0
+                opening_balance_for_entry = Decimal(vendor.opening_balance or 0) + Decimal(ledger_total_before)
+                
                 create_ledger(
                     vendor,
                     VendorLedger,
@@ -892,6 +909,11 @@ def payment_ledger(sender, instance, created, **kwargs):
                 logger.info(f"[PAYMENT_LEDGER] Vendor ledger created with amount: -{amt}")
             elif instance.type == "received":
                 # Vendor gave you refund - vendor balance DECREASES
+                # Ledger entry should be positive to increase what you owe (vendor balance decreases)
+                logger.info(f"[PAYMENT_LEDGER] Creating vendor ledger for RECEIVED payment (refund)")
+                logger.info(f"[PAYMENT_LEDGER] Is first ledger: {is_first_ledger}")
+                logger.info(f"[PAYMENT_LEDGER] Vendor opening_balance: {vendor.opening_balance}")
+                
                 create_ledger(
                     vendor,
                     VendorLedger,
