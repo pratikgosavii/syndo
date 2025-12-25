@@ -620,90 +620,179 @@ def sale_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
-    # Delete old entries for this reference to ensure clean updates
-    VendorLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
-    BankLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
-    CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+    logger.info("=" * 80)
+    logger.info(f"[PURCHASE_LEDGER] Signal triggered for Purchase ID: {instance.id}")
+    logger.info(f"[PURCHASE_LEDGER] Created: {created}")
+    logger.info(f"[PURCHASE_LEDGER] Payment Method: {instance.payment_method}")
+    logger.info(f"[PURCHASE_LEDGER] Advance Mode: {instance.advance_mode}")
+    logger.info(f"[PURCHASE_LEDGER] Advance Amount: {instance.advance_amount}")
+    logger.info(f"[PURCHASE_LEDGER] Advance Bank: {instance.advance_bank}")
+    logger.info(f"[PURCHASE_LEDGER] Total Amount: {instance.total_amount}")
+    logger.info(f"[PURCHASE_LEDGER] Balance Amount: {instance.balance_amount}")
+    logger.info(f"[PURCHASE_LEDGER] User: {instance.user}")
+    logger.info(f"[PURCHASE_LEDGER] Vendor: {instance.vendor}")
+    logger.info("=" * 80)
 
-    # Recalculate balances from ALL remaining ledger entries
-    if instance.vendor:
-        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        vendor.balance = int(remaining_total)
-        vendor.save(update_fields=['balance'])
-
-    if instance.advance_bank:
-        bank = instance.advance_bank
-        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        bank.balance = int(remaining_total)
-        bank.save(update_fields=['balance'])
-
-    if instance.user:
-        from .models import CashBalance
-        cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
-        remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        cash_balance.balance = Decimal(remaining_total or 0)
-        cash_balance.save()
-
-    # Create new ledger entries
-    if instance.vendor:
-        total_amt = Decimal(instance.total_amount or 0)
-        balance_amt = Decimal(instance.balance_amount or 0)
-        vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+    # Wrap all database operations in a transaction
+    with transaction.atomic():
+        # Refresh instance from database to ensure we have latest values
+        instance.refresh_from_db()
+        logger.debug("[PURCHASE_LEDGER] Instance refreshed from database")
         
-        if instance.payment_method == 'credit' and balance_amt > 0:
-            # For credit purchases, use balance_amount (amount still owed)
-            create_ledger(
-                vendor,
-                VendorLedger,
+        # Delete old entries for this reference to ensure clean updates
+        logger.debug("[PURCHASE_LEDGER] Deleting old ledger entries...")
+        VendorLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+        BankLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+        CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+        logger.debug("[PURCHASE_LEDGER] Old ledger entries deleted")
+
+        # Recalculate balances from ALL remaining ledger entries
+        if instance.vendor:
+            vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+            ledger_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            # Vendor balance = opening_balance + sum of ledger entries
+            vendor.balance = int(Decimal(vendor.opening_balance or 0) + Decimal(ledger_total))
+            vendor.save(update_fields=['balance'])
+            logger.debug(f"[PURCHASE_LEDGER] Vendor balance recalculated: {vendor.balance} (opening: {vendor.opening_balance}, ledger: {ledger_total})")
+
+        if instance.user:
+            from .models import CashBalance
+            cash_balance, _ = CashBalance.objects.get_or_create(user=instance.user)
+            remaining_total = CashLedger.objects.filter(user=instance.user).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            cash_balance.balance = Decimal(remaining_total or 0)
+            cash_balance.save()
+            logger.debug(f"[PURCHASE_LEDGER] Cash balance recalculated: {cash_balance.balance}")
+
+        # Recalculate bank balances if needed
+        if instance.advance_bank:
+            bank = instance.advance_bank
+            remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            bank.balance = int(remaining_total)
+            bank.save(update_fields=['balance'])
+            logger.debug(f"[PURCHASE_LEDGER] Bank balance recalculated: {bank.balance}")
+
+        # Create vendor ledger entry
+        if instance.vendor:
+            total_amt = Decimal(instance.total_amount or 0)
+            balance_amt = Decimal(instance.balance_amount or 0)
+            vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
+            
+            if instance.payment_method == 'credit' and balance_amt > 0:
+                # For credit purchases, use balance_amount (amount still owed)
+                logger.info(f"[PURCHASE_LEDGER] Creating vendor ledger for CREDIT purchase")
+                create_ledger(
+                    vendor,
+                    VendorLedger,
+                    "purchase",
+                    instance.id,
+                    balance_amt,
+                    f"Purchase #{instance.id} (Credit)"
+                )
+                logger.info(f"[PURCHASE_LEDGER] Vendor ledger created with amount: {balance_amt}")
+            else:
+                # For cash/UPI/cheque purchases, use total_amount (includes all charges)
+                # total_amount already includes: items + delivery_shipping_charges + packaging_charges
+                logger.info(f"[PURCHASE_LEDGER] Creating vendor ledger for {instance.payment_method.upper()} purchase")
+                create_ledger(
+                    vendor,
+                    VendorLedger,
+                    "purchase",
+                    instance.id,
+                    total_amt,
+                    f"Purchase #{instance.id}"
+                )
+                logger.info(f"[PURCHASE_LEDGER] Vendor ledger created with amount: {total_amt}")
+
+        # Cash/Bank ledger for purchases
+        # LOGIC:
+        # 1. If payment_method == "cash" → deduct full total_amount from cash
+        # 2. If payment_method == "bank" (upi/cheque) → deduct full total_amount from bank
+        # 3. If payment_method == "credit":
+        #    - If advance_mode == "cash" → deduct advance_amount from cash
+        #    - If advance_mode == "bank" → deduct advance_amount from bank
+        
+        # Cash ledger for cash purchases
+        if instance.payment_method == "cash" and instance.user is not None:
+            # Full total_amount deducted from cash
+            cash_amount = Decimal(instance.total_amount or 0)
+            logger.info(f"[PURCHASE_LEDGER] Creating cash ledger for CASH purchase")
+            logger.info(f"[PURCHASE_LEDGER] Cash Amount: {cash_amount}")
+            adjust_ledger_to_target(
+                None,
+                CashLedger,
                 "purchase",
                 instance.id,
-                balance_amt,
-                f"Purchase #{instance.id} (Credit)"
+                -cash_amount,  # Negative amount to DECREASE cash balance
+                f"Purchase #{instance.id} (Cash)",
+                user=instance.user
             )
-        else:
-            # For cash/UPI/cheque purchases, use total_amount (includes all charges)
-            # total_amount already includes: items + delivery_shipping_charges + packaging_charges
-            create_ledger(
-                vendor,
-                VendorLedger,
+            logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Cash ledger created with amount: -{cash_amount} (DECREASE)")
+        
+        # Bank ledger for bank purchases (upi/cheque)
+        elif instance.payment_method in ["upi", "cheque"] and instance.advance_bank:
+            # Full total_amount deducted from bank
+            bank_amount = Decimal(instance.total_amount or 0)
+            logger.info(f"[PURCHASE_LEDGER] Creating bank ledger for {instance.payment_method.upper()} purchase")
+            logger.info(f"[PURCHASE_LEDGER] Bank: {instance.advance_bank} (ID: {instance.advance_bank.id})")
+            logger.info(f"[PURCHASE_LEDGER] Bank Amount: {bank_amount}")
+            adjust_ledger_to_target(
+                instance.advance_bank,
+                BankLedger,
                 "purchase",
                 instance.id,
-                total_amt,
-                f"Purchase #{instance.id}"
+                -bank_amount,  # Negative amount to DECREASE bank balance
+                f"Purchase #{instance.id} ({instance.payment_method.upper()})"
             )
-
-    # Bank entry negative for purchase advance
-    if instance.advance_bank:
-        target = -(instance.advance_amount or Decimal(0))
-        create_ledger(
-            instance.advance_bank,
-            BankLedger,
-            "purchase",
-            instance.id,
-            target,
-            f"Purchase #{instance.id}"
-        )
-
-    # Cash ledger for purchase
-    # For cash purchases, deduct the full total_amount (includes all charges)
-    if instance.payment_method == "cash" and instance.user is not None:
-        target = -(instance.total_amount or Decimal(0))
-        create_ledger(
-            None,
-            CashLedger,
-            "purchase",
-            instance.id,
-            target,
-            f"Cash Purchase #{instance.id}",
-            user=instance.user
-        )
+            logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Bank ledger created with amount: -{bank_amount} (DECREASE)")
+        
+        # Credit purchases with advance payment
+        elif instance.payment_method == "credit":
+            advance_amt = Decimal(instance.advance_amount or 0)
+            
+            if advance_amt > 0:
+                if instance.advance_mode == "cash" and instance.user is not None:
+                    # Credit purchase with cash advance → deduct advance_amount from cash
+                    logger.info(f"[PURCHASE_LEDGER] Creating cash ledger for CREDIT purchase with CASH advance")
+                    logger.info(f"[PURCHASE_LEDGER] Advance Amount: {advance_amt}")
+                    adjust_ledger_to_target(
+                        None,
+                        CashLedger,
+                        "purchase",
+                        instance.id,
+                        -advance_amt,  # Negative amount to DECREASE cash balance
+                        f"Purchase #{instance.id} (Credit - Cash Advance)",
+                        user=instance.user
+                    )
+                    logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Cash ledger created with amount: -{advance_amt} (DECREASE)")
+                
+                elif instance.advance_mode == "bank" and instance.advance_bank:
+                    # Credit purchase with bank advance → deduct advance_amount from bank
+                    logger.info(f"[PURCHASE_LEDGER] Creating bank ledger for CREDIT purchase with BANK advance")
+                    logger.info(f"[PURCHASE_LEDGER] Bank: {instance.advance_bank} (ID: {instance.advance_bank.id})")
+                    logger.info(f"[PURCHASE_LEDGER] Advance Amount: {advance_amt}")
+                    adjust_ledger_to_target(
+                        instance.advance_bank,
+                        BankLedger,
+                        "purchase",
+                        instance.id,
+                        -advance_amt,  # Negative amount to DECREASE bank balance
+                        f"Purchase #{instance.id} (Credit - Bank Advance)"
+                    )
+                    logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Bank ledger created with amount: -{advance_amt} (DECREASE)")
+                else:
+                    logger.warning(f"[PURCHASE_LEDGER] Credit purchase with advance but advance_mode/advance_bank not set correctly")
+            else:
+                logger.debug(f"[PURCHASE_LEDGER] Credit purchase with no advance amount - no cash/bank ledger created")
+        
+        logger.info("=" * 80)
+        logger.info("[PURCHASE_LEDGER] Signal processing completed")
+        logger.info("=" * 80)
 
 
 # -------------------------------

@@ -1352,7 +1352,9 @@ class PurchaseSerializer(serializers.ModelSerializer):
             item_data['total'] = Decimal(str(quantity)) * Decimal(str(price))
             PurchaseItem.objects.create(purchase=purchase, **item_data)
         
-        # Calculate and save total_amount from all items
+        # Calculate and save total_amount from all items + delivery + packaging charges
+        # IMPORTANT: Call calculate_total() AFTER items are created so delivery_shipping_charges 
+        # and packaging_charges are included in total_amount (just like POS sales)
         purchase.calculate_total()
         # Refresh instance to get updated total_amount in response
         purchase.refresh_from_db()
@@ -1362,11 +1364,13 @@ class PurchaseSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', None)
 
+        # Check if delivery_shipping_charges or packaging_charges are being updated
+        charges_updated = 'delivery_shipping_charges' in validated_data or 'packaging_charges' in validated_data
+
         # Update Purchase fields except purchase_code
         for attr, value in validated_data.items():
             if attr != 'purchase_code':  # prevent manual change
                 setattr(instance, attr, value)
-        instance.save()
 
         # Replace items only if provided
         if items_data is not None:
@@ -1379,11 +1383,18 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 # Calculate total for this item (quantity * price)
                 item_data['total'] = Decimal(str(quantity)) * Decimal(str(price))
                 PurchaseItem.objects.create(purchase=instance, **item_data)
-            
-            # Calculate and save total_amount from all items
-            instance.calculate_total()
-            # Refresh instance to get updated total_amount in response
-            instance.refresh_from_db()
+        
+        # Totals - recalculate after items are created/updated and charges are set
+        # This ensures delivery_shipping_charges and packaging_charges are included in total_amount
+        # IMPORTANT: Call calculate_total() BEFORE save() so the signal uses the correct total_amount
+        # (Just like POS sales where _recalculate_totals() is called after wholesale is created)
+        instance.calculate_total()
+        
+        # Save instance (this will trigger the signal which uses the updated total_amount)
+        instance.save()
+        
+        # Refresh instance to get updated total_amount in response
+        instance.refresh_from_db()
 
         return instance
 
