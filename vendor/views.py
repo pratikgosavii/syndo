@@ -857,15 +857,27 @@ class CustomerLedgerAPIView(APIView):
 # ---- Vendor Ledger ----
 class VendorLedgerAPIView(APIView):
     def get(self, request, vendor_id):
+        from .models import vendor_vendors
+        from decimal import Decimal
+        
         ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id).order_by("created_at")
 
-        # Running balance
-        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+        # Get balance from vendor model (updated by signals) or calculate from ledger
+        try:
+            vendor = vendor_vendors.objects.get(id=vendor_id)
+            balance = vendor.balance or 0
+        except vendor_vendors.DoesNotExist:
+            # Fallback: calculate from ledger entries
+            balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+       
+        # Convert balance to Decimal if it's not already
+        if not isinstance(balance, Decimal):
+            balance = Decimal(str(balance))
 
         serializer = VendorLedgerSerializer(ledger_entries, many=True)
         return Response({
             "vendor_id": vendor_id,
-            "balance": balance,
+            "balance": float(balance),
             "ledger": serializer.data
         })
     
