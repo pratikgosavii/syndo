@@ -646,16 +646,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
         CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
         logger.debug("[PURCHASE_LEDGER] Old ledger entries deleted")
 
-        # Recalculate balances from ALL remaining ledger entries
-        if instance.vendor:
-            vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-            ledger_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-            # Vendor balance = opening_balance + sum of ledger entries
-            vendor.balance = int(Decimal(vendor.opening_balance or 0) + Decimal(ledger_total))
-            vendor.save(update_fields=['balance'])
-            logger.debug(f"[PURCHASE_LEDGER] Vendor balance recalculated: {vendor.balance} (opening: {vendor.opening_balance}, ledger: {ledger_total})")
+        # Note: Vendor balance is NOT updated - only ledger entries are created for record keeping
 
         if instance.user:
             from .models import CashBalance
@@ -677,37 +668,65 @@ def purchase_ledger(sender, instance, created, **kwargs):
             bank.save(update_fields=['balance'])
             logger.debug(f"[PURCHASE_LEDGER] Bank balance recalculated: {bank.balance}")
 
-        # Create vendor ledger entry
+        # Create vendor ledger entry (without updating vendor balance)
         if instance.vendor:
+            # Ensure total_amount is calculated if it's zero or None
             total_amt = Decimal(instance.total_amount or 0)
+            if total_amt == 0 and instance.items.exists():
+                # Recalculate total if it's zero but items exist
+                logger.info(f"[PURCHASE_LEDGER] total_amount is 0, recalculating...")
+                instance.calculate_total()
+                instance.refresh_from_db()
+                total_amt = Decimal(instance.total_amount or 0)
+                logger.info(f"[PURCHASE_LEDGER] Recalculated total_amount: {total_amt}")
+            
             balance_amt = Decimal(instance.balance_amount or 0)
             vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
             
+            # Get the last ledger entry to calculate opening balance (for ledger record only)
+            last_entry = VendorLedger.objects.filter(vendor=vendor).order_by('-created_at').first()
+            opening_balance = Decimal(last_entry.balance_after or 0) if last_entry else Decimal(0)
+            
+            # Determine amount to record
             if instance.payment_method == 'credit' and balance_amt > 0:
                 # For credit purchases, use balance_amount (amount still owed)
-                logger.info(f"[PURCHASE_LEDGER] Creating vendor ledger for CREDIT purchase")
-                create_ledger(
-                    vendor,
-                    VendorLedger,
-                    "purchase",
-                    instance.id,
-                    balance_amt,
-                    f"Purchase #{instance.id} (Credit)"
-                )
-                logger.info(f"[PURCHASE_LEDGER] Vendor ledger created with amount: {balance_amt}")
+                ledger_amount = balance_amt
+                description = f"Purchase #{instance.id} (Credit)"
             else:
-                # For cash/UPI/cheque purchases, use total_amount (includes all charges)
-                # total_amount already includes: items + delivery_shipping_charges + packaging_charges
+                # For cash/UPI/cheque purchases, use total_amount (includes all charges + GST)
+                ledger_amount = total_amt
+                description = f"Purchase #{instance.id}"
+            
+            # Only create ledger entry if amount is greater than 0
+            if ledger_amount > 0:
+                # Calculate balance_after (for ledger record only, not updating vendor.balance)
+                balance_after = opening_balance + ledger_amount
+                
+                # Create vendor ledger entry directly (without updating vendor balance)
                 logger.info(f"[PURCHASE_LEDGER] Creating vendor ledger for {instance.payment_method.upper()} purchase")
-                create_ledger(
-                    vendor,
-                    VendorLedger,
-                    "purchase",
-                    instance.id,
-                    total_amt,
-                    f"Purchase #{instance.id}"
-                )
-                logger.info(f"[PURCHASE_LEDGER] Vendor ledger created with amount: {total_amt}")
+                logger.info(f"[PURCHASE_LEDGER] Vendor: {vendor.name} (ID: {vendor.id})")
+                logger.info(f"[PURCHASE_LEDGER] Amount: {ledger_amount}")
+                logger.info(f"[PURCHASE_LEDGER] Opening Balance (ledger): {opening_balance}")
+                logger.info(f"[PURCHASE_LEDGER] Balance After (ledger): {balance_after}")
+                
+                try:
+                    VendorLedger.objects.create(
+                        vendor=vendor,
+                        transaction_type="purchase",
+                        reference_id=instance.id,
+                        description=description,
+                        opening_balance=int(opening_balance),
+                        amount=int(ledger_amount),
+                        balance_after=int(balance_after),
+                    )
+                    logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Vendor ledger created successfully (balance NOT updated)")
+                except Exception as e:
+                    logger.error(f"[PURCHASE_LEDGER] ✗✗✗ ERROR creating vendor ledger: {str(e)}")
+                    import traceback
+                    logger.error(f"[PURCHASE_LEDGER] Traceback: {traceback.format_exc()}")
+                    raise
+            else:
+                logger.warning(f"[PURCHASE_LEDGER] ⚠️ Skipping vendor ledger creation - amount is 0 (total_amount: {total_amt}, balance_amount: {balance_amt})")
 
         # Cash/Bank ledger for purchases
         # LOGIC:
