@@ -459,11 +459,12 @@ class PurchaseForm(forms.ModelForm):
             # Update: remove field from POST handling, just display in template
             self.fields.pop('purchase_code', None)
         else:
-            # Add: generate unique code
-            self.fields['purchase_code'].initial = self.generate_unique_code()
+            # Don't set initial value - let the model's save() method generate it
+            # This ensures consistency and avoids conflicts
             self.fields['purchase_code'].widget.attrs.update({
                 'readonly': True,
-                'class': 'form-control fw-bold'
+                'class': 'form-control fw-bold',
+                'placeholder': 'Auto-generated on save'
             })
 
         if user is not None:

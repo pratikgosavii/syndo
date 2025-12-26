@@ -817,14 +817,39 @@ class Purchase(models.Model):
     total_gst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True, help_text="Total GST amount (sum of item tax_amount)")
 
     def save(self, *args, **kwargs):
-        if not self.purchase_code:
+        # Generate purchase_code if it's empty or doesn't match the expected format (YY-YY/MM/MONTH/PUR-XXXX)
+        # Check if code matches the expected pattern: YY-YY/MM/MONTH/PUR-XXXX
+        import re
+        pattern = r'^\d{2}-\d{2}/\d{2}/[A-Z]{3}/PUR-\d{4}$'
+        if not self.purchase_code or not re.match(pattern, self.purchase_code):
             from .utils import generate_serial_number
-            self.purchase_code = generate_serial_number(
-                prefix='PUR',
-                model_class=Purchase,
-                date=self.purchase_date,
-                user=self.user
-            )
+            # Use a retry mechanism to handle race conditions
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    new_code = generate_serial_number(
+                        prefix='PUR',
+                        model_class=Purchase,
+                        date=self.purchase_date,
+                        user=self.user
+                    )
+                    # Check if this code already exists (race condition check)
+                    existing = Purchase.objects.filter(purchase_code=new_code)
+                    if self.pk:  # If updating, exclude current instance
+                        existing = existing.exclude(pk=self.pk)
+                    if not existing.exists():
+                        self.purchase_code = new_code
+                        break
+                    # If code exists, wait a tiny bit and retry (only if not last attempt)
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(0.1)
+                except Exception as e:
+                    # If generation fails, use a fallback
+                    if attempt == max_retries - 1:
+                        from django.utils import timezone
+                        timestamp = int(timezone.now().timestamp())
+                        self.purchase_code = f"PUR-{timestamp}-{self.id or 'NEW'}"
         super().save(*args, **kwargs)
     
     def calculate_total(self):

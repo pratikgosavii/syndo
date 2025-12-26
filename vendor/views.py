@@ -2318,6 +2318,9 @@ class PurchaseViewSet(viewsets.ModelViewSet):
                 # Calculate and save total_amount from all items
                 instance.calculate_total()
                 
+                # Save again to trigger the signal with correct total_amount for ledger creation
+                instance.save()
+                
                 # Refresh instance to get updated total_amount in response
                 instance.refresh_from_db()
         

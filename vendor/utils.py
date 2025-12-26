@@ -95,24 +95,31 @@ def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwa
         # Pattern: YY-YY/MM/MONTH/PREFIX-XXXX
         pattern_start = f"{fy}/{month_num}/{month_name}/{prefix}-"
         
-        # Get all documents matching the pattern
-        all_docs = model_class.objects.filter(**filter_dict)
-        matching_docs = []
-        
-        for doc in all_docs:
-            serial_value = getattr(doc, serial_field, None)
-            if serial_value and serial_value.startswith(pattern_start):
-                try:
-                    # Extract number part
-                    number_part = serial_value.split('-')[-1]
-                    number = int(number_part)
-                    matching_docs.append((doc, number))
-                except (ValueError, IndexError):
-                    continue
-        
-        if matching_docs:
-            last_number = max(matching_docs, key=lambda x: x[1])[1]
-        else:
+        # Use database query with startswith for better performance
+        # Query documents where serial_field starts with pattern_start
+        try:
+            matching_docs = model_class.objects.filter(
+                **filter_dict,
+                **{f"{serial_field}__startswith": pattern_start}
+            ).only(serial_field).values_list(serial_field, flat=True)
+            
+            last_number = 0
+            for serial_value in matching_docs:
+                if serial_value:
+                    try:
+                        # Extract number part (everything after the last '-')
+                        # Format: YY-YY/MM/MONTH/PREFIX-XXXX
+                        number_part = serial_value.split('-')[-1]
+                        number = int(number_part)
+                        if number > last_number:
+                            last_number = number
+                    except (ValueError, IndexError, AttributeError):
+                        continue
+        except Exception as e:
+            # If query fails, fall back to 0 (will generate 0001)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error querying for existing serial numbers: {e}")
             last_number = 0
     
     # Generate new serial number
