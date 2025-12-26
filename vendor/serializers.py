@@ -89,8 +89,8 @@ class DeliveryDiscountSerializer(serializers.ModelSerializer):
 class PurchaseItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseItem
-        fields = ['product', 'quantity', 'price', 'total']  # include all needed fields
-        read_only_fields = ['total']  # total is calculated automatically
+        fields = ['product', 'quantity', 'price', 'total', 'amount', 'tax_amount', 'total_with_tax']  # include all needed fields including GST
+        read_only_fields = ['total', 'amount', 'tax_amount', 'total_with_tax']  # these are calculated automatically
 
     
 

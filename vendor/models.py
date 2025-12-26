@@ -811,6 +811,10 @@ class Purchase(models.Model):
     
     # Total amount calculated from purchase items
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, null=True)
+    
+    # GST fields (similar to Sale)
+    total_taxable_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True, help_text="Total taxable value (sum of item amounts)")
+    total_gst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True, help_text="Total GST amount (sum of item tax_amount)")
 
     def save(self, *args, **kwargs):
         if not self.purchase_code:
@@ -824,26 +828,48 @@ class Purchase(models.Model):
         super().save(*args, **kwargs)
     
     def calculate_total(self):
-        """Calculate and update total_amount from purchase items + other charges"""
+        """Calculate and update total_amount from purchase items + GST + other charges (like Sale)"""
         from django.db.models import Sum
         from decimal import Decimal
         
-        # Sum of all purchase items
-        items_total = self.items.aggregate(total=Sum('total'))['total'] or Decimal(0)
+        # Calculate GST totals from PurchaseItems (similar to Sale)
+        total_taxable_amount = Decimal(0)
+        total_gst_amount = Decimal(0)
+        
+        for item in self.items.all():
+            # Sum taxable amounts (amount field from PurchaseItem)
+            total_taxable_amount += Decimal(item.amount or 0)
+            # Sum GST amounts (tax_amount field from PurchaseItem)
+            total_gst_amount += Decimal(item.tax_amount or 0)
+        
+        # Apply discount if any
+        discount_amount = Decimal(0)
+        if self.discount_percentage:
+            discount_amount = total_taxable_amount * Decimal(self.discount_percentage) / Decimal(100)
+        elif self.discount_amount:
+            discount_amount = Decimal(self.discount_amount)
+        
+        base_total_amount = total_taxable_amount - discount_amount
         
         # Add other charges
         delivery_charges = Decimal(self.delivery_shipping_charges or 0)
         packaging_charges = Decimal(self.packaging_charges or 0)
         
-        # Calculate final total: items + delivery + packaging
-        new_total = items_total + delivery_charges + packaging_charges
+        # Final total includes: items (after discount) + GST + delivery + packaging (like Sale)
+        new_total = base_total_amount + total_gst_amount + delivery_charges + packaging_charges
         
         # Use update() to avoid triggering save() and infinite recursion
         # Only update if total changed to avoid unnecessary database writes
-        if self.total_amount != new_total:
-            Purchase.objects.filter(pk=self.pk).update(total_amount=new_total)
+        if self.total_amount != new_total or self.total_taxable_amount != total_taxable_amount or self.total_gst_amount != total_gst_amount:
+            Purchase.objects.filter(pk=self.pk).update(
+                total_amount=new_total,
+                total_taxable_amount=total_taxable_amount,
+                total_gst_amount=total_gst_amount
+            )
             # Update instance in memory to keep it in sync
             self.total_amount = new_total
+            self.total_taxable_amount = total_taxable_amount
+            self.total_gst_amount = total_gst_amount
 
     def __str__(self):
         return self.purchase_code or f"Purchase #{self.id}"
@@ -855,12 +881,36 @@ class PurchaseItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    
+    # GST fields (similar to SaleItem)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Taxable value (quantity * price)")
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="GST amount")
+    total_with_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Final total including tax")
 
     def save(self, *args, **kwargs):
-        # Calculate total from quantity and price
-        from decimal import Decimal
-        if self.quantity and self.price:
-            self.total = Decimal(str(self.quantity)) * Decimal(str(self.price))
+        # Calculate GST like SaleItem
+        from decimal import Decimal, ROUND_HALF_UP
+        
+        def _to_decimal(value):
+            """Safely convert value to Decimal."""
+            if value is None:
+                return Decimal("0")
+            if isinstance(value, Decimal):
+                return value
+            return Decimal(str(value))
+        
+        quantity = _to_decimal(self.quantity)
+        price = _to_decimal(self.price)
+        gst_rate = _to_decimal(getattr(self.product, "gst", 0))
+
+        # Calculations (kept in Decimal)
+        self.amount = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.tax_amount = (self.amount * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.total_with_tax = (self.amount + self.tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        
+        # Keep total for backward compatibility (same as total_with_tax)
+        self.total = self.total_with_tax
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
