@@ -883,18 +883,14 @@ class Purchase(models.Model):
         # Final total includes: items (after discount) + GST + delivery + packaging (like Sale)
         new_total = base_total_amount + total_gst_amount + delivery_charges + packaging_charges
         
-        # Use update() to avoid triggering save() and infinite recursion
-        # Only update if total changed to avoid unnecessary database writes
-        if self.total_amount != new_total or self.total_taxable_amount != total_taxable_amount or self.total_gst_amount != total_gst_amount:
-            Purchase.objects.filter(pk=self.pk).update(
-                total_amount=new_total,
-                total_taxable_amount=total_taxable_amount,
-                total_gst_amount=total_gst_amount
-            )
-            # Update instance in memory to keep it in sync
-            self.total_amount = new_total
-            self.total_taxable_amount = total_taxable_amount
-            self.total_gst_amount = total_gst_amount
+        # Update instance fields directly (like Sale._recalculate_totals does)
+        # This ensures instance is updated in memory, then caller can save() to trigger signal
+        self.total_taxable_amount = total_taxable_amount
+        self.total_gst_amount = total_gst_amount
+        self.total_amount = new_total
+        
+        # Don't save here - let the caller save() to trigger signal with updated values
+        # This matches how Sale._recalculate_totals() works - it sets fields then saves
 
     def __str__(self):
         return self.purchase_code or f"Purchase #{self.id}"

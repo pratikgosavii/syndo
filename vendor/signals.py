@@ -620,27 +620,14 @@ def sale_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
-    # Log immediately to verify signal is being called - use both print and logger
-    import sys
-    print(f"[PURCHASE_LEDGER] ========== SIGNAL CALLED ==========")
-    print(f"[PURCHASE_LEDGER] Purchase ID: {instance.id}")
-    print(f"[PURCHASE_LEDGER] Created: {created}")
-    print(f"[PURCHASE_LEDGER] Total Amount: {instance.total_amount}")
-    sys.stdout.flush()  # Force flush to ensure print appears immediately
-    
+    """
+    Signal handler for Purchase model to create ledger entries.
+    Similar to sale_ledger - uses instance.total_amount directly after refresh.
+    """
     try:
         logger.info("=" * 80)
         logger.info(f"[PURCHASE_LEDGER] Signal triggered for Purchase ID: {instance.id}")
-        logger.info(f"[PURCHASE_LEDGER] Signal registered and working!")
         logger.info(f"[PURCHASE_LEDGER] Created: {created}")
-    except Exception as e:
-        print(f"[PURCHASE_LEDGER] ERROR in logger setup: {e}")
-        import traceback
-        print(traceback.format_exc())
-        sys.stdout.flush()
-        return  # Exit early if logger fails
-    
-    try:
         logger.info(f"[PURCHASE_LEDGER] Payment Method: {instance.payment_method}")
         logger.info(f"[PURCHASE_LEDGER] Advance Mode: {instance.advance_mode}")
         logger.info(f"[PURCHASE_LEDGER] Advance Amount: {instance.advance_amount}")
@@ -649,17 +636,17 @@ def purchase_ledger(sender, instance, created, **kwargs):
         logger.info(f"[PURCHASE_LEDGER] Balance Amount: {instance.balance_amount}")
         logger.info(f"[PURCHASE_LEDGER] User: {instance.user}")
         logger.info(f"[PURCHASE_LEDGER] Vendor: {instance.vendor}")
-        logger.info("=" * 80)
-
+        
         # Wrap all database operations in a transaction
         with transaction.atomic():
-            # Refresh instance from database to ensure we have latest values
+            # Refresh instance from database to ensure we have latest values, especially for related fields
             instance.refresh_from_db()
-            logger.debug("[PURCHASE_LEDGER] Instance refreshed from database")
+            logger.info("[PURCHASE_LEDGER] Instance refreshed from database")
             
-            # Recalculate total_amount if it's 0 but items exist (important for correct ledger amounts)
-            if (instance.total_amount == 0 or instance.total_amount is None) and instance.items.exists():
-                logger.info(f"[PURCHASE_LEDGER] total_amount is 0, recalculating before processing ledgers...")
+            # Recalculate total_amount if it's 0 but items exist (like POS does)
+            items_count = instance.items.count()
+            if (instance.total_amount == 0 or instance.total_amount is None) and items_count > 0:
+                logger.info(f"[PURCHASE_LEDGER] total_amount is 0 but {items_count} items exist, recalculating...")
                 instance.calculate_total()
                 instance.refresh_from_db()
                 logger.info(f"[PURCHASE_LEDGER] Recalculated total_amount: {instance.total_amount}")
@@ -695,16 +682,8 @@ def purchase_ledger(sender, instance, created, **kwargs):
 
             # Create vendor ledger entry (without updating vendor balance)
             if instance.vendor:
-                # Ensure total_amount is calculated if it's zero or None
+                # Use total_amount directly (already recalculated above if needed)
                 total_amt = Decimal(instance.total_amount or 0)
-                if total_amt == 0 and instance.items.exists():
-                    # Recalculate total if it's zero but items exist
-                    logger.info(f"[PURCHASE_LEDGER] total_amount is 0, recalculating...")
-                    instance.calculate_total()
-                    instance.refresh_from_db()
-                    total_amt = Decimal(instance.total_amount or 0)
-                    logger.info(f"[PURCHASE_LEDGER] Recalculated total_amount: {total_amt}")
-                
                 balance_amt = Decimal(instance.balance_amount or 0)
                 vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
                 

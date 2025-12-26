@@ -2397,12 +2397,10 @@ def add_purchase(request):
                     )
 
             # Calculate total including delivery and packaging charges
+            # This updates instance fields directly (like Sale._recalculate_totals does)
             forms.calculate_total()
             
-            # Refresh instance from database to get updated total_amount
-            forms.refresh_from_db()
-            
-            # Save again to trigger the signal with correct total_amount for ledger creation
+            # Save to persist changes and trigger signal with correct total_amount for ledger creation
             forms.save()
 
             return redirect('list_purchase')  # or your desired URL
@@ -2466,12 +2464,10 @@ def update_purchase(request, purchase_id):
                     )
 
             # Calculate total including delivery and packaging charges
+            # This updates instance fields directly (like Sale._recalculate_totals does)
             instance.calculate_total()
             
-            # Refresh instance from database to get updated total_amount
-            instance.refresh_from_db()
-            
-            # Save again to trigger the signal with correct total_amount for ledger creation
+            # Save to persist changes and trigger signal with correct total_amount for ledger creation
             instance.save()
 
             return redirect('list_purchase')
