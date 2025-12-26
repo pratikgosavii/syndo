@@ -620,10 +620,18 @@ def sale_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
-    # Log immediately to verify signal is being called
+    # Log immediately to verify signal is being called - use both print and logger
     print(f"[PURCHASE_LEDGER] SIGNAL CALLED - Purchase ID: {instance.id}")
-    logger.info("=" * 80)
-    logger.info(f"[PURCHASE_LEDGER] Signal triggered for Purchase ID: {instance.id}")
+    import sys
+    sys.stdout.flush()  # Force flush to ensure print appears immediately
+    
+    try:
+        logger.info("=" * 80)
+        logger.info(f"[PURCHASE_LEDGER] Signal triggered for Purchase ID: {instance.id}")
+        logger.info(f"[PURCHASE_LEDGER] Signal registered and working!")
+    except Exception as e:
+        print(f"[PURCHASE_LEDGER] ERROR in logger setup: {e}")
+        sys.stdout.flush()
     try:
         logger.info(f"[PURCHASE_LEDGER] Created: {created}")
         logger.info(f"[PURCHASE_LEDGER] Payment Method: {instance.payment_method}")
