@@ -620,24 +620,25 @@ def sale_ledger(sender, instance, created, **kwargs):
 # -------------------------------
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
-    logger.info("=" * 80)
-    logger.info(f"[PURCHASE_LEDGER] Signal triggered for Purchase ID: {instance.id}")
-    logger.info(f"[PURCHASE_LEDGER] Created: {created}")
-    logger.info(f"[PURCHASE_LEDGER] Payment Method: {instance.payment_method}")
-    logger.info(f"[PURCHASE_LEDGER] Advance Mode: {instance.advance_mode}")
-    logger.info(f"[PURCHASE_LEDGER] Advance Amount: {instance.advance_amount}")
-    logger.info(f"[PURCHASE_LEDGER] Advance Bank: {instance.advance_bank}")
-    logger.info(f"[PURCHASE_LEDGER] Total Amount: {instance.total_amount}")
-    logger.info(f"[PURCHASE_LEDGER] Balance Amount: {instance.balance_amount}")
-    logger.info(f"[PURCHASE_LEDGER] User: {instance.user}")
-    logger.info(f"[PURCHASE_LEDGER] Vendor: {instance.vendor}")
-    logger.info("=" * 80)
+    try:
+        logger.info("=" * 80)
+        logger.info(f"[PURCHASE_LEDGER] Signal triggered for Purchase ID: {instance.id}")
+        logger.info(f"[PURCHASE_LEDGER] Created: {created}")
+        logger.info(f"[PURCHASE_LEDGER] Payment Method: {instance.payment_method}")
+        logger.info(f"[PURCHASE_LEDGER] Advance Mode: {instance.advance_mode}")
+        logger.info(f"[PURCHASE_LEDGER] Advance Amount: {instance.advance_amount}")
+        logger.info(f"[PURCHASE_LEDGER] Advance Bank: {instance.advance_bank}")
+        logger.info(f"[PURCHASE_LEDGER] Total Amount: {instance.total_amount}")
+        logger.info(f"[PURCHASE_LEDGER] Balance Amount: {instance.balance_amount}")
+        logger.info(f"[PURCHASE_LEDGER] User: {instance.user}")
+        logger.info(f"[PURCHASE_LEDGER] Vendor: {instance.vendor}")
+        logger.info("=" * 80)
 
-    # Wrap all database operations in a transaction
-    with transaction.atomic():
-        # Refresh instance from database to ensure we have latest values
-        instance.refresh_from_db()
-        logger.debug("[PURCHASE_LEDGER] Instance refreshed from database")
+        # Wrap all database operations in a transaction
+        with transaction.atomic():
+            # Refresh instance from database to ensure we have latest values
+            instance.refresh_from_db()
+            logger.debug("[PURCHASE_LEDGER] Instance refreshed from database")
         
         # Delete old entries for this reference to ensure clean updates
         logger.debug("[PURCHASE_LEDGER] Deleting old ledger entries...")
@@ -812,9 +813,21 @@ def purchase_ledger(sender, instance, created, **kwargs):
             else:
                 logger.debug(f"[PURCHASE_LEDGER] Credit purchase with no advance amount - no cash/bank ledger created")
         
-        logger.info("=" * 80)
-        logger.info("[PURCHASE_LEDGER] Signal processing completed")
-        logger.info("=" * 80)
+            logger.info("=" * 80)
+            logger.info("[PURCHASE_LEDGER] Signal processing completed")
+            logger.info("=" * 80)
+    except Exception as e:
+        import traceback
+        error_msg = f"[PURCHASE_LEDGER] ERROR IN SIGNAL: {str(e)}"
+        logger.error("=" * 80)
+        logger.error(error_msg)
+        logger.error(f"[PURCHASE_LEDGER] Error Type: {type(e).__name__}")
+        logger.error(f"[PURCHASE_LEDGER] Traceback:")
+        traceback_str = traceback.format_exc()
+        logger.error(traceback_str)
+        logger.error("=" * 80)
+        # Re-raise to ensure Django knows about the error
+        raise
 
 
 # -------------------------------
