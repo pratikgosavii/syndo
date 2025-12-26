@@ -169,7 +169,7 @@ LOGGING = {
             "propagate": False,
         },
         "vendor.signals": {
-            "handlers": ["request_file", "console"],
+            "handlers": ["signals_file", "console"],
             "level": "DEBUG",
             "propagate": False,
         },

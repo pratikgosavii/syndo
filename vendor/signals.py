@@ -621,19 +621,26 @@ def sale_ledger(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Purchase)
 def purchase_ledger(sender, instance, created, **kwargs):
     # Log immediately to verify signal is being called - use both print and logger
-    print(f"[PURCHASE_LEDGER] SIGNAL CALLED - Purchase ID: {instance.id}")
     import sys
+    print(f"[PURCHASE_LEDGER] ========== SIGNAL CALLED ==========")
+    print(f"[PURCHASE_LEDGER] Purchase ID: {instance.id}")
+    print(f"[PURCHASE_LEDGER] Created: {created}")
+    print(f"[PURCHASE_LEDGER] Total Amount: {instance.total_amount}")
     sys.stdout.flush()  # Force flush to ensure print appears immediately
     
     try:
         logger.info("=" * 80)
         logger.info(f"[PURCHASE_LEDGER] Signal triggered for Purchase ID: {instance.id}")
         logger.info(f"[PURCHASE_LEDGER] Signal registered and working!")
+        logger.info(f"[PURCHASE_LEDGER] Created: {created}")
     except Exception as e:
         print(f"[PURCHASE_LEDGER] ERROR in logger setup: {e}")
+        import traceback
+        print(traceback.format_exc())
         sys.stdout.flush()
+        return  # Exit early if logger fails
+    
     try:
-        logger.info(f"[PURCHASE_LEDGER] Created: {created}")
         logger.info(f"[PURCHASE_LEDGER] Payment Method: {instance.payment_method}")
         logger.info(f"[PURCHASE_LEDGER] Advance Mode: {instance.advance_mode}")
         logger.info(f"[PURCHASE_LEDGER] Advance Amount: {instance.advance_amount}")
@@ -649,6 +656,13 @@ def purchase_ledger(sender, instance, created, **kwargs):
             # Refresh instance from database to ensure we have latest values
             instance.refresh_from_db()
             logger.debug("[PURCHASE_LEDGER] Instance refreshed from database")
+            
+            # Recalculate total_amount if it's 0 but items exist (important for correct ledger amounts)
+            if (instance.total_amount == 0 or instance.total_amount is None) and instance.items.exists():
+                logger.info(f"[PURCHASE_LEDGER] total_amount is 0, recalculating before processing ledgers...")
+                instance.calculate_total()
+                instance.refresh_from_db()
+                logger.info(f"[PURCHASE_LEDGER] Recalculated total_amount: {instance.total_amount}")
             
             # Delete old entries for this reference to ensure clean updates
             logger.debug("[PURCHASE_LEDGER] Deleting old ledger entries...")
