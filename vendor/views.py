@@ -2393,6 +2393,9 @@ def add_purchase(request):
                         total=float(total) if total else 0.0
                     )
 
+            # Calculate total including delivery and packaging charges
+            forms.calculate_total()
+
             return redirect('list_purchase')  # or your desired URL
    
         else:
@@ -2452,6 +2455,9 @@ def update_purchase(request, purchase_id):
                         price=float(price) if price else 0.0,
                         total=float(total) if total else 0.0
                     )
+
+            # Calculate total including delivery and packaging charges
+            instance.calculate_total()
 
             return redirect('list_purchase')
         else:
