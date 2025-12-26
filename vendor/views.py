@@ -2395,6 +2395,9 @@ def add_purchase(request):
 
             # Calculate total including delivery and packaging charges
             forms.calculate_total()
+            
+            # Save again to trigger the signal with correct total_amount for ledger creation
+            forms.save()
 
             return redirect('list_purchase')  # or your desired URL
    
@@ -2458,6 +2461,9 @@ def update_purchase(request, purchase_id):
 
             # Calculate total including delivery and packaging charges
             instance.calculate_total()
+            
+            # Save again to trigger the signal with correct total_amount for ledger creation
+            instance.save()
 
             return redirect('list_purchase')
         else:

@@ -735,21 +735,24 @@ def purchase_ledger(sender, instance, created, **kwargs):
             logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Cash ledger created with amount: -{cash_amount} (DECREASE)")
         
         # Bank ledger for bank purchases (upi/cheque)
-        elif instance.payment_method in ["upi", "cheque"] and instance.advance_bank:
-            # Full total_amount deducted from bank
-            bank_amount = Decimal(instance.total_amount or 0)
-            logger.info(f"[PURCHASE_LEDGER] Creating bank ledger for {instance.payment_method.upper()} purchase")
-            logger.info(f"[PURCHASE_LEDGER] Bank: {instance.advance_bank} (ID: {instance.advance_bank.id})")
-            logger.info(f"[PURCHASE_LEDGER] Bank Amount: {bank_amount}")
-            adjust_ledger_to_target(
-                instance.advance_bank,
-                BankLedger,
-                "purchase",
-                instance.id,
-                -bank_amount,  # Negative amount to DECREASE bank balance
-                f"Purchase #{instance.id} ({instance.payment_method.upper()})"
-            )
-            logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Bank ledger created with amount: -{bank_amount} (DECREASE)")
+        elif instance.payment_method in ["upi", "cheque"]:
+            if instance.advance_bank:
+                # Full total_amount deducted from bank
+                bank_amount = Decimal(instance.total_amount or 0)
+                logger.info(f"[PURCHASE_LEDGER] Creating bank ledger for {instance.payment_method.upper()} purchase")
+                logger.info(f"[PURCHASE_LEDGER] Bank: {instance.advance_bank} (ID: {instance.advance_bank.id})")
+                logger.info(f"[PURCHASE_LEDGER] Bank Amount: {bank_amount}")
+                adjust_ledger_to_target(
+                    instance.advance_bank,
+                    BankLedger,
+                    "purchase",
+                    instance.id,
+                    -bank_amount,  # Negative amount to DECREASE bank balance
+                    f"Purchase #{instance.id} ({instance.payment_method.upper()})"
+                )
+                logger.info(f"[PURCHASE_LEDGER] ✓✓✓ Bank ledger created with amount: -{bank_amount} (DECREASE)")
+            else:
+                logger.warning(f"[PURCHASE_LEDGER] ⚠️ {instance.payment_method.upper()} payment selected but advance_bank is not set! Bank ledger not created.")
         
         # Credit purchases with advance payment
         elif instance.payment_method == "credit":
