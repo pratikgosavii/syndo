@@ -1325,6 +1325,9 @@ class PurchaseSerializer(serializers.ModelSerializer):
     items = PurchaseItemSerializer(many=True)
     bank_details = vendor_bank_serializer(source="advance_bank", read_only=True)
     vendor_details = vendor_vendors_serializer(source="vendor", read_only=True)
+    # Backward-compatible aliases from some clients
+    delivery_charges = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False)
+    packing_charges = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False)
 
 
     class Meta:
@@ -1337,6 +1340,15 @@ class PurchaseSerializer(serializers.ModelSerializer):
         validated_data.pop('user', None)  
         user = request.user
         items_data = validated_data.pop('items', [])
+        # Aliases -> model fields
+        if 'delivery_shipping_charges' not in validated_data and 'delivery_charges' in validated_data:
+            validated_data['delivery_shipping_charges'] = validated_data.pop('delivery_charges')
+        else:
+            validated_data.pop('delivery_charges', None)
+        if 'packaging_charges' not in validated_data and 'packing_charges' in validated_data:
+            validated_data['packaging_charges'] = validated_data.pop('packing_charges')
+        else:
+            validated_data.pop('packing_charges', None)
 
         # purchase_code will be generated in Purchase.save() method
         purchase = Purchase.objects.create(
@@ -1367,6 +1379,15 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', None)
+        # Aliases -> model fields
+        if 'delivery_shipping_charges' not in validated_data and 'delivery_charges' in validated_data:
+            validated_data['delivery_shipping_charges'] = validated_data.pop('delivery_charges')
+        else:
+            validated_data.pop('delivery_charges', None)
+        if 'packaging_charges' not in validated_data and 'packing_charges' in validated_data:
+            validated_data['packaging_charges'] = validated_data.pop('packing_charges')
+        else:
+            validated_data.pop('packing_charges', None)
 
         # Check if delivery_shipping_charges or packaging_charges are being updated
         charges_updated = 'delivery_shipping_charges' in validated_data or 'packaging_charges' in validated_data

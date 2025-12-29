@@ -642,25 +642,23 @@ def purchase_ledger(sender, instance, created, **kwargs):
             # Ensure we work with fresh values
             instance.refresh_from_db()
 
-            # If total is missing/0 but items exist, compute totals and persist without re-triggering signals
+            # Always recompute totals when items exist so delivery/packaging charges are included
             items_count = instance.items.count()
-            logger.debug(
-                f"[PURCHASE_LEDGER] Items count: {items_count}, total_amount after refresh: {instance.total_amount}"
-            )
+            logger.debug(f"[PURCHASE_LEDGER] Items count: {items_count}, total_amount after refresh: {instance.total_amount}")
 
-            if items_count > 0 and (instance.total_amount is None or Decimal(instance.total_amount) == 0):
-                logger.info(
-                    f"[PURCHASE_LEDGER] total_amount is 0 but {items_count} items exist, recalculating..."
-                )
+            if items_count > 0:
+                prev_total = Decimal(instance.total_amount or 0)
                 instance.calculate_total()
-                Purchase.objects.filter(pk=instance.pk).update(
-                    total_amount=instance.total_amount,
-                    total_taxable_amount=instance.total_taxable_amount,
-                    total_gst_amount=instance.total_gst_amount,
-                )
-                instance.refresh_from_db(fields=["total_amount", "total_taxable_amount", "total_gst_amount"])
-                logger.info(f"[PURCHASE_LEDGER] Recalculated total_amount: {instance.total_amount}")
-            elif items_count == 0:
+                new_total = Decimal(instance.total_amount or 0)
+                if new_total != prev_total:
+                    Purchase.objects.filter(pk=instance.pk).update(
+                        total_amount=instance.total_amount,
+                        total_taxable_amount=instance.total_taxable_amount,
+                        total_gst_amount=instance.total_gst_amount,
+                    )
+                    instance.refresh_from_db(fields=["total_amount", "total_taxable_amount", "total_gst_amount"])
+                    logger.info(f"[PURCHASE_LEDGER] Totals updated: {prev_total} -> {instance.total_amount}")
+            else:
                 logger.warning("[PURCHASE_LEDGER] ⚠️ Purchase has no items yet - total_amount will be 0")
 
             # Delete old entries for this reference to ensure clean updates
@@ -1395,6 +1393,23 @@ def log_stock_transaction(product_obj, txn_type, qty, ref_id=None):
     )
 
 
+def _recalculate_purchase_totals_and_trigger_ledger(purchase_obj):
+    """
+    Recalculate purchase totals (including delivery/packaging) whenever items change,
+    and save the Purchase so the Purchase post_save ledger signal runs with correct totals.
+    """
+    if not purchase_obj:
+        return
+    try:
+        purchase_obj.refresh_from_db()
+        purchase_obj.calculate_total()
+        # Persist only totals fields; this triggers Purchase post_save -> purchase_ledger
+        purchase_obj.save(update_fields=["total_amount", "total_taxable_amount", "total_gst_amount"])
+    except Exception:
+        # Never break stock updates if totals/ledger fails; logging is handled by purchase_ledger
+        return
+
+
 # -----------------------------------------------------------------------------
 # 🟢 PURCHASE (+ stock)
 # -----------------------------------------------------------------------------
@@ -1404,6 +1419,8 @@ def increase_stock_on_purchase_create(sender, instance, created, **kwargs):
     if created:
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
         log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
+    # Recalculate purchase totals & ledgers for both create and update
+    _recalculate_purchase_totals_and_trigger_ledger(getattr(instance, "purchase", None))
 
 @receiver(pre_save, sender=PurchaseItem)
 def update_stock_on_purchase_edit(sender, instance, **kwargs):
@@ -1445,6 +1462,7 @@ def update_stock_on_purchase_edit(sender, instance, **kwargs):
 def restore_stock_on_purchase_delete(sender, instance, **kwargs):
     product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
     log_stock_transaction(instance.product, "purchase", -instance.quantity, ref_id=instance.pk)
+    _recalculate_purchase_totals_and_trigger_ledger(getattr(instance, "purchase", None))
 
 
 
