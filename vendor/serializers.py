@@ -688,6 +688,8 @@ class product_serializer(serializers.ModelSerializer):
             if p.id not in seen:
                 seen.add(p.id)
                 unique_family.append(p)
+        # Do not include the current product in its own variants list
+        unique_family = [p for p in unique_family if p.id != obj.id]
         serializer = ProductVariantSerializer(unique_family, many=True, context=self.context)
         return serializer.data
 
