@@ -712,17 +712,22 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         instance.refresh_from_db(fields=["balance_amount"])
                         balance_amt = Decimal(instance.balance_amount or 0)
 
-                last_entry = VendorLedger.objects.filter(vendor=vendor).order_by("-created_at").first()
-                opening_balance = Decimal(last_entry.balance_after or 0) if last_entry else Decimal(0)
+                # Opening balance for entry = vendor opening_balance + sum(all existing vendor ledger entries)
+                ledger_total_before = (
+                    VendorLedger.objects.filter(vendor=vendor).aggregate(total=Sum("amount"))["total"] or 0
+                )
+                opening_balance = Decimal(vendor.opening_balance or 0) + Decimal(ledger_total_before or 0)
 
-                if instance.payment_method == "credit" and balance_amt > 0:
+                # For credit purchases, vendor "credit/due" should be ONLY the remaining amount (balance_amount),
+                # even if remaining is 0 (in that case we skip creating a ledger row).
+                if instance.payment_method == "credit":
                     ledger_amount = balance_amt
                     description = f"Purchase #{instance.id} (Credit)"
                 else:
                     ledger_amount = total_amt
                     description = f"Purchase #{instance.id}"
 
-                balance_after = opening_balance + ledger_amount
+                balance_after = opening_balance + Decimal(ledger_amount or 0)
 
                 logger.info(f"[PURCHASE_LEDGER] Creating vendor ledger entry")
                 logger.info(f"[PURCHASE_LEDGER] Vendor: {vendor.name} (ID: {vendor.id})")
@@ -730,16 +735,23 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 logger.info(f"[PURCHASE_LEDGER] Opening Balance (ledger): {opening_balance}")
                 logger.info(f"[PURCHASE_LEDGER] Balance After (ledger): {balance_after}")
 
-                VendorLedger.objects.create(
-                    vendor=vendor,
-                    transaction_type="purchase",
-                    reference_id=instance.id,
-                    description=description,
-                    opening_balance=int(opening_balance),
-                    amount=int(ledger_amount),
-                    balance_after=int(balance_after),
-                )
-                logger.info("[PURCHASE_LEDGER] ✓ Vendor ledger created")
+                if Decimal(ledger_amount or 0) > 0:
+                    VendorLedger.objects.create(
+                        vendor=vendor,
+                        transaction_type="purchase",
+                        reference_id=instance.id,
+                        description=description,
+                        opening_balance=int(opening_balance),
+                        amount=int(ledger_amount),
+                        balance_after=int(balance_after),
+                    )
+                    logger.info("[PURCHASE_LEDGER] ✓ Vendor ledger created")
+                else:
+                    logger.info("[PURCHASE_LEDGER] Vendor remaining due is 0; skipping vendor ledger entry")
+
+                # Update vendor running balance so "vendor credit" reflects remaining due
+                vendor.balance = int(balance_after)
+                vendor.save(update_fields=["balance"])
 
             # Cash/Bank ledger for purchases
             # LOGIC:
@@ -1244,7 +1256,8 @@ def purchase_delete_ledger(sender, instance, **kwargs):
         remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        vendor.balance = int(remaining_total)
+        # Vendor balance = opening_balance + sum(all vendor ledger entries)
+        vendor.balance = int(Decimal(vendor.opening_balance or 0) + Decimal(remaining_total or 0))
         vendor.save(update_fields=['balance'])
 
     if instance.advance_bank:
