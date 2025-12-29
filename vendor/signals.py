@@ -403,57 +403,45 @@ def sale_ledger(sender, instance, created, **kwargs):
             cash_balance.balance = Decimal(remaining_total or 0)
             cash_balance.save()
 
-        # Create new ledger entries (create_ledger will update balances automatically)
-        # Customer ledger → for credit sales, store total_bill_amount and use balance_amount for balance; for others, use total_amount
+        # Create new ledger entries
+        # CustomerLedger 'amount' is treated as the customer's OUTSTANDING DUE.
+        # So it should change customer credit balance ONLY for credit sales (remaining due),
+        # and stay unchanged for fully-paid cash/upi/cheque sales.
         if instance.customer:
             total_amt = Decimal(instance.total_amount or 0)
-            balance_amt = Decimal(instance.balance_amount or 0)
+            balance_amt = Decimal(instance.balance_amount or 0)  # remaining due for credit sales
             customer = vendor_customers.objects.get(pk=instance.customer.pk)
-            
+
+            customer.refresh_from_db()
+            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
+
             if instance.payment_method == 'credit' and balance_amt > 0:
-                # For credit sales: store total_bill_amount separately, but use balance_amount for balance calculation
-                customer.refresh_from_db()
-                ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                    total=Sum('amount')
-                )['total'] or 0
-                opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
-                balance_after = opening_balance + balance_amt
-                
-                CustomerLedger.objects.create(
-                    customer=customer,
-                    transaction_type="sale",
-                    reference_id=instance.id,
-                    description=f"Sale #{instance.id} (Credit)",
-                    opening_balance=int(opening_balance),
-                    amount=int(balance_amt),  # This affects the balance (due amount)
-                    balance_after=int(balance_after),
-                    total_bill_amount=int(total_amt),  # Store total bill amount
-                )
-                
-                customer.balance = int(balance_after)
-                customer.save()
+                # Credit sale: add only remaining due to customer balance
+                amount_due = balance_amt
+                description = f"Sale #{instance.id} (Credit)"
             else:
-                # For non-credit sales, total_bill_amount equals amount (fully paid)
-                customer.refresh_from_db()
-                ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                    total=Sum('amount')
-                )['total'] or 0
-                opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
-                balance_after = opening_balance + total_amt
-                
-                CustomerLedger.objects.create(
-                    customer=customer,
-                    transaction_type="sale",
-                    reference_id=instance.id,
-                    description=f"Sale #{instance.id}",
-                    opening_balance=int(opening_balance),
-                    amount=int(total_amt),
-                    balance_after=int(balance_after),
-                    total_bill_amount=int(total_amt),
-                )
-                
-                customer.balance = int(balance_after)
-                customer.save()
+                # Fully paid sale (cash/upi/cheque): no due, keep credit balance unchanged
+                amount_due = Decimal(0)
+                description = f"Sale #{instance.id} (Paid)"
+
+            balance_after = opening_balance + amount_due
+
+            CustomerLedger.objects.create(
+                customer=customer,
+                transaction_type="sale",
+                reference_id=instance.id,
+                description=description,
+                opening_balance=int(opening_balance),
+                amount=int(amount_due),  # due amount only
+                balance_after=int(balance_after),
+                total_bill_amount=int(total_amt),  # always store bill total
+            )
+
+            customer.balance = int(balance_after)
+            customer.save()
 
             # Bank ledger → for credit sales with bank advance payment
             # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
