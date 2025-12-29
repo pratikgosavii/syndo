@@ -642,20 +642,16 @@ def purchase_ledger(sender, instance, created, **kwargs):
         with transaction.atomic():
             # Ensure we work with fresh values
             instance.refresh_from_db()
-
+            
             # IMPORTANT (same as POS):
-            # CashLedger/CashBalance updates must be attributed to the user who created the purchase.
-            # Signals don't have request.user, so we rely on Purchase.user being saved at creation time.
-            # If it's missing (legacy/bad data), best-effort fallback to vendor.user so ledgers don't break.
-            if instance.user is None and getattr(instance, "vendor", None) is not None:
-                fallback_user = getattr(instance.vendor, "user", None)
-                if fallback_user is not None:
-                    logger.warning(
-                        f"[PURCHASE_LEDGER] Purchase.user is None for Purchase #{instance.id}. "
-                        f"Falling back to vendor.user={fallback_user} for cash/bank ledgers."
-                    )
-                    Purchase.objects.filter(pk=instance.pk).update(user=fallback_user)
-                    instance.refresh_from_db(fields=["user"])
+            # CashLedger/CashBalance must be created for the user who created the purchase (Purchase.user).
+            # Signals don't have request.user, so NEVER guess/fallback to vendor.user (that can create ledgers
+            # under the selected vendor/owner instead of the actual creator).
+            if instance.user is None:
+                logger.warning(
+                    f"[PURCHASE_LEDGER] Purchase.user is None for Purchase #{instance.id}. "
+                    f"Skipping cash/bank ledger adjustments for this purchase."
+                )
 
             # Always recompute totals when items exist so delivery/packaging charges are included
             items_count = instance.items.count()
