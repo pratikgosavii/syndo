@@ -664,7 +664,8 @@ def purchase_ledger(sender, instance, created, **kwargs):
 
             # Delete old entries for this reference to ensure clean updates
             logger.debug("[PURCHASE_LEDGER] Deleting old ledger entries...")
-            VendorLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+            # For credit purchases with advance, we also create a VendorLedger "payment" row with reference_id=purchase.id
+            VendorLedger.objects.filter(transaction_type__in=["purchase", "payment"], reference_id=instance.id).delete()
             BankLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
             CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
             logger.debug("[PURCHASE_LEDGER] Old ledger entries deleted")
@@ -692,7 +693,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 bank.save(update_fields=["balance"])
                 logger.debug(f"[PURCHASE_LEDGER] Bank balance recalculated: {bank.balance}")
 
-            # Create vendor ledger entry (ledger record; vendor.balance is NOT updated here)
+            # Create vendor ledger entries
             if instance.vendor:
                 vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
 
@@ -712,46 +713,47 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         instance.refresh_from_db(fields=["balance_amount"])
                         balance_amt = Decimal(instance.balance_amount or 0)
 
-                # Opening balance for entry = vendor opening_balance + sum(all existing vendor ledger entries)
+                # Reset vendor running balance from opening + sum(all remaining vendor ledger entries)
                 ledger_total_before = (
                     VendorLedger.objects.filter(vendor=vendor).aggregate(total=Sum("amount"))["total"] or 0
                 )
                 opening_balance = Decimal(vendor.opening_balance or 0) + Decimal(ledger_total_before or 0)
-
-                # For credit purchases, vendor "credit/due" should be ONLY the remaining amount (balance_amount),
-                # even if remaining is 0 (in that case we skip creating a ledger row).
-                if instance.payment_method == "credit":
-                    ledger_amount = balance_amt
-                    description = f"Purchase #{instance.id} (Credit)"
-                else:
-                    ledger_amount = total_amt
-                    description = f"Purchase #{instance.id}"
-
-                balance_after = opening_balance + Decimal(ledger_amount or 0)
-
-                logger.info(f"[PURCHASE_LEDGER] Creating vendor ledger entry")
-                logger.info(f"[PURCHASE_LEDGER] Vendor: {vendor.name} (ID: {vendor.id})")
-                logger.info(f"[PURCHASE_LEDGER] Amount: {ledger_amount}")
-                logger.info(f"[PURCHASE_LEDGER] Opening Balance (ledger): {opening_balance}")
-                logger.info(f"[PURCHASE_LEDGER] Balance After (ledger): {balance_after}")
-
-                if Decimal(ledger_amount or 0) > 0:
-                    VendorLedger.objects.create(
-                        vendor=vendor,
-                        transaction_type="purchase",
-                        reference_id=instance.id,
-                        description=description,
-                        opening_balance=int(opening_balance),
-                        amount=int(ledger_amount),
-                        balance_after=int(balance_after),
-                    )
-                    logger.info("[PURCHASE_LEDGER] ✓ Vendor ledger created")
-                else:
-                    logger.info("[PURCHASE_LEDGER] Vendor remaining due is 0; skipping vendor ledger entry")
-
-                # Update vendor running balance so "vendor credit" reflects remaining due
-                vendor.balance = int(balance_after)
+                vendor.balance = int(opening_balance)
                 vendor.save(update_fields=["balance"])
+
+                # For CREDIT purchases: record full purchase (+total) and record advance as a vendor payment (-advance).
+                # This shows the deduction clearly in vendor ledger and still results in net due = total - advance.
+                if instance.payment_method == "credit":
+                    if total_amt > 0:
+                        create_ledger(
+                            vendor,
+                            VendorLedger,
+                            "purchase",
+                            instance.id,
+                            total_amt,
+                            f"Purchase #{instance.id} (Credit)",
+                        )
+                    if advance_amt_effective > 0:
+                        mode = (instance.advance_mode or "").title() or "Advance"
+                        create_ledger(
+                            vendor,
+                            VendorLedger,
+                            "payment",
+                            instance.id,
+                            -advance_amt_effective,
+                            f"Advance Payment ({mode}) for Purchase #{instance.id}",
+                        )
+                else:
+                    # Non-credit: keep existing behavior (record purchase amount)
+                    if total_amt > 0:
+                        create_ledger(
+                            vendor,
+                            VendorLedger,
+                            "purchase",
+                            instance.id,
+                            total_amt,
+                            f"Purchase #{instance.id}",
+                        )
 
             # Cash/Bank ledger for purchases
             # LOGIC:
