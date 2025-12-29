@@ -674,8 +674,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
 
             # Delete old entries for this reference to ensure clean updates
             logger.debug("[PURCHASE_LEDGER] Deleting old ledger entries...")
-            # For credit purchases with advance, we also create a VendorLedger "payment" row with reference_id=purchase.id
-            VendorLedger.objects.filter(transaction_type__in=["purchase", "payment"], reference_id=instance.id).delete()
+            VendorLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
             BankLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
             CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
             logger.debug("[PURCHASE_LEDGER] Old ledger entries deleted")
@@ -731,30 +730,20 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 vendor.balance = int(opening_balance)
                 vendor.save(update_fields=["balance"])
 
-                # For CREDIT purchases: record full purchase (+total) and record advance as a vendor payment (-advance).
-                # This shows the deduction clearly in vendor ledger and still results in net due = total - advance.
+                # Vendor ledger:
+                # - For CREDIT purchases, record ONLY remaining due (balance_amount = total - advance)
+                # - For non-credit purchases, record full total_amount
                 if instance.payment_method == "credit":
-                    if total_amt > 0:
+                    if balance_amt > 0:
                         create_ledger(
                             vendor,
                             VendorLedger,
                             "purchase",
                             instance.id,
-                            total_amt,
+                            balance_amt,
                             f"Purchase #{instance.id} (Credit)",
                         )
-                    if advance_amt_effective > 0:
-                        mode = (instance.advance_mode or "").title() or "Advance"
-                        create_ledger(
-                            vendor,
-                            VendorLedger,
-                            "payment",
-                            instance.id,
-                            -advance_amt_effective,
-                            f"Advance Payment ({mode}) for Purchase #{instance.id}",
-                        )
                 else:
-                    # Non-credit: keep existing behavior (record purchase amount)
                     if total_amt > 0:
                         create_ledger(
                             vendor,
