@@ -2260,6 +2260,66 @@ class vendorViewSet(viewsets.ModelViewSet):
         # Automatically assign logged-in user to the product
         serializer.save(user=self.request.user)
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Prevent hard-delete 500s due to FK constraints.
+
+        Default: return 400 if this vendor has linked transactions/ledgers.
+        If client passes ?force=1, we delete linked objects first, then delete vendor.
+        """
+        from django.db import IntegrityError, transaction
+        from rest_framework.response import Response
+        from rest_framework import status
+
+        vendor_obj = self.get_object()
+
+        # Count linked objects that commonly reference vendor_vendors
+        purchase_count = Purchase.objects.filter(vendor=vendor_obj).count()
+        payment_count = Payment.objects.filter(vendor=vendor_obj).count()
+        ledger_count = VendorLedger.objects.filter(vendor=vendor_obj).count()
+
+        force = str(request.query_params.get("force", "")).lower() in ("1", "true", "yes")
+        if (purchase_count or payment_count or ledger_count) and not force:
+            return Response(
+                {
+                    "error": "Cannot delete vendor because it has linked records.",
+                    "vendor_id": vendor_obj.id,
+                    "linked": {
+                        "purchases": purchase_count,
+                        "payments": payment_count,
+                        "vendor_ledgers": ledger_count,
+                    },
+                    "hint": "Delete linked records first, or call this endpoint with ?force=1",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            with transaction.atomic():
+                # Best-effort cleanup (order matters)
+                # Delete transactions first so their signals can clean up related ledgers.
+                Purchase.objects.filter(vendor=vendor_obj).delete()
+                Payment.objects.filter(vendor=vendor_obj).delete()
+                VendorLedger.objects.filter(vendor=vendor_obj).delete()
+
+                vendor_obj.delete()
+        except IntegrityError:
+            # Still blocked by some FK not covered above (possibly legacy table / old migration).
+            return Response(
+                {
+                    "error": "Delete failed due to foreign key constraints.",
+                    "vendor_id": vendor_obj.id,
+                    "linked": {
+                        "purchases": purchase_count,
+                        "payments": payment_count,
+                        "vendor_ledgers": ledger_count,
+                    },
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 class bankViewSet(viewsets.ModelViewSet):
