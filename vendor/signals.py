@@ -698,6 +698,19 @@ def purchase_ledger(sender, instance, created, **kwargs):
 
                 total_amt = Decimal(instance.total_amount or 0)
                 balance_amt = Decimal(instance.balance_amount or 0)
+                advance_amt_effective = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
+
+                # For CREDIT purchases, ensure balance_amount represents remaining due:
+                # remaining = total - advance (best-effort) if not already set.
+                if instance.payment_method == "credit" and total_amt > 0:
+                    computed_remaining = total_amt - advance_amt_effective
+                    if computed_remaining < 0:
+                        computed_remaining = Decimal(0)
+                    # If balance_amount is missing/0 or mismatched, persist the computed value
+                    if balance_amt != computed_remaining:
+                        Purchase.objects.filter(pk=instance.pk).update(balance_amount=computed_remaining)
+                        instance.refresh_from_db(fields=["balance_amount"])
+                        balance_amt = Decimal(instance.balance_amount or 0)
 
                 last_entry = VendorLedger.objects.filter(vendor=vendor).order_by("-created_at").first()
                 opening_balance = Decimal(last_entry.balance_after or 0) if last_entry else Decimal(0)
@@ -765,7 +778,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                     )
 
             elif instance.payment_method == "credit":
-                advance_amt = Decimal(instance.advance_amount or 0)
+                advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
 
                 if advance_amt > 0:
                     if instance.advance_mode == "cash" and instance.user is not None:
