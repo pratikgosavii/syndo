@@ -1356,6 +1356,8 @@ class PurchaseSerializer(serializers.ModelSerializer):
         # IMPORTANT: Call calculate_total() AFTER items are created so delivery_shipping_charges 
         # and packaging_charges are included in total_amount (just like POS sales)
         purchase.calculate_total()
+        # Save to persist the calculated total and trigger signal with correct total_amount
+        purchase.save()
         # Refresh instance to get updated total_amount in response
         purchase.refresh_from_db()
 

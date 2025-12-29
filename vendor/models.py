@@ -811,7 +811,7 @@ class Purchase(models.Model):
     
     # Total amount calculated from purchase items
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, null=True)
-    
+
     # GST fields (similar to Sale)
     total_taxable_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True, help_text="Total taxable value (sum of item amounts)")
     total_gst_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True, help_text="Total GST amount (sum of item tax_amount)")
@@ -828,11 +828,11 @@ class Purchase(models.Model):
             for attempt in range(max_retries):
                 try:
                     new_code = generate_serial_number(
-                        prefix='PUR',
-                        model_class=Purchase,
-                        date=self.purchase_date,
-                        user=self.user
-                    )
+                prefix='PUR',
+                model_class=Purchase,
+                date=self.purchase_date,
+                user=self.user
+            )
                     # Check if this code already exists (race condition check)
                     existing = Purchase.objects.filter(purchase_code=new_code)
                     if self.pk:  # If updating, exclude current instance
