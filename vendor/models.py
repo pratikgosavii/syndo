@@ -191,8 +191,8 @@ class vendor_bank(models.Model):
     account_number = models.CharField(max_length=50, unique=True)
     ifsc_code = models.CharField(max_length=20)
     branch = models.CharField(max_length=100, blank=True, null=True)
-    opening_balance = models.BigIntegerField(default=0)
-    balance = models.BigIntegerField(default=0, blank=True, null=True)
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -240,8 +240,8 @@ class vendor_customers(models.Model):
     name = models.CharField(max_length=50)
     email = models.EmailField()
     contact = models.CharField(max_length=15)
-    opening_balance = models.BigIntegerField(default=0)
-    balance = models.BigIntegerField(default=0, blank=True, null=True)
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, null=True)
     # Business Details
     company_name = models.CharField(max_length=100, blank=True, null=True)
     gst_number = models.CharField(max_length=20, blank=True, null=True)
@@ -291,8 +291,8 @@ class vendor_vendors(models.Model):
     name = models.CharField(max_length=50)
     email = models.EmailField()
     contact = models.CharField(max_length=15)
-    opening_balance = models.BigIntegerField(default=0)
-    balance = models.BigIntegerField(default=0)
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     # Business Details
     company_name = models.CharField(max_length=100, blank=True, null=True)
     gst = models.CharField(max_length=20, blank=True, null=True)
@@ -339,9 +339,9 @@ class BankLedger(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
-    opening_balance = models.BigIntegerField(default=0)
-    amount = models.BigIntegerField()
-    balance_after = models.BigIntegerField()
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -368,9 +368,9 @@ class CashLedger(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
-    opening_balance = models.BigIntegerField(default=0)
-    amount = models.BigIntegerField()
-    balance_after = models.BigIntegerField()
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -395,10 +395,10 @@ class CustomerLedger(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
-    opening_balance = models.BigIntegerField(default=0)
-    amount = models.BigIntegerField()
-    balance_after = models.BigIntegerField()
-    total_bill_amount = models.BigIntegerField(default=0, help_text="Total bill amount for credit sales (includes advance payment)")
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_bill_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Total bill amount for credit sales (includes advance payment)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -420,9 +420,9 @@ class VendorLedger(models.Model):
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
-    opening_balance = models.BigIntegerField(default=0)
-    amount = models.BigIntegerField()
-    balance_after = models.BigIntegerField()
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

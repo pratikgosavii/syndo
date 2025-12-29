@@ -86,27 +86,21 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
     logger.debug(f"[CREATE_LEDGER] Description: {description}")
     logger.debug(f"[CREATE_LEDGER] User: {user}")
     
-    # Refresh parent from database to get latest balance (important after reset operations)
+    q2 = Decimal("0.01")
+
+    # Refresh parent from database to get latest balance
     if parent:
         parent.refresh_from_db()
-        opening_balance = Decimal(parent.balance or 0)
+        opening_balance = Decimal(parent.balance or 0).quantize(q2)
         logger.debug(f"[CREATE_LEDGER] Parent balance (from DB): {opening_balance}")
     else:
-        opening_balance = Decimal(0)   # >>> updated to support CashLedger
+        opening_balance = Decimal(0).quantize(q2)   # CashLedger has no parent FK
         logger.debug(f"[CREATE_LEDGER] No parent (CashLedger) - opening balance: {opening_balance}")
     
-    amount = Decimal(amount or 0)
-    balance_after = opening_balance + amount
+    amount = Decimal(amount or 0).quantize(q2)
+    balance_after = (opening_balance + amount).quantize(q2)
     logger.debug(f"[CREATE_LEDGER] Amount (Decimal): {amount}")
     logger.debug(f"[CREATE_LEDGER] Balance After: {balance_after}")
-
-    # Convert Decimal to integer for BigIntegerField
-    amount_int = int(amount)
-    opening_balance_int = int(opening_balance)
-    balance_after_int = int(balance_after)
-    logger.debug(f"[CREATE_LEDGER] Amount (int): {amount_int}")
-    logger.debug(f"[CREATE_LEDGER] Opening Balance (int): {opening_balance_int}")
-    logger.debug(f"[CREATE_LEDGER] Balance After (int): {balance_after_int}")
 
     # >>> NEW : Special case for CashLedger (no FK field)
     if ledger_model.__name__ == "CashLedger":
@@ -125,23 +119,19 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
         logger.debug(f"[CREATE_LEDGER] CashBalance balance: {cash_balance.balance}")
         
         # Update opening balance from actual cash balance
-        opening_balance = Decimal(cash_balance.balance or 0)
-        balance_after = opening_balance + amount
-        
-        # Convert to int for BigIntegerField
-        opening_balance_int = int(opening_balance)
-        balance_after_int = int(balance_after)
-        logger.debug(f"[CREATE_LEDGER] Updated Opening Balance: {opening_balance_int}")
-        logger.debug(f"[CREATE_LEDGER] Updated Balance After: {balance_after_int}")
+        opening_balance = Decimal(cash_balance.balance or 0).quantize(q2)
+        balance_after = (opening_balance + amount).quantize(q2)
+        logger.debug(f"[CREATE_LEDGER] Updated Opening Balance: {opening_balance}")
+        logger.debug(f"[CREATE_LEDGER] Updated Balance After: {balance_after}")
         
         logger.debug(f"[CREATE_LEDGER] Creating CashLedger entry with data:")
         logger.debug(f"[CREATE_LEDGER]   - user: {user} (ID: {user.id})")
         logger.debug(f"[CREATE_LEDGER]   - transaction_type: {transaction_type}")
         logger.debug(f"[CREATE_LEDGER]   - reference_id: {reference_id}")
         logger.debug(f"[CREATE_LEDGER]   - description: {description}")
-        logger.debug(f"[CREATE_LEDGER]   - opening_balance: {opening_balance_int}")
-        logger.debug(f"[CREATE_LEDGER]   - amount: {amount_int}")
-        logger.debug(f"[CREATE_LEDGER]   - balance_after: {balance_after_int}")
+        logger.debug(f"[CREATE_LEDGER]   - opening_balance: {opening_balance}")
+        logger.debug(f"[CREATE_LEDGER]   - amount: {amount}")
+        logger.debug(f"[CREATE_LEDGER]   - balance_after: {balance_after}")
         
         try:
             ledger_entry = ledger_model.objects.create(
@@ -149,9 +139,9 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
             transaction_type=transaction_type,
             reference_id=reference_id,
             description=description,
-            opening_balance=opening_balance_int,
-            amount=amount_int,
-            balance_after=balance_after_int,
+            opening_balance=opening_balance,
+            amount=amount,
+            balance_after=balance_after,
         )
             logger.info(f"[CREATE_LEDGER] ✓✓✓ CashLedger entry created successfully ✓✓✓")
             logger.info(f"[CREATE_LEDGER] Ledger Entry ID: {ledger_entry.id}")
@@ -183,9 +173,9 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
         logger.debug(f"[CREATE_LEDGER]   - transaction_type: {transaction_type}")
         logger.debug(f"[CREATE_LEDGER]   - reference_id: {reference_id}")
         logger.debug(f"[CREATE_LEDGER]   - description: {description}")
-        logger.debug(f"[CREATE_LEDGER]   - opening_balance: {opening_balance_int}")
-        logger.debug(f"[CREATE_LEDGER]   - amount: {amount_int}")
-        logger.debug(f"[CREATE_LEDGER]   - balance_after: {balance_after_int}")
+        logger.debug(f"[CREATE_LEDGER]   - opening_balance: {opening_balance}")
+        logger.debug(f"[CREATE_LEDGER]   - amount: {amount}")
+        logger.debug(f"[CREATE_LEDGER]   - balance_after: {balance_after}")
         
         try:
             ledger_entry = ledger_model.objects.create(
@@ -194,9 +184,9 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
                 "transaction_type": transaction_type,
                 "reference_id": reference_id,
                 "description": description,
-                "opening_balance": opening_balance_int,
-                "amount": amount_int,
-                "balance_after": balance_after_int,
+                "opening_balance": opening_balance,
+                "amount": amount,
+                "balance_after": balance_after,
             }
         )
             logger.info(f"[CREATE_LEDGER] ✓✓✓ {ledger_model.__name__} entry created successfully ✓✓✓")
@@ -213,9 +203,9 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
         # Update parent balance (bank, customer, vendor)
         logger.debug(f"[CREATE_LEDGER] Updating parent balance...")
         logger.debug(f"[CREATE_LEDGER] Old balance: {parent.balance}")
-        parent.balance = balance_after_int
+        parent.balance = balance_after
         parent.save()
-        logger.debug(f"[CREATE_LEDGER] ✓ Parent balance updated to: {balance_after_int}")
+        logger.debug(f"[CREATE_LEDGER] ✓ Parent balance updated to: {balance_after}")
         logger.debug(f"[CREATE_LEDGER] New balance (from DB): {parent.balance}")
     
     logger.debug(f"[CREATE_LEDGER] Function completed successfully")
@@ -247,7 +237,7 @@ def _group_existing_by_parent(ledger_model, transaction_type, reference_id):
             key = getattr(entry, parent_field, None)
         if key is None:
             continue
-        grouped[key] = grouped.get(key, 0) + int(entry.amount or 0)
+        grouped[key] = grouped.get(key, Decimal(0)) + Decimal(entry.amount or 0)
     return grouped
 
 
@@ -257,9 +247,9 @@ def reset_ledger_for_reference(ledger_model, transaction_type, reference_id):
     """
     grouped = _group_existing_by_parent(ledger_model, transaction_type, reference_id)
     for parent_or_user, total in grouped.items():
-        if not total:
+        if not total or Decimal(total) == 0:
             continue
-        delta = -int(total)
+        delta = -Decimal(total)
         if ledger_model.__name__ == "CashLedger":
             create_ledger(
                 None,
@@ -292,13 +282,13 @@ def adjust_ledger_to_target(parent, ledger_model, transaction_type, reference_id
     else:
         qs = ledger_model.objects.filter(**{parent_field: parent, "transaction_type": transaction_type, "reference_id": reference_id})
 
-    current_total = 0
+    current_total = Decimal(0)
     for e in qs:
-        current_total += int(e.amount or 0)
+        current_total += Decimal(e.amount or 0)
 
-    target_total = int(Decimal(target_amount or 0))
+    target_total = Decimal(target_amount or 0)
     delta = target_total - current_total
-    if delta:
+    if delta != 0:
         create_ledger(parent, ledger_model, transaction_type, reference_id, delta, description, user=user)
 
 # -------------------------------
@@ -381,7 +371,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                 total=Sum('amount')
             )['total'] or 0
             # Customer balance = opening_balance + sum of ledger entries
-            customer.balance = int(Decimal(customer.opening_balance or 0) + Decimal(ledger_total))
+            customer.balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total or 0)
             customer.save(update_fields=['balance'])
 
         if instance.advance_bank:
@@ -390,7 +380,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                 total=Sum('amount')
             )['total'] or 0
             # Bank balance = opening_balance + sum(all bank ledger entries)
-            bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
+            bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
             bank.save(update_fields=['balance'])
 
         # Recalculate cash balance (independent of bank)
@@ -434,13 +424,13 @@ def sale_ledger(sender, instance, created, **kwargs):
                 transaction_type="sale",
                 reference_id=instance.id,
                 description=description,
-                opening_balance=int(opening_balance),
-                amount=int(amount_due),  # due amount only
-                balance_after=int(balance_after),
-                total_bill_amount=int(total_amt),  # always store bill total
+                opening_balance=opening_balance,
+                amount=amount_due,  # due amount only
+                balance_after=balance_after,
+                total_bill_amount=total_amt,  # always store bill total
             )
 
-            customer.balance = int(balance_after)
+            customer.balance = balance_after
             customer.save()
 
             # Bank ledger → for credit sales with bank advance payment
@@ -683,7 +673,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                     BankLedger.objects.filter(bank=bank).aggregate(total=Sum("amount"))["total"] or 0
                 )
                 # Bank balance = opening_balance + sum(all bank ledger entries)
-                bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
+                bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
                 bank.save(update_fields=["balance"])
                 logger.debug(f"[PURCHASE_LEDGER] Bank balance recalculated: {bank.balance}")
 
@@ -712,7 +702,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                     VendorLedger.objects.filter(vendor=vendor).aggregate(total=Sum("amount"))["total"] or 0
                 )
                 opening_balance = Decimal(vendor.opening_balance or 0) + Decimal(ledger_total_before or 0)
-                vendor.balance = int(opening_balance)
+                vendor.balance = opening_balance
                 vendor.save(update_fields=["balance"])
 
                 # Vendor ledger:
@@ -837,7 +827,7 @@ def expense_ledger(sender, instance, created, **kwargs):
             total=Sum('amount')
         )['total'] or 0
         # Bank balance = opening_balance + sum(all bank ledger entries)
-        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
+        bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -929,7 +919,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                 total=Sum('amount')
             )['total'] or 0
             # Customer balance = opening_balance + sum of ledger entries
-            customer.balance = int(Decimal(customer.opening_balance or 0) + Decimal(ledger_total))
+            customer.balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total or 0)
             customer.save(update_fields=['balance'])
             logger.debug(f"[PAYMENT_LEDGER] Customer balance recalculated: {customer.balance} (opening: {customer.opening_balance}, ledger: {ledger_total})")
 
@@ -939,7 +929,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                 total=Sum('amount')
             )['total'] or 0
             # Vendor balance = opening_balance + sum of ledger entries
-            vendor.balance = int(Decimal(vendor.opening_balance or 0) + Decimal(ledger_total))
+            vendor.balance = Decimal(vendor.opening_balance or 0) + Decimal(ledger_total or 0)
             vendor.save(update_fields=['balance'])
             logger.debug(f"[PAYMENT_LEDGER] Vendor balance recalculated: {vendor.balance} (opening: {vendor.opening_balance}, ledger: {ledger_total})")
 
@@ -1207,7 +1197,7 @@ def sale_delete_ledger(sender, instance, **kwargs):
         remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        customer.balance = int(remaining_total)
+        customer.balance = Decimal(customer.opening_balance or 0) + Decimal(remaining_total or 0)
         customer.save(update_fields=['balance'])
 
     if instance.advance_bank:
@@ -1216,7 +1206,7 @@ def sale_delete_ledger(sender, instance, **kwargs):
             total=Sum('amount')
         )['total'] or 0
         # Bank balance = opening_balance + sum(all bank ledger entries)
-        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
+        bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -1243,7 +1233,7 @@ def purchase_delete_ledger(sender, instance, **kwargs):
             total=Sum('amount')
         )['total'] or 0
         # Vendor balance = opening_balance + sum(all vendor ledger entries)
-        vendor.balance = int(Decimal(vendor.opening_balance or 0) + Decimal(remaining_total or 0))
+        vendor.balance = Decimal(vendor.opening_balance or 0) + Decimal(remaining_total or 0)
         vendor.save(update_fields=['balance'])
 
     if instance.advance_bank:
@@ -1252,7 +1242,7 @@ def purchase_delete_ledger(sender, instance, **kwargs):
             total=Sum('amount')
         )['total'] or 0
         # Bank balance = opening_balance + sum(all bank ledger entries)
-        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
+        bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -1279,7 +1269,7 @@ def expense_delete_ledger(sender, instance, **kwargs):
             total=Sum('amount')
         )['total'] or 0
         # Bank balance = opening_balance + sum(all bank ledger entries)
-        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
+        bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -1306,7 +1296,7 @@ def payment_delete_ledger(sender, instance, **kwargs):
         remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        customer.balance = int(remaining_total)
+        customer.balance = Decimal(customer.opening_balance or 0) + Decimal(remaining_total or 0)
         customer.save(update_fields=['balance'])
 
     if instance.vendor:
@@ -1314,7 +1304,7 @@ def payment_delete_ledger(sender, instance, **kwargs):
         remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        vendor.balance = int(remaining_total)
+        vendor.balance = Decimal(vendor.opening_balance or 0) + Decimal(remaining_total or 0)
         vendor.save(update_fields=['balance'])
 
     if instance.user:
@@ -1332,7 +1322,7 @@ def payment_delete_ledger(sender, instance, **kwargs):
             total=Sum('amount')
         )['total'] or 0
         # Bank balance = opening_balance + sum(all bank ledger entries)
-        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
+        bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
         bank.save(update_fields=['balance'])
 
 
