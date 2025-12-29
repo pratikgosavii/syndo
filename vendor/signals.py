@@ -389,7 +389,8 @@ def sale_ledger(sender, instance, created, **kwargs):
             remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
                 total=Sum('amount')
             )['total'] or 0
-            bank.balance = int(remaining_total)
+            # Bank balance = opening_balance + sum(all bank ledger entries)
+            bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
             bank.save(update_fields=['balance'])
 
             if instance.user:
@@ -686,7 +687,8 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 remaining_total = (
                     BankLedger.objects.filter(bank=bank).aggregate(total=Sum("amount"))["total"] or 0
                 )
-                bank.balance = int(remaining_total)
+                # Bank balance = opening_balance + sum(all bank ledger entries)
+                bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
                 bank.save(update_fields=["balance"])
                 logger.debug(f"[PURCHASE_LEDGER] Bank balance recalculated: {bank.balance}")
 
@@ -823,7 +825,8 @@ def expense_ledger(sender, instance, created, **kwargs):
         remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        bank.balance = int(remaining_total)
+        # Bank balance = opening_balance + sum(all bank ledger entries)
+        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -1201,7 +1204,8 @@ def sale_delete_ledger(sender, instance, **kwargs):
         remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        bank.balance = int(remaining_total)
+        # Bank balance = opening_balance + sum(all bank ledger entries)
+        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -1235,7 +1239,8 @@ def purchase_delete_ledger(sender, instance, **kwargs):
         remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        bank.balance = int(remaining_total)
+        # Bank balance = opening_balance + sum(all bank ledger entries)
+        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -1261,7 +1266,8 @@ def expense_delete_ledger(sender, instance, **kwargs):
         remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        bank.balance = int(remaining_total)
+        # Bank balance = opening_balance + sum(all bank ledger entries)
+        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
         bank.save(update_fields=['balance'])
 
     if instance.user:
@@ -1313,7 +1319,8 @@ def payment_delete_ledger(sender, instance, **kwargs):
         remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
             total=Sum('amount')
         )['total'] or 0
-        bank.balance = int(remaining_total)
+        # Bank balance = opening_balance + sum(all bank ledger entries)
+        bank.balance = int(Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0))
         bank.save(update_fields=['balance'])
 
 
