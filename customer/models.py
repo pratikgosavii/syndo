@@ -216,16 +216,42 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        if not self.order_id:
-            from vendor.utils import generate_serial_number
-            from django.utils import timezone
+        """
+        Generate a collision-safe order_id.
+
+        We use the existing FY/MONTH serial format, but retry on UNIQUE collisions
+        (possible under concurrency) to avoid IntegrityError: UNIQUE constraint failed.
+        """
+        if self.order_id:
+            return super().save(*args, **kwargs)
+
+        from django.db import IntegrityError, transaction
+        from django.utils import timezone
+        from vendor.utils import generate_serial_number
+
+        last_exc = None
+        for _attempt in range(10):
             self.order_id = generate_serial_number(
-                prefix='ONL',
+                prefix="ONL",
                 model_class=Order,
                 date=timezone.now().date(),
-                user=self.user
+                user=self.user,
             )
-        super().save(*args, **kwargs)
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError as e:
+                # Collision on unique order_id: clear and retry
+                last_exc = e
+                self.order_id = ""
+                if "order_id" in str(e) or "UNIQUE constraint failed" in str(e):
+                    continue
+                raise
+
+        # If we still collide after retries, raise last exception
+        if last_exc:
+            raise last_exc
+        return super().save(*args, **kwargs)
 
     # Payment logic handled via service layer (customer/payments/cashfree.py)
 
