@@ -426,14 +426,30 @@ class OrderSerializer(serializers.ModelSerializer):
             # calculate final total (subtract delivery discount from shipping fee)
             total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
 
-            # Create order (order_id will be generated in Order.save())
-            order = Order.objects.create(
-                **validated_data,
-                item_total=item_total,
-                tax_total=tax_total,
-                delivery_discount_amount=delivery_discount_amount,
-                total_amount=total_amount,
-            )
+            # Create order (order_id is generated server-side in Order.save()).
+            # Add an extra retry layer here to avoid crashing the API on rare UNIQUE collisions.
+            from django.db import IntegrityError
+            order = None
+            last_exc = None
+            for _attempt in range(5):
+                try:
+                    with transaction.atomic():
+                        order = Order.objects.create(
+                            **validated_data,
+                            item_total=item_total,
+                            tax_total=tax_total,
+                            delivery_discount_amount=delivery_discount_amount,
+                            total_amount=total_amount,
+                        )
+                    break
+                except IntegrityError as e:
+                    last_exc = e
+                    if "order_id" in str(e) or "UNIQUE constraint failed" in str(e):
+                        continue
+                    raise
+
+            if order is None:
+                raise last_exc or serializers.ValidationError({"detail": "Unable to create order. Please try again."})
 
             # bulk create items with linked order
             for oi in order_items:
