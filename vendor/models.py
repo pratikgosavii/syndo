@@ -636,6 +636,11 @@ class product(models.Model):
             half_gst = round(self.gst / 2, 2)
             self.sgst_rate = half_gst
             self.cgst_rate = half_gst
+        
+        # Set stock_cached to opening_stock when product is first created
+        if self.pk is None and self.opening_stock is not None:
+            self.stock_cached = self.opening_stock
+        
         super().save(*args, **kwargs)
 
 

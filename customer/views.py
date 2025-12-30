@@ -33,6 +33,9 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         Body should mirror order creation payload (needs items[0].product and address id).
         Only runs if vendor has auto_assign enabled.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         items = request.data.get("items") or []
         if not items or not isinstance(items, list):
             return Response({"detail": "No items provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -67,7 +70,19 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         except Address.DoesNotExist:
             return Response({"detail": "Address not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Log the coordinates being used for delivery check
+        delivery_lat = getattr(addr, "latitude", None)
+        delivery_lon = getattr(addr, "longitude", None)
+        logger.info("=" * 80)
+        logger.info("[check_delivery_availability] Delivery availability check triggered")
+        logger.info("[check_delivery_availability] Address ID: %s", address_id)
+        logger.info("[check_delivery_availability] Delivery coordinates: latitude=%s, longitude=%s", delivery_lat, delivery_lon)
+        logger.info("[check_delivery_availability] User: %s (ID: %s)", request.user, request.user.id if request.user else "N/A")
+        logger.info("[check_delivery_availability] Product ID: %s, Vendor: %s", product_id, vendor_user)
+
         delivery_type = request.data.get("delivery_type") or "self_pickup"
+        logger.info("[check_delivery_availability] Delivery type: %s", delivery_type)
+        
         if delivery_type == "instant_delivery":
             # Only instant_delivery needs rider check (and only if auto_assign is enabled)
         # Build a lightweight order-like object for serviceability check
@@ -82,13 +97,18 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
             )
 
             try:
+                logger.info("[check_delivery_availability] Calling get_serviceability_for_order with coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
                 svc_result = get_serviceability_for_order(temp_order)
                 ok = svc_result.get("ok")
                 svc = (svc_result.get("raw") or {}).get("serviceability") or {}
                 rider_ok = svc.get("riderServiceAble")
                 location_ok = svc.get("locationServiceAble")
 
+                logger.info("[check_delivery_availability] Serviceability result: ok=%s, rider_ok=%s, location_ok=%s", ok, rider_ok, location_ok)
+
                 if ok:
+                    logger.info("[check_delivery_availability] Delivery boy available for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
+                    logger.info("=" * 80)
                     return Response({
                         "ok": True,
                         "message": "Delivery boy available",
@@ -99,10 +119,14 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
                 # Not serviceable
                 if rider_ok is False:
                     msg = "No delivery boy present at the moment."
+                    logger.warning("[check_delivery_availability] No delivery boy available for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
                 elif location_ok is False:
                     msg = "Delivery location not serviceable."
+                    logger.warning("[check_delivery_availability] Location not serviceable for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
                 else:
                     msg = svc_result.get("message") or "Delivery not serviceable."
+                    logger.warning("[check_delivery_availability] Delivery not serviceable for coordinates: lat=%s, lon=%s, reason: %s", delivery_lat, delivery_lon, msg)
+                logger.info("=" * 80)
                 return Response({
                     "ok": False,
                     "message": msg,
@@ -110,7 +134,9 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
                     "auto_assign_enabled": True
                 }, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                print(f"[check_delivery_availability] Exception: {e}")
+                logger.error("[check_delivery_availability] Exception checking delivery availability for coordinates: lat=%s, lon=%s, error: %s", delivery_lat, delivery_lon, str(e))
+                logger.exception("[check_delivery_availability] Full exception traceback:")
+                logger.info("=" * 80)
                 return Response({
                     "ok": False,
                     "message": "Unable to confirm delivery availability. Please try again.",
@@ -121,6 +147,8 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
             # Get delivery_mode for response
             from vendor.models import DeliveryMode
             delivery_mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
+            logger.info("[check_delivery_availability] Non-instant delivery type (%s) - no rider check needed. Coordinates: lat=%s, lon=%s", delivery_type, delivery_lat, delivery_lon)
+            logger.info("=" * 80)
             return Response({
                 "ok": True,
                 "message": "Delivery available for this delivery type",

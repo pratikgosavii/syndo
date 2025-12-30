@@ -1685,92 +1685,68 @@ def update_online_order_ledger_on_return(sender, instance, created, **kwargs):
                     )
 
 # -----------------------------------------------------------------------------
-# COD / Cash Online Orders -> CashLedger credit on completion
+# COD / Cash Online Orders -> CashLedger credit when OrderItem is delivered
 # -----------------------------------------------------------------------------
-@receiver(post_save, sender=Order)
-def credit_vendor_cash_on_cod_order_completed(sender, instance, created, **kwargs):
+@receiver(post_save, sender=OrderItem)
+def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwargs):
     """
-    When an online Order is fully completed and payment_mode is COD/cash,
-    credit vendor CashLedger and update CashBalance.
+    When an OrderItem is marked as "delivered" and order payment_mode is COD/cash,
+    credit vendor CashLedger and update CashBalance for that item's amount.
 
-    Idempotent: will not create duplicate cash entries for the same order/vendor.
+    Idempotent: will not create duplicate cash entries for the same order item.
     """
     try:
-        if getattr(instance, "status", None) != "completed":
+        # Only process updates, not creation
+        if created:
+            return
+        
+        # Only process when status is "delivered"
+        if getattr(instance, "status", None) != "delivered":
             return
 
-        payment_mode = str(getattr(instance, "payment_mode", "") or "").strip().lower()
+        # Check payment mode from the order
+        order = getattr(instance, "order", None)
+        if not order:
+            return
+
+        payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
         if payment_mode not in ("cod", "cash"):
             return
 
-        # Determine vendor(s) from order items
-        items = instance.items.select_related("product__user").all()
-        if not items:
+        # Get vendor from product
+        vendor_user = getattr(instance.product, "user", None)
+        if not vendor_user:
             return
 
-        vendor_users = list({it.product.user for it in items if getattr(it.product, "user", None)})
-        if not vendor_users:
-            return
-
-        # If single vendor (expected in this app), credit the full order total.
-        # If multiple vendors, credit per-vendor item totals (shipping split is undefined here).
+        # Calculate amount for this item
         from decimal import Decimal
         q2 = Decimal("0.01")
-
-        if len(vendor_users) == 1:
-            vendor_user = vendor_users[0]
-            amount = Decimal(getattr(instance, "total_amount", 0) or 0).quantize(q2)
-            if amount == 0:
-                return
-
-            # Avoid duplicates
-            if CashLedger.objects.filter(
-                user=vendor_user,
-                transaction_type="sale",
-                reference_id=instance.id,
-                description__icontains="Online Order COD",
-            ).exists():
-                return
-
-            create_ledger(
-                None,
-                CashLedger,
-                transaction_type="sale",
-                reference_id=instance.id,
-                amount=amount,
-                description=f"Online Order COD Received (Order #{getattr(instance, 'order_id', instance.id)})",
-                user=vendor_user,
-            )
+        item_price = Decimal(getattr(instance, "price", 0) or 0)
+        item_quantity = Decimal(getattr(instance, "quantity", 0) or 0)
+        amount = (item_price * item_quantity).quantize(q2)
+        
+        if amount == 0:
             return
 
-        # Multiple vendors case (best-effort): credit each vendor their item totals.
-        vendor_totals = {}
-        for it in items:
-            vu = getattr(it.product, "user", None)
-            if not vu:
-                continue
-            vendor_totals.setdefault(vu, Decimal("0.00"))
-            vendor_totals[vu] += (Decimal(getattr(it, "price", 0) or 0) * Decimal(getattr(it, "quantity", 0) or 0))
-        for vu, amt in vendor_totals.items():
-            amt = Decimal(amt or 0).quantize(q2)
-            if amt == 0:
-                continue
-            if CashLedger.objects.filter(
-                user=vu,
-                transaction_type="sale",
-                reference_id=instance.id,
-                description__icontains="Online Order COD",
-            ).exists():
-                continue
-            create_ledger(
-                None,
-                CashLedger,
-                transaction_type="sale",
-                reference_id=instance.id,
-                amount=amt,
-                description=f"Online Order COD Received (Order #{getattr(instance, 'order_id', instance.id)})",
-                user=vu,
-            )
+        # Avoid duplicates - check if we already created a ledger entry for this order item
+        if CashLedger.objects.filter(
+            user=vendor_user,
+            transaction_type="sale",
+            reference_id=instance.id,
+            description__icontains="Online Order COD",
+        ).exists():
+            return
+
+        # Create cash ledger entry for this delivered item
+        create_ledger(
+            None,
+            CashLedger,
+            transaction_type="sale",
+            reference_id=instance.id,
+            amount=amount,
+            description=f"Online Order COD Received (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
+            user=vendor_user,
+        )
     except Exception:
         # Never break save flow on logging/ledger issues
         return
