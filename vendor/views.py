@@ -634,7 +634,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         DRF API (vendor): manually assign a delivery boy to an order.
 
         URL: POST /vendor/orders/<order_pk>/assign-delivery-boy/
-        cant we do like /vendor/orders/assign-delivery-boy/<order_pk>/?
         Body: { "delivery_boy_id": <id> }  (or { "delivery_boy": <id> })
         """
         order = self.get_object()  # queryset already restricts to vendor's orders
@@ -3505,6 +3504,20 @@ class UpdateOrderItemStatusAPIView(APIView):
         if status_value in dict(OrderItem.STATUS_CHOICES):
             item.status = status_value
             item.save()
+
+            # If all items in the order are delivered, mark the overall order as completed
+            order_completed = False
+            try:
+                if status_value == "delivered":
+                    order = item.order
+                    remaining = order.items.exclude(status="delivered").exists()
+                    if not remaining and order.status != "completed":
+                        order.status = "completed"
+                        order.save(update_fields=["status"])
+                        order_completed = True
+            except Exception:
+                order_completed = False
+
             # Notify via uEngage for item-level delivery events
             try:
                 event_map = {
@@ -3521,7 +3534,11 @@ class UpdateOrderItemStatusAPIView(APIView):
             except Exception:
                 pass
             return Response(
-                {"message": f"Status for {item.product.name} updated to {status_value}"},
+                {
+                    "message": f"Status for {item.product.name} updated to {status_value}",
+                    "order_completed": order_completed,
+                    "order_status": getattr(item.order, "status", None),
+                },
                 status=status.HTTP_200_OK
             )
         else:
