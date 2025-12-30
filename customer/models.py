@@ -228,15 +228,29 @@ class Order(models.Model):
         from django.db import IntegrityError, transaction
         from django.utils import timezone
         from vendor.utils import generate_serial_number
+        import logging
+        import secrets
+
+        logger = logging.getLogger(__name__)
 
         last_exc = None
         for _attempt in range(10):
-            self.order_id = generate_serial_number(
+            base = generate_serial_number(
                 prefix="ONL",
                 model_class=Order,
                 date=timezone.now().date(),
                 user=self.user,
             )
+            # First attempt uses the clean serial. If it collides (concurrency),
+            # add a tiny random suffix to guarantee uniqueness without relying on
+            # committed rows being visible yet.
+            if _attempt == 0:
+                candidate = base
+            else:
+                candidate = f"{base}-{secrets.token_hex(2)}"  # e.g. .../ONL-0001-a3f9
+
+            # Keep within field max_length
+            self.order_id = candidate[:100]
             try:
                 with transaction.atomic():
                     return super().save(*args, **kwargs)
@@ -245,6 +259,7 @@ class Order(models.Model):
                 last_exc = e
                 self.order_id = ""
                 if "order_id" in str(e) or "UNIQUE constraint failed" in str(e):
+                    logger.warning(f"[Order.save] order_id collision, retrying (attempt={_attempt + 1})")
                     continue
                 raise
 

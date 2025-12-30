@@ -110,7 +110,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
                     "auto_assign_enabled": True
                 }, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                print(f"[check_delivery_availability] Exception: {e}")
+                print(f"💥 [check_delivery_availability] Exception: {e}")
                 return Response({
                     "ok": False,
                     "message": "Unable to confirm delivery availability. Please try again.",
@@ -132,7 +132,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         Create order and immediately initiate Cashfree payment.
         Returns 201 with order payload + payment_session_id/payment_link.
         """
-        # NOTE: Store-open check should apply only to instant_delivery (as requested).
+        # Guard: prevent order placement when the vendor store is closed
         items = request.data.get("items") or []
         if not items or not isinstance(items, list):
             return Response({"detail": "No items provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -140,15 +140,13 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         product_id = first_item.get("product")
         if not product_id:
             return Response({"detail": "Product id is required"}, status=status.HTTP_400_BAD_REQUEST)
-        delivery_type = (request.data.get("delivery_type") or "self_pickup")
         try:
             first_product = product.objects.select_related("user").get(id=product_id)
         except product.DoesNotExist:
             return Response({"detail": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
-        # Only block when store is closed for instant delivery
-        if delivery_type == "instant_delivery":
-            store = vendor_store.objects.filter(user=first_product.user).first()
-            if store and not VendorStoreSerializer().get_is_store_open(store):
+        store = vendor_store.objects.filter(user=first_product.user).first()
+        if store:
+            if not VendorStoreSerializer().get_is_store_open(store):
                 return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
