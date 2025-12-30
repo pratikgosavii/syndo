@@ -422,20 +422,30 @@ class OrderSerializer(serializers.ModelSerializer):
             # Refresh order from DB to get saved order items with IDs
             order.refresh_from_db()
 
-            # Serviceability check (must have address + instant_delivery)
-            print("\n" + "=" * 80)
-            print("🛒 [OrderSerializer] Serviceability pre-check")
-            print(f"📦 Order ID: {order.order_id}")
-            print(f"🚚 Delivery Type: {order.delivery_type}")
-            print(f"🏠 Has Address: {bool(order.address)}")
+            # Serviceability check (only when vendor has auto-assign enabled)
+            auto_assign_enabled = False
+            try:
+                if vendor_user:
+                    from vendor.models import DeliveryMode
+                    dm = DeliveryMode.objects.filter(user=vendor_user).only("is_auto_assign_enabled").first()
+                    auto_assign_enabled = bool(getattr(dm, "is_auto_assign_enabled", False))
+            except Exception:
+                auto_assign_enabled = False
 
-            if order.delivery_type == "instant_delivery" and order.address:
+            print("\n" + "=" * 80)
+            print("[OrderSerializer] Serviceability pre-check")
+            print(f"Order ID: {order.order_id}")
+            print(f"Delivery Type: {order.delivery_type}")
+            print(f"Has Address: {bool(order.address)}")
+            print(f"Vendor auto-assign enabled: {auto_assign_enabled}")
+
+            if auto_assign_enabled and order.delivery_type == "instant_delivery" and order.address:
                 try:
                     from integrations.uengage import get_serviceability_for_order
 
-                    print("🔍 Checking uEngage serviceability before finalizing order...")
+                    print("[OrderSerializer] Checking uEngage serviceability before finalizing order...")
                     serviceability_result = get_serviceability_for_order(order)
-                    print(f"📊 Serviceability result: {serviceability_result}")
+                    print(f"[OrderSerializer] Serviceability result: {serviceability_result}")
 
                     ok = serviceability_result.get("ok")
                     svc = (serviceability_result.get("raw") or {}).get("serviceability") or {}
@@ -450,10 +460,10 @@ class OrderSerializer(serializers.ModelSerializer):
                 except serializers.ValidationError:
                     raise
                 except Exception as e:
-                    print(f"💥 Serviceability check exception: {e}")
+                    print(f"[OrderSerializer] Serviceability check exception: {e}")
                     raise serializers.ValidationError({"delivery": "Unable to confirm delivery availability. Please try again."})
             else:
-                print("⏭️ Skipping serviceability: not instant_delivery or no address")
+                print("[OrderSerializer] Skipping serviceability: auto-assign disabled or not instant_delivery or no address")
 
             # After bulk create, attach print jobs (if any)
             # Fetch saved order items from DB since bulk_create doesn't return IDs
@@ -504,7 +514,7 @@ class OrderSerializer(serializers.ModelSerializer):
                         page_numbers=f.get("page_numbers", ""),
                     )
 
-            # ✅ CLEAR CART AFTER SUCCESSFUL ORDER CREATION
+            # CLEAR CART AFTER SUCCESSFUL ORDER CREATION
             Cart.objects.filter(user=request.user).delete()
 
             # Send push notifications to customer for each vendor's order notification message
@@ -515,7 +525,7 @@ class OrderSerializer(serializers.ModelSerializer):
                 # Don't fail order creation if notification fails
 
             # Delivery task creation is deferred to vendor when status becomes ready_to_shipment
-            print("⏭️ Delivery task will be created when vendor marks ready_to_shipment.")
+            print("[OrderSerializer] Delivery task will be created when vendor marks ready_to_shipment.")
             print("=" * 80 + "\n")
 
             return order

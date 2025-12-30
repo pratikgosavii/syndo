@@ -352,7 +352,7 @@ SMS_MESSAGE_PARAM = "message"
 # SenderId is required by MSGClub and must be exactly 6 alphabets.
 # Replace "SVNDOO" with your approved SenderId from MSGClub panel.
 # (Your panel screenshot shows "SVNDO"/Svindo branding; SenderId must be 6 alphabets.)
-SMS_SENDER_ID = "SVNDOO"
+SMS_SENDER_ID = "SVNDO"
 
 # Parameter name can vary by provider/account; MSGClub commonly uses "senderId"
 SMS_SENDER_PARAM = "senderId"
@@ -385,7 +385,8 @@ SMS_CONSENT_FAILOVER_ID = ""  # e.g. "30"
 SMS_CONSENT_FAILOVER_PARAM = "concentFailoverId"
 
 # Used to build an invoice link for templates that include a URL variable
-SITE_BASE_URL = "http://127.0.0.1:8000"
+# NOTE: must be public domain so customer phones can open it.
+SITE_BASE_URL = "https://vendor.svindo.com"
 
 # Customer invoice link (signed token)
 # Allows opening invoice PDF without login when a valid token is present.

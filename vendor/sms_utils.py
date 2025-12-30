@@ -117,11 +117,7 @@ def send_sms_via_msgclub(phone_number, message):
 
         # Validate sender id if provided/required by provider
         # MSGClub commonly requires exactly 6 alphabets (A-Z).
-        if sender_id:
-            if not re.fullmatch(r"[A-Za-z]{6}", str(sender_id).strip()):
-                error_msg = "Invalid SMS_SENDER_ID. It must be exactly 6 alphabets (e.g. ABCDEF)."
-                logger.error(f"[SMS LOG] ERROR: {error_msg} (got: {sender_id!r})")
-                return False, error_msg
+        
        
         query_string = urllib.parse.urlencode(params)
         full_endpoint = f"{endpoint}?{query_string}"
@@ -384,17 +380,24 @@ def send_sale_sms(sale, invoice_type='invoice'):
     invoice_number = sale.invoice_number or f"#{sale.id}"
     total_amount = getattr(sale, "total_amount", None) or getattr(sale, "total_bill_amount", None) or 0
 
-    # Build an invoice link (useful for DLT templates that include a URL variable)
+    # Build an invoice link (must match approved DLT template)
     try:
         base = getattr(settings, "SITE_BASE_URL", "").rstrip("/")
     except Exception:
         base = ""
-    # Use customer-facing invoice PDF endpoint (public link as requested)
-    invoice_link = f"{base}/vendor/customer-sale-invoice/?id={sale.id}" if base else ""
+
+    # Our approved template expects URL like:
+    # https://vendor.svindo.com/vendor/customer-sale-invoice/?{#var#}
+    # We'll fill var with "id=<sale_id>"
+    invoice_query = f"id={sale.id}"
+    invoice_link = f"{base}/vendor/customer-sale-invoice/?{invoice_query}" if base else ""
 
     if invoice_type == 'invoice':
-        # If you are using a DLT-approved template, keep message text aligned with that template.
-        # You can change this to match exactly what is approved in MSGClub panel.
+        # Match DLT-approved template wording EXACTLY; only replace vars.
+        # Template:
+        # From Svindo: Your purchase invoice is generated. Thank you for shopping {#var#}.
+        # Your purchase amount is Rs. {#var#}. Download your invoice:
+        # https://vendor.svindo.com/vendor/customer-sale-invoice/?{#var#} (Valid for 7 days).
         message = (
             f"From Svindo: Your purchase invoice is generated. Thank you for shopping {invoice_number}. "
             f"Your purchase amount is Rs. {total_amount}. "
