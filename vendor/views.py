@@ -3163,12 +3163,23 @@ def sale_invoice(request, sale_id):
         .get(id=sale_id)
     )
     wholesale = sale.wholesales.first()
-
-    # --- Safety checks ---
+    # If no pos_wholesale row exists, we still generate an invoice PDF using Sale.invoice_number
+    # and treat delivery/packaging as 0.
     if not wholesale:
-        return HttpResponse("No wholesale details found for this sale.", status=400)
+        from types import SimpleNamespace
+        from decimal import Decimal
+        from django.utils import timezone
 
-    sale_type = wholesale.invoice_type.lower().replace(" ", "_")  # normalize e.g. "Retail Sale" -> "retail_sale"
+        sale_dt = getattr(sale, "created_at", None) or timezone.now()
+        wholesale = SimpleNamespace(
+            invoice_type="invoice",
+            invoice_number=(sale.invoice_number or f"#{sale.id}"),
+            date=getattr(sale_dt, "date", lambda: None)(),
+            delivery_charges=Decimal("0.00"),
+            packaging_charges=Decimal("0.00"),
+        )
+
+    sale_type = (getattr(wholesale, "invoice_type", None) or "invoice").lower().replace(" ", "_")  # normalize
     is_registered = bool(sale.company_profile and sale.company_profile.gstin)
 
     # Determine store GST type (CGST if vendor/customer state matches else IGST)
@@ -3206,9 +3217,10 @@ def sale_invoice(request, sale_id):
         template_name = "sale_invoice/online_invoice.html"
 
     # --- Charges and totals ---
-    delivery = wholesale.delivery_charges or 0
-    packaging = wholesale.packaging_charges or 0
-    total_amount = sale.total_amount + delivery + packaging
+    from decimal import Decimal
+    delivery = Decimal(getattr(wholesale, "delivery_charges", 0) or 0)
+    packaging = Decimal(getattr(wholesale, "packaging_charges", 0) or 0)
+    total_amount = Decimal(sale.total_amount or 0) + delivery + packaging
 
     rounded_total = round(total_amount)
     round_off_value = round(rounded_total - total_amount, 2)
@@ -5440,8 +5452,21 @@ class customer_sale_invoice(APIView):
         # This endpoint is now publicly accessible with just sale_id.
 
         wholesale = sale.wholesales.first()
+        # If no pos_wholesale row exists, still generate invoice PDF with default invoice_type
+        # and charges=0 using Sale.invoice_number.
         if not wholesale:
-            return Response({"error": "No wholesale details found for this sale"}, status=status.HTTP_400_BAD_REQUEST)
+            from types import SimpleNamespace
+            from django.utils import timezone
+            from decimal import Decimal
+
+            sale_dt = getattr(sale, "created_at", None) or timezone.now()
+            wholesale = SimpleNamespace(
+                invoice_type="invoice",
+                invoice_number=(sale.invoice_number or f"#{sale.id}"),
+                date=getattr(sale_dt, "date", lambda: None)(),
+                delivery_charges=Decimal("0.00"),
+                packaging_charges=Decimal("0.00"),
+            )
 
         sale_type = (wholesale.invoice_type or "invoice").lower().replace(" ", "_")
 
