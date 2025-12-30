@@ -390,11 +390,21 @@ def cashfree_webhook(request):
     Cashfree webhook to update order status.
     Expects JSON body and header 'x-webhook-signature' (base64 of HMAC-SHA256).
     """
+    from django.http import JsonResponse
+    import base64
+    import hashlib
+    import hmac
+    import json
+    import os
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "method not allowed"}, status=405)
+
     try:
         raw = request.body
         payload = json.loads(raw.decode("utf-8"))
     except Exception:
-        return Response({"detail": "invalid json"}, status=400)
+        return JsonResponse({"detail": "invalid json"}, status=400)
 
     signature = request.headers.get("x-webhook-signature") or request.headers.get("X-Webhook-Signature")
     secret = os.getenv("CASHFREE_WEBHOOK_SECRET", "test_webhook_secret")
@@ -403,7 +413,7 @@ def cashfree_webhook(request):
     try:
         computed = base64.b64encode(hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).digest()).decode()
         if signature and not hmac.compare_digest(signature, computed):
-            return Response({"detail": "invalid signature"}, status=401)
+            return JsonResponse({"detail": "invalid signature"}, status=401)
     except Exception:
         pass  # if missing headers, proceed best-effort in sandbox
 
@@ -420,13 +430,13 @@ def cashfree_webhook(request):
     )
 
     if not order_id:
-        return Response({"detail": "missing order_id"}, status=400)
+        return JsonResponse({"detail": "missing order_id"}, status=400)
 
     # Update order by cashfree_order_id or order_id
     try:
         order = Order.objects.filter(cashfree_order_id=order_id).first() or Order.objects.get(order_id=order_id)
     except Order.DoesNotExist:
-        return Response({"detail": "order not found"}, status=404)
+        return JsonResponse({"detail": "order not found"}, status=404)
 
     if status_cf:
         order.cashfree_status = status_cf
@@ -435,7 +445,7 @@ def cashfree_webhook(request):
             order.payment_mode = "Cashfree"
         order.save(update_fields=["cashfree_status", "is_paid", "payment_mode"])
 
-    return Response({"success": True}, status=200)
+    return JsonResponse({"success": True}, status=200)
 
 class ReturnExchangeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
