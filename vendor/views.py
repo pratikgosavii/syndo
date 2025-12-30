@@ -2064,12 +2064,32 @@ class ProductViewSet(viewsets.ModelViewSet):
         return product.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        # Check GST verification status
+        from .models import vendor_store
+        store = vendor_store.objects.filter(user=self.request.user).first()
+        is_gst_verified = store.is_gstin_verified if store else False
+        
+        # If not GST verified, force COD to be True
+        if not is_gst_verified:
+            serializer.save(user=self.request.user, cod=True)
+        else:
+            serializer.save(user=self.request.user)
 
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        
+        # Check GST verification status
+        from .models import vendor_store
+        store = vendor_store.objects.filter(user=self.request.user).first()
+        is_gst_verified = store.is_gstin_verified if store else False
+        
+        # If not GST verified, force COD to be True (make a mutable copy of request.data)
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not is_gst_verified:
+            data['cod'] = True
+        
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
@@ -5254,11 +5274,56 @@ class DeliveryModeViewSet(viewsets.ModelViewSet):
         POST will create DeliveryMode if missing,
         or update the existing record for this user.
         """
+        # Check GST verification status
+        from .models import vendor_store
+        store = vendor_store.objects.filter(user=request.user).first()
+        is_gst_verified = store.is_gstin_verified if store else False
+        
+        # Check if trying to enable auto assign
+        if request.data.get('is_auto_assign_enabled') is True:
+            if not is_gst_verified:
+                return Response({
+                    "detail": "Auto assign cannot be enabled. Please verify your GSTIN first."
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
         instance, _ = DeliveryMode.objects.get_or_create(user=request.user)
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        
+        # If not GST verified, force auto assign to False
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not is_gst_verified:
+            data['is_auto_assign_enabled'] = False
+        
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Update DeliveryMode instance.
+        """
+        # Check GST verification status
+        from .models import vendor_store
+        store = vendor_store.objects.filter(user=request.user).first()
+        is_gst_verified = store.is_gstin_verified if store else False
+        
+        # Check if trying to enable auto assign
+        if request.data.get('is_auto_assign_enabled') is True:
+            if not is_gst_verified:
+                return Response({
+                    "detail": "Auto assign cannot be enabled. Please verify your GSTIN first."
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # If not GST verified, force auto assign to False
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not is_gst_verified:
+            data['is_auto_assign_enabled'] = False
+        
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=data, partial=kwargs.get('partial', False))
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
    
 
