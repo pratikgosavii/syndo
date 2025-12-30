@@ -3436,8 +3436,16 @@ def update_order_item_status(request, order_item_id):
 
 
 class UpdateOrderItemStatusAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, order_item_id):
-        item = OrderItem.objects.get(id=order_item_id)
+        item = get_object_or_404(
+            OrderItem.objects.select_related("product", "order"),
+            id=order_item_id
+        )
+        # Vendor authorization: only vendor who owns the product can update item
+        if getattr(item.product, "user_id", None) != request.user.id:
+            return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
         status_value = request.data.get("status")
 
         # Guard: auto-assign rider/external task when moving to ready_to_shipment (instead of intransit)
@@ -3496,6 +3504,50 @@ class UpdateOrderItemStatusAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+
+class UpdateOrderItemTrackingAPIView(APIView):
+    """
+    Vendor API: manually update tracking link/id for an order item.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, order_item_id):
+        item = get_object_or_404(
+            OrderItem.objects.select_related("product", "order"),
+            id=order_item_id
+        )
+        # Vendor authorization: only vendor who owns the product can update item
+        if getattr(item.product, "user_id", None) != request.user.id:
+            return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+        # Accept multiple key names from clients
+        raw = (
+            request.data.get("tracking_link")
+            if "tracking_link" in request.data
+            else request.data.get("tracking_id")
+            if "tracking_id" in request.data
+            else request.data.get("tracking")
+        )
+
+        # Allow clearing: tracking_link=""
+        if raw is None:
+            return Response(
+                {"error": "tracking_link (or tracking_id) is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        raw_str = str(raw).strip()
+        item.tracking_link = raw_str or None
+        item.save(update_fields=["tracking_link"])
+
+        return Response(
+            {
+                "order_item_id": item.id,
+                "order_id": getattr(item.order, "id", None),
+                "tracking_link": item.tracking_link,
+            },
+            status=status.HTTP_200_OK
+        )
 
 def order_exchange_list(request):
 
