@@ -634,6 +634,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         DRF API (vendor): manually assign a delivery boy to an order.
 
         URL: POST /vendor/orders/<order_pk>/assign-delivery-boy/
+        cant we do like /vendor/orders/assign-delivery-boy/<order_pk>/?
         Body: { "delivery_boy_id": <id> }  (or { "delivery_boy": <id> })
         """
         order = self.get_object()  # queryset already restricts to vendor's orders
