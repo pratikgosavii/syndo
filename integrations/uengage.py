@@ -160,22 +160,25 @@ def _validate_coordinates(lat_str: str, lon_str: str, location_name: str) -> tup
         lon = float(lon_str) if lon_str else None
         
         if lat is None or lon is None:
-            print(f"⚠️ [uEngage] {location_name} coordinates are missing")
+            logger.warning("[uEngage] %s coordinates are missing", location_name)
             return (False, None, None)
         
         # Validate ranges: latitude must be between -90 and 90, longitude between -180 and 180
         if not (-90 <= lat <= 90):
-            print(f"❌ [uEngage] {location_name} latitude {lat} is invalid (must be between -90 and 90)")
+            logger.warning("[uEngage] %s latitude %s is invalid (must be between -90 and 90)", location_name, lat)
             return (False, lat, lon)
         
         if not (-180 <= lon <= 180):
-            print(f"❌ [uEngage] {location_name} longitude {lon} is invalid (must be between -180 and 180)")
+            logger.warning("[uEngage] %s longitude %s is invalid (must be between -180 and 180)", location_name, lon)
             return (False, lat, lon)
         
-        print(f"✅ [uEngage] {location_name} coordinates are valid: lat={lat}, lon={lon}")
+        logger.debug("[uEngage] %s coordinates are valid: lat=%s, lon=%s", location_name, lat, lon)
         return (True, lat, lon)
     except (ValueError, TypeError) as e:
-        print(f"❌ [uEngage] {location_name} coordinates cannot be converted to float: {lat_str}, {lon_str} - {e}")
+        logger.warning(
+            "[uEngage] %s coordinates cannot be converted to float: lat=%s lon=%s err=%s",
+            location_name, lat_str, lon_str, e
+        )
         return (False, None, None)
 
 
@@ -435,65 +438,65 @@ def get_serviceability_for_order(order) -> Dict:
     """
     Calls /getServiceability with pickup/drop lat/lon for this order's vendor store and address.
     """
-    print("=" * 80)
-    print("🔍 [uEngage] get_serviceability_for_order - START")
-    print(f"Order ID: {getattr(order, 'order_id', 'N/A')}")
+    logger.info("=" * 80)
+    logger.info("[uEngage] get_serviceability_for_order - START")
+    logger.info("Order ID: %s", getattr(order, "order_id", "N/A"))
     
     if not (UENGAGE_RIDER_BASE and UENGAGE_ACCESS_TOKEN):
-        print("❌ [uEngage] Missing credentials")
-        print(f"UENGAGE_RIDER_BASE: {UENGAGE_RIDER_BASE}")
-        print(f"UENGAGE_ACCESS_TOKEN: {'SET' if UENGAGE_ACCESS_TOKEN else 'MISSING'}")
+        logger.error("[uEngage] Missing credentials")
+        logger.error("UENGAGE_RIDER_BASE: %s", UENGAGE_RIDER_BASE)
+        logger.error("UENGAGE_ACCESS_TOKEN: %s", "SET" if UENGAGE_ACCESS_TOKEN else "MISSING")
         return {"ok": False, "status_code": None, "error": "missing_credentials", "message": "uEngage rider API not configured"}
 
-    print(f"✅ [uEngage] Credentials check passed")
-    print(f"UENGAGE_RIDER_BASE: {UENGAGE_RIDER_BASE}")
-    print(f"UENGAGE_ACCESS_TOKEN: {UENGAGE_ACCESS_TOKEN[:10]}...")
+    logger.info("[uEngage] Credentials check passed")
+    logger.info("UENGAGE_RIDER_BASE: %s", UENGAGE_RIDER_BASE)
+    logger.debug("UENGAGE_ACCESS_TOKEN prefix: %s...", UENGAGE_ACCESS_TOKEN[:10])
 
     try:
         item0 = order.items.select_related("product").first()
-        print(f"📦 [uEngage] First order item: {item0}")
+        logger.debug("[uEngage] First order item: %s", item0)
         vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
-        print(f"👤 [uEngage] Vendor user: {vendor_user} (ID: {vendor_user.id if vendor_user else 'N/A'})")
+        logger.debug("[uEngage] Vendor user: %s (ID: %s)", vendor_user, vendor_user.id if vendor_user else "N/A")
         
         if not vendor_user:
-            print("❌ [uEngage] Vendor not found for order")
+            logger.error("[uEngage] Vendor not found for order")
             return {"ok": False, "status_code": None, "error": "missing_vendor", "message": "Vendor not found for order"}
         
         try:
             cp = vendor_user.user_company_profile
-            print(f"🏪 [uEngage] Company Profile: {cp}")
+            logger.debug("[uEngage] Company Profile: %s", cp)
             store_id = getattr(cp, "uengage_store_id", None)
-            print(f"🏪 [uEngage] Store ID from CompanyProfile: {store_id}")
+            logger.debug("[uEngage] Store ID from CompanyProfile: %s", store_id)
         except Exception as e:
-            print(f"⚠️ [uEngage] Exception getting store_id: {e}")
+            logger.warning("[uEngage] Exception getting store_id: %s", e)
             store_id = None
         if not store_id:
             # Use default store_id "89" for testing if not set in CompanyProfile
             store_id = "89"
-            print(f"🏪 [uEngage] Using default store_id: {store_id}")
+            logger.info("[uEngage] Using default store_id: %s", store_id)
         
         vs = vendor_user.vendor_store.first() if vendor_user and getattr(vendor_user, "vendor_store", None) else None
-        print(f"🏬 [uEngage] Vendor Store: {vs}")
+        logger.debug("[uEngage] Vendor Store: %s", vs)
         p_lat_str = str(getattr(vs, "latitude", "") or "") if vs else ""
         p_lon_str = str(getattr(vs, "longitude", "") or "") if vs else ""
-        print(f"📍 [uEngage] Pickup coordinates (raw): lat={p_lat_str}, lon={p_lon_str}")
+        logger.info("[uEngage] Pickup coordinates (raw): lat=%s, lon=%s", p_lat_str, p_lon_str)
         
         # Validate pickup coordinates
         pickup_valid, p_lat, p_lon = _validate_coordinates(p_lat_str, p_lon_str, "Pickup")
         if not pickup_valid:
-            print("❌ [uEngage] Invalid pickup coordinates - cannot check serviceability")
+            logger.error("[uEngage] Invalid pickup coordinates - cannot check serviceability")
             return {"ok": False, "status_code": None, "error": "invalid_pickup_coordinates", "message": f"Invalid pickup coordinates: lat={p_lat_str}, lon={p_lon_str}"}
         
         addr = getattr(order, "address", None)
-        print(f"🏠 [uEngage] Order address: {addr}")
+        logger.debug("[uEngage] Order address: %s", addr)
         d_lat_str = str(getattr(addr, "latitude", "") or "") if addr else ""
         d_lon_str = str(getattr(addr, "longitude", "") or "") if addr else ""
-        print(f"📍 [uEngage] Drop coordinates (raw): lat={d_lat_str}, lon={d_lon_str}")
+        logger.info("[uEngage] Drop coordinates (raw): lat=%s, lon=%s", d_lat_str, d_lon_str)
         
         # Validate drop coordinates
         drop_valid, d_lat, d_lon = _validate_coordinates(d_lat_str, d_lon_str, "Drop")
         if not drop_valid:
-            print("❌ [uEngage] Invalid drop coordinates - cannot check serviceability")
+            logger.error("[uEngage] Invalid drop coordinates - cannot check serviceability")
             return {"ok": False, "status_code": None, "error": "invalid_drop_coordinates", "message": f"Invalid drop coordinates: lat={d_lat_str}, lon={d_lon_str}"}
 
         url = f"{UENGAGE_RIDER_BASE}/getServiceability"
@@ -504,57 +507,54 @@ def get_serviceability_for_order(order) -> Dict:
         }
         headers = {"Content-Type": "application/json", "access-token": UENGAGE_ACCESS_TOKEN}
         
-        print(f"🌐 [uEngage] API URL: {url}")
-        print(f"🔑 [uEngage] Headers: {headers}")
-        print(f"📤 [uEngage] Payload: {payload}")
-        print(f"📍 [uEngage] SERVICEABILITY CHECK COORDINATES:")
-        print(f"   🏬 PICKUP:  lat={p_lat}, lon={p_lon}")
-        print(f"   🏠 DROP:    lat={d_lat}, lon={d_lon}")
-        print(f"   🆔 STORE ID: {store_id}")
+        logger.info("[uEngage] API URL: %s", url)
+        logger.debug("[uEngage] Headers: %s", headers)
+        logger.debug("[uEngage] Payload: %s", payload)
+        logger.info("[uEngage] SERVICEABILITY CHECK COORDINATES: pickup=(%s,%s) drop=(%s,%s) store_id=%s", p_lat, p_lon, d_lat, d_lon, store_id)
         
         resp = requests.post(url, json=payload, headers=headers, timeout=10)
-        print(f"📥 [uEngage] Response Status Code: {resp.status_code}")
-        print(f"📥 [uEngage] Response Headers: {dict(resp.headers)}")
+        logger.info("[uEngage] Response Status Code: %s", resp.status_code)
+        logger.debug("[uEngage] Response Headers: %s", dict(resp.headers))
         
         try:
             data = resp.json()
-            print(f"📥 [uEngage] Response JSON: {data}")
+            logger.info("[uEngage] Response JSON: %s", data)
         except Exception as e:
             data = {"message": resp.text}
-            print(f"⚠️ [uEngage] Failed to parse JSON, raw text: {resp.text}")
-            print(f"⚠️ [uEngage] Exception: {e}")
+            logger.warning("[uEngage] Failed to parse JSON, raw text: %s", resp.text)
+            logger.warning("[uEngage] JSON parse exception: %s", e)
         
         # Expect status "200" or similar with serviceability flags
         service_ok = False
         if isinstance(data, dict):
             status_value = data.get("status")
-            print(f"📊 [uEngage] Response status: {status_value} (type: {type(status_value)})")
+            logger.info("[uEngage] Response status: %s (type: %s)", status_value, type(status_value))
             # Check if status is 200 (can be int or string)
             if status_value in (200, "200", "success", True):
                 svc = data.get("serviceability") or {}
-                print(f"📊 [uEngage] Serviceability object: {svc}")
+                logger.info("[uEngage] Serviceability object: %s", svc)
                 rider_serviceable = svc.get("riderServiceAble")
                 location_serviceable = svc.get("locationServiceAble")
-                print(f"📊 [uEngage] riderServiceAble: {rider_serviceable}")
-                print(f"📊 [uEngage] locationServiceAble: {location_serviceable}")
+                logger.info("[uEngage] riderServiceAble: %s", rider_serviceable)
+                logger.info("[uEngage] locationServiceAble: %s", location_serviceable)
                 # Service is OK only if BOTH rider and location are serviceable
                 service_ok = bool(rider_serviceable and location_serviceable)
-                print(f"✅ [uEngage] Service OK (both rider and location): {service_ok}")
+                logger.info("[uEngage] Service OK (both rider and location): %s", service_ok)
                 if not service_ok:
                     if not rider_serviceable:
-                        print(f"⚠️ [uEngage] Service failed: No rider available")
+                        logger.warning("[uEngage] Service failed: No rider available")
                     if not location_serviceable:
-                        print(f"⚠️ [uEngage] Service failed: Location not serviceable")
+                        logger.warning("[uEngage] Service failed: Location not serviceable")
             else:
-                print(f"⚠️ [uEngage] Status not 200/success, serviceability check failed")
+                logger.warning("[uEngage] Status not 200/success, serviceability check failed")
         else:
-            print(f"⚠️ [uEngage] Response is not a dict")
+            logger.warning("[uEngage] Response is not a dict")
         
-        print("=" * 80)
+        logger.info("=" * 80)
         return {"ok": service_ok, "status_code": resp.status_code, "raw": data}
     except Exception as e:
-        print(f"💥 [uEngage] Exception in get_serviceability_for_order: {str(e)}")
+        logger.error("[uEngage] Exception in get_serviceability_for_order: %s", str(e))
         logger.exception("uEngage get_serviceability_for_order exception")
-        print("=" * 80)
+        logger.info("=" * 80)
         return {"ok": False, "status_code": None, "error": "exception", "message": str(e)}
 

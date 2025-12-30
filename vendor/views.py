@@ -610,6 +610,7 @@ class CashLedgerAPIView(APIView):
     
 
 from customer.serializers import *
+from rest_framework.decorators import action
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -626,6 +627,30 @@ class OrderViewSet(viewsets.ModelViewSet):
             .distinct()
             .order_by("-id")
         )
+
+    @action(detail=True, methods=["post"], url_path="assign-delivery-boy")
+    def assign_delivery_boy_api(self, request, pk=None):
+        """
+        DRF API (vendor): manually assign a delivery boy to an order.
+
+        URL: POST /vendor/orders/<order_pk>/assign-delivery-boy/
+        Body: { "delivery_boy_id": <id> }  (or { "delivery_boy": <id> })
+        """
+        order = self.get_object()  # queryset already restricts to vendor's orders
+        delivery_boy_id = request.data.get("delivery_boy_id") or request.data.get("delivery_boy")
+        if not delivery_boy_id:
+            return Response(
+                {"error": "delivery_boy_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ensure vendor can only assign their own DeliveryBoy
+        rider = get_object_or_404(DeliveryBoy, id=delivery_boy_id, user=request.user)
+        order.delivery_boy = rider
+        order.save(update_fields=["delivery_boy"])
+
+        serializer = self.get_serializer(order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def update(self, request, *args, **kwargs):
         """Restrict update to only allowed fields"""
