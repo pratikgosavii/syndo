@@ -617,7 +617,15 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Order.objects.prefetch_related('items__product').filter(user=self.request.user).order_by('-id')
+        # Vendor should see orders that contain at least one item whose product belongs to them
+        # (Order.user is the customer in the customer app).
+        return (
+            Order.objects
+            .prefetch_related("items__product")
+            .filter(items__product__user=self.request.user)
+            .distinct()
+            .order_by("-id")
+        )
 
     def update(self, request, *args, **kwargs):
         """Restrict update to only allowed fields"""
@@ -687,10 +695,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                                     if not it.tracking_link:
                                         it.tracking_link = tracking
                                         it.save(update_fields=["tracking_link"])
-                                print(f"🔗 Applied tracking link to items: {tracking}")
+                                print(f"Applied tracking link to items: {tracking}")
                         else:
                             # Could notify vendor here about failure; do not block
-                            print("💥 uEngage task creation failed or not ok; skipping assignment")
+                            print("uEngage task creation failed or not ok; skipping assignment")
                 else:
                     print("Auto-assign disabled or mode missing; no assignment attempted")
                 print("=" * 80 + "\n")
