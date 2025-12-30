@@ -110,7 +110,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
                     "auto_assign_enabled": True
                 }, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
-                print(f"💥 [check_delivery_availability] Exception: {e}")
+                print(f"[check_delivery_availability] Exception: {e}")
                 return Response({
                     "ok": False,
                     "message": "Unable to confirm delivery availability. Please try again.",

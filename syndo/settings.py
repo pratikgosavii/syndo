@@ -136,6 +136,12 @@ LOGGING = {
             "filename": os.path.join(LOG_DIR, "signals.log"),
             "formatter": "verbose",
         },
+        "uengage_file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(LOG_DIR, "uengage.log"),
+            "formatter": "verbose",
+        },
         # Optional console handler (so you also see logs in terminal)
         "console": {
             "class": "logging.StreamHandler",
@@ -176,6 +182,11 @@ LOGGING = {
         "customer.serializers": {
             "handlers": ["request_file", "console"],
             "level": "INFO",
+            "propagate": False,
+        },
+        "integrations.uengage": {
+            "handlers": ["uengage_file", "console"],
+            "level": "DEBUG",
             "propagate": False,
         },
     },
