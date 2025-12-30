@@ -338,5 +338,56 @@ UENGAGE_ACCESS_TOKEN = os.getenv("UENGAGE_ACCESS_TOKEN", "grdgedhs")  # Test acc
 # --------------------
 # MSGClub SMS configuration
 # --------------------
-SMS_API_KEY = os.getenv("SMS_API_KEY", "f2d477bfa9ab62ba439e97d84bd3ba")  # Your MSGClub API key
-SMS_API_URL = os.getenv("SMS_API_URL", "msg.msgclub.net")  # SMS API host
+# NOTE: configured directly here (not via env vars), as requested.
+SMS_API_KEY = "f2d477bfa9ab62ba439e97d84bd3ba"  # MSGClub API key
+SMS_API_URL = "msg.msgclub.net"  # SMS API host
+# MSGClub commonly expects the auth param name as AUTH_KEY (not api_key).
+SMS_AUTH_PARAM = "AUTH_KEY"
+# Default endpoint that worked with HTTPSConnection in this project
+SMS_API_ENDPOINT = "rest/services/sendSMS/sendGroupSms"
+# MSGClub commonly expects these param names
+SMS_MOBILE_PARAM = "mobileNos"
+SMS_MESSAGE_PARAM = "message"
+
+# SenderId is required by MSGClub and must be exactly 6 alphabets.
+# Replace "SVNDOO" with your approved SenderId from MSGClub panel.
+# (Your panel screenshot shows "SVNDO"/Svindo branding; SenderId must be 6 alphabets.)
+SMS_SENDER_ID = "SVNDOO"
+
+# Parameter name can vary by provider/account; MSGClub commonly uses "senderId"
+SMS_SENDER_PARAM = "senderId"
+
+# --------------------
+# DLT (template) configuration
+# --------------------
+# If your MSGClub account is DLT-enforced, delivery may fail unless you pass template identifiers.
+# MSGClub sample params commonly used:
+# - entityid
+# - tmid (principal entity id in some panels)
+# - templateid
+SMS_ENTITY_ID = ""  # e.g. from MSGClub panel (entityid)
+SMS_TM_ID = ""      # e.g. "140200000022" (tmid) if provided
+SMS_TEMPLATE_ID_INVOICE = "1707176554643228013"  # templateid (from your panel "Template Info")
+
+# Param names (keep exactly as MSGClub sample)
+SMS_ENTITY_PARAM = "entityid"
+SMS_TM_PARAM = "tmid"
+SMS_TEMPLATE_PARAM = "templateid"
+
+# Route / content type (from your sample API call)
+SMS_ROUTE_ID = "1"  # usually "1" for transactional; confirm in MSGClub panel if different
+SMS_ROUTE_PARAM = "routeId"
+SMS_CONTENT_TYPE = "english"  # e.g. english
+SMS_CONTENT_TYPE_PARAM = "smsContentType"
+
+# Optional consent failover id (only if your panel has it)
+SMS_CONSENT_FAILOVER_ID = ""  # e.g. "30"
+SMS_CONSENT_FAILOVER_PARAM = "concentFailoverId"
+
+# Used to build an invoice link for templates that include a URL variable
+SITE_BASE_URL = "http://127.0.0.1:8000"
+
+# Customer invoice link (signed token)
+# Allows opening invoice PDF without login when a valid token is present.
+# 7 days (matches message text: "Valid for 7 days")
+CUSTOMER_INVOICE_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60

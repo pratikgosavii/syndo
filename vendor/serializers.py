@@ -938,32 +938,33 @@ class SaleSerializer(serializers.ModelSerializer):
 
             # Wholesale - create before recalculating totals so charges are included
             if sale.is_wholesale_rate and wholesale_data:
-                # Use update_or_create to handle unique constraint on (user, invoice_number)
-                # If invoice_number is provided, use it for lookup; otherwise use sale
+                # IMPORTANT:
+                # For *create* flow we should NOT reuse an existing pos_wholesale row based on invoice_number.
+                # Reusing causes `created=False` and can even re-link an old invoice to a new sale.
+                # Instead:
+                # - if invoice_number is provided, it must be UNIQUE for (user, invoice_number) or we raise an error
+                # - if invoice_number is not provided, we create a new pos_wholesale and let model generate it
                 invoice_number = wholesale_data.get('invoice_number')
                 if invoice_number:
-                    # Lookup by user and invoice_number (unique constraint)
-                    invoice, created = pos_wholesale.objects.update_or_create(
-                        user=sale.user,
-                        invoice_number=invoice_number,
-                        defaults={
-                            'sale': sale,
-                            **wholesale_data
-                        }
-                    )
-                else:
-                    # No invoice_number provided, use get_or_create with sale
-                    # This will create a new record and invoice_number will be auto-generated in save()
-                    invoice, created = pos_wholesale.objects.get_or_create(
+                    exists = pos_wholesale.objects.filter(user=sale.user, invoice_number=invoice_number).exists()
+                    if exists:
+                        raise serializers.ValidationError({
+                            "wholesale_invoice": {
+                                "invoice_number": f"Invoice number '{invoice_number}' is already used."
+                            }
+                        })
+                    invoice = pos_wholesale.objects.create(
                         user=sale.user,
                         sale=sale,
-                        defaults=wholesale_data
+                        **wholesale_data
                     )
-                    # Update all fields from wholesale_data in case it already existed
-                    if not created:
-                        for attr, value in wholesale_data.items():
-                            setattr(invoice, attr, value)
-                        invoice.save()
+                else:
+                    # No invoice_number provided: always create a new record (invoice_number auto-generated in save())
+                    invoice = pos_wholesale.objects.create(
+                        user=sale.user,
+                        sale=sale,
+                        **wholesale_data
+                    )
 
             # Totals - recalculate after wholesale is created
             self._recalculate_totals(sale)

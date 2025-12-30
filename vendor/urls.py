@@ -67,6 +67,7 @@ router.register(r'offer', OfferViewSet, basename="offer")
 router.register(r'order-notification-message', OrderNotificationMessageViewSet, basename="order-notification-message")
 
 
+
 router.register(r'coverage', VendorCoverageViewSet, basename='vendor-coverage')
 
 
@@ -74,6 +75,8 @@ urlpatterns = [
 
     
     path('request-list/', requestlist.as_view(), name='request-lists'),
+    # Customer-facing invoice PDF (POS)
+    path('customer-sale-invoice/', customer_sale_invoice.as_view(), name='customer-sale-invoice'),
     path('return-exchange/', VendorReturnManageAPIView.as_view(), name='vendor-return-manage'),
     path('daybook/', DayBookAPIView.as_view(), name='daybook'),
     path('daybook-report/', daybook_report, name='daybook_report'),

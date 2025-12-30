@@ -638,48 +638,48 @@ class OrderViewSet(viewsets.ModelViewSet):
                 and previous_status != "ready_to_shipment"
             ):
                 print("\n" + "=" * 80)
-                print("🚚 [Vendor OrderViewSet] Auto-assign on ready_to_shipment")
-                print(f"📦 Order ID: {instance.order_id}")
-                print(f"👤 Previous status: {previous_status}")
+                print("[Vendor OrderViewSet] Auto-assign on ready_to_shipment")
+                print(f"Order ID: {instance.order_id}")
+                print(f"Previous status: {previous_status}")
 
                 # Identify vendor user from first item
                 item0 = instance.items.select_related("product").first()
                 vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
-                print(f"🏪 Vendor user: {vendor_user}")
+                print(f"Vendor user: {vendor_user}")
                 if vendor_user:
                     mode = DeliveryMode.objects.filter(user=vendor_user).first()
                 else:
                     mode = None
-                print(f"⚙️ Delivery mode: {mode}")
+                print(f"Delivery mode: {mode}")
 
                 if mode and mode.is_auto_assign_enabled:
-                    print(f"✅ Auto-assign enabled (self_delivery={getattr(mode, 'is_self_delivery_enabled', False)})")
+                    print(f"Auto-assign enabled (self_delivery={getattr(mode, 'is_self_delivery_enabled', False)})")
                     # Skip if already assigned or task created
                     if getattr(instance, "delivery_boy_id", None) or getattr(instance, "uengage_task_id", None):
-                        print("⏭️ Already has delivery_boy or uengage_task_id; skipping assignment")
+                        print("Already has delivery_boy or uengage_task_id; skipping assignment")
                     # Prefer self delivery if enabled and rider available
                     elif getattr(mode, "is_self_delivery_enabled", False):
                         rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
                         if rider:
-                            print(f"👷 Assigned self-delivery rider: {rider}")
+                            print(f"Assigned self-delivery rider: {rider}")
                             instance.delivery_boy = rider
                             instance.save(update_fields=["delivery_boy"])
                         else:
-                            print("⚠️ No active self-delivery rider found")
+                            print("No active self-delivery rider found")
                     else:
                         rider = None
 
                     # If no rider was set above, attempt external task creation
                     if not getattr(instance, "delivery_boy_id", None) and not getattr(instance, "uengage_task_id", None):
-                        print("🌐 Creating external delivery task via uEngage")
+                        print("Creating external delivery task via uEngage")
                         res = create_delivery_task(instance)
-                        print(f"📊 uEngage response: {res}")
+                        print(f"uEngage response: {res}")
                         if res.get("ok"):
                             # persist task id and tracking across items
                             task_id = res.get("task_id")
                             tracking = res.get("tracking_url")
                             if task_id:
-                                print(f"💾 Saving uEngage task_id: {task_id}")
+                                print(f"Saving uEngage task_id: {task_id}")
                                 instance.uengage_task_id = task_id
                                 instance.save(update_fields=["uengage_task_id"])
                             if tracking:
@@ -692,7 +692,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                             # Could notify vendor here about failure; do not block
                             print("💥 uEngage task creation failed or not ok; skipping assignment")
                 else:
-                    print("⏭️ Auto-assign disabled or mode missing; no assignment attempted")
+                    print("Auto-assign disabled or mode missing; no assignment attempted")
                 print("=" * 80 + "\n")
         except Exception:
             pass
@@ -3467,7 +3467,7 @@ class UpdateOrderItemStatusAPIView(APIView):
             except Exception:
                 pass
             return Response(
-                {"message": f"Status for {item.product.name} updated to {status_value} ✅"},
+                {"message": f"Status for {item.product.name} updated to {status_value}"},
                 status=status.HTTP_200_OK
             )
         else:
@@ -5400,6 +5400,183 @@ class requestlist(APIView):
         queryset = ProductRequest.objects.all().order_by("-created_at")
         serializer = ProductRequestSerializer(queryset, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class customer_sale_invoice(APIView):
+    # Allow opening via signed token in URL; still enforces ownership if no token is provided.
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, sale_id=None):
+        """
+        Return POS sale invoice PDF to the *customer* (or vendor) for a given sale.
+        Access control:
+        - allowed if sale.user == request.user (vendor who created it)
+        - OR sale.customer.user == request.user (customer login mapped on vendor_customers.user)
+        """
+        from django.http import HttpResponse
+        from django.shortcuts import render
+        from django.template.loader import get_template
+        from django.conf import settings
+        import requests
+        from num2words import num2words
+        from decimal import Decimal
+
+        # accept ?id= as fallback
+        if sale_id is None:
+            sale_id = request.query_params.get("id") if hasattr(request, "query_params") else request.GET.get("id")
+        if not sale_id:
+            return Response({"error": "id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sale = (
+            Sale.objects
+            .prefetch_related('items__product')
+            .select_related('customer', 'company_profile', 'user')
+            .filter(id=sale_id)
+            .first()
+        )
+        if not sale:
+            return Response({"error": "Sale not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # NOTE: Token/security intentionally disabled as requested.
+        # This endpoint is now publicly accessible with just sale_id.
+
+        wholesale = sale.wholesales.first()
+        if not wholesale:
+            return Response({"error": "No wholesale details found for this sale"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sale_type = (wholesale.invoice_type or "invoice").lower().replace(" ", "_")
+
+        # Determine store GST type (CGST if vendor/customer state matches else IGST)
+        vendor_state_name = None
+        if getattr(sale, "company_profile", None) and getattr(sale.company_profile, "state", None):
+            vendor_state_name = sale.company_profile.state.name
+        customer_state_name = getattr(sale.customer, "billing_state", None) or getattr(sale.customer, "dispatch_state", None)
+        same_state = False
+        if vendor_state_name and customer_state_name:
+            same_state = vendor_state_name.strip().lower() == str(customer_state_name).strip().lower()
+        store_gst = "cgst" if same_state else "igst"
+
+        template_map = {
+            "proforma": {"igst": "sale_invoice/igst_proforma.html", "cgst": "sale_invoice/cgst_proforma.html"},
+            "invoice": {"igst": "sale_invoice/igst_invoice.html", "cgst": "sale_invoice/cgst_tax_invoice.html"},
+            "quotation": {"igst": "sale_invoice/igst_quotation.html", "cgst": "sale_invoice/cgst_quotation.html"},
+            "delivery_challan": {"igst": "sale_invoice/igst_delivery_challan.html", "cgst": "sale_invoice/cgst_delivery_challan.html"},
+        }
+        template_name = template_map.get(sale_type, {}).get(store_gst) or "sale_invoice/online_invoice.html"
+
+        # Charges and totals
+        delivery = Decimal(wholesale.delivery_charges or 0)
+        packaging = Decimal(wholesale.packaging_charges or 0)
+        total_amount = (Decimal(sale.total_amount or 0) + delivery + packaging)
+        rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
+        round_off_value = float(Decimal(rounded_total) - total_amount)
+
+        # HSN Summary / items
+        hsn_summary = {}
+        total_tax = Decimal(0)
+        total_taxable = Decimal(0)
+        total_quantity = 0
+        total_sgst = Decimal(0)
+        total_cgst = Decimal(0)
+        total_igst = Decimal(0)
+        items_with_tax = []
+
+        for item in sale.items.all():
+            if not item.product:
+                continue
+            hsn = getattr(item.product, "hsn", None) or "N/A"
+            sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
+            cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
+            taxable_val = Decimal(item.amount or 0)
+
+            if hsn not in hsn_summary:
+                hsn_summary[hsn] = {"taxable_value": Decimal(0), "sgst_rate": sgst_rate, "cgst_rate": cgst_rate}
+            hsn_summary[hsn]["taxable_value"] += taxable_val
+
+            total_tax += Decimal(item.tax_amount or 0)
+            total_taxable += taxable_val
+            total_quantity += int(item.quantity or 0)
+
+            sgst_amt = (taxable_val * sgst_rate / Decimal(100)).quantize(Decimal("0.01"))
+            cgst_amt = (taxable_val * cgst_rate / Decimal(100)).quantize(Decimal("0.01"))
+            total_sgst += sgst_amt
+            total_cgst += cgst_amt
+            total_igst += Decimal(item.tax_amount or 0)
+
+            items_with_tax.append({
+                "name": getattr(item.product, "name", "N/A"),
+                "hsn": getattr(item.product, "hsn", None) or "N/A",
+                "price": float(item.price or 0),
+                "quantity": int(item.quantity or 0),
+                "taxable_value": float(taxable_val),
+                "sgst_percent": float(sgst_rate),
+                "cgst_percent": float(cgst_rate),
+                "sgst_amount": float(sgst_amt),
+                "cgst_amount": float(cgst_amt),
+                "igst_percent": float(getattr(item.product, "gst", 0) or 0),
+                "igst_amount": float(Decimal(item.tax_amount or 0)),
+                "total_with_tax": float(item.total_with_tax or 0),
+            })
+
+        for hsn, data in hsn_summary.items():
+            data["sgst_amount"] = (data["taxable_value"] * data["sgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
+            data["cgst_amount"] = (data["taxable_value"] * data["cgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
+            data["total_tax"] = (data["sgst_amount"] + data["cgst_amount"]).quantize(Decimal("0.01"))
+            data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
+            data["igst_amount"] = data["total_tax"]
+
+        total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
+
+        paid_amount = Decimal(sale.advance_amount or 0)
+        balance_amount = (Decimal(rounded_total) - paid_amount).quantize(Decimal("0.01"))
+
+        context = {
+            "sale_instance": sale,
+            "wholesale": wholesale,
+            "total_amount": float(total_amount),
+            "rounded_total": rounded_total,
+            "round_off_value": float(round_off_value),
+            "hsn_summary": hsn_summary.items(),
+            "total_in_words": total_in_words,
+            "total_tax": float(total_tax),
+            "store_gst": store_gst,
+            "sum_taxable": float(total_taxable.quantize(Decimal("0.01"))),
+            "sum_sgst": float(total_sgst.quantize(Decimal("0.01"))),
+            "sum_cgst": float(total_cgst.quantize(Decimal("0.01"))),
+            "sum_igst": float(total_igst.quantize(Decimal("0.01"))),
+            "total_quantity": total_quantity,
+            "discount_percentage": sale.discount_percentage or 0,
+            "discount_amount": sale.discount_amount or 0,
+            "paid_amount": float(paid_amount),
+            "balance_amount": float(balance_amount),
+            "items_with_tax": items_with_tax,
+        }
+
+        # Render template to HTML string and convert to PDF
+        template = get_template(template_name)
+        html_content = template.render(context, request._request if hasattr(request, "_request") else request)
+
+        api_response = requests.post(
+            "https://api.html2pdf.app/v1/generate",
+            json={
+                "html": html_content,
+                "apiKey": getattr(settings, "HTML2PDF_API_KEY", ""),
+                "options": {"printBackground": True, "margin": "1cm", "pageSize": "A4"},
+            },
+            timeout=30,
+        )
+
+        if api_response.status_code == 200:
+            response = HttpResponse(api_response.content, content_type="application/pdf")
+            filename = f"sale_invoice_{sale.id}_{sale_type}.pdf"
+            # inline for customer UX (browser preview), but still downloadable
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+            return response
+
+        # fallback to HTML (helps debugging templates)
+        return Response(
+            {"error": "Error generating PDF", "details": api_response.text},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
         
 class VendorReturnManageAPIView(APIView):
     """

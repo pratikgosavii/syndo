@@ -1275,7 +1275,7 @@ class CashTransfer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} → ₹{self.amount} "
+        return f"{self.user.username} -> Rs {self.amount}"
 
 
 class ProductImage(models.Model):
@@ -1350,7 +1350,7 @@ class Payment(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.get_payment_type_display()} - ₹{self.amount}"
+        return f"{self.get_payment_type_display()} - Rs {self.amount}"
 
 
 

@@ -7,6 +7,7 @@ import logging
 from decimal import Decimal
 from datetime import datetime
 from django.conf import settings
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -35,78 +36,225 @@ def send_sms_via_msgclub(phone_number, message):
         # Get API credentials from settings
         api_key = getattr(settings, 'SMS_API_KEY', '')
         api_host = getattr(settings, 'SMS_API_URL', 'msg.msgclub.net')
+        api_endpoint = getattr(settings, 'SMS_API_ENDPOINT', 'rest/services/sendSMS/sendGroupSms')
+        use_https = bool(getattr(settings, 'SMS_USE_HTTPS', True))
+        # MSGClub accounts commonly use AUTH_KEY as the parameter name.
+        # We keep api_key as default for backward compatibility, but we also auto-retry with AUTH_KEY
+        # if the gateway responds with "Token Not Found".
+        auth_param = getattr(settings, 'SMS_AUTH_PARAM', 'api_key')
+        mobile_param = getattr(settings, 'SMS_MOBILE_PARAM', 'mobile')
+        message_param = getattr(settings, 'SMS_MESSAGE_PARAM', 'message')
+        sender_id = getattr(settings, 'SMS_SENDER_ID', '') or ''
+        sender_param = getattr(settings, 'SMS_SENDER_PARAM', 'senderId')
+
+        # MSGClub / DLT params (names vary; we keep them configurable in settings)
+        entity_id = getattr(settings, "SMS_ENTITY_ID", "") or ""
+        tmid = getattr(settings, "SMS_TM_ID", "") or ""
+        template_id = getattr(settings, "SMS_TEMPLATE_ID_INVOICE", "") or ""
+        entity_param = getattr(settings, "SMS_ENTITY_PARAM", "entityid")
+        tmid_param = getattr(settings, "SMS_TM_PARAM", "tmid")
+        template_param = getattr(settings, "SMS_TEMPLATE_PARAM", "templateid")
+
+        # Route / content type params (as per MSGClub sample)
+        route_id = getattr(settings, "SMS_ROUTE_ID", "") or ""
+        route_param = getattr(settings, "SMS_ROUTE_PARAM", "routeId")
+        sms_content_type = getattr(settings, "SMS_CONTENT_TYPE", "") or ""
+        sms_content_type_param = getattr(settings, "SMS_CONTENT_TYPE_PARAM", "smsContentType")
+
+        # Optional consent failover param
+        consent_failover_id = getattr(settings, "SMS_CONSENT_FAILOVER_ID", "") or ""
+        consent_failover_param = getattr(settings, "SMS_CONSENT_FAILOVER_PARAM", "concentFailoverId")
         
         logger.info(f"[SMS LOG] API Host: {api_host}")
         logger.info(f"[SMS LOG] API Key: {api_key[:10]}...{api_key[-5:] if len(api_key) > 15 else 'N/A'}")
+        logger.info(f"[SMS LOG] Param names: auth={auth_param}, mobile={mobile_param}, message={message_param}")
         
         if not api_key:
             error_msg = "SMS API key not configured"
-            logger.error(f"[SMS LOG] ❌ ERROR: {error_msg}")
+            logger.error(f"[SMS LOG] ERROR: {error_msg}")
             logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
             return False, error_msg
-        
-        conn = http.client.HTTPConnection(api_host)
+
+        conn_cls = http.client.HTTPSConnection if use_https else http.client.HTTPConnection
+        conn = conn_cls(api_host)
         
         headers = {
             'Cache-Control': "no-cache"
         }
         
-        # Using the format provided by user - comma-separated path
-        # Add query parameters for phone_number, message, and api_key
-        # sender_id is optional - only add if provided
         import urllib.parse
-        endpoint = "rest,services,sendSMS,sendGroupSms"
-        params = {
-            'mobile': phone_number,
-            'message': message,
-            'api_key': api_key,
-        }
+        endpoint = api_endpoint
+
+        def _build_params(auth_key_name: str):
+            p = {
+                mobile_param: phone_number,
+                message_param: message,
+                auth_key_name: api_key,
+            }
+            if sender_id:
+                p[sender_param] = sender_id
+
+            # Optional route/content-type params
+            if route_id:
+                p[route_param] = route_id
+            if sms_content_type:
+                p[sms_content_type_param] = sms_content_type
+
+            # Optional DLT params (required on some routes/accounts)
+            if entity_id:
+                p[entity_param] = entity_id
+            if tmid:
+                p[tmid_param] = tmid
+            if template_id:
+                p[template_param] = template_id
+
+            # Optional consent failover
+            if consent_failover_id:
+                p[consent_failover_param] = consent_failover_id
+            return p
+
+        params = _build_params(auth_param)
+
+        # Validate sender id if provided/required by provider
+        # MSGClub commonly requires exactly 6 alphabets (A-Z).
+        if sender_id:
+            if not re.fullmatch(r"[A-Za-z]{6}", str(sender_id).strip()):
+                error_msg = "Invalid SMS_SENDER_ID. It must be exactly 6 alphabets (e.g. ABCDEF)."
+                logger.error(f"[SMS LOG] ERROR: {error_msg} (got: {sender_id!r})")
+                return False, error_msg
        
         query_string = urllib.parse.urlencode(params)
         full_endpoint = f"{endpoint}?{query_string}"
         
         logger.info(f"[SMS LOG] Endpoint: {endpoint}")
-        logger.info(f"[SMS LOG] Full URL: http://{api_host}/{full_endpoint}")
+        # Do NOT log full URL with API key in plain text
+        safe_query = query_string.replace(str(api_key), "****")
+        logger.info(f"[SMS LOG] Full URL: {'https' if use_https else 'http'}://{api_host}/{endpoint}?{safe_query}")
         logger.info(f"[SMS LOG] Sending GET request...")
         
-        conn.request("GET", full_endpoint, headers=headers)
-        res = conn.getresponse()
-        status_code = res.status
-        data = res.read()
-        response_text = data.decode("utf-8")
+        def _request_once(ep):
+            # http.client expects the request path to start with "/". Some servers respond 400 otherwise.
+            if ep and not ep.startswith("/"):
+                ep = "/" + ep
+            conn.request("GET", ep, headers=headers)
+            res = conn.getresponse()
+            status_code = res.status
+            data = res.read()
+            response_text = data.decode("utf-8", errors="replace")
+            return status_code, dict(res.getheaders()), response_text
+
+        status_code, resp_headers, response_text = _request_once(full_endpoint)
+
+        # Fallback: some MSGClub docs show a comma-separated path. If our primary endpoint fails
+        # with an empty body, retry once with comma-separated style.
+        if (status_code >= 400) and (not response_text) and ("," not in endpoint):
+            fallback_endpoint = endpoint.replace("/", ",")
+            fallback_full = f"{fallback_endpoint}?{query_string}"
+            logger.warning(f"[SMS LOG] Primary endpoint failed with HTTP {status_code} and empty body; retrying fallback endpoint format...")
+            status_code, resp_headers, response_text = _request_once(fallback_full)
         
         logger.info(f"[SMS LOG] Response Status Code: {status_code}")
-        logger.info(f"[SMS LOG] Response Headers: {dict(res.getheaders())}")
+        logger.info(f"[SMS LOG] Response Headers: {resp_headers}")
         logger.info(f"[SMS LOG] Response Body: {response_text}")
         
         conn.close()
         
-        # Parse response (adjust based on actual API response format)
-        # For now, assume success if we get a response
+        # Treat non-2xx as failure (MSGClub sometimes returns 400 with empty body)
+        if status_code < 200 or status_code >= 300:
+            error_msg = f"HTTP {status_code} from SMS API: {response_text or 'Empty response'}"
+            logger.error(f"[SMS LOG] ERROR: {error_msg}")
+            logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
+            return False, error_msg
+
+        # Many gateways (including MSGClub) may return HTTP 200 even for application-level errors.
+        # So we must inspect the response body.
         if response_text:
             try:
                 response_data = json.loads(response_text)
-                logger.info(f"[SMS LOG] ✅ SUCCESS: SMS sent successfully to {phone_number}")
+
+                # Common MSGClub error: token not found (usually wrong auth param name or invalid key)
+                resp_code = str(response_data.get("responseCode", "")).strip()
+                resp_msg = str(response_data.get("response", "")).strip()
+                if resp_code == "3009" or resp_msg.lower() == "token not found":
+                    logger.warning(f"[SMS LOG] Gateway responded Token Not Found (responseCode=3009). Retrying with AUTH_KEY param name...")
+                    # Retry once with AUTH_KEY
+                    retry_params = _build_params("AUTH_KEY")
+                    retry_qs = urllib.parse.urlencode(retry_params)
+                    retry_full = f"{endpoint}?{retry_qs}"
+                    status_code2, resp_headers2, response_text2 = _request_once(retry_full)
+                    logger.info(f"[SMS LOG] Retry Response Status Code: {status_code2}")
+                    logger.info(f"[SMS LOG] Retry Response Headers: {resp_headers2}")
+                    logger.info(f"[SMS LOG] Retry Response Body: {response_text2}")
+
+                    if status_code2 < 200 or status_code2 >= 300:
+                        error_msg = f"HTTP {status_code2} from SMS API (retry): {response_text2 or 'Empty response'}"
+                        logger.error(f"[SMS LOG] ERROR: {error_msg}")
+                        logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
+                        return False, error_msg
+
+                    if not response_text2:
+                        error_msg = "Empty response from SMS API (retry)"
+                        logger.error(f"[SMS LOG] ERROR: {error_msg}")
+                        logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
+                        return False, error_msg
+
+                    try:
+                        response_data2 = json.loads(response_text2)
+                        resp_code2 = str(response_data2.get("responseCode", "")).strip()
+                        resp_msg2 = str(response_data2.get("response", "")).strip()
+                        accepted_codes = {"0", "200", "3001"}
+                        if resp_code2 and resp_code2 not in accepted_codes:
+                            error_msg = f"Gateway error (retry): {resp_msg2 or response_text2}"
+                            logger.error(f"[SMS LOG] ERROR: {error_msg}")
+                            logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
+                            return False, error_msg
+                        logger.info(f"[SMS LOG] SUCCESS: SMS accepted by gateway for {phone_number} (retry, responseCode={resp_code2})")
+                        return True, response_data2
+                    except json.JSONDecodeError:
+                        # Non-JSON but 2xx; treat as accepted unless it looks like an error
+                        if "error" in response_text2.lower() or "invalid" in response_text2.lower():
+                            error_msg = f"Gateway error (retry): {response_text2}"
+                            logger.error(f"[SMS LOG] ERROR: {error_msg}")
+                            logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
+                            return False, error_msg
+                        logger.info(f"[SMS LOG] SUCCESS: SMS accepted by gateway for {phone_number} (non-JSON retry)")
+                        return True, response_text2
+
+                accepted_codes = {"0", "200", "3001"}
+
+                # If responseCode exists and is a non-accepted code, treat as failure.
+                if resp_code and resp_code not in accepted_codes:
+                    error_msg = f"Gateway error: {resp_msg or response_text}"
+                    logger.error(f"[SMS LOG] ERROR: {error_msg}")
+                    logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
+                    return False, error_msg
+
+                logger.info(f"[SMS LOG] SUCCESS: SMS accepted by gateway for {phone_number} (responseCode={resp_code})")
                 logger.info(f"[SMS LOG] Response Data: {json.dumps(response_data, indent=2)}")
                 logger.info(f"{'='*80}")
-                logger.info(f"SMS sent successfully to {phone_number}. Response: {response_data}")
+                logger.info(f"SMS accepted by gateway for {phone_number}. Response: {response_data}")
                 return True, response_data
             except json.JSONDecodeError:
-                # If response is not JSON, treat as success if it's not an error
-                logger.info(f"[SMS LOG] ✅ SUCCESS: SMS sent successfully to {phone_number}")
+                # If response is not JSON, treat as success only if it doesn't look like an error
+                if "error" in response_text.lower() or "invalid" in response_text.lower() or "token" in response_text.lower():
+                    error_msg = f"Gateway error: {response_text}"
+                    logger.error(f"[SMS LOG] ERROR: {error_msg}")
+                    logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
+                    return False, error_msg
+                logger.info(f"[SMS LOG] SUCCESS: SMS accepted by gateway for {phone_number}")
                 logger.info(f"[SMS LOG] Response (non-JSON): {response_text}")
                 logger.info(f"{'='*80}")
-                logger.info(f"SMS sent successfully to {phone_number}. Response: {response_text}")
+                logger.info(f"SMS accepted by gateway for {phone_number}. Response: {response_text}")
                 return True, response_text
         else:
             error_msg = "Empty response from SMS API"
-            logger.error(f"[SMS LOG] ❌ ERROR: {error_msg}")
+            logger.error(f"[SMS LOG] ERROR: {error_msg}")
             logger.error(f"Failed to send SMS to {phone_number}: {error_msg}")
             return False, error_msg
             
     except Exception as e:
         error_str = str(e)
-        logger.error(f"[SMS LOG] ❌ EXCEPTION: Error sending SMS to {phone_number}")
+        logger.error(f"[SMS LOG] EXCEPTION: Error sending SMS to {phone_number}")
         logger.error(f"[SMS LOG] Exception Type: {type(e).__name__}")
         logger.error(f"[SMS LOG] Exception Message: {error_str}")
         logger.error(f"{'='*80}")
@@ -146,13 +294,13 @@ def send_sale_sms(sale, invoice_type='invoice'):
     
     # Check if sale has customer
     if not sale.customer:
-        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No customer associated with sale {sale.id}")
+        logger.warning(f"[SMS SALE LOG] SKIPPED: No customer associated with sale {sale.id}")
         logger.warning(f"SMS not sent for sale {sale.id}: No customer associated with sale")
         return False, "No customer associated with sale"
     
     # Check if user has SMS settings
     if not sale.user:
-        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No user associated with sale {sale.id}")
+        logger.warning(f"[SMS SALE LOG] SKIPPED: No user associated with sale {sale.id}")
         logger.warning(f"SMS not sent for sale {sale.id}: No user associated with sale")
         return False, "No user associated with sale"
     
@@ -172,7 +320,7 @@ def send_sale_sms(sale, invoice_type='invoice'):
         logger.info(f"[SMS SALE LOG] Enable Quote Message: {sms_setting.enable_quote_message}")
     except Exception as e:
         error_msg = f"Error getting SMS settings: {str(e)}"
-        logger.error(f"[SMS SALE LOG] ❌ ERROR: {error_msg}")
+        logger.error(f"[SMS SALE LOG] ERROR: {error_msg}")
         logger.error(f"SMS not sent for sale {sale.id}: {error_msg}")
         return False, error_msg
     
@@ -192,16 +340,17 @@ def send_sale_sms(sale, invoice_type='invoice'):
     logger.info(f"[SMS SALE LOG] Checking {setting_type} setting: {should_send}")
     
     if not should_send:
-        logger.info(f"[SMS SALE LOG] ❌ SKIPPED: {setting_type.capitalize()} is disabled for sale {sale.id}")
+        logger.info(f"[SMS SALE LOG] SKIPPED: {setting_type.capitalize()} is disabled for sale {sale.id}")
         logger.info(f"SMS not sent for sale {sale.id} (invoice_type: {invoice_type}): {setting_type.capitalize()} is disabled")
         return False, f"{setting_type.capitalize()} is disabled"
     
-    # Check if there are available credits
-    # COMMENTED OUT: Credit check disabled as per requirement
-    # if sms_setting.available_credits <= 0:
-    #     logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: No SMS credits available (available: {sms_setting.available_credits})")
-    #     logger.warning(f"SMS not sent for sale {sale.id}: No SMS credits available (available: {sms_setting.available_credits})")
-    #     return False, "No SMS credits available"
+    # Check if there are available credits (optional)
+    # NOTE: This project previously disabled enforcement. We keep sending, but warn loudly.
+    try:
+        if Decimal(sms_setting.available_credits or 0) <= 0:
+            logger.warning(f"[SMS SALE LOG] WARNING: available_credits is 0.00 (still attempting send)")
+    except Exception:
+        pass
     
     # Get customer phone number
     customer = sale.customer
@@ -210,33 +359,59 @@ def send_sale_sms(sale, invoice_type='invoice'):
     logger.info(f"[SMS SALE LOG] Customer Phone (raw): {phone_number}")
     
     if not phone_number:
-        logger.warning(f"[SMS SALE LOG] ❌ SKIPPED: Customer phone number not found for customer {customer.id}")
+        logger.warning(f"[SMS SALE LOG] SKIPPED: Customer phone number not found for customer {customer.id}")
         logger.warning(f"SMS not sent for sale {sale.id}: Customer phone number not found for customer {customer.id}")
         return False, "Customer phone number not found"
     
     # Clean phone number (remove any non-digit characters except +)
     import re
     phone_number_cleaned = re.sub(r'[^\d+]', '', str(phone_number))
+
+    # Normalize for MSGClub (often expects country code). If it's a plain 10-digit Indian number,
+    # prepend "91". If it already has +91/91, keep as-is.
+    normalized = phone_number_cleaned.strip()
+    if normalized.startswith("+"):
+        normalized = normalized[1:]
+    # drop leading 0 for local formats like 08830...
+    normalized = normalized.lstrip("0")
+    if len(normalized) == 10 and normalized.isdigit():
+        normalized = "91" + normalized
+
     logger.info(f"[SMS SALE LOG] Customer Phone (cleaned): {phone_number_cleaned}")
+    logger.info(f"[SMS SALE LOG] Customer Phone (normalized): {normalized}")
     
     # Prepare SMS message
     invoice_number = sale.invoice_number or f"#{sale.id}"
-    total_amount = sale.total_amount or 0
-    
+    total_amount = getattr(sale, "total_amount", None) or getattr(sale, "total_bill_amount", None) or 0
+
+    # Build an invoice link (useful for DLT templates that include a URL variable)
+    try:
+        base = getattr(settings, "SITE_BASE_URL", "").rstrip("/")
+    except Exception:
+        base = ""
+    # Use customer-facing invoice PDF endpoint (public link as requested)
+    invoice_link = f"{base}/vendor/customer-sale-invoice/?id={sale.id}" if base else ""
+
     if invoice_type == 'invoice':
-        message = f"Dear {customer.name}, Your purchase invoice {invoice_number} for ₹{total_amount} has been generated. Thank you for your business!"
+        # If you are using a DLT-approved template, keep message text aligned with that template.
+        # You can change this to match exactly what is approved in MSGClub panel.
+        message = (
+            f"From Svindo: Your purchase invoice is generated. Thank you for shopping {invoice_number}. "
+            f"Your purchase amount is Rs. {total_amount}. "
+            f"Download your invoice: {invoice_link} (Valid for 7 days)."
+        )
     else:
         invoice_type_display = invoice_type.replace('_', ' ').title()
-        message = f"Dear {customer.name}, Your {invoice_type_display} {invoice_number} for ₹{total_amount} has been prepared. Please review."
+        message = f"Dear {customer.name}, Your {invoice_type_display} {invoice_number} for Rs {total_amount} has been prepared. Please review."
     
     logger.info(f"[SMS SALE LOG] Invoice Number: {invoice_number}")
-    logger.info(f"[SMS SALE LOG] Total Amount: ₹{total_amount}")
+    logger.info(f"[SMS SALE LOG] Total Amount: Rs {total_amount}")
     logger.info(f"[SMS SALE LOG] SMS Message: {message}")
     logger.info(f"[SMS SALE LOG] Calling send_sms_via_msgclub()...")
     
     # Send SMS
-    logger.info(f"Attempting to send SMS for sale {sale.id} to customer {customer.name} ({phone_number_cleaned}), invoice_type: {invoice_type}")
-    success, response = send_sms_via_msgclub(phone_number_cleaned, message)
+    logger.info(f"Attempting to send SMS for sale {sale.id} to customer {customer.name} ({normalized}), invoice_type: {invoice_type}")
+    success, response = send_sms_via_msgclub(normalized, message)
     
     if success:
         # Update SMS credits (deduct 1 credit for SMS sent)
@@ -246,15 +421,30 @@ def send_sale_sms(sale, invoice_type='invoice'):
         # sms_setting.used_credits += Decimal('1')
         # sms_setting.save(update_fields=['available_credits', 'used_credits'])
         
-        logger.info(f"[SMS SALE LOG] ✅ SUCCESS: SMS sent for sale {sale.id}")
+        # "success" here means the gateway accepted the SMS request; delivery to handset can still fail/delay.
+        details = ""
+        try:
+            if isinstance(response, dict):
+                rc = response.get("responseCode")
+                r = response.get("response")
+                if r:
+                    details = f" (responseCode={rc}, message_id={r})"
+                else:
+                    details = f" (responseCode={rc})"
+            elif response:
+                details = f" ({response})"
+        except Exception:
+            details = ""
+
+        logger.info(f"[SMS SALE LOG] SUCCESS: SMS accepted by gateway for sale {sale.id}{details}")
         # logger.info(f"[SMS SALE LOG] Credits: {old_credits} → {sms_setting.available_credits} (deducted 1)")
         # logger.info(f"[SMS SALE LOG] Used Credits: {sms_setting.used_credits}")
         logger.info(f"{'#'*80}")
-        logger.info(f"SMS sent successfully for sale {sale.id} to {phone_number_cleaned}")
-        return True, "SMS sent successfully"
+        logger.info(f"SMS accepted by gateway for sale {sale.id} to {phone_number_cleaned}{details}")
+        return True, f"SMS accepted by gateway{details}"
     else:
         error_msg = f"Failed to send SMS: {response}"
-        logger.error(f"[SMS SALE LOG] ❌ FAILED: {error_msg}")
+        logger.error(f"[SMS SALE LOG] FAILED: {error_msg}")
         logger.error(f"{'#'*80}")
         logger.error(f"SMS failed for sale {sale.id} to {phone_number_cleaned}: {error_msg}")
         return False, error_msg
