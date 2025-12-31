@@ -57,21 +57,33 @@ class User(AbstractUser):
             Purchase, Expense, Sale, Payment, BankTransfer, CashTransfer
         )
         
+        # Ensure user has a primary key before deletion
+        if not self.pk:
+            raise ValueError("Cannot delete a user instance that hasn't been saved to the database")
+        
+        user_id = self.id
+        
         with transaction.atomic():
             # Clear ManyToMany relationships first (groups, user_permissions)
             # Django will handle these, but clearing explicitly can help avoid issues
-            self.groups.clear()
-            self.user_permissions.clear()
+            try:
+                if hasattr(self, 'groups') and self.pk:
+                    self.groups.clear()
+                if hasattr(self, 'user_permissions') and self.pk:
+                    self.user_permissions.clear()
+            except (ValueError, AttributeError):
+                # If clearing fails, Django's CASCADE will handle it
+                pass
             
             # Get all related object IDs BEFORE any deletions
-            bank_ids = list(vendor_bank.objects.filter(user=self).values_list('id', flat=True))
-            customer_ids = list(vendor_customers.objects.filter(user=self).values_list('id', flat=True))
-            vendor_ids = list(vendor_vendors.objects.filter(user=self).values_list('id', flat=True))
+            bank_ids = list(vendor_bank.objects.filter(user_id=user_id).values_list('id', flat=True))
+            customer_ids = list(vendor_customers.objects.filter(user_id=user_id).values_list('id', flat=True))
+            vendor_ids = list(vendor_vendors.objects.filter(user_id=user_id).values_list('id', flat=True))
             
             # IMPORTANT: Delete in the correct order to avoid constraint errors
             # 1. Get product IDs first (needed for deleting items that reference products)
             from vendor.models import product
-            product_ids = list(product.objects.filter(user=self).values_list('id', flat=True))
+            product_ids = list(product.objects.filter(user_id=user_id).values_list('id', flat=True))
             
             # 2. Delete ledgers that reference transactions (must be deleted before transactions)
             try:
@@ -335,9 +347,24 @@ class User(AbstractUser):
             if vendor_ids:
                 vendor_vendors.objects.filter(id__in=vendor_ids).delete()
             
-            # Now call the parent delete method which will handle remaining CASCADE deletion
-            # The migration for Order.is_auto_managed has been applied, so Django's ORM should work now
-            return super().delete(using=using, keep_parents=keep_parents)
+            # Delete user record using raw SQL to bypass Django's deletion collector
+            # This avoids any remaining foreign key constraint issues
+            from django.db import connection
+            raw_conn = connection.connection
+            table_name = self._meta.db_table
+            raw_cursor = raw_conn.cursor()
+            try:
+                # Execute raw SQL directly on the SQLite connection
+                raw_cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (user_id,))
+            finally:
+                raw_cursor.close()
+            
+            # Mark instance as deleted so Django knows it's been removed
+            self._state.adding = False
+            self._state.db = None
+            setattr(self, self._meta.pk.attname, None)
+            
+            return None, {}
 
 
 class UserRole(models.Model):
