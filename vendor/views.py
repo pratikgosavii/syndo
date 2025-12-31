@@ -2100,6 +2100,34 @@ class VerifyBankAPIView(APIView):
                                 bank_name = str(value)
                                 logger.info(f"[BANK_VERIFICATION] ✅ Found bank name from data['{field}']: {bank_name}")
                     
+                    # If still not found, try to derive from IFSC code (first 4 characters usually indicate bank)
+                    if not bank_name:
+                        logger.info("[BANK_VERIFICATION] Attempting to derive bank name from IFSC code:")
+                        logger.info(f"[BANK_VERIFICATION]   - IFSC: {ifsc}")
+                        # Common IFSC bank codes (first 4 chars)
+                        ifsc_bank_map = {
+                            "HDFC": "HDFC Bank",
+                            "ICIC": "ICICI Bank",
+                            "SBIN": "State Bank of India",
+                            "CNRB": "Canara Bank",
+                            "AXIS": "Axis Bank",
+                            "UTIB": "Axis Bank",
+                            "KOTK": "Kotak Mahindra Bank",
+                            "YESB": "Yes Bank",
+                            "INDB": "IndusInd Bank",
+                            "BKID": "Bank of India",
+                            "BARC": "Barclays Bank",
+                            "BARB": "Bank of Baroda",
+                            "PUNB": "Punjab National Bank",
+                            "UNION": "Union Bank of India",
+                        }
+                        ifsc_prefix = ifsc[:4] if ifsc and len(ifsc) >= 4 else ""
+                        if ifsc_prefix in ifsc_bank_map:
+                            bank_name = ifsc_bank_map[ifsc_prefix]
+                            logger.info(f"[BANK_VERIFICATION] ✅ Derived bank name from IFSC prefix '{ifsc_prefix}': {bank_name}")
+                        else:
+                            logger.info(f"[BANK_VERIFICATION]   - IFSC prefix '{ifsc_prefix}' not in mapping")
+                    
                     # Default fallback if still not found
                     if not bank_name:
                         bank_name = "Bank Account"
@@ -2112,14 +2140,14 @@ class VerifyBankAPIView(APIView):
                     
                     # 1. Name from KYC result (if returned by API)
                     logger.info("[BANK_VERIFICATION] Checking KYC result for account holder name:")
-                    possible_name_fields = ["account_holder_name", "name", "account_holder", "holder_name", "account_name"]
+                    possible_name_fields = ["account_holder_name", "name", "account_holder", "holder_name", "account_name", "full_name"]
                     account_holder_name = None
                     
                     for field in possible_name_fields:
                         value = result.get(field)
                         logger.info(f"[BANK_VERIFICATION]   - result.get('{field}'): {value} (type: {type(value).__name__ if value is not None else 'None'})")
                         if value and not account_holder_name:
-                            account_holder_name = str(value)
+                            account_holder_name = str(value).strip()
                             logger.info(f"[BANK_VERIFICATION] ✅ Found account holder name from '{field}': {account_holder_name}")
                     
                     # Check nested data object
@@ -2130,7 +2158,7 @@ class VerifyBankAPIView(APIView):
                             value = data.get(field)
                             logger.info(f"[BANK_VERIFICATION]   - data.get('{field}'): {value} (type: {type(value).__name__ if value is not None else 'None'})")
                             if value and not account_holder_name:
-                                account_holder_name = str(value)
+                                account_holder_name = str(value).strip()
                                 logger.info(f"[BANK_VERIFICATION] ✅ Found account holder name from data['{field}']: {account_holder_name}")
                     
                     # 2. Name parameter from request
