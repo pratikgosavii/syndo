@@ -4337,6 +4337,7 @@ from .models import (
     CashLedger as CashLedgerModel,
     BankLedger as BankLedgerModel,
     StockTransaction,
+    ExpenseLedger,
     vendor_bank,
 )
 
