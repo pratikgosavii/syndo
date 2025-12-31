@@ -5233,7 +5233,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 
                 activities.append({
                     'type': 'product_like',
-                    'message': f"{like.user.username or like.user.email} liked your product '{like.product.name}'",
+                    'message': f"{like.user.id} liked your product '{like.product.name}'",
                     'user': {
                         'id': like.user.id,
                         'username': like.user.username,
