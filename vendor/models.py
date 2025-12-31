@@ -335,6 +335,7 @@ class BankLedger(models.Model):
         ("purchase", "Purchase"),
         ("expense", "Expense"),
         ("deposit", "Manual Deposit"),
+        ("withdrawal", "Bank Withdrawal"),
         ("transfered", "Transferred"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
@@ -364,6 +365,7 @@ class CashLedger(models.Model):
         ("expense", "Expense"),
         ("deposit", "Cash Deposit"),
         ("withdrawal", "Cash Withdrawal"),
+        ("cash_transfer", "Cash Transfer"),
         ("adjustment", "Cash Adjustment"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)

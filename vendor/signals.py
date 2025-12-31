@@ -939,7 +939,7 @@ def payment_ledger(sender, instance, created, **kwargs):
         logger.debug("[PAYMENT_LEDGER] Deleting old ledger entries...")
         CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
         VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-        CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal"], reference_id=instance.id).delete()
+        CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "cash_transfer"], reference_id=instance.id).delete()
         BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
         logger.debug("[PAYMENT_LEDGER] Old ledger entries deleted")
 
@@ -1088,10 +1088,10 @@ def payment_ledger(sender, instance, created, **kwargs):
                 adjust_ledger_to_target(
                     None,
                     CashLedger,
-                    "withdrawal",
+                    "cash_transfer",
                     instance.id,
                     -amt,  # Negative amount to DECREASE balance
-                    f"Cash Payment Given #{instance.id}",
+                    f"Cash Transfer #{instance.id}",
                     user=instance.user
                 )
                 logger.info(f"[PAYMENT_LEDGER] Cash ledger created with amount: -{amt} (DECREASE)")
@@ -1157,10 +1157,10 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
         adjust_ledger_to_target(
             None,
             CashLedger,
-            "withdrawal",
+            "cash_transfer",
             instance.id,
             -(instance.amount or Decimal(0)),
-            f"Cash to {instance.bank_account.name}",
+            f"Cash Transfer to {instance.bank_account.name}",
             user=instance.user
         )
 
@@ -1171,7 +1171,7 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
             "deposit",
             instance.id,
             (instance.amount or Decimal(0)),
-            f"Cash deposited to {instance.bank_account.name}"
+            f"Cash Transfer from Cash"
         )
 
 
@@ -1320,7 +1320,7 @@ def payment_delete_ledger(sender, instance, **kwargs):
     # Delete ledger entries directly (consistent with save handler)
     CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
     VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-    CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal"], reference_id=instance.id).delete()
+    CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "cash_transfer"], reference_id=instance.id).delete()
     BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
 
     # Recalculate balances from ALL remaining ledger entries
@@ -1361,7 +1361,7 @@ def payment_delete_ledger(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=CashTransfer)
 def cash_transfer_delete_ledger(sender, instance, **kwargs):
-    reset_ledger_for_reference(CashLedger, "withdrawal", instance.id)
+    reset_ledger_for_reference(CashLedger, "cash_transfer", instance.id)
     reset_ledger_for_reference(BankLedger, "deposit", instance.id)
 
 
