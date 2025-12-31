@@ -5675,20 +5675,20 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
             'delivery_history': delivery_history,
         }, status=status.HTTP_200_OK)
     
-    @action(detail=False, methods=["get"], url_path="all-delivery-history")
-    def all_delivery_history(self, request):
+    @action(detail=False, methods=["get"], url_path="auto-assigned-delivery-history")
+    def auto_assigned_delivery_history(self, request):
         """
-        Get delivery history and earnings for ALL delivery boys owned by the vendor.
+        Get delivery history and earnings for AUTO-ASSIGNED deliveries (is_auto_managed=True).
         
-        URL: GET /vendor/deliveryboys/all-delivery-history/
+        URL: GET /vendor/deliveryboys/auto-assigned-delivery-history/
         
         Returns:
-        - delivery_history: List of all completed deliveries (flat list, not grouped by delivery boy)
-        - overall_total_deliveries: Total count of all completed deliveries across all delivery boys
-        - overall_total_earnings: Total delivery earnings across all delivery boys
+        - delivery_history: List of auto-assigned completed deliveries
+        - overall_total_deliveries: Total count of auto-assigned completed deliveries
+        - overall_total_earnings: Total delivery earnings from auto-assigned deliveries
         """
         from customer.models import Order
-        from django.db.models import Sum, Count, Q
+        from django.db.models import Sum
         from decimal import Decimal
         import logging
         logger = logging.getLogger(__name__)
@@ -5696,11 +5696,12 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
         # Get all delivery boys owned by the vendor
         delivery_boys = DeliveryBoy.objects.filter(user=request.user, is_active=True)
         
-        # Get all completed orders for all delivery boys owned by this vendor
+        # Get all completed orders with is_auto_managed=True for all delivery boys owned by this vendor
         all_orders = Order.objects.filter(
             delivery_boy__user=request.user,
             delivery_boy__in=delivery_boys,
-            status='completed'
+            status='completed',
+            is_auto_managed=True
         ).select_related('user', 'address', 'delivery_boy').order_by('-created_at')
         
         # Calculate overall totals
@@ -5761,7 +5762,109 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
                     'shipping_fee': shipping_fee,
                     'total_amount': total_amount,
                     'status': getattr(order, 'status', None),
-                    'is_auto_managed': getattr(order, 'is_auto_managed', False),
+                    'is_auto_managed': True,
+                })
+            except Exception as e:
+                logger.error(f"Error processing order {getattr(order, 'id', 'unknown')} in delivery history: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                # Skip this order and continue
+                continue
+        
+        return Response({
+            'overall_total_deliveries': overall_total_deliveries,
+            'overall_total_earnings': float(overall_total_earnings),
+            'delivery_history': delivery_history,
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["get"], url_path="manual-delivery-history")
+    def manual_delivery_history(self, request):
+        """
+        Get delivery history and earnings for MANUALLY ASSIGNED deliveries (is_auto_managed=False).
+        
+        URL: GET /vendor/deliveryboys/manual-delivery-history/
+        
+        Returns:
+        - delivery_history: List of manually assigned completed deliveries
+        - overall_total_deliveries: Total count of manually assigned completed deliveries
+        - overall_total_earnings: Total delivery earnings from manually assigned deliveries
+        """
+        from customer.models import Order
+        from django.db.models import Sum
+        from decimal import Decimal
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Get all delivery boys owned by the vendor
+        delivery_boys = DeliveryBoy.objects.filter(user=request.user, is_active=True)
+        
+        # Get all completed orders with is_auto_managed=False for all delivery boys owned by this vendor
+        all_orders = Order.objects.filter(
+            delivery_boy__user=request.user,
+            delivery_boy__in=delivery_boys,
+            status='completed',
+            is_auto_managed=False
+        ).select_related('user', 'address', 'delivery_boy').order_by('-created_at')
+        
+        # Calculate overall totals
+        overall_total_deliveries = all_orders.count()
+        overall_total_earnings_result = all_orders.aggregate(
+            total=Sum('shipping_fee')
+        )
+        overall_total_earnings = Decimal(str(overall_total_earnings_result['total'] or 0))
+        
+        # Get all delivery history in one flat list
+        delivery_history = []
+        for order in all_orders:
+            try:
+                # Get customer name safely
+                customer_name = None
+                if order.user:
+                    if hasattr(order.user, 'get_full_name'):
+                        customer_name = order.user.get_full_name()
+                    if not customer_name:
+                        customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None)
+                
+                # Get delivery boy info
+                delivery_boy_name = None
+                delivery_boy_id = None
+                delivery_boy_mobile = None
+                if order.delivery_boy:
+                    delivery_boy_name = getattr(order.delivery_boy, 'name', None)
+                    delivery_boy_id = getattr(order.delivery_boy, 'id', None)
+                    delivery_boy_mobile = getattr(order.delivery_boy, 'mobile', None)
+                
+                # Safely get total_amount
+                total_amount = 0.0
+                try:
+                    if hasattr(order, 'total_amount') and order.total_amount is not None:
+                        total_amount = float(order.total_amount)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Error converting total_amount for order {order.id}: {e}")
+                
+                # Safely get shipping_fee
+                shipping_fee = 0.0
+                try:
+                    if hasattr(order, 'shipping_fee') and order.shipping_fee is not None:
+                        shipping_fee = float(order.shipping_fee)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Error converting shipping_fee for order {order.id}: {e}")
+                
+                delivery_history.append({
+                    'order_id': getattr(order, 'order_id', None),
+                    'order_date': order.created_at.isoformat() if hasattr(order, 'created_at') and order.created_at else None,
+                    'customer_name': customer_name,
+                    'customer_phone': getattr(order.user, 'mobile', None) if order.user else None,
+                    'delivery_boy': {
+                        'id': delivery_boy_id,
+                        'name': delivery_boy_name,
+                        'mobile': delivery_boy_mobile,
+                    },
+                    'delivery_type': getattr(order, 'delivery_type', None),
+                    'shipping_fee': shipping_fee,
+                    'total_amount': total_amount,
+                    'status': getattr(order, 'status', None),
+                    'is_auto_managed': False,
                 })
             except Exception as e:
                 logger.error(f"Error processing order {getattr(order, 'id', 'unknown')} in delivery history: {e}")
