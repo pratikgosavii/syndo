@@ -115,7 +115,48 @@ class User(AbstractUser):
             if vendor_ids:
                 VendorLedger.objects.filter(vendor_id__in=vendor_ids).delete()
             
-            # Now call the parent delete method which will handle CASCADE deletion
+            # 5. Delete customer-related models (Order, Cart, Address, etc.)
+            # These need to be deleted in order to avoid foreign key constraint errors
+            try:
+                from customer.models import (
+                    Order, OrderItem, OrderPrintJob, OrderPrintFile,
+                    Cart, PrintJob, PrintFile, Address,
+                    ReturnExchange, Favourite, FavouriteStore, Follower,
+                    Review, ProductRequest, SupportTicket, TicketMessage
+                )
+                from users.models import DeviceToken
+                
+                # Delete in order (children before parents where applicable)
+                # Order-related: Delete print files/jobs before order items, order items before orders
+                OrderPrintFile.objects.filter(print_job__order_item__order__user=self).delete()
+                OrderPrintJob.objects.filter(order_item__order__user=self).delete()
+                ReturnExchange.objects.filter(user=self).delete()  # Also references order_item
+                OrderItem.objects.filter(order__user=self).delete()
+                Order.objects.filter(user=self).delete()
+                
+                # Cart-related: Delete print files/jobs before cart
+                PrintFile.objects.filter(print_job__cart__user=self).delete()
+                PrintJob.objects.filter(cart__user=self).delete()
+                Cart.objects.filter(user=self).delete()
+                
+                # Other customer models
+                Address.objects.filter(user=self).delete()
+                Favourite.objects.filter(user=self).delete()
+                FavouriteStore.objects.filter(user=self).delete()
+                Follower.objects.filter(user=self).delete()
+                Follower.objects.filter(follower=self).delete()  # Also when user is being followed
+                Review.objects.filter(user=self).delete()
+                ProductRequest.objects.filter(user=self).delete()
+                TicketMessage.objects.filter(sender=self).delete()
+                SupportTicket.objects.filter(user=self).delete()
+                
+                # User token
+                DeviceToken.objects.filter(user=self).delete()
+            except ImportError:
+                # If customer models are not available, Django's CASCADE will handle it
+                pass
+            
+            # Now call the parent delete method which will handle remaining CASCADE deletion
             return super().delete(using=using, keep_parents=keep_parents)
 
 
