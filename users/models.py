@@ -349,15 +349,30 @@ class User(AbstractUser):
             
             # Delete user record using raw SQL to bypass Django's deletion collector
             # This avoids any remaining foreign key constraint issues
+            # Since we've manually deleted all related objects, we can delete the user directly
             from django.db import connection
-            raw_conn = connection.connection
+            from django.conf import settings
+            
             table_name = self._meta.db_table
-            raw_cursor = raw_conn.cursor()
-            try:
-                # Execute raw SQL directly on the SQLite connection
-                raw_cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (user_id,))
-            finally:
-                raw_cursor.close()
+            db_engine = settings.DATABASES['default']['ENGINE'].lower()
+            
+            with connection.cursor() as cursor:
+                if 'sqlite' in db_engine:
+                    # SQLite: Temporarily disable foreign key checks
+                    raw_conn = connection.connection
+                    raw_cursor = raw_conn.cursor()
+                    try:
+                        raw_cursor.execute("PRAGMA foreign_keys = OFF")
+                        raw_cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (user_id,))
+                        raw_cursor.execute("PRAGMA foreign_keys = ON")
+                    finally:
+                        raw_cursor.close()
+                elif 'postgresql' in db_engine or 'postgres' in db_engine:
+                    # PostgreSQL: Delete directly using raw SQL (we've already deleted all related objects)
+                    cursor.execute(f'DELETE FROM "{table_name}" WHERE id = %s', (user_id,))
+                else:
+                    # For other databases (MySQL, etc.), use parameterized query
+                    cursor.execute(f"DELETE FROM {table_name} WHERE id = %s", (user_id,))
             
             # Mark instance as deleted so Django knows it's been removed
             self._state.adding = False
