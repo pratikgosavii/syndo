@@ -177,9 +177,9 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         delivery_type = request.data.get("delivery_type") or "self_pickup"
         if delivery_type == "instant_delivery":
             store = vendor_store.objects.filter(user=first_product.user).first()
-        if store:
-            if not VendorStoreSerializer().get_is_store_open(store):
-                return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
+            if store:
+                if not VendorStoreSerializer().get_is_store_open(store):
+                    return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
