@@ -58,6 +58,11 @@ class User(AbstractUser):
         )
         
         with transaction.atomic():
+            # Clear ManyToMany relationships first (groups, user_permissions)
+            # Django will handle these, but clearing explicitly can help avoid issues
+            self.groups.clear()
+            self.user_permissions.clear()
+            
             # Get all related object IDs BEFORE any deletions
             bank_ids = list(vendor_bank.objects.filter(user=self).values_list('id', flat=True))
             customer_ids = list(vendor_customers.objects.filter(user=self).values_list('id', flat=True))
@@ -133,12 +138,13 @@ class User(AbstractUser):
             try:
                 from vendor.models import (
                     ProductSerial, PrintVariant, CustomizePrintVariant, 
-                    product_addon, SpotlightProduct
+                    product_addon, SpotlightProduct, serial_imei_no
                 )
                 
                 # Delete product-related child models
                 if product_ids:
                     ProductSerial.objects.filter(product__in=product_ids).delete()
+                    serial_imei_no.objects.filter(product__in=product_ids).delete()
                     PrintVariant.objects.filter(product__in=product_ids).delete()
                     CustomizePrintVariant.objects.filter(product__in=product_ids).delete()
                     product_addon.objects.filter(product__in=product_ids).delete()
@@ -285,7 +291,10 @@ class User(AbstractUser):
                 # If customer models are not available, Django's CASCADE will handle it
                 pass
             
-            # 11. Delete vendor banks, customers, and vendors (these should be last as many things reference them)
+            # 11. Delete UserRole relationships (Django CASCADE will handle this, but being explicit)
+            # Note: UserRole is defined later in this file, but Django CASCADE should handle it automatically
+            
+            # 12. Delete vendor banks, customers, and vendors (these should be last as many things reference them)
             if bank_ids:
                 vendor_bank.objects.filter(id__in=bank_ids).delete()
             if customer_ids:
@@ -294,6 +303,7 @@ class User(AbstractUser):
                 vendor_vendors.objects.filter(id__in=vendor_ids).delete()
             
             # Now call the parent delete method which will handle remaining CASCADE deletion
+            # This will handle AbstractUser's built-in relationships (groups, user_permissions, etc.)
             return super().delete(using=using, keep_parents=keep_parents)
 
 
