@@ -76,8 +76,8 @@ class User(AbstractUser):
             SaleItem.objects.filter(sale__user=self).delete()
             # Also delete items that reference products owned by this user (in case other users created purchases/sales with these products)
             if product_ids:
-                PurchaseItem.objects.filter(product_id__in=product_ids).delete()
-                SaleItem.objects.filter(product_id__in=product_ids).delete()
+                PurchaseItem.objects.filter(product__in=product_ids).delete()
+                SaleItem.objects.filter(product__in=product_ids).delete()
             
             Reminder.objects.filter(user=self).delete()
             Reminder.objects.filter(purchase__user=self).delete()
@@ -115,18 +115,17 @@ class User(AbstractUser):
             try:
                 from vendor.models import (
                     ProductSerial, PrintVariant, CustomizePrintVariant, 
-                    product_addon, SpotlightProduct, Offer, OfferMedia
+                    product_addon, SpotlightProduct
                 )
                 
                 # Delete product-related child models
                 if product_ids:
-                    ProductSerial.objects.filter(product_id__in=product_ids).delete()
-                    PrintVariant.objects.filter(product_id__in=product_ids).delete()
-                    CustomizePrintVariant.objects.filter(product_id__in=product_ids).delete()
-                    product_addon.objects.filter(product_id__in=product_ids).delete()
-                    SpotlightProduct.objects.filter(product_id__in=product_ids).delete()
-                    OfferMedia.objects.filter(offer__product_id__in=product_ids).delete()
-                    Offer.objects.filter(product_id__in=product_ids).delete()
+                    ProductSerial.objects.filter(product__in=product_ids).delete()
+                    PrintVariant.objects.filter(product__in=product_ids).delete()
+                    CustomizePrintVariant.objects.filter(product__in=product_ids).delete()
+                    product_addon.objects.filter(product__in=product_ids).delete()
+                    SpotlightProduct.objects.filter(product__in=product_ids).delete()
+                    # Note: Offer.product is a CharField, not ForeignKey, so we filter by seller later
                 
                 # Delete products (this will cascade delete any remaining PurchaseItems/SaleItems)
                 product.objects.filter(user=self).delete()
@@ -177,7 +176,7 @@ class User(AbstractUser):
                 from vendor.models import (
                     coupon, Post, Reel, BannerCampaign, Party, Wallet, WalletTransaction,
                     DeliveryBoy, DeliverySettings, DeliveryEarnings, VendorCoverage,
-                    OnlineOrderLedger, ExpenseLedger, NotificationCampaign
+                    OnlineOrderLedger, ExpenseLedger, NotificationCampaign, Offer, OfferMedia
                 )
                 # Coupons
                 coupon.objects.filter(user=self).delete()
@@ -211,7 +210,8 @@ class User(AbstractUser):
                 # Notification campaigns
                 NotificationCampaign.objects.filter(user=self).delete()
                 
-                # Offers (seller)
+                # Offers (seller) - delete OfferMedia first, then Offers (though OfferMedia will cascade, being explicit is safer)
+                OfferMedia.objects.filter(offer__seller=self).delete()
                 Offer.objects.filter(seller=self).delete()
             except ImportError:
                 pass
