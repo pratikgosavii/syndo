@@ -194,6 +194,7 @@ class vendor_bank(models.Model):
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    online_order_bank = models.BooleanField(default=False, help_text="Bank account used for online order payments")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

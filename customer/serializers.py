@@ -503,6 +503,13 @@ class OrderSerializer(serializers.ModelSerializer):
                     )
             else:
                 print("[OrderSerializer] Skipping serviceability: auto-assign disabled or not instant_delivery or no address")
+            
+            # Set is_auto_managed based on whether auto-assign is enabled
+            # If auto-assign is disabled, explicitly set to False (though it's already the default)
+            # If auto-assign is enabled, it will be set to True later when auto-assignment actually happens
+            if not auto_assign_enabled:
+                order.is_auto_managed = False
+                order.save(update_fields=['is_auto_managed'])
 
             # After bulk create, attach print jobs (if any)
             saved_order_items = list(order.items.all())

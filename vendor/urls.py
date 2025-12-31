@@ -99,6 +99,12 @@ urlpatterns = [
     path('list-vendor/', list_vendor, name='list_vendor'),
     path('get-vendor/', get_vendor.as_view(), name='get_vendor'),
 
+    path('list-post/', list_post, name='list_post'),
+    path('delete-post/<post_id>', delete_post, name='delete_post'),
+    
+    path('list-reel/', list_reel, name='list_reel'),
+    path('delete-reel/<reel_id>', delete_reel, name='delete_reel'),
+
     path('add-party/', add_party, name='add_party'),
     path('update-party/<party_id>', update_party, name='update_party'),
     path('delete-party/<party_id>', delete_party, name='delete_party'),
@@ -215,6 +221,7 @@ urlpatterns = [
     path('kyc/verify-fssai/', VerifyFSSAIAPIView.as_view(), name='verify_fssai'),
     path('accept-order/<order_id>', accept_order, name='accept_order'),
     path('assign-delivery-boy/<order_id>', assign_delivery_boy, name='assign_delivery_boy'),
+    path('assign-delivery-boy-api/<int:order_id>/', AssignDeliveryBoyAPIView.as_view(), name='assign_delivery_boy_api'),
     
     path('delivery-management/', delivery_management, name='delivery_management'),
     path('manage-delivery-boy/', manage_delivery_boy, name='manage_delivery_boy'),

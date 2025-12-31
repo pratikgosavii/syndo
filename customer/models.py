@@ -213,6 +213,7 @@ class Order(models.Model):
     instruction = models.TextField(blank=True, null=True)
     
     delivery_boy = models.ForeignKey("vendor.DeliveryBoy", null=True, blank=True, on_delete=models.SET_NULL, related_name="assigned_orders")
+    is_auto_managed = models.BooleanField(default=False, help_text="Whether the order was automatically managed/assigned by the system")
     created_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):

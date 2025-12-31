@@ -65,7 +65,7 @@ class ProductFilter(django_filters.FilterSet):
     user = django_filters.ModelChoiceFilter(queryset=User.objects.all())
     category = django_filters.ModelChoiceFilter(queryset=product_category.objects.all())
     sub_category = django_filters.ModelChoiceFilter(queryset=product_subcategory.objects.all())
-    parent = django_filters.ModelChoiceFilter(queryset=product.objects.all())
+    parent = django_filters.ModelChoiceFilter(queryset=product.objects.filter(is_active=True))
 
     # Choice fields
     product_type = django_filters.ChoiceFilter(choices=product.TYPE_CHOICES)

@@ -474,6 +474,36 @@ def list_bannercampaign(request):
     return render(request, 'list_bannercampaign.html', context)
 
 
+@login_required(login_url='login_admin')
+def list_post(request):
+    data = Post.objects.filter(user=request.user).order_by('-created_at')
+    context = {
+        'data': data
+    }
+    return render(request, 'list_post.html', context)
+
+
+@login_required(login_url='login_admin')
+def delete_post(request, post_id):
+    Post.objects.get(id=post_id, user=request.user).delete()
+    return HttpResponseRedirect(reverse('list_post'))
+
+
+@login_required(login_url='login_admin')
+def list_reel(request):
+    data = Reel.objects.filter(user=request.user).order_by('-created_at')
+    context = {
+        'data': data
+    }
+    return render(request, 'list_reel.html', context)
+
+
+@login_required(login_url='login_admin')
+def delete_reel(request, reel_id):
+    Reel.objects.get(id=reel_id, user=request.user).delete()
+    return HttpResponseRedirect(reverse('list_reel'))
+
+
 
 
 @login_required(login_url='login_admin')
@@ -647,7 +677,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Ensure vendor can only assign their own DeliveryBoy
         rider = get_object_or_404(DeliveryBoy, id=delivery_boy_id, user=request.user)
         order.delivery_boy = rider
-        order.save(update_fields=["delivery_boy"])
+        order.is_auto_managed = False  # Manual assignment
+        order.save(update_fields=["delivery_boy", "is_auto_managed"])
 
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -658,6 +689,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         previous_status = instance.status
         allowed_fields = {"status", "delivery_boy", "is_paid"}
         data = {k: v for k, v in request.data.items() if k in allowed_fields}
+
+        # If delivery_boy is being set manually via update, mark as not auto-managed
+        if "delivery_boy" in data and data["delivery_boy"] is not None:
+            instance.is_auto_managed = False  # Manual assignment
 
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -696,7 +731,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                         if rider:
                             print(f"Assigned self-delivery rider: {rider}")
                             instance.delivery_boy = rider
-                            instance.save(update_fields=["delivery_boy"])
+                            instance.is_auto_managed = True  # Auto-assigned
+                            instance.save(update_fields=["delivery_boy", "is_auto_managed"])
                         else:
                             print("No active self-delivery rider found")
                     else:
@@ -714,7 +750,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                             if task_id:
                                 print(f"Saving uEngage task_id: {task_id}")
                                 instance.uengage_task_id = task_id
-                                instance.save(update_fields=["uengage_task_id"])
+                                instance.is_auto_managed = True  # Auto-assigned via uEngage
+                                instance.save(update_fields=["uengage_task_id", "is_auto_managed"])
                             if tracking:
                                 for it in instance.items.all():
                                     if not it.tracking_link:
@@ -1331,7 +1368,10 @@ def update_product(request, product_id):
 @login_required(login_url='login_admin')
 def delete_product(request, product_id):
 
-    product.objects.get(id=product_id).delete()
+    # Soft delete: Set is_active=False instead of hard delete
+    product_instance = product.objects.get(id=product_id)
+    product_instance.is_active = False
+    product_instance.save(update_fields=['is_active'])
 
     return HttpResponseRedirect(reverse('list_product'))
 
@@ -1982,6 +2022,48 @@ class VerifyBankAPIView(APIView):
                 "bank_account_number", "bank_ifsc",
                 "is_bank_verified", "bank_verified_at", "kyc_last_error"
             ])
+            
+            # If verification is successful, check/create bank in vendor_bank table
+            if success:
+                from .models import vendor_bank
+                from django.db import IntegrityError
+                
+                # Check if bank with same account_number exists for this user
+                bank = vendor_bank.objects.filter(
+                    user=request.user,
+                    account_number=account_number
+                ).first()
+                
+                if not bank:
+                    # Extract bank name from result if available, otherwise use a default
+                    bank_name = result.get("bank_name") or result.get("bank") or "Bank Account"
+                    account_holder_name = name or request.user.get_full_name() or request.user.username or ""
+                    
+                    # Try to create new bank entry and mark as online_order_bank
+                    # Note: account_number is unique, so if it exists for another user, this will fail
+                    try:
+                        bank = vendor_bank.objects.create(
+                            user=request.user,
+                            name=bank_name,
+                            account_holder=account_holder_name,
+                            account_number=account_number,
+                            ifsc_code=ifsc,
+                            branch=result.get("branch", ""),
+                            opening_balance=0,
+                            online_order_bank=True,  # Mark as online order bank
+                            is_active=True
+                        )
+                    except IntegrityError:
+                        # Bank with this account_number already exists globally
+                        # This means it exists for another user, so we can't create it for this user
+                        # We'll skip creating it in this case (account_number constraint prevents duplicates)
+                        pass
+                else:
+                    # Bank exists for this user, update online_order_bank flag if not already set
+                    if not bank.online_order_bank:
+                        bank.online_order_bank = True
+                        bank.save(update_fields=['online_order_bank'])
+            
             return Response({"verified": success, "result": result}, status=200 if success else 400)
         except QuickKYCError as e:
             store.kyc_last_error = str(e)
@@ -2061,7 +2143,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsVendor]
 
     def get_queryset(self):
-        return product.objects.filter(user=self.request.user)
+        return product.objects.filter(user=self.request.user, is_active=True)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Soft delete: Set is_active=False instead of actually deleting the product.
+        """
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_create(self, serializer):
         # Check GST verification status
@@ -3146,7 +3237,7 @@ def update_sale(request, sale_id):
             "customer_forms": customer_form,
             "wholesale_forms": wholesale_form,
             "saleitemform": SaleItemForm(),
-            "products": product.objects.filter(user=request.user),
+            "products": product.objects.filter(user=request.user, is_active=True),
             "existing_items": items_with_amount,  # ✅ Use calculated
         }
         return render(request, "pos_form.html", context)
@@ -3196,7 +3287,7 @@ from django.views.decorators.http import require_GET
 def get_product_price(request):
     product_id = request.GET.get('product_id')
     try:
-        product_instance = product.objects.get(id=product_id)
+        product_instance = product.objects.get(id=product_id, is_active=True)
         return JsonResponse({'price': str(product_instance.purchase_price)})
     except product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
@@ -3506,12 +3597,14 @@ class UpdateOrderItemStatusAPIView(APIView):
                         rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
                         if rider:
                             order.delivery_boy = rider
-                            order.save(update_fields=["delivery_boy"])
+                            order.is_auto_managed = True  # Auto-assigned
+                            order.save(update_fields=["delivery_boy", "is_auto_managed"])
                         else:
                             res = create_delivery_task(order)
                             if res.get("ok"):
                                 order.uengage_task_id = res.get("task_id")
-                                order.save(update_fields=["uengage_task_id"])
+                                order.is_auto_managed = True  # Auto-assigned via uEngage
+                                order.save(update_fields=["uengage_task_id", "is_auto_managed"])
                                 tracking = res.get("tracking_url")
                                 if tracking and not item.tracking_link:
                                     item.tracking_link = tracking
@@ -3701,9 +3794,82 @@ def assign_delivery_boy(request, order_id):
     delivery_boy_id = request.POST.get('delivery_boy_id')
     delivery_boy_instance = DeliveryBoy.objects.get(id = delivery_boy_id)
     order.delivery_boy = delivery_boy_instance
+    order.is_auto_managed = False  # Manual assignment
     order.save()
 
     return redirect('order_details', order_id = order_id)
+
+
+class AssignDeliveryBoyAPIView(APIView):
+    """
+    API endpoint to assign a delivery boy to an order.
+    
+    URL: POST /vendor/assign-delivery-boy-api/<order_id>/
+    Body: { "delivery_boy_id": <id> }
+    
+    Returns:
+    - success: boolean
+    - message: string
+    - order: order details
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, order_id):
+        from customer.models import Order
+        from django.shortcuts import get_object_or_404
+        
+        try:
+            # Get order and verify it belongs to vendor's products
+            order = Order.objects.prefetch_related('items__product').get(id=order_id)
+            
+            # Verify that at least one item in the order belongs to the vendor
+            vendor_items = order.items.filter(product__user=request.user)
+            if not vendor_items.exists():
+                return Response(
+                    {"error": "Order not found or you don't have permission to assign delivery boy to this order."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Get delivery boy ID from request
+            delivery_boy_id = request.data.get('delivery_boy_id')
+            if not delivery_boy_id:
+                return Response(
+                    {"error": "delivery_boy_id is required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get delivery boy and verify it belongs to the vendor
+            delivery_boy = get_object_or_404(
+                DeliveryBoy,
+                id=delivery_boy_id,
+                user=request.user
+            )
+            
+            # Assign delivery boy to order
+            order.delivery_boy = delivery_boy
+            order.is_auto_managed = False  # Manual assignment
+            order.save(update_fields=['delivery_boy', 'is_auto_managed'])
+            
+            # Return order details
+            from customer.serializers import OrderSerializer
+            serializer = OrderSerializer(order, context={'request': request})
+            
+            return Response({
+                "success": True,
+                "message": f"Delivery boy {delivery_boy.name} assigned to order {order.order_id}",
+                "order": serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Order not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 
@@ -4637,7 +4803,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         from vendor.serializers import product_serializer
         
         # Get products with like counts
-        products = product.objects.filter(user=user).annotate(
+        products = product.objects.filter(user=user, is_active=True).annotate(
             like_count=Count('favourited_by')
         ).order_by('-like_count')[:limit]
         
@@ -4651,6 +4817,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         low_stock = product.objects.filter(
             user=user,
             track_stock=True,
+            is_active=True,
             low_stock_alert=True
         ).filter(
             Q(stock__lte=F('low_stock_quantity')) | 
@@ -4666,7 +4833,8 @@ class VendorDashboardViewSet(viewsets.ViewSet):
         # Get all products for the user that have stock tracking enabled
         products = product.objects.filter(
             user=user,
-            track_stock=True
+            track_stock=True,
+            is_active=True
         ).exclude(
             Q(mrp__isnull=True) | Q(mrp=0) | Q(stock__isnull=True) | Q(stock=0)
         )
@@ -5220,6 +5388,162 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    
+    @action(detail=True, methods=["get"], url_path="delivery-history")
+    def delivery_history(self, request, pk=None):
+        """
+        Get delivery history and earnings for a specific delivery boy.
+        
+        URL: GET /vendor/deliveryboys/<delivery_boy_id>/delivery-history/
+        
+        Returns:
+        - delivery_history: List of completed orders delivered by this delivery boy
+        - total_deliveries: Total count of completed deliveries
+        - total_earnings: Total delivery earnings (sum of shipping_fee)
+        """
+        from customer.models import Order
+        from django.db.models import Sum, Count, Q
+        from decimal import Decimal
+        
+        # Get the delivery boy and verify ownership
+        delivery_boy = self.get_object()  # This already filters by user=request.user
+        
+        # Filter orders:
+        # 1. Assigned to this delivery boy
+        # 2. Owned by the vendor (delivery_boy.user = request.user)
+        # 3. Status is "completed" (delivered)
+        orders = Order.objects.filter(
+            delivery_boy=delivery_boy,
+            status='completed'
+        ).select_related('user', 'address', 'delivery_boy').order_by('-created_at')
+        
+        # Calculate totals
+        total_deliveries = orders.count()
+        total_earnings_result = orders.aggregate(
+            total=Sum('shipping_fee')
+        )
+        total_earnings = Decimal(str(total_earnings_result['total'] or 0))
+        
+        # Serialize order data
+        delivery_history = []
+        for order in orders:
+            # Get customer name safely
+            customer_name = None
+            if order.user:
+                if hasattr(order.user, 'get_full_name'):
+                    customer_name = order.user.get_full_name()
+                if not customer_name:
+                    customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None)
+            
+            delivery_history.append({
+                'order_id': order.order_id,
+                'order_date': order.created_at.isoformat() if order.created_at else None,
+                'customer_name': customer_name,
+                'customer_phone': getattr(order.user, 'mobile', None) if order.user else None,
+                'delivery_address': order.address.address if order.address else None,
+                'delivery_type': order.delivery_type,
+                'shipping_fee': float(order.shipping_fee) if order.shipping_fee else 0.0,
+                'total_amount': float(order.total_amount) if order.total_amount else 0.0,
+                'status': order.status,
+                'is_auto_managed': order.is_auto_managed,
+            })
+        
+        return Response({
+            'delivery_boy': {
+                'id': delivery_boy.id,
+                'name': delivery_boy.name,
+                'mobile': delivery_boy.mobile,
+            },
+            'total_deliveries': total_deliveries,
+            'total_earnings': float(total_earnings),
+            'delivery_history': delivery_history,
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=["get"], url_path="all-delivery-history")
+    def all_delivery_history(self, request):
+        """
+        Get delivery history and earnings for ALL delivery boys owned by the vendor.
+        
+        URL: GET /vendor/deliveryboys/all-delivery-history/
+        
+        Returns:
+        - delivery_boys: List of all delivery boys with their delivery statistics
+        - overall_total_deliveries: Total count of all completed deliveries across all delivery boys
+        - overall_total_earnings: Total delivery earnings across all delivery boys
+        """
+        from customer.models import Order
+        from django.db.models import Sum, Count, Q
+        from decimal import Decimal
+        
+        # Get all delivery boys owned by the vendor
+        delivery_boys = DeliveryBoy.objects.filter(user=request.user, is_active=True)
+        
+        # Get all completed orders for all delivery boys owned by this vendor
+        all_orders = Order.objects.filter(
+            delivery_boy__user=request.user,
+            delivery_boy__in=delivery_boys,
+            status='completed'
+        ).select_related('user', 'address', 'delivery_boy').order_by('-created_at')
+        
+        # Calculate overall totals
+        overall_total_deliveries = all_orders.count()
+        overall_total_earnings_result = all_orders.aggregate(
+            total=Sum('shipping_fee')
+        )
+        overall_total_earnings = Decimal(str(overall_total_earnings_result['total'] or 0))
+        
+        # Group orders by delivery boy and calculate stats for each
+        delivery_boys_data = []
+        for delivery_boy in delivery_boys:
+            # Get orders for this specific delivery boy
+            orders = all_orders.filter(delivery_boy=delivery_boy)
+            
+            # Calculate stats for this delivery boy
+            total_deliveries = orders.count()
+            earnings_result = orders.aggregate(total=Sum('shipping_fee'))
+            total_earnings = Decimal(str(earnings_result['total'] or 0))
+            
+            # Get delivery history for this delivery boy
+            delivery_history = []
+            for order in orders:
+                # Get customer name safely
+                customer_name = None
+                if order.user:
+                    if hasattr(order.user, 'get_full_name'):
+                        customer_name = order.user.get_full_name()
+                    if not customer_name:
+                        customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None)
+                
+                delivery_history.append({
+                    'order_id': order.order_id,
+                    'order_date': order.created_at.isoformat() if order.created_at else None,
+                    'customer_name': customer_name,
+                    'customer_phone': getattr(order.user, 'mobile', None) if order.user else None,
+                    'delivery_address': order.address.address if order.address else None,
+                    'delivery_type': order.delivery_type,
+                    'shipping_fee': float(order.shipping_fee) if order.shipping_fee else 0.0,
+                    'total_amount': float(order.total_amount) if order.total_amount else 0.0,
+                    'status': order.status,
+                    'is_auto_managed': order.is_auto_managed,
+                })
+            
+            delivery_boys_data.append({
+                'delivery_boy': {
+                    'id': delivery_boy.id,
+                    'name': delivery_boy.name,
+                    'mobile': delivery_boy.mobile,
+                    'is_active': delivery_boy.is_active,
+                },
+                'total_deliveries': total_deliveries,
+                'total_earnings': float(total_earnings),
+                'delivery_history': delivery_history,
+            })
+        
+        return Response({
+            'overall_total_deliveries': overall_total_deliveries,
+            'overall_total_earnings': float(overall_total_earnings),
+            'delivery_boys': delivery_boys_data,
+        }, status=status.HTTP_200_OK)
 
 
 class DeliverySettingsViewSet(viewsets.ModelViewSet):
@@ -5536,14 +5860,14 @@ def barcode_lookup(request):
     if barcode.lower().startswith('svindo'):
         pid = barcode[6:]
         try:
-            prod = product.objects.get(id=pid)
+            prod = product.objects.get(id=pid, is_active=True)
             price = getattr(prod, price_attr, None) or prod.sales_price
             return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
         except product.DoesNotExist:
             return JsonResponse({'success': False})
 
     # Case 2: direct product barcode field
-    prod = product.objects.filter(assign_barcode=barcode).first()
+    prod = product.objects.filter(assign_barcode=barcode, is_active=True).first()
     if prod:
         price = getattr(prod, price_attr, None) or prod.sales_price
         return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})

@@ -292,6 +292,29 @@ def adjust_ledger_to_target(parent, ledger_model, transaction_type, reference_id
         create_ledger(parent, ledger_model, transaction_type, reference_id, delta, description, user=user)
 
 # -------------------------------
+# HELPER: Check if sale should create ledgers/update stock
+# -------------------------------
+def should_process_sale(sale_instance):
+    """
+    Check if a sale should create ledgers and update stock.
+    Rule: Don't process POS sales UNLESS:
+      - It is wholesale (is_wholesale_rate=True) AND invoice_type is "invoice"
+      - OR wholesale is off (is_wholesale_rate=False)
+    Returns: (should_process, reason)
+    """
+    if sale_instance.is_wholesale_rate:
+        # It's a wholesale sale - only process if invoice_type is "invoice"
+        wholesale_record = pos_wholesale.objects.filter(sale=sale_instance).first()
+        if wholesale_record and wholesale_record.invoice_type == "invoice":
+            return True, "wholesale_sale_with_invoice"
+        else:
+            invoice_type = wholesale_record.invoice_type if wholesale_record else "N/A"
+            return False, f"wholesale_sale_with_invoice_type_{invoice_type}"
+    else:
+        # Wholesale is off (is_wholesale_rate=False) - process it
+        return True, "non_wholesale_sale"
+
+# -------------------------------
 # SALE → Customer & Bank Ledger (+ CashLedger)
 # -------------------------------
 @receiver(post_save, sender=Sale)
@@ -325,6 +348,18 @@ def sale_ledger(sender, instance, created, **kwargs):
         logger.info(f"[SALE_LEDGER] Balance Amount: {instance.balance_amount}")
         logger.info(f"[SALE_LEDGER] User: {instance.user}")
         logger.info(f"[SALE_LEDGER] Customer: {instance.customer}")
+        
+        # Check if we should create ledgers for this POS sale
+        should_process, reason = should_process_sale(instance)
+        
+        if not should_process:
+            logger.info("=" * 80)
+            logger.info(f"[SALE_LEDGER] Skipping ledger creation for Sale ID: {instance.id}")
+            logger.info(f"[SALE_LEDGER] Reason: {reason}")
+            logger.info("=" * 80)
+            return
+        
+        logger.info(f"[SALE_LEDGER] Will create ledgers - Reason: {reason}")
         
         # Check if this is a credit sale with cash advance
         if instance.payment_method == "credit" and instance.advance_payment_method == "cash":
@@ -1507,6 +1542,12 @@ def restore_stock_on_purchase_delete(sender, instance, **kwargs):
 def reduce_stock_on_sale_create(sender, instance, created, **kwargs):
     """Handle stock reduction when a new SaleItem is created."""
     if created:
+        # Check if we should process this sale (ledger/stock operations)
+        should_process, reason = should_process_sale(instance.sale)
+        if not should_process:
+            logger.debug(f"[STOCK] Skipping stock reduction for SaleItem ID: {instance.id}, Sale ID: {instance.sale.id}, Reason: {reason}")
+            return
+        
         product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
         log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
 
@@ -1522,6 +1563,12 @@ def update_stock_on_sale_edit(sender, instance, **kwargs):
         old_qty = old.quantity
         old_product = old.product
     except SaleItem.DoesNotExist:
+        return
+
+    # Check if we should process this sale (ledger/stock operations)
+    should_process, reason = should_process_sale(instance.sale)
+    if not should_process:
+        logger.debug(f"[STOCK] Skipping stock update for SaleItem ID: {instance.id}, Sale ID: {instance.sale.id}, Reason: {reason}")
         return
 
     qty_diff = instance.quantity - old_qty
@@ -1548,6 +1595,14 @@ def update_stock_on_sale_edit(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=SaleItem)
 def restore_stock_on_sale_delete(sender, instance, **kwargs):
+    # Check if we should process this sale (ledger/stock operations)
+    # Note: For delete, we still need to restore stock if it was previously reduced
+    # So we check if the sale was processed (had stock reduced) before deciding to restore
+    should_process, reason = should_process_sale(instance.sale)
+    if not should_process:
+        logger.debug(f"[STOCK] Skipping stock restoration for SaleItem ID: {instance.id}, Sale ID: {instance.sale.id}, Reason: {reason}")
+        return
+    
     product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
     log_stock_transaction(instance.product, "sale", instance.quantity, ref_id=instance.pk)
 
@@ -1616,6 +1671,31 @@ def add_stock_on_return_completed(sender, instance, created, **kwargs):
             product.objects.filter(id=instance.product.id).update(
                 stock_cached=F('stock_cached') + instance.quantity
             )
+            log_stock_transaction(instance.product, "return", instance.quantity, ref_id=instance.pk)
+
+
+@receiver(pre_save, sender=OrderItem)
+def restore_stock_on_cancelled(sender, instance, **kwargs):
+    """
+    Restore stock when OrderItem status changes to 'cancelled'.
+    Uses pre_save to check old status and new status, and only restores if transitioning TO cancelled.
+    """
+    if instance.pk is None:
+        return
+    
+    try:
+        old_instance = OrderItem.objects.get(pk=instance.pk)
+        old_status = old_instance.status
+        new_status = instance.status
+    except OrderItem.DoesNotExist:
+        return
+    
+    # Only restore stock when transitioning TO 'cancelled' status (not already cancelled)
+    if old_status != 'cancelled' and new_status == 'cancelled':
+        product.objects.filter(id=instance.product.id).update(
+            stock_cached=F('stock_cached') + instance.quantity
+        )
+        log_stock_transaction(instance.product, "cancel", instance.quantity, ref_id=instance.pk)
 
 
 # -----------------------------------------------------------------------------
@@ -1690,10 +1770,11 @@ def update_online_order_ledger_on_return(sender, instance, created, **kwargs):
 @receiver(post_save, sender=OrderItem)
 def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwargs):
     """
-    When an OrderItem is marked as "delivered" and order payment_mode is COD/cash,
-    credit vendor CashLedger and update CashBalance for that item's amount.
+    When an OrderItem is marked as "delivered":
+    - If order.is_auto_managed = True: credit vendor's online_order_bank (BankLedger)
+    - If order.is_auto_managed = False and payment_mode is COD/cash: credit CashLedger
 
-    Idempotent: will not create duplicate cash entries for the same order item.
+    Idempotent: will not create duplicate ledger entries for the same order item.
     """
     try:
         # Only process updates, not creation
@@ -1704,13 +1785,9 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
         if getattr(instance, "status", None) != "delivered":
             return
 
-        # Check payment mode from the order
+        # Get order
         order = getattr(instance, "order", None)
         if not order:
-            return
-
-        payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
-        if payment_mode not in ("cod", "cash"):
             return
 
         # Get vendor from product
@@ -1728,25 +1805,61 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
         if amount == 0:
             return
 
-        # Avoid duplicates - check if we already created a ledger entry for this order item
-        if CashLedger.objects.filter(
-            user=vendor_user,
-            transaction_type="sale",
-            reference_id=instance.id,
-            description__icontains="Online Order COD",
-        ).exists():
-            return
+        # Check if order is auto-managed
+        is_auto_managed = getattr(order, "is_auto_managed", False)
+        
+        if is_auto_managed:
+            # For auto-managed orders, credit the online_order_bank
+            online_bank = vendor_bank.objects.filter(
+                user=vendor_user,
+                online_order_bank=True,
+                is_active=True
+            ).first()
+            
+            if online_bank:
+                # Avoid duplicates - check if we already created a bank ledger entry for this order item
+                if BankLedger.objects.filter(
+                    bank=online_bank,
+                    transaction_type="sale",
+                    reference_id=instance.id,
+                    description__icontains="Online Order Auto",
+                ).exists():
+                    return
+                
+                # Create bank ledger entry for this delivered item
+                create_ledger(
+                    online_bank,
+                    BankLedger,
+                    transaction_type="sale",
+                    reference_id=instance.id,
+                    amount=amount,
+                    description=f"Online Order Auto-Managed (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
+                )
+        else:
+            # For non-auto-managed orders with COD/cash, credit CashLedger (existing logic)
+            payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
+            if payment_mode not in ("cod", "cash"):
+                return
 
-        # Create cash ledger entry for this delivered item
-        create_ledger(
-            None,
-            CashLedger,
-            transaction_type="sale",
-            reference_id=instance.id,
-            amount=amount,
-            description=f"Online Order COD Received (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
-            user=vendor_user,
-        )
+            # Avoid duplicates - check if we already created a cash ledger entry for this order item
+            if CashLedger.objects.filter(
+                user=vendor_user,
+                transaction_type="sale",
+                reference_id=instance.id,
+                description__icontains="Online Order COD",
+            ).exists():
+                return
+
+            # Create cash ledger entry for this delivered item
+            create_ledger(
+                None,
+                CashLedger,
+                transaction_type="sale",
+                reference_id=instance.id,
+                amount=amount,
+                description=f"Online Order COD Received (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
+                user=vendor_user,
+            )
     except Exception:
         # Never break save flow on logging/ledger issues
         return

@@ -271,6 +271,17 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                       <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Post & Reel</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'list_post' %}">Post List</a></li>
+                                <li><a href="{% url 'list_reel' %}">Reel List</a></li>
+                            </ul>
+                        </li>
+
+                      <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
                                 <span data-key="t-authentication">User Management</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
