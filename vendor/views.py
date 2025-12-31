@@ -2361,7 +2361,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if not is_gst_verified:
             serializer.save(user=self.request.user, cod=True)
         else:
-            serializer.save(user=self.request.user)
+        serializer.save(user=self.request.user)
 
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
@@ -4535,7 +4535,7 @@ def daybook_report(request):
         return int(agg['total'] or 0)
 
     date_iso, start, end = _day_bounds(date_str)
-    
+
     # Import models needed for daybook report
     from .models import CashLedger as CashLedgerModel, BankLedger as BankLedgerModel
 
