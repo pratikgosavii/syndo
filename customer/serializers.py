@@ -482,10 +482,19 @@ class OrderSerializer(serializers.ModelSerializer):
                     # Check if already exists
                     existing = OnlineOrderLedger.objects.filter(order_item=order_item).exists()
                     if existing:
-                        logger.warning(f"[ORDER_SERIALIZER] OnlineOrderLedger already exists for OrderItem {order_item.id} - skipping")
+                        logger.warning(f"[ORDER_SERIALIZER] 💰 OnlineOrderLedger already exists for OrderItem {order_item.id} - skipping")
+                        existing_ledger = OnlineOrderLedger.objects.filter(order_item=order_item).first()
+                        if existing_ledger:
+                            logger.info(f"[ORDER_SERIALIZER] 💰 Existing ledger ID: {existing_ledger.id}, Amount: {existing_ledger.amount}")
                     else:
                         amount = order_item.price * order_item.quantity
-                        logger.info(f"[ORDER_SERIALIZER] Creating OnlineOrderLedger entry - Amount: {amount}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 LEDGER CREATION - OrderItem ID: {order_item.id}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Product ID: {order_item.product.id}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Quantity: {order_item.quantity}, Price: {order_item.price}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Calculated Amount: {amount}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 User/Vendor: {order_item.product.user.username} (ID: {order_item.product.user.id})")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Order ID: {order.id}, Order Order ID: {order.order_id}")
+                        
                         ledger_entry = OnlineOrderLedger.objects.create(
                             user=order_item.product.user,
                             order_item=order_item,
@@ -496,24 +505,57 @@ class OrderSerializer(serializers.ModelSerializer):
                             status='recorded',
                             note='Online order recorded'
                         )
-                        logger.info(f"[ORDER_SERIALIZER] ✅ SUCCESS: OnlineOrderLedger created - ID: {ledger_entry.id}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 ✅ SUCCESS: OnlineOrderLedger created")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Entry ID: {ledger_entry.id}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Amount: {ledger_entry.amount}")
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Status: {ledger_entry.status}")
+                        
+                        # Verify it was saved
+                        verify_ledger = OnlineOrderLedger.objects.filter(id=ledger_entry.id).first()
+                        if verify_ledger:
+                            logger.info(f"[ORDER_SERIALIZER] 💰 ✅ VERIFIED: Ledger entry exists in database")
+                        else:
+                            logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Ledger entry not found in database after creation!")
                 except Exception as e:
-                    logger.error(f"[ORDER_SERIALIZER] ❌ ERROR: Failed to create OnlineOrderLedger for order_item {order_item.id}: {e}")
+                    logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Failed to create OnlineOrderLedger for order_item {order_item.id}: {e}")
                     import traceback
                     logger.error(traceback.format_exc())
                 
                 # Reduce stock
                 try:
-                    logger.info(f"[ORDER_SERIALIZER] Reducing stock for Product {order_item.product.id} by {order_item.quantity}")
+                    # Get current stock before update
+                    product_obj = product.objects.get(id=order_item.product.id)
+                    stock_before = product_obj.stock_cached or 0
+                    quantity_to_reduce = order_item.quantity
+                    stock_after_expected = stock_before - quantity_to_reduce
+                    
+                    logger.info(f"[ORDER_SERIALIZER] 📦 STOCK UPDATE - Product ID: {order_item.product.id}")
+                    logger.info(f"[ORDER_SERIALIZER] 📦 Stock BEFORE: {stock_before}")
+                    logger.info(f"[ORDER_SERIALIZER] 📦 Quantity to reduce: {quantity_to_reduce}")
+                    logger.info(f"[ORDER_SERIALIZER] 📦 Expected stock AFTER: {stock_after_expected}")
+                    
+                    # Update stock
                     product.objects.filter(id=order_item.product.id).update(
                         stock_cached=F('stock_cached') - order_item.quantity
                     )
+                    
+                    # Verify stock was updated
+                    product_obj.refresh_from_db()
+                    stock_after_actual = product_obj.stock_cached or 0
+                    
+                    if stock_after_actual == stock_after_expected:
+                        logger.info(f"[ORDER_SERIALIZER] 📦 ✅ SUCCESS: Stock updated correctly")
+                        logger.info(f"[ORDER_SERIALIZER] 📦 Stock AFTER: {stock_after_actual} (matches expected)")
+                    else:
+                        logger.warning(f"[ORDER_SERIALIZER] 📦 ⚠️ WARNING: Stock mismatch!")
+                        logger.warning(f"[ORDER_SERIALIZER] 📦 Expected: {stock_after_expected}, Actual: {stock_after_actual}")
+                    
                     # Log stock transaction
                     from vendor.signals import log_stock_transaction
                     log_stock_transaction(order_item.product, "sale", -order_item.quantity, ref_id=order_item.pk)
-                    logger.info(f"[ORDER_SERIALIZER] ✅ SUCCESS: Stock reduced for Product {order_item.product.id}")
+                    logger.info(f"[ORDER_SERIALIZER] 📦 Stock transaction logged")
                 except Exception as e:
-                    logger.error(f"[ORDER_SERIALIZER] ❌ ERROR: Failed to reduce stock for product {order_item.product.id}: {e}")
+                    logger.error(f"[ORDER_SERIALIZER] 📦 ❌ ERROR: Failed to reduce stock for product {order_item.product.id}: {e}")
                     import traceback
                     logger.error(traceback.format_exc())
             
