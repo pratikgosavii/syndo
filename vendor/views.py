@@ -2025,6 +2025,14 @@ class VerifyBankAPIView(APIView):
             
             # If verification is successful, check/create bank in vendor_bank table
             if success:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info("=" * 80)
+                logger.info("[BANK_VERIFICATION] Bank verification successful, checking vendor_bank table")
+                logger.info(f"[BANK_VERIFICATION] User: {request.user.username} (ID: {request.user.id})")
+                logger.info(f"[BANK_VERIFICATION] Account Number: {account_number}")
+                logger.info(f"[BANK_VERIFICATION] IFSC: {ifsc}")
+                
                 from .models import vendor_bank
                 from django.db import IntegrityError
                 
@@ -2035,9 +2043,18 @@ class VerifyBankAPIView(APIView):
                 ).first()
                 
                 if not bank:
+                    logger.info("[BANK_VERIFICATION] No existing bank found for this user with this account number")
                     # Extract bank name from result if available, otherwise use a default
                     bank_name = result.get("bank_name") or result.get("bank") or "Bank Account"
                     account_holder_name = name or request.user.get_full_name() or request.user.username or ""
+                    
+                    logger.info(f"[BANK_VERIFICATION] Creating new bank entry:")
+                    logger.info(f"[BANK_VERIFICATION]   - Name: {bank_name}")
+                    logger.info(f"[BANK_VERIFICATION]   - Account Holder: {account_holder_name}")
+                    logger.info(f"[BANK_VERIFICATION]   - Account Number: {account_number}")
+                    logger.info(f"[BANK_VERIFICATION]   - IFSC: {ifsc}")
+                    logger.info(f"[BANK_VERIFICATION]   - Branch: {result.get('branch', '')}")
+                    logger.info(f"[BANK_VERIFICATION]   - online_order_bank: True")
                     
                     # Try to create new bank entry and mark as online_order_bank
                     # Note: account_number is unique, so if it exists for another user, this will fail
@@ -2053,16 +2070,34 @@ class VerifyBankAPIView(APIView):
                             online_order_bank=True,  # Mark as online order bank
                             is_active=True
                         )
-                    except IntegrityError:
+                        logger.info(f"[BANK_VERIFICATION] ✅ SUCCESS: Bank created with ID: {bank.id}")
+                        logger.info(f"[BANK_VERIFICATION] Bank details: {bank}")
+                    except IntegrityError as e:
                         # Bank with this account_number already exists globally
                         # This means it exists for another user, so we can't create it for this user
                         # We'll skip creating it in this case (account_number constraint prevents duplicates)
-                        pass
+                        logger.warning(f"[BANK_VERIFICATION] ⚠️ WARNING: IntegrityError - Bank with account_number {account_number} already exists for another user")
+                        logger.warning(f"[BANK_VERIFICATION] Error: {str(e)}")
+                        # Check if it exists for this user but wasn't found (shouldn't happen, but let's check)
+                        existing_global = vendor_bank.objects.filter(account_number=account_number).first()
+                        if existing_global:
+                            logger.warning(f"[BANK_VERIFICATION] Existing bank found: User ID: {existing_global.user.id if existing_global.user else 'None'}, Bank ID: {existing_global.id}")
+                    except Exception as e:
+                        logger.error(f"[BANK_VERIFICATION] ❌ ERROR: Failed to create bank: {str(e)}")
+                        import traceback
+                        logger.error(traceback.format_exc())
                 else:
+                    logger.info(f"[BANK_VERIFICATION] Bank already exists for this user (ID: {bank.id})")
+                    logger.info(f"[BANK_VERIFICATION] Current online_order_bank status: {bank.online_order_bank}")
                     # Bank exists for this user, update online_order_bank flag if not already set
                     if not bank.online_order_bank:
                         bank.online_order_bank = True
                         bank.save(update_fields=['online_order_bank'])
+                        logger.info(f"[BANK_VERIFICATION] ✅ Updated online_order_bank flag to True")
+                    else:
+                        logger.info(f"[BANK_VERIFICATION] online_order_bank flag already set to True")
+                
+                logger.info("=" * 80)
             
             return Response({"verified": success, "result": result}, status=200 if success else 400)
         except QuickKYCError as e:
@@ -5433,25 +5468,54 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
             # Get delivery history for this delivery boy
             delivery_history = []
             for order in orders:
-                # Get customer name safely
-                customer_name = None
-                if order.user:
-                    if hasattr(order.user, 'get_full_name'):
-                        customer_name = order.user.get_full_name()
-                    if not customer_name:
-                        customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None)
-                
-                delivery_history.append({
-                    'order_id': order.order_id,
-                    'order_date': order.created_at.isoformat() if order.created_at else None,
-                    'customer_name': customer_name,
-                    'customer_phone': getattr(order.user, 'mobile', None) if order.user else None,
-                    'delivery_type': order.delivery_type,
-                    'shipping_fee': float(order.shipping_fee) if order.shipping_fee else 0.0,
-                    'total_amount': float(order.total_amount) if order.total_amount else 0.0,
-                    'status': order.status,
-                    'is_auto_managed': order.is_auto_managed,
-                })
+                try:
+                    # Get customer name safely
+                    customer_name = None
+                    if order.user:
+                        if hasattr(order.user, 'get_full_name'):
+                            customer_name = order.user.get_full_name()
+                        if not customer_name:
+                            customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None)
+                    
+                    # Safely get total_amount
+                    total_amount = 0.0
+                    try:
+                        if hasattr(order, 'total_amount') and order.total_amount is not None:
+                            total_amount = float(order.total_amount)
+                    except (ValueError, TypeError) as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Error converting total_amount for order {order.id}: {e}")
+                    
+                    # Safely get shipping_fee
+                    shipping_fee = 0.0
+                    try:
+                        if hasattr(order, 'shipping_fee') and order.shipping_fee is not None:
+                            shipping_fee = float(order.shipping_fee)
+                    except (ValueError, TypeError) as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Error converting shipping_fee for order {order.id}: {e}")
+                    
+                    delivery_history.append({
+                        'order_id': getattr(order, 'order_id', None),
+                        'order_date': order.created_at.isoformat() if hasattr(order, 'created_at') and order.created_at else None,
+                        'customer_name': customer_name,
+                        'customer_phone': getattr(order.user, 'mobile', None) if order.user else None,
+                        'delivery_type': getattr(order, 'delivery_type', None),
+                        'shipping_fee': shipping_fee,
+                        'total_amount': total_amount,
+                        'status': getattr(order, 'status', None),
+                        'is_auto_managed': getattr(order, 'is_auto_managed', False),
+                    })
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error processing order {getattr(order, 'id', 'unknown')} in delivery history: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+                    # Skip this order and continue
+                    continue
             
             delivery_boys_data.append({
                 'delivery_boy': {
