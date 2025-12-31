@@ -3780,6 +3780,9 @@ class UpdateOrderItemStatusAPIView(APIView):
         if getattr(item.product, "user_id", None) != request.user.id:
             return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
         status_value = request.data.get("status")
+        
+        import logging
+        logger = logging.getLogger(__name__)
 
         # Guard: auto-assign rider/external task when moving to ready_to_shipment (instead of intransit)
         if status_value == "ready_to_shipment":
@@ -3823,7 +3826,16 @@ class UpdateOrderItemStatusAPIView(APIView):
                     remaining = order.items.exclude(status="delivered").exists()
                     if not remaining and order.status != "completed":
                         order.status = "completed"
-                        order.save(update_fields=["status"])
+                        # For COD orders, mark as paid when order is completed
+                        payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
+                        if payment_mode in ("cod", "cash") and not order.is_paid:
+                            order.is_paid = True
+                            logger.info(f"[ORDER_UPDATE] Order {getattr(order, 'order_id', order.id)} marked as completed (COD/Cash) - setting is_paid=True")
+                        
+                        update_fields = ["status"]
+                        if order.is_paid:
+                            update_fields.append("is_paid")
+                        order.save(update_fields=update_fields)
                         order_completed = True
             except Exception:
                 order_completed = False
@@ -4441,8 +4453,35 @@ class DayBookAPIView(APIView):
                 'description': e.description or ''
             }
 
-        cash_entries = [entry_from_cash(e) for e in CashLedgerModel.objects.filter(user=user, created_at__range=(start, end)).order_by('created_at')]
-        bank_entries = [entry_from_bank(e) for e in BankLedgerModel.objects.filter(bank__user=user, created_at__range=(start, end)).order_by('created_at')]
+        # Get cash entries
+        cash_qs = CashLedgerModel.objects.filter(user=user, created_at__range=(start, end)).order_by('created_at')
+        cash_entries = [entry_from_cash(e) for e in cash_qs]
+        
+        # Get bank entries - check all banks for this user
+        from .models import vendor_bank
+        bank_accounts_list = vendor_bank.objects.filter(user=user, is_active=True)
+        bank_entries = []
+        for bank in bank_accounts_list:
+            bank_qs = BankLedgerModel.objects.filter(bank=bank, created_at__range=(start, end)).order_by('created_at')
+            bank_entries.extend([entry_from_bank(e) for e in bank_qs])
+        
+        # Log for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[DAYBOOK] Date: {date_iso}")
+        logger.info(f"[DAYBOOK] User: {user.username} (ID: {user.id})")
+        logger.info(f"[DAYBOOK] Date range: {start} to {end}")
+        logger.info(f"[DAYBOOK] Cash entries count: {len(cash_entries)}")
+        logger.info(f"[DAYBOOK] Bank accounts found: {bank_accounts_list.count()}")
+        logger.info(f"[DAYBOOK] Bank entries count: {len(bank_entries)}")
+        for bank in bank_accounts_list:
+            bank_entry_count = BankLedgerModel.objects.filter(bank=bank, created_at__range=(start, end)).count()
+            total_bank_entries = BankLedgerModel.objects.filter(bank=bank).count()
+            logger.info(f"[DAYBOOK]   - Bank '{bank.name}' (ID: {bank.id}): {bank_entry_count} entries in date range (Total: {total_bank_entries})")
+            if bank_entry_count > 0:
+                sample_entries = BankLedgerModel.objects.filter(bank=bank, created_at__range=(start, end))[:3]
+                for entry in sample_entries:
+                    logger.info(f"[DAYBOOK]     Sample entry: {entry.transaction_type}, Amount: {entry.amount}, Date: {entry.created_at}")
 
         entries = sorted(cash_entries + bank_entries, key=lambda x: x['time'])
 

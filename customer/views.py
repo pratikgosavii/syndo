@@ -176,10 +176,10 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         # Guard: prevent order placement when the vendor store is closed (only for instant_delivery)
         delivery_type = request.data.get("delivery_type") or "self_pickup"
         if delivery_type == "instant_delivery":
-            store = vendor_store.objects.filter(user=first_product.user).first()
-            if store:
-                if not VendorStoreSerializer().get_is_store_open(store):
-                    return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
+        store = vendor_store.objects.filter(user=first_product.user).first()
+        if store:
+            if not VendorStoreSerializer().get_is_store_open(store):
+                return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -583,10 +583,18 @@ def delivery_webhook(request):
             all_delivered = all(item.status == "delivered" for item in order.items.all())
             if all_delivered:
                 order.status = "completed"
+                # For COD orders, mark as paid when order is completed
+                payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
+                if payment_mode in ("cod", "cash") and not order.is_paid:
+                    order.is_paid = True
+                    logger.info(f"[DELIVERY_WEBHOOK] Order {order.order_id} marked as completed (COD/Cash) - setting is_paid=True")
         elif status_code in ("RTO_INIT", "RTO_COMPLETE"):
             order.status = "cancelled"
 
-        order.save(update_fields=["status"])
+        update_fields = ["status"]
+        if hasattr(order, "is_paid") and order.is_paid:
+            update_fields.append("is_paid")
+        order.save(update_fields=update_fields)
 
         # Send notifications based on status
         notification_event_map = {

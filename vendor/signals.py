@@ -1879,23 +1879,43 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
     Idempotent: will not create duplicate ledger entries for the same order item.
     """
     try:
+        logger.info("=" * 80)
+        logger.info("[ORDER_DELIVERY_CREDIT] Signal triggered for OrderItem")
+        logger.info(f"[ORDER_DELIVERY_CREDIT] OrderItem ID: {getattr(instance, 'id', 'NEW')}")
+        logger.info(f"[ORDER_DELIVERY_CREDIT] Created: {created}")
+        logger.info(f"[ORDER_DELIVERY_CREDIT] Status: {getattr(instance, 'status', None)}")
+        
         # Only process updates, not creation
         if created:
+            logger.info("[ORDER_DELIVERY_CREDIT] SKIPPED: OrderItem is newly created (not an update)")
+            logger.info("=" * 80)
             return
         
         # Only process when status is "delivered"
         if getattr(instance, "status", None) != "delivered":
+            logger.info(f"[ORDER_DELIVERY_CREDIT] SKIPPED: Status is not 'delivered' (status: {getattr(instance, 'status', None)})")
+            logger.info("=" * 80)
             return
 
         # Get order
         order = getattr(instance, "order", None)
         if not order:
+            logger.warning("[ORDER_DELIVERY_CREDIT] SKIPPED: OrderItem has no order")
+            logger.info("=" * 80)
             return
+        
+        logger.info(f"[ORDER_DELIVERY_CREDIT] Order ID: {order.id}, Order Order ID: {getattr(order, 'order_id', None)}")
+        logger.info(f"[ORDER_DELIVERY_CREDIT] Order is_auto_managed: {getattr(order, 'is_auto_managed', False)}")
+        logger.info(f"[ORDER_DELIVERY_CREDIT] Order payment_mode: {getattr(order, 'payment_mode', None)}")
 
         # Get vendor from product
         vendor_user = getattr(instance.product, "user", None)
         if not vendor_user:
+            logger.warning("[ORDER_DELIVERY_CREDIT] SKIPPED: Product has no user (vendor)")
+            logger.info("=" * 80)
             return
+        
+        logger.info(f"[ORDER_DELIVERY_CREDIT] Vendor User: {vendor_user.username} (ID: {vendor_user.id})")
 
         # Calculate amount for this item
         from decimal import Decimal
@@ -1904,13 +1924,18 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
         item_quantity = Decimal(getattr(instance, "quantity", 0) or 0)
         amount = (item_price * item_quantity).quantize(q2)
         
+        logger.info(f"[ORDER_DELIVERY_CREDIT] Amount: {amount} (Price: {item_price}, Quantity: {item_quantity})")
+        
         if amount == 0:
+            logger.warning("[ORDER_DELIVERY_CREDIT] SKIPPED: Amount is 0")
+            logger.info("=" * 80)
             return
 
         # Check if order is auto-managed
         is_auto_managed = getattr(order, "is_auto_managed", False)
         
         if is_auto_managed:
+            logger.info("[ORDER_DELIVERY_CREDIT] Order is auto-managed - will credit online_order_bank")
             # For auto-managed orders, credit the online_order_bank
             online_bank = vendor_bank.objects.filter(
                 user=vendor_user,
@@ -1919,15 +1944,23 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
             ).first()
             
             if online_bank:
+                logger.info(f"[ORDER_DELIVERY_CREDIT] Found online_order_bank: {online_bank.name} (ID: {online_bank.id})")
+                logger.info(f"[ORDER_DELIVERY_CREDIT] Bank Account Number: {online_bank.account_number}")
+                
                 # Avoid duplicates - check if we already created a bank ledger entry for this order item
-                if BankLedger.objects.filter(
+                existing = BankLedger.objects.filter(
                     bank=online_bank,
                     transaction_type="sale",
                     reference_id=instance.id,
                     description__icontains="Online Order Auto",
-                ).exists():
+                ).exists()
+                
+                if existing:
+                    logger.warning(f"[ORDER_DELIVERY_CREDIT] SKIPPED: BankLedger entry already exists for OrderItem {instance.id}")
+                    logger.info("=" * 80)
                     return
                 
+                logger.info(f"[ORDER_DELIVERY_CREDIT] Creating BankLedger entry...")
                 # Create bank ledger entry for this delivered item
                 create_ledger(
                     online_bank,
@@ -1937,21 +1970,39 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
                     amount=amount,
                     description=f"Online Order Auto-Managed (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
                 )
+                logger.info(f"[ORDER_DELIVERY_CREDIT] ✅ SUCCESS: BankLedger entry created for OrderItem {instance.id}")
+                logger.info(f"[ORDER_DELIVERY_CREDIT] Amount credited: {amount}")
+            else:
+                logger.warning(f"[ORDER_DELIVERY_CREDIT] ⚠️ WARNING: No online_order_bank found for vendor {vendor_user.username}")
+                logger.warning(f"[ORDER_DELIVERY_CREDIT] Banks for this vendor:")
+                all_banks = vendor_bank.objects.filter(user=vendor_user, is_active=True)
+                for b in all_banks:
+                    logger.warning(f"[ORDER_DELIVERY_CREDIT]   - {b.name} (ID: {b.id}), online_order_bank: {b.online_order_bank}")
         else:
+            logger.info("[ORDER_DELIVERY_CREDIT] Order is NOT auto-managed - checking for COD/cash payment")
             # For non-auto-managed orders with COD/cash, credit CashLedger (existing logic)
             payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
+            logger.info(f"[ORDER_DELIVERY_CREDIT] Payment mode: {payment_mode}")
+            
             if payment_mode not in ("cod", "cash"):
+                logger.info(f"[ORDER_DELIVERY_CREDIT] SKIPPED: Payment mode is not COD/cash (payment_mode: {payment_mode})")
+                logger.info("=" * 80)
                 return
 
             # Avoid duplicates - check if we already created a cash ledger entry for this order item
-            if CashLedger.objects.filter(
+            existing_cash = CashLedger.objects.filter(
                 user=vendor_user,
                 transaction_type="sale",
                 reference_id=instance.id,
                 description__icontains="Online Order COD",
-            ).exists():
+            ).exists()
+            
+            if existing_cash:
+                logger.warning(f"[ORDER_DELIVERY_CREDIT] SKIPPED: CashLedger entry already exists for OrderItem {instance.id}")
+                logger.info("=" * 80)
                 return
 
+            logger.info(f"[ORDER_DELIVERY_CREDIT] Creating CashLedger entry...")
             # Create cash ledger entry for this delivered item
             create_ledger(
                 None,
@@ -1962,7 +2013,15 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
                 description=f"Online Order COD Received (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
                 user=vendor_user,
             )
-    except Exception:
+            logger.info(f"[ORDER_DELIVERY_CREDIT] ✅ SUCCESS: CashLedger entry created for OrderItem {instance.id}")
+            logger.info(f"[ORDER_DELIVERY_CREDIT] Amount credited: {amount}")
+        
+        logger.info("=" * 80)
+    except Exception as e:
+        logger.error(f"[ORDER_DELIVERY_CREDIT] ❌ ERROR: Exception occurred: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        logger.info("=" * 80)
         # Never break save flow on logging/ledger issues
         return
 

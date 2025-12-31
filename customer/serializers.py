@@ -434,6 +434,17 @@ class OrderSerializer(serializers.ModelSerializer):
             from django.db import IntegrityError
             order = None
             last_exc = None
+            
+            # Set is_paid=True for online payments (Cashfree or any non-COD payment mode)
+            payment_mode = validated_data.get('payment_mode', 'COD')
+            is_paid = False
+            if payment_mode and payment_mode.lower() not in ('cod', 'cash'):
+                # For online payments (Cashfree, UPI, Card, etc.), mark as paid immediately
+                is_paid = True
+                logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (online) - setting is_paid=True")
+            else:
+                logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (COD/Cash) - is_paid will be set when order is completed")
+            
             for _attempt in range(5):
                 try:
                     with transaction.atomic():
@@ -443,6 +454,7 @@ class OrderSerializer(serializers.ModelSerializer):
                             tax_total=tax_total,
                             delivery_discount_amount=delivery_discount_amount,
                             total_amount=total_amount,
+                            is_paid=is_paid,
                         )
                     break
                 except IntegrityError as e:
