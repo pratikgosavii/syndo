@@ -184,6 +184,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "vendor.views": {
+            "handlers": ["request_file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "integrations.uengage": {
             "handlers": ["uengage_file", "console"],
             "level": "DEBUG",
