@@ -2361,7 +2361,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if not is_gst_verified:
             serializer.save(user=self.request.user, cod=True)
         else:
-        serializer.save(user=self.request.user)
+            serializer.save(user=self.request.user)
 
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
@@ -4337,6 +4337,7 @@ from .models import (
     CashLedger as CashLedgerModel,
     BankLedger as BankLedgerModel,
     StockTransaction,
+    vendor_bank,
 )
 
 

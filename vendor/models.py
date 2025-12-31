@@ -893,7 +893,7 @@ class Purchase(models.Model):
         # This ensures instance is updated in memory, then caller can save() to trigger signal
         self.total_taxable_amount = total_taxable_amount
         self.total_gst_amount = total_gst_amount
-            self.total_amount = new_total
+        self.total_amount = new_total
         
         # Don't save here - let the caller save() to trigger signal with updated values
         # This matches how Sale._recalculate_totals() works - it sets fields then saves
