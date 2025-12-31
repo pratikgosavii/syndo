@@ -199,8 +199,11 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
     
     def create(self, validated_data):
+        logger.info("=" * 80)
+        logger.info("[ORDER_SERIALIZER] ========== CREATE METHOD CALLED ==========")
         request = self.context.get("request")
         items_data = request.data.get("items", [])
+        logger.info(f"[ORDER_SERIALIZER] Items count: {len(items_data) if items_data else 0}")
         if not items_data or not isinstance(items_data, list):
             raise serializers.ValidationError({"items": ["No items provided."]})
 
@@ -452,12 +455,15 @@ class OrderSerializer(serializers.ModelSerializer):
                 raise last_exc or serializers.ValidationError({"detail": "Unable to create order. Please try again."})
 
             # bulk create items with linked order
+            logger.info(f"[ORDER_SERIALIZER] About to bulk_create {len(order_items)} order items")
             for oi in order_items:
                 oi.order = order
             OrderItem.objects.bulk_create(order_items)
+            logger.info(f"[ORDER_SERIALIZER] ✅ bulk_create completed for {len(order_items)} items")
 
             # Refresh order from DB to get saved order items with IDs
             order.refresh_from_db()
+            logger.info(f"[ORDER_SERIALIZER] Order refreshed from DB. Order ID: {order.id}")
             
             # Manually trigger signal logic since bulk_create doesn't fire signals
             # 1. Create OnlineOrderLedger entries
