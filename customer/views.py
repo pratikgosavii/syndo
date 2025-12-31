@@ -176,7 +176,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         # Guard: prevent order placement when the vendor store is closed (only for instant_delivery)
         delivery_type = request.data.get("delivery_type") or "self_pickup"
         if delivery_type == "instant_delivery":
-        store = vendor_store.objects.filter(user=first_product.user).first()
+            store = vendor_store.objects.filter(user=first_product.user).first()
         if store:
             if not VendorStoreSerializer().get_is_store_open(store):
                 return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
