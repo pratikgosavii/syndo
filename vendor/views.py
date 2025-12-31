@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404, render
+import json
 
 from masters.filters import EventFilter
 from vendor.filters import productFilter
@@ -2044,16 +2045,66 @@ class VerifyBankAPIView(APIView):
                 
                 if not bank:
                     logger.info("[BANK_VERIFICATION] No existing bank found for this user with this account number")
-                    # Extract bank name from result if available, otherwise use a default
-                    bank_name = result.get("bank_name") or result.get("bank") or "Bank Account"
-                    account_holder_name = name or request.user.get_full_name() or request.user.username or ""
+                    
+                    # Extract bank name from result - try multiple possible field names
+                    # Common field names in bank verification APIs:
+                    bank_name = None
+                    # Try top-level fields first
+                    bank_name = (
+                        result.get("bank_name") or
+                        result.get("bank") or
+                        result.get("bankName") or
+                        result.get("bank_name_full") or
+                        result.get("bank_full_name") or
+                        result.get("institution_name") or
+                        result.get("institution")
+                    )
+                    
+                    # If not found, try nested in "data" object
+                    if not bank_name and isinstance(result.get("data"), dict):
+                        data = result.get("data", {})
+                        bank_name = (
+                            data.get("bank_name") or
+                            data.get("bank") or
+                            data.get("bankName") or
+                            data.get("institution_name") or
+                            data.get("institution")
+                        )
+                    
+                    # Default fallback if still not found
+                    if not bank_name:
+                        bank_name = "Bank Account"
+                    
+                    # Log the full result to see what's available
+                    logger.info(f"[BANK_VERIFICATION] Full KYC Result: {json.dumps(result, indent=2, default=str)}")
+                    
+                    # Try multiple sources for account holder name (in priority order):
+                    # 1. Name from KYC result (if returned by API)
+                    # 2. Name parameter from request
+                    # 3. Vendor store name
+                    # 4. User's full name
+                    # 5. User's username
+                    # 6. Default fallback
+                    account_holder_name = (
+                        result.get("account_holder_name") or 
+                        result.get("name") or 
+                        result.get("account_holder") or
+                        name or 
+                        (store.name if store else None) or
+                        (request.user.get_full_name() if hasattr(request.user, 'get_full_name') else None) or
+                        (getattr(request.user, 'first_name', None) and getattr(request.user, 'last_name', None) and 
+                         f"{request.user.first_name} {request.user.last_name}".strip() or None) or
+                        getattr(request.user, 'username', None) or
+                        "Account Holder"
+                    )
                     
                     logger.info(f"[BANK_VERIFICATION] Creating new bank entry:")
-                    logger.info(f"[BANK_VERIFICATION]   - Name: {bank_name}")
+                    logger.info(f"[BANK_VERIFICATION]   - Bank Name: {bank_name}")
                     logger.info(f"[BANK_VERIFICATION]   - Account Holder: {account_holder_name}")
                     logger.info(f"[BANK_VERIFICATION]   - Account Number: {account_number}")
                     logger.info(f"[BANK_VERIFICATION]   - IFSC: {ifsc}")
                     logger.info(f"[BANK_VERIFICATION]   - Branch: {result.get('branch', '')}")
+                    logger.info(f"[BANK_VERIFICATION]   - KYC Result keys: {list(result.keys())}")
                     logger.info(f"[BANK_VERIFICATION]   - online_order_bank: True")
                     
                     # Try to create new bank entry and mark as online_order_bank
