@@ -2012,8 +2012,31 @@ class VerifyBankAPIView(APIView):
             return Response({"detail": "Vendor store not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info("=" * 80)
+            logger.info("[BANK_VERIFICATION] ========== STARTING BANK VERIFICATION ==========")
+            logger.info(f"[BANK_VERIFICATION] User: {request.user.username} (ID: {request.user.id})")
+            logger.info(f"[BANK_VERIFICATION] Request Data:")
+            logger.info(f"[BANK_VERIFICATION]   - account_number: {account_number}")
+            logger.info(f"[BANK_VERIFICATION]   - ifsc: {ifsc}")
+            logger.info(f"[BANK_VERIFICATION]   - name (from request): {name}")
+            
             result = kyc_verify_bank(account_number, ifsc, name)
+            
+            logger.info("[BANK_VERIFICATION] ========== KYC API RESPONSE ==========")
+            logger.info(f"[BANK_VERIFICATION] Full Response (JSON): {json.dumps(result, indent=2, default=str)}")
+            logger.info(f"[BANK_VERIFICATION] Response Type: {type(result)}")
+            logger.info(f"[BANK_VERIFICATION] Response Keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
+            
+            # Log all top-level fields
+            if isinstance(result, dict):
+                for key, value in result.items():
+                    logger.info(f"[BANK_VERIFICATION]   - {key}: {value} (type: {type(value).__name__})")
+            
             success = _is_success(result)
+            logger.info(f"[BANK_VERIFICATION] Verification Success: {success}")
+            
             store.bank_account_number = account_number
             store.bank_ifsc = ifsc
             store.is_bank_verified = success
@@ -2026,13 +2049,8 @@ class VerifyBankAPIView(APIView):
             
             # If verification is successful, check/create bank in vendor_bank table
             if success:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.info("=" * 80)
                 logger.info("[BANK_VERIFICATION] Bank verification successful, checking vendor_bank table")
-                logger.info(f"[BANK_VERIFICATION] User: {request.user.username} (ID: {request.user.id})")
-                logger.info(f"[BANK_VERIFICATION] Account Number: {account_number}")
-                logger.info(f"[BANK_VERIFICATION] IFSC: {ifsc}")
                 
                 from .models import vendor_bank
                 from django.db import IntegrityError
@@ -2047,56 +2065,102 @@ class VerifyBankAPIView(APIView):
                     logger.info("[BANK_VERIFICATION] No existing bank found for this user with this account number")
                     
                     # Extract bank name from result - try multiple possible field names
-                    # Common field names in bank verification APIs:
+                    logger.info("[BANK_VERIFICATION] ========== EXTRACTING BANK NAME ==========")
                     bank_name = None
+                    
                     # Try top-level fields first
-                    bank_name = (
-                        result.get("bank_name") or
-                        result.get("bank") or
-                        result.get("bankName") or
-                        result.get("bank_name_full") or
-                        result.get("bank_full_name") or
-                        result.get("institution_name") or
-                        result.get("institution")
-                    )
+                    logger.info("[BANK_VERIFICATION] Checking top-level fields for bank name:")
+                    possible_fields = ["bank_name", "bank", "bankName", "bank_name_full", "bank_full_name", "institution_name", "institution"]
+                    for field in possible_fields:
+                        value = result.get(field)
+                        logger.info(f"[BANK_VERIFICATION]   - result.get('{field}'): {value} (type: {type(value).__name__ if value is not None else 'None'})")
+                        if value and not bank_name:
+                            bank_name = str(value)
+                            logger.info(f"[BANK_VERIFICATION] ✅ Found bank name from '{field}': {bank_name}")
                     
                     # If not found, try nested in "data" object
                     if not bank_name and isinstance(result.get("data"), dict):
+                        logger.info("[BANK_VERIFICATION] Checking nested 'data' object for bank name:")
                         data = result.get("data", {})
-                        bank_name = (
-                            data.get("bank_name") or
-                            data.get("bank") or
-                            data.get("bankName") or
-                            data.get("institution_name") or
-                            data.get("institution")
-                        )
+                        logger.info(f"[BANK_VERIFICATION]   - data keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
+                        for field in possible_fields:
+                            value = data.get(field)
+                            logger.info(f"[BANK_VERIFICATION]   - data.get('{field}'): {value} (type: {type(value).__name__ if value is not None else 'None'})")
+                            if value and not bank_name:
+                                bank_name = str(value)
+                                logger.info(f"[BANK_VERIFICATION] ✅ Found bank name from data['{field}']: {bank_name}")
                     
                     # Default fallback if still not found
                     if not bank_name:
                         bank_name = "Bank Account"
+                        logger.warning(f"[BANK_VERIFICATION] ⚠️ Bank name not found in response, using default: {bank_name}")
                     
-                    # Log the full result to see what's available
-                    logger.info(f"[BANK_VERIFICATION] Full KYC Result: {json.dumps(result, indent=2, default=str)}")
+                    logger.info(f"[BANK_VERIFICATION] Final bank_name: {bank_name}")
                     
                     # Try multiple sources for account holder name (in priority order):
+                    logger.info("[BANK_VERIFICATION] ========== EXTRACTING ACCOUNT HOLDER NAME ==========")
+                    
                     # 1. Name from KYC result (if returned by API)
+                    logger.info("[BANK_VERIFICATION] Checking KYC result for account holder name:")
+                    possible_name_fields = ["account_holder_name", "name", "account_holder", "holder_name", "account_name"]
+                    account_holder_name = None
+                    
+                    for field in possible_name_fields:
+                        value = result.get(field)
+                        logger.info(f"[BANK_VERIFICATION]   - result.get('{field}'): {value} (type: {type(value).__name__ if value is not None else 'None'})")
+                        if value and not account_holder_name:
+                            account_holder_name = str(value)
+                            logger.info(f"[BANK_VERIFICATION] ✅ Found account holder name from '{field}': {account_holder_name}")
+                    
+                    # Check nested data object
+                    if not account_holder_name and isinstance(result.get("data"), dict):
+                        logger.info("[BANK_VERIFICATION] Checking nested 'data' object for account holder name:")
+                        data = result.get("data", {})
+                        for field in possible_name_fields:
+                            value = data.get(field)
+                            logger.info(f"[BANK_VERIFICATION]   - data.get('{field}'): {value} (type: {type(value).__name__ if value is not None else 'None'})")
+                            if value and not account_holder_name:
+                                account_holder_name = str(value)
+                                logger.info(f"[BANK_VERIFICATION] ✅ Found account holder name from data['{field}']: {account_holder_name}")
+                    
                     # 2. Name parameter from request
+                    if not account_holder_name and name:
+                        account_holder_name = name
+                        logger.info(f"[BANK_VERIFICATION] ✅ Using name from request: {account_holder_name}")
+                    
                     # 3. Vendor store name
+                    if not account_holder_name and store:
+                        account_holder_name = store.name
+                        logger.info(f"[BANK_VERIFICATION] ✅ Using vendor store name: {account_holder_name}")
+                    
                     # 4. User's full name
-                    # 5. User's username
-                    # 6. Default fallback
-                    account_holder_name = (
-                        result.get("account_holder_name") or 
-                        result.get("name") or 
-                        result.get("account_holder") or
-                        name or 
-                        (store.name if store else None) or
-                        (request.user.get_full_name() if hasattr(request.user, 'get_full_name') else None) or
-                        (getattr(request.user, 'first_name', None) and getattr(request.user, 'last_name', None) and 
-                         f"{request.user.first_name} {request.user.last_name}".strip() or None) or
-                        getattr(request.user, 'username', None) or
-                        "Account Holder"
-                    )
+                    if not account_holder_name and hasattr(request.user, 'get_full_name'):
+                        full_name = request.user.get_full_name()
+                        if full_name:
+                            account_holder_name = full_name
+                            logger.info(f"[BANK_VERIFICATION] ✅ Using user's full name: {account_holder_name}")
+                    
+                    # 5. First + Last name
+                    if not account_holder_name:
+                        first_name = getattr(request.user, 'first_name', None)
+                        last_name = getattr(request.user, 'last_name', None)
+                        if first_name and last_name:
+                            account_holder_name = f"{first_name} {last_name}".strip()
+                            logger.info(f"[BANK_VERIFICATION] ✅ Using first_name + last_name: {account_holder_name}")
+                    
+                    # 6. Username
+                    if not account_holder_name:
+                        username = getattr(request.user, 'username', None)
+                        if username:
+                            account_holder_name = username
+                            logger.info(f"[BANK_VERIFICATION] ✅ Using username: {account_holder_name}")
+                    
+                    # 7. Default fallback
+                    if not account_holder_name:
+                        account_holder_name = "Account Holder"
+                        logger.warning(f"[BANK_VERIFICATION] ⚠️ Account holder name not found, using default: {account_holder_name}")
+                    
+                    logger.info(f"[BANK_VERIFICATION] Final account_holder_name: {account_holder_name}")
                     
                     logger.info(f"[BANK_VERIFICATION] Creating new bank entry:")
                     logger.info(f"[BANK_VERIFICATION]   - Bank Name: {bank_name}")
