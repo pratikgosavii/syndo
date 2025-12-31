@@ -380,6 +380,14 @@ def send_sale_sms(sale, invoice_type='invoice'):
     invoice_number = sale.invoice_number or f"#{sale.id}"
     total_amount = getattr(sale, "total_amount", None) or getattr(sale, "total_bill_amount", None) or 0
 
+    # Get shop/store name
+    from .models import vendor_store
+    try:
+        store = sale.user.vendor_store.first()
+        shop_name = store.name if store else "Svindo"
+    except Exception:
+        shop_name = "Svindo"
+
     # Build an invoice link (must match approved DLT template)
     try:
         base = getattr(settings, "SITE_BASE_URL", "").rstrip("/")
@@ -399,7 +407,7 @@ def send_sale_sms(sale, invoice_type='invoice'):
         # Your purchase amount is Rs. {#var#}. Download your invoice:
         # https://vendor.svindo.com/vendor/customer-sale-invoice/?{#var#} (Valid for 7 days).
         message = (
-            f"From Svindo: Your purchase invoice is generated. Thank you for shopping {invoice_number}. "
+            f"From Svindo: Your purchase invoice is generated. Thank you for shopping with {shop_name}. "
             f"Your purchase amount is Rs. {total_amount}. "
             f"Download your invoice: {invoice_link} (Valid for 7 days)."
         )

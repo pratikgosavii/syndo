@@ -69,6 +69,9 @@ path("stream/chatinit/", ChatInitAPIView.as_view(), name="ChatInitAPIView"),
 # Cashfree webhook (public)
 path('cashfree/webhook/', cashfree_webhook, name='cashfree_webhook'),
 
+# Delivery webhook (public) - uEngage delivery status updates
+path('delivery/webhook/', delivery_webhook, name='delivery_webhook'),
+
 ] + router.urls
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

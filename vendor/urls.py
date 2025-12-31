@@ -221,7 +221,6 @@ urlpatterns = [
     path('kyc/verify-fssai/', VerifyFSSAIAPIView.as_view(), name='verify_fssai'),
     path('accept-order/<order_id>', accept_order, name='accept_order'),
     path('assign-delivery-boy/<order_id>', assign_delivery_boy, name='assign_delivery_boy'),
-    path('assign-delivery-boy-api/<int:order_id>/', AssignDeliveryBoyAPIView.as_view(), name='assign_delivery_boy_api'),
     
     path('delivery-management/', delivery_management, name='delivery_management'),
     path('manage-delivery-boy/', manage_delivery_boy, name='manage_delivery_boy'),

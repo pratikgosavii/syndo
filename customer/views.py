@@ -160,7 +160,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         Create order and immediately initiate Cashfree payment.
         Returns 201 with order payload + payment_session_id/payment_link.
         """
-        # Guard: prevent order placement when the vendor store is closed
+        # Validate items (required for all orders)
         items = request.data.get("items") or []
         if not items or not isinstance(items, list):
             return Response({"detail": "No items provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -172,10 +172,14 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
             first_product = product.objects.select_related("user").get(id=product_id)
         except product.DoesNotExist:
             return Response({"detail": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
-        store = vendor_store.objects.filter(user=first_product.user).first()
-        if store:
-            if not VendorStoreSerializer().get_is_store_open(store):
-                return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Guard: prevent order placement when the vendor store is closed (only for instant_delivery)
+        delivery_type = request.data.get("delivery_type") or "self_pickup"
+        if delivery_type == "instant_delivery":
+            store = vendor_store.objects.filter(user=first_product.user).first()
+            if store:
+                if not VendorStoreSerializer().get_is_store_open(store):
+                    return Response({"detail": "Store is close now"}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -474,6 +478,157 @@ def cashfree_webhook(request):
         order.save(update_fields=["cashfree_status", "is_paid", "payment_mode"])
 
     return JsonResponse({"success": True}, status=200)
+
+
+@csrf_exempt
+def delivery_webhook(request):
+    """
+    uEngage delivery webhook to receive real-time status updates.
+    Expected payload:
+    {
+        "status": true,
+        "data": {
+            "taskId": "UENXXXXXX",
+            "rider_name": "Ravit Kumar",
+            "rider_contact": "991XXXX131",
+            "latitude": "30.712518036454355",
+            "longitude": "76.84761827964336",
+            "rto_reason": "Customer denied"
+        },
+        "message": "Ok",
+        "status_code": "DELIVERED"
+    }
+    """
+    from django.http import JsonResponse
+    import json
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if request.method != "POST":
+        return JsonResponse({"detail": "method not allowed"}, status=405)
+
+    try:
+        raw = request.body
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception as e:
+        logger.error(f"[DELIVERY_WEBHOOK] Invalid JSON: {e}")
+        return JsonResponse({"detail": "invalid json"}, status=400)
+
+    # Extract taskId and status_code
+    data = payload.get("data", {})
+    task_id = data.get("taskId") or data.get("task_id")
+    status_code = payload.get("status_code", "").upper()
+    rider_name = data.get("rider_name")
+    rider_contact = data.get("rider_contact")
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    rto_reason = data.get("rto_reason")
+
+    if not task_id:
+        logger.warning("[DELIVERY_WEBHOOK] Missing taskId in payload")
+        return JsonResponse({"detail": "missing taskId"}, status=400)
+
+    if not status_code:
+        logger.warning("[DELIVERY_WEBHOOK] Missing status_code in payload")
+        return JsonResponse({"detail": "missing status_code"}, status=400)
+
+    logger.info(f"[DELIVERY_WEBHOOK] Received webhook for taskId: {task_id}, status_code: {status_code}")
+
+    # Find order by uengage_task_id
+    try:
+        order = Order.objects.get(uengage_task_id=task_id)
+    except Order.DoesNotExist:
+        logger.warning(f"[DELIVERY_WEBHOOK] Order not found for taskId: {task_id}")
+        return JsonResponse({"detail": "order not found"}, status=404)
+    except Order.MultipleObjectsReturned:
+        logger.error(f"[DELIVERY_WEBHOOK] Multiple orders found for taskId: {task_id}")
+        order = Order.objects.filter(uengage_task_id=task_id).first()
+
+    # Map status_code to OrderItem status
+    status_mapping = {
+        "ACCEPTED": "ready_to_shipment",
+        "ALLOTTED": "ready_to_deliver",
+        "ARRIVED": "intransit",
+        "DISPATCHED": "intransit",
+        "ARRIVED_CUSTOMER_DOORSTEP": "ready_to_deliver",
+        "DELIVERED": "delivered",
+        "RTO_INIT": "cancelled",
+        "RTO_COMPLETE": "cancelled",
+    }
+
+    new_item_status = status_mapping.get(status_code)
+    if not new_item_status:
+        logger.warning(f"[DELIVERY_WEBHOOK] Unknown status_code: {status_code}")
+        return JsonResponse({"detail": f"unknown status_code: {status_code}"}, status=400)
+
+    # Update all order items with the new status
+    from django.db import transaction
+    from integrations.uengage import notify_delivery_event
+    
+    with transaction.atomic():
+        order_items = order.items.all()
+        for item in order_items:
+            item.status = new_item_status
+            item.save(update_fields=["status"])
+
+        # Update order status based on status_code
+        if status_code == "ACCEPTED":
+            order.status = "accepted"
+        elif status_code in ("ALLOTTED", "ARRIVED", "DISPATCHED", "ARRIVED_CUSTOMER_DOORSTEP"):
+            if order.status != "accepted":
+                order.status = "accepted"  # Keep as accepted during transit
+        elif status_code == "DELIVERED":
+            # Check if all items are delivered
+            all_delivered = all(item.status == "delivered" for item in order.items.all())
+            if all_delivered:
+                order.status = "completed"
+        elif status_code in ("RTO_INIT", "RTO_COMPLETE"):
+            order.status = "cancelled"
+
+        order.save(update_fields=["status"])
+
+        # Send notifications based on status
+        notification_event_map = {
+            "ACCEPTED": "packed",
+            "ALLOTTED": "out_for_delivery",
+            "ARRIVED": "out_for_delivery",
+            "DISPATCHED": "out_for_delivery",
+            "ARRIVED_CUSTOMER_DOORSTEP": "out_for_delivery",
+            "DELIVERED": "delivered",
+            "RTO_INIT": "cancelled",
+            "RTO_COMPLETE": "cancelled",
+        }
+        
+        event = notification_event_map.get(status_code)
+        if event:
+            # Get tracking link if available (could be from order or stored elsewhere)
+            tracking_link = getattr(order.items.first(), "tracking_link", None) if order.items.exists() else None
+            try:
+                notify_delivery_event(
+                    order,
+                    event=event,
+                    tracking_link=tracking_link,
+                    rider_name=rider_name,
+                    rider_phone=rider_contact
+                )
+            except Exception as e:
+                logger.warning(f"[DELIVERY_WEBHOOK] Failed to send notification: {e}")
+
+        # Store rider information if provided (could be stored in a separate model or as JSON field)
+        # For now, we'll log it. You might want to create a DeliveryTracking model to store this.
+        if rider_name or rider_contact:
+            logger.info(
+                f"[DELIVERY_WEBHOOK] Rider info - Name: {rider_name}, Contact: {rider_contact}, "
+                f"Location: ({latitude}, {longitude})"
+            )
+
+        if rto_reason:
+            logger.info(f"[DELIVERY_WEBHOOK] RTO Reason: {rto_reason}")
+
+    logger.info(f"[DELIVERY_WEBHOOK] Successfully updated order {order.order_id} to status {status_code}")
+    return JsonResponse({"success": True, "order_id": order.order_id, "status": status_code}, status=200)
+
 
 class ReturnExchangeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
