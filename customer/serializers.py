@@ -463,8 +463,8 @@ class OrderSerializer(serializers.ModelSerializer):
             # 1. Create OnlineOrderLedger entries
             # 2. Reduce stock
             from vendor.models import OnlineOrderLedger
-            from vendor.models import product
             from django.db.models import F
+            # Note: 'product' is already imported at the top of the file (line 110)
             
             saved_order_items = list(order.items.all())
             for order_item in saved_order_items:
