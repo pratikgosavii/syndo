@@ -4362,6 +4362,9 @@ class DayBookAPIView(APIView):
         return int(agg['total'] or 0)
 
     def get(self, request):
+        # Import vendor_bank locally to avoid UnboundLocalError
+        from .models import vendor_bank
+        
         user = request.user
         date_str = request.query_params.get('date')  # YYYY-MM-DD
         date_iso, start, end = self._day_bounds(date_str)
