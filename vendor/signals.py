@@ -939,7 +939,7 @@ def payment_ledger(sender, instance, created, **kwargs):
         logger.debug("[PAYMENT_LEDGER] Deleting old ledger entries...")
         CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
         VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-        CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "cash_transfer"], reference_id=instance.id).delete()
+        CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment", "cash_transfer"], reference_id=instance.id).delete()
         BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
         logger.debug("[PAYMENT_LEDGER] Old ledger entries deleted")
 
@@ -1088,10 +1088,10 @@ def payment_ledger(sender, instance, created, **kwargs):
                 adjust_ledger_to_target(
                     None,
                     CashLedger,
-                    "cash_transfer",
+                    "payment",
                     instance.id,
                     -amt,  # Negative amount to DECREASE balance
-                    f"Cash Transfer #{instance.id}",
+                    f"Cash Payment Given #{instance.id}",
                     user=instance.user
                 )
                 logger.info(f"[PAYMENT_LEDGER] Cash ledger created with amount: -{amt} (DECREASE)")

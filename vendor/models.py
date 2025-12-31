@@ -365,6 +365,7 @@ class CashLedger(models.Model):
         ("expense", "Expense"),
         ("deposit", "Cash Deposit"),
         ("withdrawal", "Cash Withdrawal"),
+        ("payment", "Payment"),
         ("cash_transfer", "Cash Transfer"),
         ("adjustment", "Cash Adjustment"),
     ]
