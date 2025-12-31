@@ -1703,21 +1703,123 @@ def restore_stock_on_cancelled(sender, instance, **kwargs):
 # -----------------------------------------------------------------------------
 @receiver(post_save, sender=OrderItem)
 def create_online_order_ledger_on_create(sender, instance, created, **kwargs):
-    # Create a ledger entry when an order item is created (treated as online order)
-    if created:
-        try:
-            OnlineOrderLedger.objects.create(
-                user=instance.product.user,
-                order_item=instance,
-                product=instance.product,
-                order_id=getattr(instance.order, 'id', None),
-                quantity=instance.quantity,
-                amount=getattr(instance, 'price', 0) * instance.quantity,
-                status='recorded',
-                note='Online order recorded'
-            )
-        except Exception:
-            pass
+    """
+    Create a ledger entry when an order item is created (treated as online order).
+    
+    CONDITIONS FOR CREATION:
+    1. OrderItem must be newly created (created=True)
+    2. OrderItem must have a product with a user (vendor)
+    3. OrderItem must have an order
+    4. OrderItem must have quantity > 0
+    5. OrderItem must have a valid price
+    
+    NOTE: This signal will NOT fire if OrderItems are created via bulk_create().
+    In that case, ledger entries must be created manually (see OrderSerializer.create).
+    """
+    logger.info("=" * 80)
+    logger.info("[ONLINE_ORDER_LEDGER] Signal triggered for OrderItem")
+    logger.info(f"[ONLINE_ORDER_LEDGER] OrderItem ID: {getattr(instance, 'id', 'NEW')}")
+    logger.info(f"[ONLINE_ORDER_LEDGER] Created: {created}")
+    
+    # Condition 1: Must be a new OrderItem (not an update)
+    if not created:
+        logger.info("[ONLINE_ORDER_LEDGER] SKIPPED: OrderItem is not newly created (this is an update)")
+        logger.info("=" * 80)
+        return
+    
+    logger.info("[ONLINE_ORDER_LEDGER] OrderItem is newly created - proceeding with ledger creation")
+    
+    # Condition 2: Must have a product
+    product_obj = getattr(instance, 'product', None)
+    if not product_obj:
+        logger.warning("[ONLINE_ORDER_LEDGER] SKIPPED: OrderItem has no product")
+        logger.info("=" * 80)
+        return
+    
+    logger.info(f"[ONLINE_ORDER_LEDGER] Product ID: {product_obj.id}, Name: {getattr(product_obj, 'name', 'N/A')}")
+    
+    # Condition 3: Product must have a user (vendor)
+    vendor_user = getattr(product_obj, 'user', None)
+    if not vendor_user:
+        logger.warning("[ONLINE_ORDER_LEDGER] SKIPPED: Product has no user (vendor)")
+        logger.info("=" * 80)
+        return
+    
+    logger.info(f"[ONLINE_ORDER_LEDGER] Vendor User: {vendor_user.username} (ID: {vendor_user.id})")
+    
+    # Condition 4: Must have an order
+    order_obj = getattr(instance, 'order', None)
+    if not order_obj:
+        logger.warning("[ONLINE_ORDER_LEDGER] SKIPPED: OrderItem has no order")
+        logger.info("=" * 80)
+        return
+    
+    order_id = getattr(order_obj, 'id', None)
+    order_order_id = getattr(order_obj, 'order_id', None)
+    logger.info(f"[ONLINE_ORDER_LEDGER] Order ID: {order_id}, Order Order ID: {order_order_id}")
+    
+    # Condition 5: Must have quantity > 0
+    quantity = getattr(instance, 'quantity', 0) or 0
+    if quantity <= 0:
+        logger.warning(f"[ONLINE_ORDER_LEDGER] SKIPPED: OrderItem quantity is {quantity} (must be > 0)")
+        logger.info("=" * 80)
+        return
+    
+    logger.info(f"[ONLINE_ORDER_LEDGER] Quantity: {quantity}")
+    
+    # Condition 6: Must have a valid price
+    price = getattr(instance, 'price', 0) or 0
+    if price <= 0:
+        logger.warning(f"[ONLINE_ORDER_LEDGER] SKIPPED: OrderItem price is {price} (must be > 0)")
+        logger.info("=" * 80)
+        return
+    
+    logger.info(f"[ONLINE_ORDER_LEDGER] Price: {price}")
+    
+    # Calculate amount
+    amount = price * quantity
+    logger.info(f"[ONLINE_ORDER_LEDGER] Calculated Amount: {amount}")
+    
+    # Check if ledger entry already exists (idempotency check)
+    existing = OnlineOrderLedger.objects.filter(order_item=instance).exists()
+    if existing:
+        logger.warning("[ONLINE_ORDER_LEDGER] SKIPPED: OnlineOrderLedger entry already exists for this OrderItem")
+        logger.info("=" * 80)
+        return
+    
+    # All conditions met - create the ledger entry
+    try:
+        logger.info("[ONLINE_ORDER_LEDGER] All conditions met - creating OnlineOrderLedger entry...")
+        ledger_entry = OnlineOrderLedger.objects.create(
+            user=vendor_user,
+            order_item=instance,
+            product=product_obj,
+            order_id=order_id,
+            quantity=quantity,
+            amount=amount,
+            status='recorded',
+            note='Online order recorded'
+        )
+        logger.info("=" * 80)
+        logger.info("[ONLINE_ORDER_LEDGER] ✅ SUCCESS: OnlineOrderLedger entry created")
+        logger.info(f"[ONLINE_ORDER_LEDGER] Ledger Entry ID: {ledger_entry.id}")
+        logger.info(f"[ONLINE_ORDER_LEDGER] User: {vendor_user.username} (ID: {vendor_user.id})")
+        logger.info(f"[ONLINE_ORDER_LEDGER] Order Item ID: {instance.id}")
+        logger.info(f"[ONLINE_ORDER_LEDGER] Product ID: {product_obj.id}")
+        logger.info(f"[ONLINE_ORDER_LEDGER] Order ID: {order_id}")
+        logger.info(f"[ONLINE_ORDER_LEDGER] Quantity: {quantity}")
+        logger.info(f"[ONLINE_ORDER_LEDGER] Amount: {amount}")
+        logger.info(f"[ONLINE_ORDER_LEDGER] Status: recorded")
+        logger.info("=" * 80)
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error("[ONLINE_ORDER_LEDGER] ❌ ERROR: Failed to create OnlineOrderLedger entry")
+        logger.error(f"[ONLINE_ORDER_LEDGER] Error Type: {type(e).__name__}")
+        logger.error(f"[ONLINE_ORDER_LEDGER] Error Message: {str(e)}")
+        import traceback
+        logger.error(f"[ONLINE_ORDER_LEDGER] Traceback:")
+        logger.error(traceback.format_exc())
+        logger.error("=" * 80)
 
 
 @receiver(post_save, sender=OrderItem)

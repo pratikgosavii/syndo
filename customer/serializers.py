@@ -458,6 +458,45 @@ class OrderSerializer(serializers.ModelSerializer):
 
             # Refresh order from DB to get saved order items with IDs
             order.refresh_from_db()
+            
+            # Manually trigger signal logic since bulk_create doesn't fire signals
+            # 1. Create OnlineOrderLedger entries
+            # 2. Reduce stock
+            from vendor.models import OnlineOrderLedger
+            from vendor.models import product
+            from django.db.models import F
+            
+            saved_order_items = list(order.items.all())
+            for order_item in saved_order_items:
+                # Create OnlineOrderLedger entry
+                try:
+                    OnlineOrderLedger.objects.create(
+                        user=order_item.product.user,
+                        order_item=order_item,
+                        product=order_item.product,
+                        order_id=order.id,
+                        quantity=order_item.quantity,
+                        amount=order_item.price * order_item.quantity,
+                        status='recorded',
+                        note='Online order recorded'
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to create OnlineOrderLedger for order_item {order_item.id}: {e}")
+                
+                # Reduce stock
+                try:
+                    product.objects.filter(id=order_item.product.id).update(
+                        stock_cached=F('stock_cached') - order_item.quantity
+                    )
+                    # Log stock transaction
+                    from vendor.signals import log_stock_transaction
+                    log_stock_transaction(order_item.product, "sale", -order_item.quantity, ref_id=order_item.pk)
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to reduce stock for product {order_item.product.id}: {e}")
 
             # Serviceability check (only when vendor has auto-assign enabled)
             auto_assign_enabled = False
@@ -512,7 +551,7 @@ class OrderSerializer(serializers.ModelSerializer):
                 order.save(update_fields=['is_auto_managed'])
 
             # After bulk create, attach print jobs (if any)
-            saved_order_items = list(order.items.all())
+            # saved_order_items already defined above
             for oi, pj_payload in zip(saved_order_items, print_jobs_payload):
                 if not pj_payload:
                     continue
