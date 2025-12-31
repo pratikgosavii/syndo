@@ -5257,7 +5257,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             for follow in recent_followers:
                 activities.append({
                     'type': 'follow',
-                    'message': f"{follow.follower.username or follow.follower.email} followed you",
+                    'message': f"{follow.follower.id} followed you",
                     'user': {
                         'id': follow.follower.id,
                         'username': follow.follower.username,
