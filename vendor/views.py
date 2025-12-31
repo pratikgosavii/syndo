@@ -5429,13 +5429,15 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
         URL: GET /vendor/deliveryboys/all-delivery-history/
         
         Returns:
-        - delivery_boys: List of all delivery boys with their delivery statistics
+        - delivery_history: List of all completed deliveries (flat list, not grouped by delivery boy)
         - overall_total_deliveries: Total count of all completed deliveries across all delivery boys
         - overall_total_earnings: Total delivery earnings across all delivery boys
         """
         from customer.models import Order
         from django.db.models import Sum, Count, Q
         from decimal import Decimal
+        import logging
+        logger = logging.getLogger(__name__)
         
         # Get all delivery boys owned by the vendor
         delivery_boys = DeliveryBoy.objects.filter(user=request.user, is_active=True)
@@ -5454,85 +5456,70 @@ class DeliveryBoyViewSet(viewsets.ModelViewSet):
         )
         overall_total_earnings = Decimal(str(overall_total_earnings_result['total'] or 0))
         
-        # Group orders by delivery boy and calculate stats for each
-        delivery_boys_data = []
-        for delivery_boy in delivery_boys:
-            # Get orders for this specific delivery boy
-            orders = all_orders.filter(delivery_boy=delivery_boy)
-            
-            # Calculate stats for this delivery boy
-            total_deliveries = orders.count()
-            earnings_result = orders.aggregate(total=Sum('shipping_fee'))
-            total_earnings = Decimal(str(earnings_result['total'] or 0))
-            
-            # Get delivery history for this delivery boy
-            delivery_history = []
-            for order in orders:
+        # Get all delivery history in one flat list
+        delivery_history = []
+        for order in all_orders:
+            try:
+                # Get customer name safely
+                customer_name = None
+                if order.user:
+                    if hasattr(order.user, 'get_full_name'):
+                        customer_name = order.user.get_full_name()
+                    if not customer_name:
+                        customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None)
+                
+                # Get delivery boy info
+                delivery_boy_name = None
+                delivery_boy_id = None
+                delivery_boy_mobile = None
+                if order.delivery_boy:
+                    delivery_boy_name = getattr(order.delivery_boy, 'name', None)
+                    delivery_boy_id = getattr(order.delivery_boy, 'id', None)
+                    delivery_boy_mobile = getattr(order.delivery_boy, 'mobile', None)
+                
+                # Safely get total_amount
+                total_amount = 0.0
                 try:
-                    # Get customer name safely
-                    customer_name = None
-                    if order.user:
-                        if hasattr(order.user, 'get_full_name'):
-                            customer_name = order.user.get_full_name()
-                        if not customer_name:
-                            customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None)
-                    
-                    # Safely get total_amount
-                    total_amount = 0.0
-                    try:
-                        if hasattr(order, 'total_amount') and order.total_amount is not None:
-                            total_amount = float(order.total_amount)
-                    except (ValueError, TypeError) as e:
-                        import logging
-                        logger = logging.getLogger(__name__)
-                        logger.warning(f"Error converting total_amount for order {order.id}: {e}")
-                    
-                    # Safely get shipping_fee
-                    shipping_fee = 0.0
-                    try:
-                        if hasattr(order, 'shipping_fee') and order.shipping_fee is not None:
-                            shipping_fee = float(order.shipping_fee)
-                    except (ValueError, TypeError) as e:
-                        import logging
-                        logger = logging.getLogger(__name__)
-                        logger.warning(f"Error converting shipping_fee for order {order.id}: {e}")
-                    
-                    delivery_history.append({
-                        'order_id': getattr(order, 'order_id', None),
-                        'order_date': order.created_at.isoformat() if hasattr(order, 'created_at') and order.created_at else None,
-                        'customer_name': customer_name,
-                        'customer_phone': getattr(order.user, 'mobile', None) if order.user else None,
-                        'delivery_type': getattr(order, 'delivery_type', None),
-                        'shipping_fee': shipping_fee,
-                        'total_amount': total_amount,
-                        'status': getattr(order, 'status', None),
-                        'is_auto_managed': getattr(order, 'is_auto_managed', False),
-                    })
-                except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Error processing order {getattr(order, 'id', 'unknown')} in delivery history: {e}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-                    # Skip this order and continue
-                    continue
-            
-            delivery_boys_data.append({
-                'delivery_boy': {
-                    'id': delivery_boy.id,
-                    'name': delivery_boy.name,
-                    'mobile': delivery_boy.mobile,
-                    'is_active': delivery_boy.is_active,
-                },
-                'total_deliveries': total_deliveries,
-                'total_earnings': float(total_earnings),
-                'delivery_history': delivery_history,
-            })
+                    if hasattr(order, 'total_amount') and order.total_amount is not None:
+                        total_amount = float(order.total_amount)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Error converting total_amount for order {order.id}: {e}")
+                
+                # Safely get shipping_fee
+                shipping_fee = 0.0
+                try:
+                    if hasattr(order, 'shipping_fee') and order.shipping_fee is not None:
+                        shipping_fee = float(order.shipping_fee)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Error converting shipping_fee for order {order.id}: {e}")
+                
+                delivery_history.append({
+                    'order_id': getattr(order, 'order_id', None),
+                    'order_date': order.created_at.isoformat() if hasattr(order, 'created_at') and order.created_at else None,
+                    'customer_name': customer_name,
+                    'customer_phone': getattr(order.user, 'mobile', None) if order.user else None,
+                    'delivery_boy': {
+                        'id': delivery_boy_id,
+                        'name': delivery_boy_name,
+                        'mobile': delivery_boy_mobile,
+                    },
+                    'delivery_type': getattr(order, 'delivery_type', None),
+                    'shipping_fee': shipping_fee,
+                    'total_amount': total_amount,
+                    'status': getattr(order, 'status', None),
+                    'is_auto_managed': getattr(order, 'is_auto_managed', False),
+                })
+            except Exception as e:
+                logger.error(f"Error processing order {getattr(order, 'id', 'unknown')} in delivery history: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                # Skip this order and continue
+                continue
         
         return Response({
             'overall_total_deliveries': overall_total_deliveries,
             'overall_total_earnings': float(overall_total_earnings),
-            'delivery_boys': delivery_boys_data,
+            'delivery_history': delivery_history,
         }, status=status.HTTP_200_OK)
 
 
