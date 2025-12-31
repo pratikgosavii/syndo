@@ -73,7 +73,6 @@ class User(AbstractUser):
                 from vendor.models import ExpenseLedger, OnlineOrderLedger
                 # ExpenseLedger references Expense, so delete it before Expense
                 ExpenseLedger.objects.filter(user=self).delete()
-                ExpenseLedger.objects.filter(expense__user=self).delete()
                 # OnlineOrderLedger references OrderItem, so delete it early (both vendor and customer cases)
                 OnlineOrderLedger.objects.filter(user=self).delete()
                 # Also delete OnlineOrderLedgers for orders placed by this user (if user is a customer)
@@ -158,7 +157,8 @@ class User(AbstractUser):
                 store_ids = list(vendor_store.objects.filter(user=self).values_list('id', flat=True))
                 
                 # Delete store visits (references both store and visitor)
-                StoreVisit.objects.filter(store_id__in=store_ids).delete()
+                if store_ids:
+                    StoreVisit.objects.filter(store__in=store_ids).delete()
                 StoreVisit.objects.filter(visitor=self).delete()
                 
                 # Delete working hours
