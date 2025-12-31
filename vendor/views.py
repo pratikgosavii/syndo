@@ -4353,15 +4353,40 @@ class DayBookAPIView(APIView):
         date_iso, start, end = self._day_bounds(date_str)
 
         # Tiles (totals)
-        sales_total = self._sum_amount(CustomerLedger.objects.filter(
+        # Sales: Sum from CashLedger, BankLedger, and CustomerLedger (all sales transactions)
+        cash_sales = self._sum_amount(CashLedgerModel.objects.filter(
+            user=user, transaction_type='sale', created_at__range=(start, end)
+        ))
+        bank_sales = self._sum_amount(BankLedgerModel.objects.filter(
+            bank__user=user, transaction_type='sale', created_at__range=(start, end)
+        ))
+        customer_sales = self._sum_amount(CustomerLedger.objects.filter(
             customer__user=user, transaction_type='sale', created_at__range=(start, end)
         ))
+        sales_total = cash_sales + bank_sales + customer_sales
+        
         purchases_total = self._sum_amount(VendorLedger.objects.filter(
             vendor__user=user, transaction_type='purchase', created_at__range=(start, end)
         ))
-        receipts_total = self._sum_amount(CustomerLedger.objects.filter(
-            customer__user=user, transaction_type='payment', created_at__range=(start, end)
+        
+        # Receipts: Total amount received (all positive amounts from cash, bank, and customer payments)
+        # Cash receipts (positive amounts from sales, deposits)
+        cash_receipts = self._sum_amount(CashLedgerModel.objects.filter(
+            user=user, 
+            created_at__range=(start, end),
+            amount__gt=0  # Only positive amounts (money received)
         ))
+        # Bank receipts (positive amounts from sales, deposits)
+        bank_receipts = self._sum_amount(BankLedgerModel.objects.filter(
+            bank__user=user,
+            created_at__range=(start, end),
+            amount__gt=0  # Only positive amounts (money received)
+        ))
+        # Customer payments (these are negative in CustomerLedger, so we take absolute value)
+        customer_payments = abs(self._sum_amount(CustomerLedger.objects.filter(
+            customer__user=user, transaction_type='payment', created_at__range=(start, end)
+        )))
+        receipts_total = cash_receipts + bank_receipts + customer_payments
         payments_total = abs(self._sum_amount(VendorLedger.objects.filter(
             vendor__user=user, transaction_type='payment', created_at__range=(start, end)
         )))
@@ -4471,10 +4496,37 @@ def daybook_report(request):
         return int(agg['total'] or 0)
 
     date_iso, start, end = _day_bounds(date_str)
+    
+    # Import models needed for daybook report
+    from .models import CashLedger as CashLedgerModel, BankLedger as BankLedgerModel
 
-    sales_total = _sum_amount(CustomerLedger.objects.filter(customer__user=user, transaction_type='sale', created_at__range=(start, end)))
+    # Sales: Sum from CashLedger, BankLedger, and CustomerLedger (all sales transactions)
+    cash_sales = _sum_amount(CashLedgerModel.objects.filter(user=user, transaction_type='sale', created_at__range=(start, end)))
+    bank_sales = _sum_amount(BankLedgerModel.objects.filter(bank__user=user, transaction_type='sale', created_at__range=(start, end)))
+    customer_sales = _sum_amount(CustomerLedger.objects.filter(customer__user=user, transaction_type='sale', created_at__range=(start, end)))
+    sales_total = cash_sales + bank_sales + customer_sales
+    
     purchases_total = _sum_amount(VendorLedger.objects.filter(vendor__user=user, transaction_type='purchase', created_at__range=(start, end)))
-    receipts_total = _sum_amount(CustomerLedger.objects.filter(customer__user=user, transaction_type='payment', created_at__range=(start, end)))
+    
+    # Receipts: Total amount received (all positive amounts from cash, bank, and customer payments)
+    # Cash receipts (positive amounts from sales, deposits)
+    cash_receipts = _sum_amount(CashLedgerModel.objects.filter(
+        user=user, 
+        created_at__range=(start, end),
+        amount__gt=0  # Only positive amounts (money received)
+    ))
+    # Bank receipts (positive amounts from sales, deposits)
+    bank_receipts = _sum_amount(BankLedgerModel.objects.filter(
+        bank__user=user,
+        created_at__range=(start, end),
+        amount__gt=0  # Only positive amounts (money received)
+    ))
+    # Customer payments (these are negative in CustomerLedger, so we take absolute value)
+    customer_payments = abs(_sum_amount(CustomerLedger.objects.filter(
+        customer__user=user, transaction_type='payment', created_at__range=(start, end)
+    )))
+    receipts_total = cash_receipts + bank_receipts + customer_payments
+    
     payments_total = abs(_sum_amount(VendorLedger.objects.filter(vendor__user=user, transaction_type='payment', created_at__range=(start, end))))
     # Use ExpenseLedger for expense totals (more accurate with category)
     from .models import ExpenseLedger

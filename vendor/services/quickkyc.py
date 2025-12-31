@@ -71,7 +71,7 @@ def verify_bank(account_number: str, ifsc: str, account_holder: str = "") -> Dic
     payload = {"id_number": account_number, "ifsc": ifsc}
     if account_holder:
         payload["name"] = account_holder
-    return _post("/bank-verification/pd", payload)
+    return _post("/bank-verification/pl", payload)
 
 def verify_fssai(fssai_number: str) -> Dict[str, Any]:
     """Verify FSSAI number via QuickKYC."""
