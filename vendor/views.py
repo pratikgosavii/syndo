@@ -2004,8 +2004,17 @@ class VerifyBankAPIView(APIView):
         account_number = request.data.get("account_number")
         ifsc = request.data.get("ifsc")
         name = request.data.get("name", "")
+        opening_balance = request.data.get("opening_balance", 0)
+        
         if not account_number or not ifsc:
             return Response({"detail": "account_number and ifsc are required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate and convert opening_balance to Decimal
+        from decimal import Decimal, InvalidOperation
+        try:
+            opening_balance = Decimal(str(opening_balance)) if opening_balance else Decimal("0.00")
+        except (InvalidOperation, ValueError, TypeError):
+            opening_balance = Decimal("0.00")
 
         store = vendor_store.objects.filter(user=request.user).first()
         if not store:
@@ -2021,6 +2030,7 @@ class VerifyBankAPIView(APIView):
             logger.info(f"[BANK_VERIFICATION]   - account_number: {account_number}")
             logger.info(f"[BANK_VERIFICATION]   - ifsc: {ifsc}")
             logger.info(f"[BANK_VERIFICATION]   - name (from request): {name}")
+            logger.info(f"[BANK_VERIFICATION]   - opening_balance: {opening_balance}")
             
             result = kyc_verify_bank(account_number, ifsc, name)
             
@@ -2168,6 +2178,7 @@ class VerifyBankAPIView(APIView):
                     logger.info(f"[BANK_VERIFICATION]   - Account Number: {account_number}")
                     logger.info(f"[BANK_VERIFICATION]   - IFSC: {ifsc}")
                     logger.info(f"[BANK_VERIFICATION]   - Branch: {result.get('branch', '')}")
+                    logger.info(f"[BANK_VERIFICATION]   - Opening Balance: {opening_balance}")
                     logger.info(f"[BANK_VERIFICATION]   - KYC Result keys: {list(result.keys())}")
                     logger.info(f"[BANK_VERIFICATION]   - online_order_bank: True")
                     
@@ -2181,7 +2192,7 @@ class VerifyBankAPIView(APIView):
                             account_number=account_number,
                             ifsc_code=ifsc,
                             branch=result.get("branch", ""),
-                            opening_balance=0,
+                            opening_balance=opening_balance,  # Use opening_balance from request
                             online_order_bank=True,  # Mark as online order bank
                             is_active=True
                         )
@@ -2202,15 +2213,23 @@ class VerifyBankAPIView(APIView):
                         import traceback
                         logger.error(traceback.format_exc())
                 else:
-                    logger.info(f"[BANK_VERIFICATION] Bank already exists for this user (ID: {bank.id})")
+                    logger.info("=" * 80)
+                    logger.info("[BANK_VERIFICATION] ========== BANK ALREADY EXISTS ==========")
+                    logger.info(f"[BANK_VERIFICATION] Bank already exists for this user")
+                    logger.info(f"[BANK_VERIFICATION] Bank ID: {bank.id}")
+                    logger.info(f"[BANK_VERIFICATION] Bank Name: {bank.name}")
+                    logger.info(f"[BANK_VERIFICATION] Account Number: {bank.account_number}")
                     logger.info(f"[BANK_VERIFICATION] Current online_order_bank status: {bank.online_order_bank}")
+                    
                     # Bank exists for this user, update online_order_bank flag if not already set
                     if not bank.online_order_bank:
+                        logger.info("[BANK_VERIFICATION] online_order_bank is False, updating to True...")
                         bank.online_order_bank = True
                         bank.save(update_fields=['online_order_bank'])
-                        logger.info(f"[BANK_VERIFICATION] ✅ Updated online_order_bank flag to True")
+                        logger.info(f"[BANK_VERIFICATION] ✅ SUCCESS: Updated online_order_bank flag to True")
+                        logger.info(f"[BANK_VERIFICATION] Bank after update - online_order_bank: {bank.online_order_bank}")
                     else:
-                        logger.info(f"[BANK_VERIFICATION] online_order_bank flag already set to True")
+                        logger.info(f"[BANK_VERIFICATION] ✅ online_order_bank flag already set to True (no update needed)")
                 
                 logger.info("=" * 80)
             
