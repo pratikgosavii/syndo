@@ -64,18 +64,28 @@ class User(AbstractUser):
             vendor_ids = list(vendor_vendors.objects.filter(user=self).values_list('id', flat=True))
             
             # IMPORTANT: Delete in the correct order to avoid constraint errors
-            # 1. Delete child items and related objects first (they have FK to transactions)
+            # 1. Get product IDs first (needed for deleting items that reference products)
+            from vendor.models import product
+            product_ids = list(product.objects.filter(user=self).values_list('id', flat=True))
+            
+            # 2. Delete child items and related objects first (they have FK to transactions and products)
             from vendor.models import PurchaseItem, SaleItem, Reminder, pos_wholesale
+            # Delete items in user's purchases/sales
             PurchaseItem.objects.filter(purchase__user=self).delete()
             SaleItem.objects.filter(user=self).delete()
             SaleItem.objects.filter(sale__user=self).delete()
+            # Also delete items that reference products owned by this user (in case other users created purchases/sales with these products)
+            if product_ids:
+                PurchaseItem.objects.filter(product_id__in=product_ids).delete()
+                SaleItem.objects.filter(product_id__in=product_ids).delete()
+            
             Reminder.objects.filter(user=self).delete()
             Reminder.objects.filter(purchase__user=self).delete()
             Reminder.objects.filter(sale__user=self).delete()
             pos_wholesale.objects.filter(user=self).delete()
             pos_wholesale.objects.filter(sale__user=self).delete()
             
-            # 2. Delete transactions that reference banks/customers/vendors
+            # 3. Delete transactions that reference banks/customers/vendors
             # These will trigger their own delete signals which will clean up ledger entries
             if bank_ids:
                 BankTransfer.objects.filter(from_bank_id__in=bank_ids).delete()
@@ -93,7 +103,7 @@ class User(AbstractUser):
                 Purchase.objects.filter(vendor_id__in=vendor_ids).delete()
                 Payment.objects.filter(vendor_id__in=vendor_ids).delete()
             
-            # 3. Delete transactions that directly reference User
+            # 4. Delete transactions that directly reference User
             Purchase.objects.filter(user=self).delete()
             Sale.objects.filter(user=self).delete()
             Expense.objects.filter(user=self).delete()
@@ -101,8 +111,112 @@ class User(AbstractUser):
             CashTransfer.objects.filter(user=self).delete()
             BankTransfer.objects.filter(user=self).delete()
             
-            # 4. Now delete any remaining ledger entries (in case some weren't cleaned up by signals)
-            # Delete ALL ledger entries (before Django's CASCADE tries to delete them)
+            # 5. Delete product-related models (products are already identified above)
+            try:
+                from vendor.models import (
+                    ProductSerial, PrintVariant, CustomizePrintVariant, 
+                    product_addon, SpotlightProduct, Offer, OfferMedia
+                )
+                
+                # Delete product-related child models
+                if product_ids:
+                    ProductSerial.objects.filter(product_id__in=product_ids).delete()
+                    PrintVariant.objects.filter(product_id__in=product_ids).delete()
+                    CustomizePrintVariant.objects.filter(product_id__in=product_ids).delete()
+                    product_addon.objects.filter(product_id__in=product_ids).delete()
+                    SpotlightProduct.objects.filter(product_id__in=product_ids).delete()
+                    OfferMedia.objects.filter(offer__product_id__in=product_ids).delete()
+                    Offer.objects.filter(product_id__in=product_ids).delete()
+                
+                # Delete products (this will cascade delete any remaining PurchaseItems/SaleItems)
+                product.objects.filter(user=self).delete()
+                SpotlightProduct.objects.filter(user=self).delete()
+            except ImportError:
+                pass
+            
+            # 6. Delete store and related models
+            try:
+                from vendor.models import vendor_store, StoreWorkingHour, StoreVisit
+                store_ids = list(vendor_store.objects.filter(user=self).values_list('id', flat=True))
+                
+                # Delete store visits (references both store and visitor)
+                StoreVisit.objects.filter(store_id__in=store_ids).delete()
+                StoreVisit.objects.filter(visitor=self).delete()
+                
+                # Delete working hours
+                StoreWorkingHour.objects.filter(user=self).delete()
+                
+                # Delete stores (will cascade to related models)
+                vendor_store.objects.filter(user=self).delete()
+            except ImportError:
+                pass
+            
+            # 7. Delete settings and profile models (OneToOne and FK relationships)
+            try:
+                from vendor.models import (
+                    OnlineStoreSetting, ProductSettings, CompanyProfile, DeliveryDiscount,
+                    DeliveryMode, TaxSettings, InvoiceSettings, BarcodeSettings,
+                    SMSSetting, ReminderSetting, OrderNotificationMessage
+                )
+                OnlineStoreSetting.objects.filter(user=self).delete()
+                ProductSettings.objects.filter(user=self).delete()
+                CompanyProfile.objects.filter(user=self).delete()
+                DeliveryDiscount.objects.filter(user=self).delete()
+                DeliveryMode.objects.filter(user=self).delete()
+                TaxSettings.objects.filter(user=self).delete()
+                InvoiceSettings.objects.filter(user=self).delete()
+                BarcodeSettings.objects.filter(user=self).delete()
+                SMSSetting.objects.filter(user=self).delete()
+                ReminderSetting.objects.filter(user=self).delete()
+                OrderNotificationMessage.objects.filter(user=self).delete()
+            except ImportError:
+                pass
+            
+            # 8. Delete other vendor models
+            try:
+                from vendor.models import (
+                    coupon, Post, Reel, BannerCampaign, Party, Wallet, WalletTransaction,
+                    DeliveryBoy, DeliverySettings, DeliveryEarnings, VendorCoverage,
+                    OnlineOrderLedger, ExpenseLedger, NotificationCampaign
+                )
+                # Coupons
+                coupon.objects.filter(user=self).delete()
+                
+                # Posts and reels
+                Post.objects.filter(user=self).delete()
+                Reel.objects.filter(user=self).delete()
+                BannerCampaign.objects.filter(user=self).delete()
+                
+                # Party
+                Party.objects.filter(user=self).delete()
+                
+                # Wallet (delete transactions first)
+                wallet_ids = list(Wallet.objects.filter(user=self).values_list('id', flat=True))
+                if wallet_ids:
+                    WalletTransaction.objects.filter(wallet_id__in=wallet_ids).delete()
+                Wallet.objects.filter(user=self).delete()
+                
+                # Delivery-related
+                DeliveryBoy.objects.filter(user=self).delete()
+                DeliverySettings.objects.filter(user=self).delete()
+                DeliveryEarnings.objects.filter(user=self).delete()
+                
+                # Coverage
+                VendorCoverage.objects.filter(user=self).delete()
+                
+                # Ledgers
+                OnlineOrderLedger.objects.filter(user=self).delete()
+                ExpenseLedger.objects.filter(user=self).delete()
+                
+                # Notification campaigns
+                NotificationCampaign.objects.filter(user=self).delete()
+                
+                # Offers (seller)
+                Offer.objects.filter(seller=self).delete()
+            except ImportError:
+                pass
+            
+            # 9. Delete ledger entries (before Django's CASCADE tries to delete them)
             CashLedger.objects.filter(user=self).delete()
             CashBalance.objects.filter(user=self).delete()
             
@@ -115,7 +229,7 @@ class User(AbstractUser):
             if vendor_ids:
                 VendorLedger.objects.filter(vendor_id__in=vendor_ids).delete()
             
-            # 5. Delete customer-related models (Order, Cart, Address, etc.)
+            # 10. Delete customer-related models (Order, Cart, Address, etc.)
             # These need to be deleted in order to avoid foreign key constraint errors
             try:
                 from customer.models import (
@@ -155,6 +269,14 @@ class User(AbstractUser):
             except ImportError:
                 # If customer models are not available, Django's CASCADE will handle it
                 pass
+            
+            # 11. Delete vendor banks, customers, and vendors (these should be last as many things reference them)
+            if bank_ids:
+                vendor_bank.objects.filter(id__in=bank_ids).delete()
+            if customer_ids:
+                vendor_customers.objects.filter(id__in=customer_ids).delete()
+            if vendor_ids:
+                vendor_vendors.objects.filter(id__in=vendor_ids).delete()
             
             # Now call the parent delete method which will handle remaining CASCADE deletion
             return super().delete(using=using, keep_parents=keep_parents)
