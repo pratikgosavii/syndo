@@ -5218,7 +5218,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                                 'email': visitor.email,
                             },
                             'visited_at': visit.created_at,
-                            'message': f"{visitor.username or visitor.email} visited your store"
+                            'message': f"{visitor.id or visitor.email} visited your store"
                         })
                     
                     store_visits_data.append({
@@ -5266,7 +5266,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                                 'email': follower_user.email,
                             },
                             'followed_at': follow.created_at,
-                            'message': f"{follower_user.username or follower_user.email} followed your store"
+                            'message': f"{follower_user.id or follower_user.email} followed your store"
                         })
                     
                     followers_data.append({
@@ -5429,7 +5429,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 for visit in recent_store_visits:
                     activities.append({
                         'type': 'store_visit',
-                        'message': f"{visit.visitor.username or visit.visitor.email} visited your store",
+                        'message': f"{visit.visitor.id or visit.visitor.email} visited your store",
                         'user': {
                             'id': visit.visitor.id,
                             'username': visit.visitor.username,
