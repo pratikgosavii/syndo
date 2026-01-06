@@ -36,7 +36,8 @@ class Command(BaseCommand):
         for user in users_with_settings:
             try:
                 settings = ReminderSetting.objects.get(user=user)
-                self.stdout.write(f'\n--- Processing user: {user.username} (ID: {user.id}) ---')
+                user_display = user.username or user.mobile or f"User {user.id}"
+                self.stdout.write(f'\n--- Processing user: {user_display} (ID: {user.id}) ---')
                 self.stdout.write(f'  Credit Bill Reminder: {settings.credit_bill_reminder}')
                 self.stdout.write(f'  Pending Invoice Reminder: {settings.pending_invoice_reminder}')
                 self.stdout.write(f'  Low Stock Reminder: {settings.low_stock_reminder}')
@@ -54,22 +55,25 @@ class Command(BaseCommand):
                     try:
                         from vendor.signals import send_reminder_push_notification_to_user
                         result = send_reminder_push_notification_to_user(user)
+                        user_display = user.username or user.mobile or f"User {user.id}"
                         if result:
-                            self.stdout.write(self.style.SUCCESS(f'  [NOTIFICATION] ✅ SUCCESS: Push notification sent to user {user.username} (ID: {user.id}) at {current_time}'))
+                            self.stdout.write(self.style.SUCCESS(f'  [NOTIFICATION] ✅ SUCCESS: Push notification sent to user {user_display} (ID: {user.id}) at {current_time}'))
                             notifications_sent += 1
                         else:
-                            self.stdout.write(self.style.WARNING(f'  [NOTIFICATION] ⚠️  SKIPPED: No device token found for user {user.username} (ID: {user.id}) at {current_time}'))
+                            self.stdout.write(self.style.WARNING(f'  [NOTIFICATION] ⚠️  SKIPPED: No device token found for user {user_display} (ID: {user.id}) at {current_time}'))
                             notifications_skipped += 1
                     except Exception as e:
                         error_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
-                        self.stdout.write(self.style.ERROR(f'  [NOTIFICATION] ❌ FAILED: Error sending push notification to user {user.username} (ID: {user.id}) at {error_time}'))
+                        user_display = user.username or user.mobile or f"User {user.id}"
+                        self.stdout.write(self.style.ERROR(f'  [NOTIFICATION] ❌ FAILED: Error sending push notification to user {user_display} (ID: {user.id}) at {error_time}'))
                         self.stdout.write(self.style.ERROR(f'  [NOTIFICATION] Error details: {str(e)}'))
                         notifications_failed += 1
                 else:
                     self.stdout.write(f'  [NOTIFICATION] ⏭️  SKIPPED: No reminders created, notification not sent')
                     notifications_skipped += 1
             except ReminderSetting.DoesNotExist:
-                self.stdout.write(self.style.WARNING(f'  ReminderSetting not found for user {user.username} (ID: {user.id}), skipping'))
+                user_display = user.username or user.mobile or f"User {user.id}"
+                self.stdout.write(self.style.WARNING(f'  ReminderSetting not found for user {user_display} (ID: {user.id}), skipping'))
                 continue
         
         end_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
