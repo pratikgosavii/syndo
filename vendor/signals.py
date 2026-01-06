@@ -2091,29 +2091,39 @@ def send_reminder_push_notification_to_user(user):
     """
     Send a single push notification to user when reminders are created.
     This should be called after all reminders for a user are created in a batch.
+    Returns True if notification was sent successfully, False otherwise.
     """
+    from django.utils import timezone
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    current_time = timezone.now()
+    timestamp = current_time.strftime('%Y-%m-%d %H:%M:%S')
+    
     try:
         from firebase_admin import messaging
         from users.models import DeviceToken
-        import logging
         
-        logger = logging.getLogger(__name__)
+        logger.info(f"[REMINDER NOTIFICATION] [{timestamp}] Starting notification process for user {user.id} ({user.username or user.mobile})")
         
         # Get user's device token (OneToOneField relationship)
         try:
             device_token_obj = DeviceToken.objects.get(user=user)
             token = device_token_obj.token
+            logger.info(f"[REMINDER NOTIFICATION] [{timestamp}] Device token found for user {user.id}")
         except DeviceToken.DoesNotExist:
-            logger.info(f"No device token found for user {user.id}, skipping push notification")
+            logger.warning(f"[REMINDER NOTIFICATION] [{timestamp}] ❌ No device token found for user {user.id} ({user.username or user.mobile}), skipping push notification")
             return False
         
         if not token or not token.strip():
-            logger.info(f"Empty or invalid device token for user {user.id}, skipping push notification")
+            logger.warning(f"[REMINDER NOTIFICATION] [{timestamp}] ❌ Empty or invalid device token for user {user.id} ({user.username or user.mobile}), skipping push notification")
             return False
         
         # Prepare notification message
         title = "New Reminder"
         body = "New reminder for you, please visit app"
+        
+        logger.info(f"[REMINDER NOTIFICATION] [{timestamp}] Preparing FCM message for user {user.id}")
         
         # Create and send FCM message
         message = messaging.Message(
@@ -2128,14 +2138,20 @@ def send_reminder_push_notification_to_user(user):
             token=token.strip(),
         )
         
+        logger.info(f"[REMINDER NOTIFICATION] [{timestamp}] Sending FCM message to user {user.id}...")
         response = messaging.send(message)
-        logger.info(f"✅ Push notification sent to user {user.id} for new reminders: {response}")
+        
+        success_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+        logger.info(f"[REMINDER NOTIFICATION] [{success_time}] ✅ SUCCESS: Push notification sent to user {user.id} ({user.username or user.mobile})")
+        logger.info(f"[REMINDER NOTIFICATION] [{success_time}] FCM Response: {response}")
         return True
         
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"❌ Error sending push notification to user {user.id}: {str(e)}")
+        error_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+        import traceback
+        logger.error(f"[REMINDER NOTIFICATION] [{error_time}] ❌ ERROR: Failed to send push notification to user {user.id} ({user.username or user.mobile})")
+        logger.error(f"[REMINDER NOTIFICATION] [{error_time}] Error: {str(e)}")
+        logger.error(f"[REMINDER NOTIFICATION] [{error_time}] Traceback: {traceback.format_exc()}")
         return False
 
 

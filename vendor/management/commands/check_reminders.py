@@ -29,6 +29,9 @@ class Command(BaseCommand):
         
         total_reminders = 0
         users_processed = 0
+        notifications_sent = 0
+        notifications_failed = 0
+        notifications_skipped = 0
         
         for user in users_with_settings:
             try:
@@ -46,21 +49,41 @@ class Command(BaseCommand):
                 
                 # Send push notification if reminders were created
                 if reminders_created > 0:
+                    current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.stdout.write(f'  [NOTIFICATION] Attempting to send push notification at {current_time}')
                     try:
                         from vendor.signals import send_reminder_push_notification_to_user
-                        send_reminder_push_notification_to_user(user)
-                        self.stdout.write(f'  → Push notification sent to user')
+                        result = send_reminder_push_notification_to_user(user)
+                        if result:
+                            self.stdout.write(self.style.SUCCESS(f'  [NOTIFICATION] ✅ SUCCESS: Push notification sent to user {user.username} (ID: {user.id}) at {current_time}'))
+                            notifications_sent += 1
+                        else:
+                            self.stdout.write(self.style.WARNING(f'  [NOTIFICATION] ⚠️  SKIPPED: No device token found for user {user.username} (ID: {user.id}) at {current_time}'))
+                            notifications_skipped += 1
                     except Exception as e:
-                        self.stdout.write(self.style.WARNING(f'  → Failed to send push notification: {str(e)}'))
+                        error_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                        self.stdout.write(self.style.ERROR(f'  [NOTIFICATION] ❌ FAILED: Error sending push notification to user {user.username} (ID: {user.id}) at {error_time}'))
+                        self.stdout.write(self.style.ERROR(f'  [NOTIFICATION] Error details: {str(e)}'))
+                        notifications_failed += 1
+                else:
+                    self.stdout.write(f'  [NOTIFICATION] ⏭️  SKIPPED: No reminders created, notification not sent')
+                    notifications_skipped += 1
             except ReminderSetting.DoesNotExist:
                 self.stdout.write(self.style.WARNING(f'  ReminderSetting not found for user {user.username} (ID: {user.id}), skipping'))
                 continue
         
+        end_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
         self.stdout.write(f'\n--- Summary ---')
+        self.stdout.write(f'Completed at: {end_time}')
         self.stdout.write(f'Users processed: {users_processed}/{user_count}')
         self.stdout.write(
-            self.style.SUCCESS(f'Successfully processed reminders. Total reminders created: {total_reminders}')
+            self.style.SUCCESS(f'Total reminders created: {total_reminders}')
         )
+        self.stdout.write(f'\n--- Notification Summary ---')
+        self.stdout.write(self.style.SUCCESS(f'✅ Notifications sent successfully: {notifications_sent}'))
+        self.stdout.write(self.style.WARNING(f'⚠️  Notifications skipped (no token/no reminders): {notifications_skipped}'))
+        self.stdout.write(self.style.ERROR(f'❌ Notifications failed: {notifications_failed}'))
+        self.stdout.write(f'Total notification attempts: {notifications_sent + notifications_skipped + notifications_failed}')
 
     def check_user_reminders(self, user, settings):
         """Check and create reminders for a specific user based on their settings."""
@@ -142,9 +165,10 @@ class Command(BaseCommand):
                         days_until_due = (purchase.due_date - today).days
                         message = f"Credit bill from {vendor_name} is due in {days_until_due} day(s). Amount: ₹{purchase.balance_amount}"
                     
-                    self.stdout.write(f"[CREDIT BILL REMINDER] Creating reminder for {purchase.purchase_code} (due: {purchase.due_date}, amount: ₹{purchase.balance_amount})")
+                    current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.stdout.write(f"[CREDIT BILL REMINDER] [{current_time}] Creating reminder for {purchase.purchase_code} (due: {purchase.due_date}, amount: ₹{purchase.balance_amount})")
                     
-                    Reminder.objects.create(
+                    reminder = Reminder.objects.create(
                         user=user,
                         reminder_type='credit_bill',
                         title=title,
@@ -153,6 +177,8 @@ class Command(BaseCommand):
                         due_date=purchase.due_date,
                         amount=purchase.balance_amount
                     )
+                    created_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.stdout.write(f"[CREDIT BILL REMINDER] [{created_time}] ✅ Reminder ID {reminder.id} created successfully")
                     reminders_created += 1
             else:
                 skipped_not_in_threshold += 1
@@ -205,7 +231,10 @@ class Command(BaseCommand):
                         days_until_due = (sale.due_date - today).days
                         message = f"Invoice from {customer_name} is due in {days_until_due} day(s). Amount: ₹{sale.balance_amount}"
                     
-                    Reminder.objects.create(
+                    current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.stdout.write(f"[PENDING INVOICE REMINDER] [{current_time}] Creating reminder for sale {sale.invoice_number or sale.id}")
+                    
+                    reminder = Reminder.objects.create(
                         user=user,
                         reminder_type='pending_invoice',
                         title=title,
@@ -214,6 +243,8 @@ class Command(BaseCommand):
                         due_date=sale.due_date,
                         amount=sale.balance_amount
                     )
+                    created_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.stdout.write(f"[PENDING INVOICE REMINDER] [{created_time}] ✅ Reminder ID {reminder.id} created successfully")
                     reminders_created += 1
         
         return reminders_created
@@ -246,7 +277,10 @@ class Command(BaseCommand):
                 title = f"Low Stock Alert: {prod.name}"
                 message = f"Product '{prod.name}' has low stock. Current: {prod.stock}, Threshold: {prod.low_stock_quantity}"
                 
-                Reminder.objects.create(
+                current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                self.stdout.write(f"[LOW STOCK REMINDER] [{current_time}] Creating reminder for product {prod.name} (ID: {prod.id})")
+                
+                reminder = Reminder.objects.create(
                     user=user,
                     reminder_type='low_stock',
                     title=title,
@@ -254,6 +288,8 @@ class Command(BaseCommand):
                     product=prod,
                     stock_quantity=prod.stock
                 )
+                created_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                self.stdout.write(f"[LOW STOCK REMINDER] [{created_time}] ✅ Reminder ID {reminder.id} created successfully")
                 reminders_created += 1
         
         return reminders_created
@@ -321,8 +357,9 @@ class Command(BaseCommand):
                 title = f"Expiry Alert: {prod.name}"
                 message = f"Product '{prod.name}' expires today on {prod.expiry_date}"
                 
-                self.stdout.write(f"[EXPIRY REMINDER] Creating reminder for {prod.name} (ID: {prod.id}, expires: {prod.expiry_date})")
-                self.stdout.write(f"[EXPIRY REMINDER] User: {user} (ID: {user.id if user else 'None'})")
+                current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                self.stdout.write(f"[EXPIRY REMINDER] [{current_time}] Creating reminder for {prod.name} (ID: {prod.id}, expires: {prod.expiry_date})")
+                self.stdout.write(f"[EXPIRY REMINDER] [{current_time}] User: {user} (ID: {user.id if user else 'None'})")
                 
                 try:
                     reminder = Reminder.objects.create(
@@ -334,7 +371,8 @@ class Command(BaseCommand):
                         expiry_date=prod.expiry_date,
                         stock_quantity=prod.stock
                     )
-                    self.stdout.write(f"[EXPIRY REMINDER] ✓ Successfully created reminder ID: {reminder.id}")
+                    created_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.stdout.write(f"[EXPIRY REMINDER] [{created_time}] ✅ Successfully created reminder ID: {reminder.id}")
                     reminders_created += 1
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f"[EXPIRY REMINDER] ✗ Failed to create reminder: {str(e)}"))
