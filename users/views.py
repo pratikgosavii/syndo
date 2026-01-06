@@ -201,11 +201,25 @@ class LoginAPIView(APIView):
                 user.save()
                 print("-------20------------ new user saved")
 
+            # Update device token if provided (for push notifications)
+            device_token = request.data.get("device_token") or request.data.get("fcm_token")
+            if device_token:
+                try:
+                    from .models import DeviceToken
+                    DeviceToken.objects.update_or_create(
+                        user=user,
+                        defaults={"token": device_token.strip()}
+                    )
+                    print("-------21------------ device token updated/created")
+                except Exception as e:
+                    print(f"-------21------------ device token update failed: {e}")
+                    # Don't fail login if device token update fails
+            
             # Token creation
             refresh = RefreshToken.for_user(user)
-            print("-------21------------ refresh token created")
+            print("-------22------------ refresh token created")
             user_details = UserProfileSerializer(user).data
-            print("-------22------------ user_details serialized")
+            print("-------23------------ user_details serialized")
 
             return Response({
                 "access": str(refresh.access_token),
@@ -219,7 +233,7 @@ class LoginAPIView(APIView):
                 },
                 "user_details": user_details
             }, status=201 if created else 200)
-            print("-------23------------ response returned")
+            print("-------24------------ response returned")
 
         except ValueError as e:
             print(f"Login failed: malformed idToken - {e}")

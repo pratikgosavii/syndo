@@ -120,7 +120,8 @@ class Command(BaseCommand):
         # Calculate the date threshold - bills due within X days or overdue
         threshold_date = today + timedelta(days=days_threshold)
         
-        self.stdout.write(f"[CREDIT BILL REMINDER] Checking credit bill reminders for user {user.username} (ID: {user.id})")
+        user_display = user.username or user.mobile or f"User {user.id}"
+        self.stdout.write(f"[CREDIT BILL REMINDER] Checking credit bill reminders for user {user_display} (ID: {user.id})")
         self.stdout.write(f"[CREDIT BILL REMINDER] Today: {today}")
         self.stdout.write(f"[CREDIT BILL REMINDER] Threshold: {threshold_date} (within {days_threshold} days)")
         
@@ -307,7 +308,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR("[EXPIRY REMINDER] User is None, skipping expiry check"))
             return 0
         
-        self.stdout.write(f"[EXPIRY REMINDER] Checking expiry reminders for user {user.username} (ID: {user.id})")
+        user_display = user.username or user.mobile or f"User {user.id}"
+        self.stdout.write(f"[EXPIRY REMINDER] Checking expiry reminders for user {user_display} (ID: {user.id})")
         self.stdout.write(f"[EXPIRY REMINDER] Today: {today}")
         self.stdout.write(f"[EXPIRY REMINDER] Looking for products expiring TODAY (exact date match)")
         
