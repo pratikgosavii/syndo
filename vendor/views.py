@@ -699,6 +699,16 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
 
+        # Send notification if order status changed
+        if "status" in data and data["status"] != previous_status:
+            try:
+                from customer.serializers import send_order_status_notification
+                send_order_status_notification(instance, data["status"], previous_status)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error sending order status notification: {e}")
+
         # Auto-assign logic when order moves to ready_to_shipment (post-pack)
         try:
             if (
@@ -3758,8 +3768,20 @@ def update_order_item_status(request, order_item_id):
         item = get_object_or_404(OrderItem, id=order_item_id)
         status = request.POST.get("status")
         if status in dict(OrderItem.STATUS_CHOICES):
+            previous_status = item.status
             item.status = status
             item.save()
+            
+            # Send notification if item status changed to 'intransit' (out for delivery)
+            if status == 'intransit' and previous_status != 'intransit':
+                try:
+                    from customer.serializers import send_order_status_notification
+                    send_order_status_notification(item.order, 'intransit')
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending out-for-delivery notification: {e}")
+            
             messages.success(request, f"Status for {item.product.name} updated to {status}.")
         else:
             messages.error(request, "Invalid status selected.")

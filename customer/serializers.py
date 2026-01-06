@@ -188,6 +188,150 @@ def send_order_notification_to_customer(order):
             logger.error(f"Error processing notification for vendor {vendor_id}: {e}")
 
 
+def send_vendor_notification(vendor_user, notification_type, title, body, data=None):
+    """
+    Send push notification to vendor (product.user or vendor_store.user).
+    
+    Args:
+        vendor_user: The vendor User object to notify
+        notification_type: Type of notification (shop_visit, follow, unfollow, review, product_like, cart_add)
+        title: Notification title
+        body: Notification body
+        data: Additional data dict for the notification
+    """
+    from firebase_admin import messaging
+    from users.models import DeviceToken
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    if not vendor_user:
+        logger.warning(f"No vendor user provided for {notification_type} notification")
+        return False
+    
+    # Get device token for vendor
+    try:
+        device_token_obj = DeviceToken.objects.get(user=vendor_user)
+        if not device_token_obj.token or not device_token_obj.token.strip():
+            logger.warning(f"No device token found for vendor {vendor_user.id}, skipping notification")
+            return False
+        vendor_token = device_token_obj.token.strip()
+    except DeviceToken.DoesNotExist:
+        logger.warning(f"No device token found for vendor {vendor_user.id}, skipping notification")
+        return False
+    
+    # Prepare notification data
+    notification_data = {
+        "type": notification_type,
+        "vendor_id": str(vendor_user.id),
+    }
+    if data:
+        notification_data.update(data)
+    
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data={k: str(v) for k, v in notification_data.items()},
+            token=vendor_token,
+        )
+        
+        response = messaging.send(message)
+        logger.info(f"✅ Successfully sent {notification_type} notification to vendor {vendor_user.id}: {response}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Error sending {notification_type} notification to vendor {vendor_user.id}: {e}")
+        return False
+
+
+def send_order_status_notification(order, status, previous_status=None):
+    """
+    Send push notification to customer when order status changes.
+    
+    Status mapping:
+    - 'not_accepted' -> "Order Placed"
+    - 'accepted' -> "Order Accepted"
+    - 'ready_to_shipment' -> "Order Ready"
+    - 'intransit' (OrderItem) -> "Out for Delivery"
+    - 'completed' -> "Order Completed"
+    """
+    from firebase_admin import messaging
+    from users.models import DeviceToken
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    # Get customer (order user)
+    customer = order.user
+    if not customer:
+        logger.warning(f"No customer found for order {order.order_id}, skipping status notification")
+        return False
+    
+    # Get device token for customer
+    try:
+        device_token_obj = DeviceToken.objects.get(user=customer)
+        if not device_token_obj.token or not device_token_obj.token.strip():
+            logger.warning(f"No device token found for customer {customer.id}, skipping status notification")
+            return False
+        customer_token = device_token_obj.token.strip()
+    except DeviceToken.DoesNotExist:
+        logger.warning(f"No device token found for customer {customer.id}, skipping status notification")
+        return False
+    
+    # Map status to notification title and body
+    status_messages = {
+        'not_accepted': {
+            'title': 'Order Placed',
+            'body': f'Your order {order.order_id} has been placed successfully!'
+        },
+        'accepted': {
+            'title': 'Order Accepted',
+            'body': f'Your order {order.order_id} has been accepted by the vendor.'
+        },
+        'ready_to_shipment': {
+            'title': 'Order Ready',
+            'body': f'Your order {order.order_id} is ready for shipment!'
+        },
+        'intransit': {
+            'title': 'Out for Delivery',
+            'body': f'Your order {order.order_id} is out for delivery!'
+        },
+        'completed': {
+            'title': 'Order Completed',
+            'body': f'Your order {order.order_id} has been delivered successfully!'
+        }
+    }
+    
+    # Get notification message for this status
+    notification_data = status_messages.get(status)
+    if not notification_data:
+        logger.info(f"No notification message configured for status: {status}")
+        return False
+    
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=notification_data['title'],
+                body=notification_data['body'],
+            ),
+            data={
+                "order_id": str(order.order_id),
+                "order_status": status,
+                "type": "order_status_update"
+            },
+            token=customer_token,
+        )
+        
+        response = messaging.send(message)
+        logger.info(f"✅ Successfully sent order status notification to customer {customer.id} for order {order.order_id}: {status} - {response}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Error sending order status notification to customer {customer.id} for order {order.order_id}: {e}")
+        return False
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     user_details = UserProfileSerializer(source = 'user', read_only=True)
@@ -691,6 +835,8 @@ class OrderSerializer(serializers.ModelSerializer):
             # Send push notifications to customer for each vendor's order notification message
             try:
                 send_order_notification_to_customer(order)
+                # Also send order placed notification
+                send_order_status_notification(order, 'not_accepted')
             except Exception as e:
                 logger.error(f"Error sending order notification: {e}", exc_info=True)
 

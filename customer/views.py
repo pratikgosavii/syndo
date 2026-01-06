@@ -569,8 +569,17 @@ def delivery_webhook(request):
     with transaction.atomic():
         order_items = order.items.all()
         for item in order_items:
+            previous_item_status = item.status
             item.status = new_item_status
             item.save(update_fields=["status"])
+            
+            # Send notification if item status changed to 'intransit' (out for delivery)
+            if new_item_status == 'intransit' and previous_item_status != 'intransit':
+                try:
+                    from customer.serializers import send_order_status_notification
+                    send_order_status_notification(order, 'intransit')
+                except Exception as e:
+                    logger.warning(f"[DELIVERY_WEBHOOK] Failed to send out-for-delivery notification: {e}")
 
         # Update order status based on status_code
         if status_code == "ACCEPTED":
@@ -578,6 +587,12 @@ def delivery_webhook(request):
         elif status_code in ("ALLOTTED", "ARRIVED", "DISPATCHED", "ARRIVED_CUSTOMER_DOORSTEP"):
             if order.status != "accepted":
                 order.status = "accepted"  # Keep as accepted during transit
+            # Send "out for delivery" notification for these status codes
+            try:
+                from customer.serializers import send_order_status_notification
+                send_order_status_notification(order, 'intransit')
+            except Exception as e:
+                logger.warning(f"[DELIVERY_WEBHOOK] Failed to send out-for-delivery notification: {e}")
         elif status_code == "DELIVERED":
             # Check if all items are delivered
             all_delivered = all(item.status == "delivered" for item in order.items.all())
@@ -594,7 +609,18 @@ def delivery_webhook(request):
         update_fields = ["status"]
         if hasattr(order, "is_paid") and order.is_paid:
             update_fields.append("is_paid")
+        
+        # Store previous status before saving
+        previous_order_status = order.status
         order.save(update_fields=update_fields)
+
+        # Send order status notification if order status changed
+        if order.status != previous_order_status:
+            try:
+                from customer.serializers import send_order_status_notification
+                send_order_status_notification(order, order.status, previous_order_status)
+            except Exception as e:
+                logger.warning(f"[DELIVERY_WEBHOOK] Failed to send order status notification: {e}")
 
         # Send notifications based on status
         notification_event_map = {
@@ -754,6 +780,22 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
                     store=store,
                     visitor=request.user
                 )
+                # Send notification to vendor
+                try:
+                    from customer.serializers import send_vendor_notification
+                    vendor_user = store.user
+                    visitor_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+                    send_vendor_notification(
+                        vendor_user=vendor_user,
+                        notification_type="shop_visit",
+                        title="Shop Visit",
+                        body=f"{visitor_name} visited your store",
+                        data={"store_id": str(store.id), "visitor_id": str(request.user.id)}
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending shop visit notification: {e}")
         except vendor_store.DoesNotExist:
             pass  # Store doesn't exist or is inactive, skip tracking
         except Exception:
@@ -892,6 +934,21 @@ class FollowUserAPIView(APIView):
             
             obj, created = Follower.objects.get_or_create(user=target_user, follower=request.user)
             if created:
+                # Send notification to vendor (target_user is the vendor being followed)
+                try:
+                    from customer.serializers import send_vendor_notification
+                    follower_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+                    send_vendor_notification(
+                        vendor_user=target_user,
+                        notification_type="follow",
+                        title="New Follower",
+                        body=f"{follower_name} started following you",
+                        data={"follower_id": str(request.user.id)}
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending follow notification: {e}")
                 return Response({"success": True, "message": f"You are now following {target_user.username}"})
             else:
                 return Response({"success": True, "message": f"You already follow {target_user.username}"})
@@ -913,6 +970,21 @@ class UnfollowUserAPIView(APIView):
             target_user = User.objects.get(id=user_id)
             deleted, _ = Follower.objects.filter(user=target_user, follower=request.user).delete()
             if deleted:
+                # Send notification to vendor (target_user is the vendor being unfollowed)
+                try:
+                    from customer.serializers import send_vendor_notification
+                    unfollower_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+                    send_vendor_notification(
+                        vendor_user=target_user,
+                        notification_type="unfollow",
+                        title="Follower Removed",
+                        body=f"{unfollower_name} unfollowed you",
+                        data={"unfollower_id": str(request.user.id)}
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending unfollow notification: {e}")
                 return Response({"success": True, "message": f"You unfollowed {target_user.username}"})
             else:
                 return Response({"success": False, "message": f"You were not following {target_user.username}"})
@@ -971,6 +1043,27 @@ class CartViewSet(viewsets.ModelViewSet):
         if not created:
             cart_item.quantity += quantity
             cart_item.save()
+        else:
+            # Send notification to vendor when item is first added to cart
+            try:
+                from customer.serializers import send_vendor_notification
+                vendor_user = product_instance.user
+                customer_name = self.request.user.username or self.request.user.mobile or f"User {self.request.user.id}"
+                send_vendor_notification(
+                    vendor_user=vendor_user,
+                    notification_type="cart_add",
+                    title="Product Added to Cart",
+                    body=f"{customer_name} added {product_instance.name} to their cart",
+                    data={
+                        "product_id": str(product_instance.id),
+                        "customer_id": str(self.request.user.id),
+                        "quantity": str(quantity)
+                    }
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error sending cart add notification: {e}")
 
         # ✅ Handle print jobs
         print_job_data = self.request.data.get("print_job")
@@ -1062,6 +1155,27 @@ class CartViewSet(viewsets.ModelViewSet):
 
         # Create new cart item
         cart_item = Cart.objects.create(user=request.user, product=product_instance, quantity=quantity)
+        
+        # Send notification to vendor
+        try:
+            from customer.serializers import send_vendor_notification
+            vendor_user = product_instance.user
+            customer_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+            send_vendor_notification(
+                vendor_user=vendor_user,
+                notification_type="cart_add",
+                title="Product Added to Cart",
+                body=f"{customer_name} added {product_instance.name} to their cart",
+                data={
+                    "product_id": str(product_instance.id),
+                    "customer_id": str(request.user.id),
+                    "quantity": str(quantity)
+                }
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error sending cart add notification: {e}")
 
         # ✅ Handle print job and file uploads
         print_job_data = request.data.get("print_job")
@@ -1197,6 +1311,27 @@ class FavouriteViewSet(viewsets.ViewSet):
 
         fav, created = Favourite.objects.get_or_create(user=user, product_id=product_id)
         if created:
+            # Send notification to vendor (product owner)
+            try:
+                from customer.serializers import send_vendor_notification
+                from vendor.models import product
+                product_instance = product.objects.get(id=product_id)
+                vendor_user = product_instance.user
+                liker_name = user.username or user.mobile or f"User {user.id}"
+                send_vendor_notification(
+                    vendor_user=vendor_user,
+                    notification_type="product_like",
+                    title="Product Liked",
+                    body=f"{liker_name} liked your product {product_instance.name}",
+                    data={
+                        "product_id": str(product_id),
+                        "liker_id": str(user.id)
+                    }
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error sending product like notification: {e}")
             return Response({"status": "added"}, status=status.HTTP_201_CREATED)
         return Response({"status": "already exists"}, status=status.HTTP_200_OK)
 
@@ -1890,7 +2025,30 @@ class CustomerProductReviewViewSet(viewsets.ModelViewSet):
             raise ValidationError("You can only review after delivery.")
 
         # ✅ Save safely
-        serializer.save(user=user)
+        review = serializer.save(user=user)
+        
+        # Send notification to vendor (product owner)
+        try:
+            from customer.serializers import send_vendor_notification
+            vendor_user = order_item.product.user
+            reviewer_name = user.username or user.mobile or f"User {user.id}"
+            rating = serializer.validated_data.get('rating', 0)
+            send_vendor_notification(
+                vendor_user=vendor_user,
+                notification_type="review",
+                title="New Review",
+                body=f"{reviewer_name} left a {rating}-star review for {order_item.product.name}",
+                data={
+                    "product_id": str(order_item.product.id),
+                    "review_id": str(review.id),
+                    "rating": str(rating),
+                    "reviewer_id": str(user.id)
+                }
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error sending review notification: {e}")
 
 
 
