@@ -5121,78 +5121,138 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             return 0
     
     def _get_store_insights(self, user, limit=20, days=30):
-        """Get store insights - recent visitors and followers"""
+        """Get store insights - store visits and followers grouped by month"""
         from .models import StoreVisit
         from customer.models import Follower
+        from django.db.models import Count
+        from django.db.models.functions import TruncMonth
+        from calendar import month_name
         
         try:
             # Get the vendor's store
             store = vendor_store.objects.filter(user=user).first()
             if not store:
                 return {
-                    'recent_visitors': [],
-                    'recent_followers': [],
+                    'store_visits_by_month': [],
+                    'followers_by_month': [],
                     'total_visitors_count': 0,
                     'total_followers_count': 0,
                 }
             
-            # Calculate date threshold
-            date_threshold = timezone.now() - timedelta(days=days)
+            # Get all store visits grouped by month
+            store_visits_by_month = StoreVisit.objects.filter(
+                store=store
+            ).annotate(
+                month=TruncMonth('created_at')
+            ).values('month').annotate(
+                count=Count('id')
+            ).order_by('-month')
             
-            # Get recent store visitors
-            recent_visits = StoreVisit.objects.filter(
-                store=store,
-                created_at__gte=date_threshold
-            ).select_related('visitor').order_by('-created_at')[:limit]
+            # Get all followers grouped by month
+            followers_by_month = Follower.objects.filter(
+                user=user
+            ).annotate(
+                month=TruncMonth('created_at')
+            ).values('month').annotate(
+                count=Count('id')
+            ).order_by('-month')
             
-            # Get recent followers
-            recent_followers = Follower.objects.filter(
-                user=user,
-                created_at__gte=date_threshold
-            ).select_related('follower').order_by('-created_at')[:limit]
+            # Process store visits by month
+            store_visits_data = []
+            total_visitors_count = 0
+            for item in store_visits_by_month:
+                month_date = item['month']
+                if month_date:
+                    month_key = month_date.strftime('%Y-%m')
+                    month_name_str = month_name[month_date.month]
+                    year = month_date.year
+                    month_label = f"{month_name_str} {year}"
+                    
+                    # Get all visits for this month
+                    visits_in_month = StoreVisit.objects.filter(
+                        store=store,
+                        created_at__year=month_date.year,
+                        created_at__month=month_date.month
+                    ).select_related('visitor').order_by('-created_at')
+                    
+                    visits_list = []
+                    for visit in visits_in_month:
+                        visitor = visit.visitor
+                        visits_list.append({
+                            'id': visit.id,
+                            'user': {
+                                'id': visitor.id,
+                                'username': visitor.username,
+                                'first_name': visitor.first_name or '',
+                                'last_name': visitor.last_name or '',
+                                'email': visitor.email,
+                            },
+                            'visited_at': visit.created_at,
+                            'message': f"{visitor.username or visitor.email} visited your store"
+                        })
+                    
+                    store_visits_data.append({
+                        'month': month_label,
+                        'month_key': month_key,
+                        'count': item['count'],
+                        'visits': visits_list
+                    })
+                    total_visitors_count += item['count']
             
-            # Serialize visitors
-            visitors_data = []
-            for visit in recent_visits:
-                visitor = visit.visitor
-                visitors_data.append({
-                    'user': {
-                        'id': visitor.id,
-                        'username': visitor.username,
-                        'first_name': visitor.first_name or '',
-                        'last_name': visitor.last_name or '',
-                        'email': visitor.email,
-                    },
-                    'visited_at': visit.created_at,
-                    'message': f"{visitor.username or visitor.email} visited your store"
-                })
-            
-            # Serialize followers
+            # Process followers by month
             followers_data = []
-            for follow in recent_followers:
-                follower_user = follow.follower
-                followers_data.append({
-                    'user': {
-                        'id': follower_user.id,
-                        'username': follower_user.username,
-                        'first_name': follower_user.first_name or '',
-                        'last_name': follower_user.last_name or '',
-                        'email': follower_user.email,
-                    },
-                    'followed_at': follow.created_at,
-                    'message': f"{follower_user.username or follower_user.email} followed your store"
-                })
+            total_followers_count = 0
+            for item in followers_by_month:
+                month_date = item['month']
+                if month_date:
+                    month_key = month_date.strftime('%Y-%m')
+                    month_name_str = month_name[month_date.month]
+                    year = month_date.year
+                    month_label = f"{month_name_str} {year}"
+                    
+                    # Get all followers for this month
+                    followers_in_month = Follower.objects.filter(
+                        user=user,
+                        created_at__year=month_date.year,
+                        created_at__month=month_date.month
+                    ).select_related('follower').order_by('-created_at')
+                    
+                    followers_list = []
+                    for follow in followers_in_month:
+                        follower_user = follow.follower
+                        followers_list.append({
+                            'user': {
+                                'id': follower_user.id,
+                                'username': follower_user.username,
+                                'first_name': follower_user.first_name or '',
+                                'last_name': follower_user.last_name or '',
+                                'email': follower_user.email,
+                            },
+                            'followed_at': follow.created_at,
+                            'message': f"{follower_user.username or follower_user.email} followed your store"
+                        })
+                    
+                    followers_data.append({
+                        'month': month_label,
+                        'month_key': month_key,
+                        'count': item['count'],
+                        'followers': followers_list
+                    })
+                    total_followers_count += item['count']
             
             return {
-                'recent_visitors': visitors_data,
-                'recent_followers': followers_data,
-                'total_visitors_count': len(visitors_data),
-                'total_followers_count': len(followers_data),
+                'store_visits_by_month': store_visits_data,
+                'followers_by_month': followers_data,
+                'total_visitors_count': total_visitors_count,
+                'total_followers_count': total_followers_count,
             }
-        except Exception:
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in _get_store_insights: {e}")
             return {
-                'recent_visitors': [],
-                'recent_followers': [],
+                'store_visits_by_month': [],
+                'followers_by_month': [],
                 'total_visitors_count': 0,
                 'total_followers_count': 0,
             }
@@ -5215,9 +5275,10 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             return []
     
     def _get_activity_feed(self, user, request, limit=10):
-        """Get activity feed: product likes, followers, and top 4 product requests"""
+        """Get activity feed: product likes, followers, store visits, and top 4 product requests"""
         from customer.models import Favourite, Follower, ProductRequest
         from customer.serializers import ProductRequestSerializer
+        from .models import StoreVisit
         
         activities = []
         
@@ -5272,7 +5333,28 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                     'created_at': follow.created_at,
                 })
             
-            # 3. Get top 4 product requests (most recent)
+            # 3. Get recent store visits
+            store = vendor_store.objects.filter(user=user).first()
+            if store:
+                recent_store_visits = StoreVisit.objects.filter(
+                    store=store
+                ).select_related('visitor').order_by('-created_at')[:limit]
+                
+                for visit in recent_store_visits:
+                    activities.append({
+                        'type': 'store_visit',
+                        'message': f"{visit.visitor.username or visit.visitor.email} visited your store",
+                        'user': {
+                            'id': visit.visitor.id,
+                            'username': visit.visitor.username,
+                            'first_name': visit.visitor.first_name or '',
+                            'last_name': visit.visitor.last_name or '',
+                            'email': visit.visitor.email,
+                        },
+                        'created_at': visit.created_at,
+                    })
+            
+            # 4. Get top 4 product requests (most recent)
             product_requests = ProductRequest.objects.all().select_related(
                 'user', 'category', 'sub_category'
             ).order_by('-created_at')[:4]
@@ -5282,7 +5364,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 serializer = ProductRequestSerializer(req, context={'request': request})
                 product_requests_data.append(serializer.data)
             
-            # 4. Get total product request count
+            # 5. Get total product request count
             total_product_requests_count = ProductRequest.objects.all().count()
             
             # Sort all activities by created_at (most recent first)
