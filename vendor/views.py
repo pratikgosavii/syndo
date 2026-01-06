@@ -5121,23 +5121,33 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             return 0
     
     def _get_store_insights(self, user, limit=20, days=30):
-        """Get store insights - store visits and followers grouped by month"""
+        """Get store insights - store visits and followers grouped by month (last 12 months)"""
         from .models import StoreVisit
         from customer.models import Follower
         from django.db.models import Count
         from django.db.models.functions import TruncMonth
         from calendar import month_name
+        from datetime import date
         
         try:
             # Get the vendor's store
             store = vendor_store.objects.filter(user=user).first()
             if not store:
-                return {
-                    'store_visits_by_month': [],
-                    'followers_by_month': [],
-                    'total_visitors_count': 0,
-                    'total_followers_count': 0,
-                }
+                # Return 12 months with 0 data
+                return self._generate_empty_12_months()
+            
+            # Generate list of last 12 months
+            current_date = timezone.now().date()
+            months_list = []
+            for i in range(12):
+                # Calculate month by subtracting months
+                year = current_date.year
+                month = current_date.month - i
+                while month <= 0:
+                    month += 12
+                    year -= 1
+                month_date = date(year, month, 1)
+                months_list.append(month_date)
             
             # Get all store visits grouped by month
             store_visits_by_month = StoreVisit.objects.filter(
@@ -5146,7 +5156,7 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 month=TruncMonth('created_at')
             ).values('month').annotate(
                 count=Count('id')
-            ).order_by('-month')
+            )
             
             # Get all followers grouped by month
             followers_by_month = Follower.objects.filter(
@@ -5155,19 +5165,39 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 month=TruncMonth('created_at')
             ).values('month').annotate(
                 count=Count('id')
-            ).order_by('-month')
+            )
             
-            # Process store visits by month
-            store_visits_data = []
-            total_visitors_count = 0
+            # Create lookup dictionaries
+            visits_dict = {}
             for item in store_visits_by_month:
                 month_date = item['month']
                 if month_date:
                     month_key = month_date.strftime('%Y-%m')
-                    month_name_str = month_name[month_date.month]
-                    year = month_date.year
-                    month_label = f"{month_name_str} {year}"
-                    
+                    visits_dict[month_key] = {
+                        'count': item['count'],
+                        'month_date': month_date
+                    }
+            
+            followers_dict = {}
+            for item in followers_by_month:
+                month_date = item['month']
+                if month_date:
+                    month_key = month_date.strftime('%Y-%m')
+                    followers_dict[month_key] = {
+                        'count': item['count'],
+                        'month_date': month_date
+                    }
+            
+            # Process store visits for last 12 months
+            store_visits_data = []
+            total_visitors_count = 0
+            for month_date in months_list:
+                month_key = month_date.strftime('%Y-%m')
+                month_name_str = month_name[month_date.month]
+                year = month_date.year
+                month_label = f"{month_name_str} {year}"
+                
+                if month_key in visits_dict:
                     # Get all visits for this month
                     visits_in_month = StoreVisit.objects.filter(
                         store=store,
@@ -5194,22 +5224,29 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                     store_visits_data.append({
                         'month': month_label,
                         'month_key': month_key,
-                        'count': item['count'],
+                        'count': visits_dict[month_key]['count'],
                         'visits': visits_list
                     })
-                    total_visitors_count += item['count']
+                    total_visitors_count += visits_dict[month_key]['count']
+                else:
+                    # No data for this month
+                    store_visits_data.append({
+                        'month': month_label,
+                        'month_key': month_key,
+                        'count': 0,
+                        'visits': []
+                    })
             
-            # Process followers by month
+            # Process followers for last 12 months
             followers_data = []
             total_followers_count = 0
-            for item in followers_by_month:
-                month_date = item['month']
-                if month_date:
-                    month_key = month_date.strftime('%Y-%m')
-                    month_name_str = month_name[month_date.month]
-                    year = month_date.year
-                    month_label = f"{month_name_str} {year}"
-                    
+            for month_date in months_list:
+                month_key = month_date.strftime('%Y-%m')
+                month_name_str = month_name[month_date.month]
+                year = month_date.year
+                month_label = f"{month_name_str} {year}"
+                
+                if month_key in followers_dict:
                     # Get all followers for this month
                     followers_in_month = Follower.objects.filter(
                         user=user,
@@ -5235,10 +5272,18 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                     followers_data.append({
                         'month': month_label,
                         'month_key': month_key,
-                        'count': item['count'],
+                        'count': followers_dict[month_key]['count'],
                         'followers': followers_list
                     })
-                    total_followers_count += item['count']
+                    total_followers_count += followers_dict[month_key]['count']
+                else:
+                    # No data for this month
+                    followers_data.append({
+                        'month': month_label,
+                        'month_key': month_key,
+                        'count': 0,
+                        'followers': []
+                    })
             
             return {
                 'store_visits_by_month': store_visits_data,
@@ -5250,12 +5295,53 @@ class VendorDashboardViewSet(viewsets.ViewSet):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error in _get_store_insights: {e}")
-            return {
-                'store_visits_by_month': [],
-                'followers_by_month': [],
-                'total_visitors_count': 0,
-                'total_followers_count': 0,
-            }
+            return self._generate_empty_12_months()
+    
+    def _generate_empty_12_months(self):
+        """Generate empty 12 months data structure"""
+        from calendar import month_name
+        from datetime import date
+        
+        current_date = timezone.now().date()
+        months_list = []
+        for i in range(12):
+            # Calculate month by subtracting months
+            year = current_date.year
+            month = current_date.month - i
+            while month <= 0:
+                month += 12
+                year -= 1
+            month_date = date(year, month, 1)
+            months_list.append(month_date)
+        
+        empty_visits_months = []
+        empty_followers_months = []
+        for month_date in months_list:
+            month_key = month_date.strftime('%Y-%m')
+            month_name_str = month_name[month_date.month]
+            year = month_date.year
+            month_label = f"{month_name_str} {year}"
+            
+            empty_visits_months.append({
+                'month': month_label,
+                'month_key': month_key,
+                'count': 0,
+                'visits': []
+            })
+            
+            empty_followers_months.append({
+                'month': month_label,
+                'month_key': month_key,
+                'count': 0,
+                'followers': []
+            })
+        
+        return {
+            'store_visits_by_month': empty_visits_months,
+            'followers_by_month': empty_followers_months,
+            'total_visitors_count': 0,
+            'total_followers_count': 0,
+        }
     
     def _get_top_reminders(self, user, limit=4):
         """Get top reminders for the vendor (most recent, unread first)"""
