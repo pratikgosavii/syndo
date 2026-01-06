@@ -35,11 +35,15 @@ if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
     logger.error("Cashfree credentials missing or empty. Ensure .env is loaded or environment vars are set.")
 
 
-def _cashfree_headers():
+def _cashfree_headers(api_version="2023-08-01"):
+    """
+    Get Cashfree API headers.
+    Default to 2023-08-01 for Easy Split support.
+    """
     return {
         "x-client-id": CASHFREE_APP_ID,
         "x-client-secret": CASHFREE_SECRET_KEY,
-        "x-api-version": "2022-09-01",
+        "x-api-version": api_version,
         "Content-Type": "application/json",
     }
 
@@ -59,9 +63,152 @@ def _sanitize_order_id_for_cashfree(order_id: str) -> str:
     return sanitized
 
 
-def create_order_for(order: Order, customer_id=None, customer_email=None, customer_phone=None, return_url=None, notify_url=None):
+def _calculate_vendor_splits(order: Order):
+    """
+    Calculate vendor splits for Easy Split payment.
+    Returns a list of split configurations for each vendor based on their order items.
+    
+    Returns:
+        list: List of split dictionaries with vendor bank details and amounts
+        None: If no valid vendor splits can be calculated
+    """
+    from vendor.models import vendor_bank
+    from decimal import Decimal
+    
+    try:
+        # Get all order items with product and vendor info
+        order_items = order.items.select_related('product', 'product__user').all()
+        
+        if not order_items.exists():
+            logger.warning(f"No order items found for order {order.order_id}")
+            return None
+        
+        # Group items by vendor and calculate totals
+        vendor_amounts = {}
+        for item in order_items:
+            vendor_user = item.product.user
+            if not vendor_user:
+                logger.warning(f"Product {item.product.id} has no vendor user, skipping split")
+                continue
+            
+            # Calculate item total (price * quantity)
+            item_total = Decimal(str(item.price)) * Decimal(str(item.quantity))
+            
+            # Add tax if applicable (you may need to adjust this based on your tax calculation)
+            # For now, we'll use the order's tax_total proportionally
+            # Or you can calculate tax per item if stored separately
+            
+            if vendor_user.id not in vendor_amounts:
+                vendor_amounts[vendor_user.id] = {
+                    'vendor_user': vendor_user,
+                    'amount': Decimal('0.00'),
+                    'items': []
+                }
+            
+            vendor_amounts[vendor_user.id]['amount'] += item_total
+            vendor_amounts[vendor_user.id]['items'].append(item)
+        
+        if not vendor_amounts:
+            logger.warning(f"No valid vendors found for order {order.order_id}")
+            return None
+        
+        # Get vendor bank accounts and build splits
+        splits = []
+        total_split_amount = Decimal('0.00')
+        
+        for vendor_id, vendor_data in vendor_amounts.items():
+            vendor_user = vendor_data['vendor_user']
+            vendor_amount = vendor_data['amount']
+            
+            # Get vendor's bank account marked for online orders
+            try:
+                vendor_bank_account = vendor_bank.objects.filter(
+                    user=vendor_user,
+                    online_order_bank=True,
+                    is_active=True
+                ).first()
+                
+                if not vendor_bank_account:
+                    logger.warning(
+                        f"Vendor {vendor_user.id} ({vendor_user.username or vendor_user.mobile}) "
+                        f"has no active bank account marked for online orders. Skipping split."
+                    )
+                    continue
+                
+                # Validate bank account details
+                if not vendor_bank_account.account_number or not vendor_bank_account.ifsc_code:
+                    logger.warning(
+                        f"Vendor {vendor_user.id} bank account {vendor_bank_account.id} "
+                        f"missing account_number or ifsc_code. Skipping split."
+                    )
+                    continue
+                
+                # Add split configuration
+                split_amount = float(vendor_amount)
+                splits.append({
+                    "vendor_id": str(vendor_id),
+                    "amount": split_amount,
+                    "account_number": vendor_bank_account.account_number,
+                    "ifsc": vendor_bank_account.ifsc_code,
+                    "account_holder": vendor_bank_account.account_holder or vendor_bank_account.name,
+                })
+                
+                total_split_amount += vendor_amount
+                
+                logger.info(
+                    f"Added split for vendor {vendor_id}: ₹{split_amount} "
+                    f"(Account: {vendor_bank_account.account_number[-4:]}...)"
+                )
+                
+            except Exception as e:
+                logger.error(f"Error processing split for vendor {vendor_id}: {e}", exc_info=True)
+                continue
+        
+        if not splits:
+            logger.warning(f"No valid splits created for order {order.order_id}")
+            return None
+        
+        # Verify split amounts don't exceed order total (with small tolerance for rounding)
+        order_total = Decimal(str(order.total_amount or 0))
+        tolerance = Decimal('0.01')  # Allow 1 paisa difference for rounding
+        
+        if total_split_amount > order_total + tolerance:
+            logger.warning(
+                f"Split total ({total_split_amount}) exceeds order total ({order_total}). "
+                f"Adjusting splits proportionally."
+            )
+            # Adjust splits proportionally
+            ratio = order_total / total_split_amount
+            for split in splits:
+                split['amount'] = float(Decimal(str(split['amount'])) * ratio)
+            total_split_amount = order_total
+        
+        logger.info(
+            f"Created {len(splits)} split(s) for order {order.order_id}: "
+            f"Total split amount: ₹{total_split_amount}, Order total: ₹{order_total}"
+        )
+        
+        return splits
+        
+    except Exception as e:
+        logger.error(f"Error calculating vendor splits for order {order.order_id}: {e}", exc_info=True)
+        return None
+
+
+def create_order_for(order: Order, customer_id=None, customer_email=None, customer_phone=None, return_url=None, notify_url=None, enable_easy_split=True):
     """
     Creates a Cashfree order for a given Order instance and stores payment_session_id.
+    Supports Easy Split for multi-vendor orders.
+    
+    Args:
+        order: Order instance
+        customer_id: Optional customer ID
+        customer_email: Optional customer email
+        customer_phone: Optional customer phone
+        return_url: Optional return URL
+        notify_url: Optional notify URL
+        enable_easy_split: If True, automatically calculate and add vendor splits (default: True)
+    
     Idempotent per order_id: if already created, returns existing session.
     """
     if order.cashfree_session_id and order.cashfree_status in (None, "", "CREATED"):
@@ -100,9 +247,19 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         payload["order_meta"]["return_url"] = return_url
     if notify_url:
         payload["order_meta"]["notify_url"] = notify_url
+    
+    # Calculate and add Easy Split configuration if enabled
+    if enable_easy_split:
+        splits = _calculate_vendor_splits(order)
+        if splits:
+            payload["order_splits"] = splits
+            logger.info(f"Added {len(splits)} vendor split(s) to order {cashfree_order_id}")
+        else:
+            logger.info(f"No vendor splits calculated for order {cashfree_order_id} (single vendor or no bank accounts)")
 
+    # Use 2023-08-01 API version for Easy Split support
     url = f"{CASHFREE_BASE_URL}/orders"
-    resp = requests.post(url, headers=_cashfree_headers(), json=payload, timeout=15)
+    resp = requests.post(url, headers=_cashfree_headers(api_version="2023-08-01"), json=payload, timeout=15)
     try:
         data = resp.json()
     except Exception:
@@ -144,7 +301,7 @@ def refresh_order_status(order: Order):
         return {"status": "ERROR", "message": "Missing order_id"}
 
     url = f"{CASHFREE_BASE_URL}/orders/{order_id}"
-    resp = requests.get(url, headers=_cashfree_headers(), timeout=15)
+    resp = requests.get(url, headers=_cashfree_headers(api_version="2023-08-01"), timeout=15)
     try:
         data = resp.json()
     except Exception:

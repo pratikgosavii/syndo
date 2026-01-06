@@ -744,32 +744,36 @@ class OrderSerializer(serializers.ModelSerializer):
             print(f"Has Address: {bool(order.address)}")
             print(f"Vendor auto-assign enabled: {auto_assign_enabled}")
 
-            if auto_assign_enabled and order.delivery_type == "instant_delivery" and order.address:
-                try:
-                    from integrations.uengage import get_serviceability_for_order
-
-                    print("[OrderSerializer] Checking uEngage serviceability before finalizing order...")
-                    serviceability_result = get_serviceability_for_order(order)
-                    print(f"[OrderSerializer] Serviceability result: {serviceability_result}")
-
-                    ok = serviceability_result.get("ok")
-                    svc = (serviceability_result.get("raw") or {}).get("serviceability") or {}
-                    location_ok = svc.get("locationServiceAble")
-
-                    if not ok:
-                        msg = "No delivery boy present at the moment."
-                        if location_ok is False:
-                            msg = "Delivery location not serviceable."
-                        raise serializers.ValidationError({"delivery": msg})
-                except serializers.ValidationError:
-                    raise
-                except Exception as e:
-                    print(f"[OrderSerializer] Serviceability check exception: {e}")
-                    raise serializers.ValidationError(
-                        {"delivery": "Unable to confirm delivery availability. Please try again."}
-                    )
-            else:
-                print("[OrderSerializer] Skipping serviceability: auto-assign disabled or not instant_delivery or no address")
+            # DELIVERY RESTRICTION COMMENTED OUT FOR CASHFREE TESTING
+            # if auto_assign_enabled and order.delivery_type == "instant_delivery" and order.address:
+            #     try:
+            #         from integrations.uengage import get_serviceability_for_order
+            #
+            #         print("[OrderSerializer] Checking uEngage serviceability before finalizing order...")
+            #         serviceability_result = get_serviceability_for_order(order)
+            #         print(f"[OrderSerializer] Serviceability result: {serviceability_result}")
+            #
+            #         ok = serviceability_result.get("ok")
+            #         svc = (serviceability_result.get("raw") or {}).get("serviceability") or {}
+            #         location_ok = svc.get("locationServiceAble")
+            #
+            #         if not ok:
+            #             msg = "No delivery boy present at the moment."
+            #             if location_ok is False:
+            #                 msg = "Delivery location not serviceable."
+            #             raise serializers.ValidationError({"delivery": msg})
+            #     except serializers.ValidationError:
+            #         raise
+            #     except Exception as e:
+            #         print(f"[OrderSerializer] Serviceability check exception: {e}")
+            #         raise serializers.ValidationError(
+            #             {"delivery": "Unable to confirm delivery availability. Please try again."}
+            #         )
+            # else:
+            #     print("[OrderSerializer] Skipping serviceability: auto-assign disabled or not instant_delivery or no address")
+            
+            # TEMPORARY: Bypass serviceability check for Cashfree testing
+            print("[OrderSerializer] Delivery restriction bypassed for Cashfree testing")
             
             # Set is_auto_managed based on whether auto-assign is enabled
             # If auto-assign is disabled, explicitly set to False (though it's already the default)
