@@ -43,6 +43,15 @@ class Command(BaseCommand):
                 total_reminders += reminders_created
                 users_processed += 1
                 self.stdout.write(f'  → Created {reminders_created} reminder(s) for this user')
+                
+                # Send push notification if reminders were created
+                if reminders_created > 0:
+                    try:
+                        from vendor.signals import send_reminder_push_notification_to_user
+                        send_reminder_push_notification_to_user(user)
+                        self.stdout.write(f'  → Push notification sent to user')
+                    except Exception as e:
+                        self.stdout.write(self.style.WARNING(f'  → Failed to send push notification: {str(e)}'))
             except ReminderSetting.DoesNotExist:
                 self.stdout.write(self.style.WARNING(f'  ReminderSetting not found for user {user.username} (ID: {user.id}), skipping'))
                 continue

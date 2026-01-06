@@ -1,5 +1,5 @@
 import os
-from django.db.models.signals import pre_save, post_delete
+from django.db.models.signals import pre_save, post_delete, post_save
 from django.dispatch import receiver
 from django.apps import apps
 from django.db.models import FileField, ImageField
@@ -2085,5 +2085,57 @@ def user_delete_cleanup(sender, instance, **kwargs):
         # Note: We don't update balances here because the banks/customers/vendors
         # will be deleted by CASCADE anyway. Updating them might cause additional
         # constraint issues during the deletion process.
+
+
+def send_reminder_push_notification_to_user(user):
+    """
+    Send a single push notification to user when reminders are created.
+    This should be called after all reminders for a user are created in a batch.
+    """
+    try:
+        from firebase_admin import messaging
+        from users.models import DeviceToken
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # Get user's device token (OneToOneField relationship)
+        try:
+            device_token_obj = DeviceToken.objects.get(user=user)
+            token = device_token_obj.token
+        except DeviceToken.DoesNotExist:
+            logger.info(f"No device token found for user {user.id}, skipping push notification")
+            return False
+        
+        if not token or not token.strip():
+            logger.info(f"Empty or invalid device token for user {user.id}, skipping push notification")
+            return False
+        
+        # Prepare notification message
+        title = "New Reminder"
+        body = "New reminder for you, please visit app"
+        
+        # Create and send FCM message
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data={
+                "type": "reminder",
+                "user_id": str(user.id),
+            },
+            token=token.strip(),
+        )
+        
+        response = messaging.send(message)
+        logger.info(f"✅ Push notification sent to user {user.id} for new reminders: {response}")
+        return True
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"❌ Error sending push notification to user {user.id}: {str(e)}")
+        return False
 
 
