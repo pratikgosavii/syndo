@@ -494,30 +494,75 @@ def cashfree_webhook(request):
     log_both("info", f"[CASHFREE_WEBHOOK] Secret configured: {bool(secret)}")
 
     # Verify signature if present
-    # For Cashfree 2023-08-01 API: signature = base64(hmac_sha256(secret, timestamp + "." + body))
-    # For older versions: signature = base64(hmac_sha256(secret, body))
+    # Cashfree signature formats (based on webhook version):
+    # - 2021-09-21 and earlier: signature = base64(hmac_sha256(secret, timestamp + raw_body_string))
+    # - 2023-08-01: signature = base64(hmac_sha256(secret, timestamp + "." + body_string))
+    # - Very old: signature = base64(hmac_sha256(secret, body_bytes))
     try:
         if signature:
-            if webhook_version == "2023-08-01" and timestamp:
-                # New signature format: timestamp + "." + body
-                message = f"{timestamp}.{raw.decode('utf-8')}"
-                computed = base64.b64encode(hmac.new(secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha256).digest()).decode()
-                log_both("info", f"[CASHFREE_WEBHOOK] Using 2023-08-01 signature format (with timestamp)")
-            else:
-                # Old signature format: body only
-                computed = base64.b64encode(hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).digest()).decode()
-                log_both("info", f"[CASHFREE_WEBHOOK] Using legacy signature format (body only)")
+            signature_verified = False
+            raw_body_str = raw.decode('utf-8')
             
-            if not hmac.compare_digest(signature, computed):
-                log_both("error", f"[CASHFREE_WEBHOOK] Invalid signature. Expected: {computed[:30]}..., Got: {signature[:30] if signature else 'None'}...")
-                log_both("error", f"[CASHFREE_WEBHOOK] Full computed signature: {computed}")
+            # Try multiple signature formats to find the correct one
+            computed_signatures = {}
+            
+            # Format 1: 2021-09-21 format (timestamp + raw_body_string, no dot separator)
+            # This is the most common format for Cashfree webhooks
+            if timestamp:
+                message1 = f"{timestamp}{raw_body_str}"  # No dot separator for 2021-09-21
+                computed1 = base64.b64encode(hmac.new(secret.encode("utf-8"), message1.encode("utf-8"), hashlib.sha256).digest()).decode()
+                computed_signatures["2021-09-21_format"] = computed1
+                log_both("info", f"[CASHFREE_WEBHOOK] Computed signature (2021-09-21: timestamp+body): {computed1[:30]}...")
+            
+            # Format 2: 2023-08-01 format (timestamp + "." + body_string)
+            if webhook_version == "2023-08-01" and timestamp:
+                message2 = f"{timestamp}.{raw_body_str}"
+                computed2 = base64.b64encode(hmac.new(secret.encode("utf-8"), message2.encode("utf-8"), hashlib.sha256).digest()).decode()
+                computed_signatures["2023-08-01_format"] = computed2
+                log_both("info", f"[CASHFREE_WEBHOOK] Computed signature (2023-08-01: timestamp.body): {computed2[:30]}...")
+            
+            # Format 3: Body only (very old legacy format)
+            computed3 = base64.b64encode(hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).digest()).decode()
+            computed_signatures["body_only"] = computed3
+            log_both("info", f"[CASHFREE_WEBHOOK] Computed signature (body only): {computed3[:30]}...")
+            
+            # Format 4: 2021-09-21 with bytes (timestamp_bytes + body_bytes)
+            if timestamp:
+                message4 = timestamp.encode('utf-8') + raw
+                computed4 = base64.b64encode(hmac.new(secret.encode("utf-8"), message4, hashlib.sha256).digest()).decode()
+                computed_signatures["2021-09-21_bytes"] = computed4
+                log_both("info", f"[CASHFREE_WEBHOOK] Computed signature (2021-09-21 bytes): {computed4[:30]}...")
+            
+            # Check which format matches
+            for format_name, computed_sig in computed_signatures.items():
+                if hmac.compare_digest(signature, computed_sig):
+                    log_both("info", f"[CASHFREE_WEBHOOK] ✅ Signature verified successfully using format: {format_name}")
+                    signature_verified = True
+                    break
+            
+            if not signature_verified:
+                log_both("error", f"[CASHFREE_WEBHOOK] ❌ Invalid signature. Received: {signature[:30]}...")
+                log_both("error", f"[CASHFREE_WEBHOOK] Webhook version: {webhook_version}")
+                log_both("error", f"[CASHFREE_WEBHOOK] Timestamp: {timestamp}")
+                log_both("error", f"[CASHFREE_WEBHOOK] Tried formats: {list(computed_signatures.keys())}")
                 log_both("error", f"[CASHFREE_WEBHOOK] Full received signature: {signature}")
-                # In sandbox/test mode, we might want to proceed anyway, but log the error
+                log_both("error", f"[CASHFREE_WEBHOOK] Body length: {len(raw)} bytes, Body preview: {raw_body_str[:100]}...")
+                
+                # Show computed signatures for debugging
+                log_both("error", f"[CASHFREE_WEBHOOK] Computed signatures:")
+                for fmt, sig in computed_signatures.items():
+                    log_both("error", f"[CASHFREE_WEBHOOK]   {fmt}: {sig[:40]}...")
+                
+                # Check if webhook secret might be wrong
+                log_both("warning", f"[CASHFREE_WEBHOOK] ⚠️  Signature mismatch. Possible causes:")
+                log_both("warning", f"[CASHFREE_WEBHOOK]    1. CASHFREE_WEBHOOK_SECRET might be incorrect or not set")
+                log_both("warning", f"[CASHFREE_WEBHOOK]    2. Webhook secret in Cashfree dashboard doesn't match environment variable")
+                log_both("warning", f"[CASHFREE_WEBHOOK]    3. Using default 'test_webhook_secret' - need to set actual secret")
+                
+                # In sandbox/test mode, proceed anyway but log the error
                 # For production, you should return 401 here
                 # return JsonResponse({"detail": "invalid signature"}, status=401)
-                log_both("warning", "[CASHFREE_WEBHOOK] Signature mismatch, but proceeding in test mode")
-            else:
-                log_both("info", "[CASHFREE_WEBHOOK] Signature verified successfully")
+                log_both("warning", "[CASHFREE_WEBHOOK] ⚠️  Proceeding in test mode despite signature mismatch")
         else:
             log_both("warning", "[CASHFREE_WEBHOOK] No signature present, skipping verification")
     except Exception as e:
