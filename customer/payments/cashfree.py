@@ -144,14 +144,23 @@ def _calculate_vendor_splits(order: Order):
                     continue
                 
                 # Add split configuration
+                # Note: vendor_id is removed because Cashfree requires vendors to be pre-registered
+                # Cashfree Easy Split can work with just account_number and ifsc
                 split_amount = float(vendor_amount)
-                splits.append({
-                    "vendor_id": str(vendor_id),
+                split_config = {
                     "amount": split_amount,
                     "account_number": vendor_bank_account.account_number,
                     "ifsc": vendor_bank_account.ifsc_code,
                     "account_holder": vendor_bank_account.account_holder or vendor_bank_account.name,
-                })
+                }
+                
+                # Only add vendor_id if it's a registered Cashfree vendor ID (stored in vendor_bank or vendor_store)
+                # For now, we'll skip vendor_id to avoid "vendor not found" errors
+                # TODO: Implement Cashfree vendor registration and store vendor_id in vendor_bank or vendor_store
+                # if hasattr(vendor_bank_account, 'cashfree_vendor_id') and vendor_bank_account.cashfree_vendor_id:
+                #     split_config["vendor_id"] = vendor_bank_account.cashfree_vendor_id
+                
+                splits.append(split_config)
                 
                 total_split_amount += vendor_amount
                 
