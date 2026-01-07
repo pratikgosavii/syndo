@@ -2413,6 +2413,51 @@ class SuperCatalogueViewSet(viewsets.ReadOnlyModelViewSet):
         if sale_type:
             qs = qs.filter(sale_type=sale_type)
         return qs
+    
+    @action(detail=False, methods=['get'], url_path='install')
+    def install(self, request):
+        """
+        Get products from super catalogue for installation (vendor dashboard).
+        Returns unique products (no duplicates based on name, category, sub_category).
+        GET /vendor/super-catalogue/install/?category=&sub_category=&sale_type=
+        """
+        from .serializers import SuperCatalogueSerializer
+        from rest_framework.response import Response
+        
+        # Get all active super catalogue products
+        qs = super_catalogue.objects.filter(is_active=True).order_by("-created_at")
+        
+        # Apply filters
+        category_id = request.query_params.get("category")
+        sub_category_id = request.query_params.get("sub_category")
+        sale_type = request.query_params.get("sale_type")
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+        if sub_category_id:
+            qs = qs.filter(sub_category_id=sub_category_id)
+        if sale_type:
+            qs = qs.filter(sale_type=sale_type)
+        
+        # Remove duplicates based on name and key attributes to avoid duplicate products
+        # Group by name, category, sub_category to identify duplicates
+        seen_products = {}
+        unique_products = []
+        
+        for item in qs:
+            # Create a unique key based on name, category, and sub_category
+            key = (
+                item.name,
+                item.category_id if item.category else None,
+                item.sub_category_id if hasattr(item, 'sub_category') and item.sub_category else None
+            )
+            
+            # Only add if we haven't seen this combination before
+            if key not in seen_products:
+                seen_products[key] = item
+                unique_products.append(item)
+        
+        serializer = SuperCatalogueSerializer(unique_products, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 from rest_framework.decorators import action
@@ -4798,7 +4843,7 @@ class TopRatedProductsAPIView(APIView):
         limit = int(request.query_params.get('limit', 20))
         
         try:
-            # 1. Top Rated Products (by review count)
+            # 1. Top Rated Products (by review count) - Return 9 products
             top_rated = product.objects.filter(
                 user=user,
                 is_active=True
@@ -4810,7 +4855,7 @@ class TopRatedProductsAPIView(APIView):
                 )
             ).filter(
                 review_count__gt=0
-            ).order_by('-review_count')[:limit]
+            ).order_by('-review_count')[:9]  # Changed to 9 products
             
             top_rated_serializer = product_serializer(top_rated, many=True, context={'request': request})
             top_rated_data = top_rated_serializer.data

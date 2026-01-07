@@ -431,6 +431,9 @@ def cashfree_webhook(request):
     Cashfree webhook to update order status.
     Expects JSON body and header 'x-webhook-signature' (base64 of HMAC-SHA256).
     """
+    import logging
+    logger = logging.getLogger("cashfree_webhook")
+    
     from django.http import JsonResponse
     import base64
     import hashlib
@@ -438,24 +441,38 @@ def cashfree_webhook(request):
     import json
     import os
 
+    logger.info("=" * 80)
+    logger.info("[CASHFREE_WEBHOOK] ========== WEBHOOK RECEIVED ==========")
+    logger.info(f"[CASHFREE_WEBHOOK] Method: {request.method}")
+    logger.info(f"[CASHFREE_WEBHOOK] Headers: {dict(request.headers)}")
+    
     if request.method != "POST":
+        logger.warning(f"[CASHFREE_WEBHOOK] Invalid method: {request.method}")
         return JsonResponse({"detail": "method not allowed"}, status=405)
 
     try:
         raw = request.body
         payload = json.loads(raw.decode("utf-8"))
-    except Exception:
+        logger.info(f"[CASHFREE_WEBHOOK] Raw payload: {raw.decode('utf-8')}")
+        logger.info(f"[CASHFREE_WEBHOOK] Parsed payload: {json.dumps(payload, indent=2)}")
+    except Exception as e:
+        logger.error(f"[CASHFREE_WEBHOOK] Invalid JSON: {e}")
         return JsonResponse({"detail": "invalid json"}, status=400)
 
     signature = request.headers.get("x-webhook-signature") or request.headers.get("X-Webhook-Signature")
     secret = os.getenv("CASHFREE_WEBHOOK_SECRET", "test_webhook_secret")
+    logger.info(f"[CASHFREE_WEBHOOK] Signature present: {bool(signature)}")
+    logger.info(f"[CASHFREE_WEBHOOK] Secret configured: {bool(secret)}")
 
     # Verify signature if present
     try:
         computed = base64.b64encode(hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).digest()).decode()
         if signature and not hmac.compare_digest(signature, computed):
+            logger.error(f"[CASHFREE_WEBHOOK] Invalid signature. Expected: {computed[:20]}..., Got: {signature[:20] if signature else 'None'}...")
             return JsonResponse({"detail": "invalid signature"}, status=401)
-    except Exception:
+        logger.info("[CASHFREE_WEBHOOK] Signature verified successfully")
+    except Exception as e:
+        logger.warning(f"[CASHFREE_WEBHOOK] Signature verification error (proceeding): {e}")
         pass  # if missing headers, proceed best-effort in sandbox
 
     # Extract order_id and status robustly
@@ -469,24 +486,41 @@ def cashfree_webhook(request):
         or payload.get("data", {}).get("order", {}).get("order_status")
         or payload.get("data", {}).get("payment", {}).get("payment_status")
     )
+    
+    logger.info(f"[CASHFREE_WEBHOOK] Extracted order_id: {order_id}")
+    logger.info(f"[CASHFREE_WEBHOOK] Extracted status: {status_cf}")
 
     if not order_id:
+        logger.error("[CASHFREE_WEBHOOK] Missing order_id in payload")
         return JsonResponse({"detail": "missing order_id"}, status=400)
 
     # Update order by cashfree_order_id or order_id
     try:
         order = Order.objects.filter(cashfree_order_id=order_id).first() or Order.objects.get(order_id=order_id)
+        logger.info(f"[CASHFREE_WEBHOOK] Order found: {order.order_id} (ID: {order.id})")
+        logger.info(f"[CASHFREE_WEBHOOK] Current order status: {order.status}, is_paid: {order.is_paid}, cashfree_status: {order.cashfree_status}")
     except Order.DoesNotExist:
+        logger.error(f"[CASHFREE_WEBHOOK] Order not found for order_id: {order_id}")
         return JsonResponse({"detail": "order not found"}, status=404)
 
     if status_cf:
+        old_status = order.cashfree_status
         order.cashfree_status = status_cf
+        logger.info(f"[CASHFREE_WEBHOOK] Updating cashfree_status: {old_status} -> {status_cf}")
+        
         if str(status_cf).upper() in ("PAID", "SUCCESS", "CAPTURED"):
+            logger.info(f"[CASHFREE_WEBHOOK] Payment successful! Marking order as paid")
             order.is_paid = True
             order.payment_mode = "Cashfree"
         order.save(update_fields=["cashfree_status", "is_paid", "payment_mode"])
+        logger.info(f"[CASHFREE_WEBHOOK] Order updated successfully. New status: cashfree_status={order.cashfree_status}, is_paid={order.is_paid}")
+    else:
+        logger.warning(f"[CASHFREE_WEBHOOK] No status found in payload, order not updated")
 
-    return JsonResponse({"success": True}, status=200)
+    logger.info("[CASHFREE_WEBHOOK] ========== WEBHOOK PROCESSED SUCCESSFULLY ==========")
+    logger.info("=" * 80)
+
+    return JsonResponse({"success": True, "order_id": order_id, "status": status_cf}, status=200)
 
 
 @csrf_exempt
