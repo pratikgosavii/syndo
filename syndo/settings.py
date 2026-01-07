@@ -74,6 +74,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081", # React frontend
     "http://localhost:5173",
     "http://localhost:8082",
+    "http://www.svindo.com",
+    "https://www.svindo.com",
+    "https://svindo.com",
 ]
 
 # CORS settings to allow Authorization header for JWT tokens
