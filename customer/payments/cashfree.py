@@ -399,26 +399,58 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
             "payment_link": order.payment_link,
         }
 
-    # Handle 400 error specifically
+    # Handle specific error codes with detailed messages
+    error_message = data.get("message") or data.get("error") or data.get("error_description") or f"HTTP {resp.status_code} Error"
+    error_code = data.get("code") or data.get("error_code") or str(resp.status_code)
+    
     if resp.status_code == 400:
-        error_message = data.get("message") or data.get("error") or data.get("error_description") or "Bad Request"
-        error_code = data.get("code") or data.get("error_code") or "400"
         logger.error(
             f"❌ Cashfree 400 Bad Request Error for order {cashfree_order_id}: "
             f"Code: {error_code}, Message: {error_message}, "
             f"Full response: {json.dumps(data, ensure_ascii=False)}"
         )
         order.cashfree_status = f"ERROR:400:{error_code}"
+    elif resp.status_code == 403:
+        # IP whitelisting error - provide clear guidance
+        logger.error(
+            f"❌ Cashfree 403 Forbidden Error (IP Not Whitelisted) for order {cashfree_order_id}: "
+            f"Message: {error_message}, "
+            f"Full response: {json.dumps(data, ensure_ascii=False)}"
+        )
+        logger.error(
+            f"⚠️  ACTION REQUIRED: Your server IP address is not whitelisted in Cashfree dashboard. "
+            f"Please add your server IP to Cashfree's IP whitelist: "
+            f"Dashboard → Settings → IP Whitelist"
+        )
+        order.cashfree_status = f"ERROR:403:IP_NOT_WHITELISTED"
+        # Enhance error message for user
+        error_message = f"IP address not whitelisted. Please contact support. ({error_message})"
+    elif resp.status_code == 401:
+        logger.error(
+            f"❌ Cashfree 401 Unauthorized Error for order {cashfree_order_id}: "
+            f"Message: {error_message}, "
+            f"Full response: {json.dumps(data, ensure_ascii=False)}"
+        )
+        logger.error(
+            f"⚠️  ACTION REQUIRED: Check your CASHFREE_APP_ID and CASHFREE_SECRET_KEY in environment variables."
+        )
+        order.cashfree_status = f"ERROR:401:UNAUTHORIZED"
+        error_message = f"Authentication failed. Please check API credentials. ({error_message})"
     else:
         order.cashfree_status = f"ERROR:{resp.status_code}"
+        logger.error(
+            f"❌ Cashfree create order failed: status={resp.status_code}, "
+            f"response={json.dumps(data, ensure_ascii=False)}"
+        )
     
     order.save(update_fields=["cashfree_status"])
-    # Log the error details for debugging
-    logger.error(
-        f"❌ Cashfree create order failed: status={resp.status_code}, "
-        f"response={json.dumps(data, ensure_ascii=False)}"
-    )
-    return {"status": "ERROR", "code": resp.status_code, "data": data, "message": data.get("message") or data.get("error")}
+    
+    return {
+        "status": "ERROR", 
+        "code": resp.status_code, 
+        "data": data, 
+        "message": error_message
+    }
 
 
 def refresh_order_status(order: Order):
