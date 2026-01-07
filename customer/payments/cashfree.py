@@ -144,21 +144,42 @@ def _calculate_vendor_splits(order: Order):
                     continue
                 
                 # Add split configuration
-                # Note: vendor_id is removed because Cashfree requires vendors to be pre-registered
-                # Cashfree Easy Split can work with just account_number and ifsc
+                # Cashfree Easy Split REQUIRES vendor_id - vendors must be pre-registered in Cashfree
+                # Check if vendor has a Cashfree vendor_id stored
+                cashfree_vendor_id = None
+                
+                # Try to get Cashfree vendor_id from vendor_bank (if field exists)
+                if hasattr(vendor_bank_account, 'cashfree_vendor_id'):
+                    cashfree_vendor_id = getattr(vendor_bank_account, 'cashfree_vendor_id', None)
+                
+                # If not in vendor_bank, try to get from vendor_store
+                if not cashfree_vendor_id:
+                    try:
+                        from vendor.models import vendor_store
+                        store = vendor_store.objects.filter(user=vendor_user).first()
+                        if store and hasattr(store, 'cashfree_vendor_id'):
+                            cashfree_vendor_id = getattr(store, 'cashfree_vendor_id', None)
+                    except Exception:
+                        pass
+                
+                # If no Cashfree vendor_id found, we cannot create split
+                # Cashfree requires vendor_id for Easy Split
+                if not cashfree_vendor_id:
+                    logger.warning(
+                        f"Vendor {vendor_user.id} ({vendor_user.username or vendor_user.mobile}) "
+                        f"has no Cashfree vendor_id registered. Skipping split. "
+                        f"Vendor must be registered in Cashfree first using Create Vendor API."
+                    )
+                    continue
+                
                 split_amount = float(vendor_amount)
                 split_config = {
+                    "vendor_id": str(cashfree_vendor_id),  # Required by Cashfree
                     "amount": split_amount,
                     "account_number": vendor_bank_account.account_number,
                     "ifsc": vendor_bank_account.ifsc_code,
                     "account_holder": vendor_bank_account.account_holder or vendor_bank_account.name,
                 }
-                
-                # Only add vendor_id if it's a registered Cashfree vendor ID (stored in vendor_bank or vendor_store)
-                # For now, we'll skip vendor_id to avoid "vendor not found" errors
-                # TODO: Implement Cashfree vendor registration and store vendor_id in vendor_bank or vendor_store
-                # if hasattr(vendor_bank_account, 'cashfree_vendor_id') and vendor_bank_account.cashfree_vendor_id:
-                #     split_config["vendor_id"] = vendor_bank_account.cashfree_vendor_id
                 
                 splits.append(split_config)
                 
@@ -282,9 +303,13 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
             # Validate splits before adding
             total_split_amount = sum(float(s.get("amount", 0)) for s in splits)
             
-            # Validate each split has required fields
+            # Validate each split has required fields (including vendor_id which is required by Cashfree)
             valid_splits = []
             for split in splits:
+                # Cashfree requires vendor_id, account_number, and ifsc
+                if not split.get("vendor_id"):
+                    logger.warning(f"Split missing required vendor_id field, skipping: {split.get('account_number', 'unknown')}")
+                    continue
                 if not split.get("account_number") or not split.get("ifsc"):
                     logger.warning(f"Split missing required fields (account_number or ifsc), skipping: {split}")
                     continue
@@ -294,7 +319,10 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
                 valid_splits.append(split)
             
             if not valid_splits:
-                logger.warning("No valid splits after validation, proceeding without Easy Split")
+                logger.warning(
+                    f"No valid splits after validation (vendors may not be registered in Cashfree). "
+                    f"Proceeding without Easy Split. Order will still be created successfully."
+                )
                 splits = None
             elif total_split_amount > order_amount:
                 logger.warning(
@@ -317,7 +345,7 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
                     logger.info(f"Adjusted last split by ₹{difference} to match order total")
                 
                 payload["order_splits"] = valid_splits
-                logger.info(f"Added {len(valid_splits)} vendor split(s) to order {cashfree_order_id}")
+                logger.info(f"✅ Added {len(valid_splits)} vendor split(s) to order {cashfree_order_id}")
                 logger.info(f"Total split amount: ₹{sum(float(s.get('amount', 0)) for s in valid_splits)}, Order amount: ₹{order_amount}")
         else:
             logger.info(f"No vendor splits calculated for order {cashfree_order_id} (single vendor or no bank accounts)")
