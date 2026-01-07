@@ -227,14 +227,32 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         or getattr(order.user, "phone", None)
         or ""
     )
+    
+    # Clean phone number: remove spaces, dashes, and ensure it starts with country code
+    if fallback_phone:
+        fallback_phone = str(fallback_phone).strip().replace(" ", "").replace("-", "").replace("+", "")
+        # If phone doesn't start with country code (91 for India), add it
+        if not fallback_phone.startswith("91") and len(fallback_phone) == 10:
+            fallback_phone = "91" + fallback_phone
+        elif len(fallback_phone) < 10:
+            logger.warning(f"Invalid phone number format: {fallback_phone}, using empty string")
+            fallback_phone = ""
 
     # Sanitize order_id for Cashfree (remove/replace invalid characters like forward slashes)
     cashfree_order_id = _sanitize_order_id_for_cashfree(order.order_id)
     logger.info(f"Cashfree order_id sanitized: '{order.order_id}' -> '{cashfree_order_id}'")
     
+    # Validate order amount
+    order_amount = float(order.total_amount or 0)
+    if order_amount <= 0:
+        logger.error(f"Invalid order amount: {order_amount} for order {order.order_id}")
+        order.cashfree_status = "ERROR:INVALID_AMOUNT"
+        order.save(update_fields=["cashfree_status"])
+        return {"status": "ERROR", "code": 400, "message": "Order amount must be greater than 0"}
+    
     payload = {
         "order_id": cashfree_order_id,
-        "order_amount": float(order.total_amount or 0),
+        "order_amount": order_amount,
         "order_currency": "INR",
         "customer_details": {
             "customer_id": str(customer_id or (order.user_id or "guest")),
@@ -252,19 +270,82 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
     if enable_easy_split:
         splits = _calculate_vendor_splits(order)
         if splits:
-            payload["order_splits"] = splits
-            logger.info(f"Added {len(splits)} vendor split(s) to order {cashfree_order_id}")
+            # Validate splits before adding
+            total_split_amount = sum(float(s.get("amount", 0)) for s in splits)
+            
+            # Validate each split has required fields
+            valid_splits = []
+            for split in splits:
+                if not split.get("account_number") or not split.get("ifsc"):
+                    logger.warning(f"Split missing required fields (account_number or ifsc), skipping: {split}")
+                    continue
+                if float(split.get("amount", 0)) <= 0:
+                    logger.warning(f"Split amount is 0 or negative, skipping: {split}")
+                    continue
+                valid_splits.append(split)
+            
+            if not valid_splits:
+                logger.warning("No valid splits after validation, proceeding without Easy Split")
+                splits = None
+            elif total_split_amount > order_amount:
+                logger.warning(
+                    f"Split total ({total_split_amount}) exceeds order amount ({order_amount}). "
+                    f"Disabling Easy Split for this order."
+                )
+                splits = None
+            else:
+                # Ensure split amounts are properly formatted (round to 2 decimal places)
+                for split in valid_splits:
+                    split["amount"] = round(float(split.get("amount", 0)), 2)
+                
+                # Recalculate total after rounding
+                total_split_amount = sum(float(s.get("amount", 0)) for s in valid_splits)
+                
+                # If splits don't add up to order amount, adjust the last split
+                if total_split_amount < order_amount and len(valid_splits) > 0:
+                    difference = order_amount - total_split_amount
+                    valid_splits[-1]["amount"] = round(float(valid_splits[-1]["amount"]) + difference, 2)
+                    logger.info(f"Adjusted last split by ₹{difference} to match order total")
+                
+                payload["order_splits"] = valid_splits
+                logger.info(f"Added {len(valid_splits)} vendor split(s) to order {cashfree_order_id}")
+                logger.info(f"Total split amount: ₹{sum(float(s.get('amount', 0)) for s in valid_splits)}, Order amount: ₹{order_amount}")
         else:
             logger.info(f"No vendor splits calculated for order {cashfree_order_id} (single vendor or no bank accounts)")
 
+    # Log the full payload before sending (mask sensitive data)
+    payload_log = json.dumps(payload, indent=2)
+    # Mask account numbers in logs
+    if "order_splits" in payload:
+        for split in payload["order_splits"]:
+            if "account_number" in split:
+                acc = split["account_number"]
+                if len(acc) > 4:
+                    split["account_number"] = f"{acc[:2]}***{acc[-2:]}"
+    logger.info(f"Cashfree order creation payload: {json.dumps(payload, indent=2)}")
+
     # Use 2023-08-01 API version for Easy Split support
     url = f"{CASHFREE_BASE_URL}/orders"
-    resp = requests.post(url, headers=_cashfree_headers(api_version="2023-08-01"), json=payload, timeout=15)
+    headers = _cashfree_headers(api_version="2023-08-01")
+    logger.info(f"Cashfree API URL: {url}")
+    logger.info(f"Cashfree Headers: x-api-version={headers.get('x-api-version')}, x-client-id={_mask(headers.get('x-client-id'))}")
+    
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        logger.info(f"Cashfree API Response Status: {resp.status_code}")
+    except Exception as e:
+        logger.error(f"Cashfree API request exception: {e}", exc_info=True)
+        order.cashfree_status = f"ERROR:EXCEPTION"
+        order.save(update_fields=["cashfree_status"])
+        return {"status": "ERROR", "code": 500, "message": f"Request failed: {str(e)}"}
+    
     try:
         data = resp.json()
+        logger.info(f"Cashfree API Response: {json.dumps(data, indent=2)}")
     except Exception:
         data = {"status": "ERROR", "message": resp.text}
         logger.exception("Cashfree create order JSON parse error (status=%s): %s", resp.status_code, resp.text)
+        logger.error(f"Raw response text: {resp.text}")
 
     if resp.status_code in (200, 201) and data.get("payment_session_id"):
         # Cashfree returns the order_id we sent (sanitized version)
@@ -273,6 +354,7 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         order.cashfree_status = "CREATED"
         order.payment_link = data.get("payment_link")
         order.save(update_fields=["cashfree_order_id", "cashfree_session_id", "cashfree_status", "payment_link"])
+        logger.info(f"✅ Cashfree order created successfully: {order.cashfree_order_id}")
         return {
             "order_id": order.cashfree_order_id,
             "payment_session_id": order.cashfree_session_id,
@@ -280,15 +362,26 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
             "payment_link": order.payment_link,
         }
 
-    order.cashfree_status = f"ERROR:{resp.status_code}"
+    # Handle 400 error specifically
+    if resp.status_code == 400:
+        error_message = data.get("message") or data.get("error") or data.get("error_description") or "Bad Request"
+        error_code = data.get("code") or data.get("error_code") or "400"
+        logger.error(
+            f"❌ Cashfree 400 Bad Request Error for order {cashfree_order_id}: "
+            f"Code: {error_code}, Message: {error_message}, "
+            f"Full response: {json.dumps(data, ensure_ascii=False)}"
+        )
+        order.cashfree_status = f"ERROR:400:{error_code}"
+    else:
+        order.cashfree_status = f"ERROR:{resp.status_code}"
+    
     order.save(update_fields=["cashfree_status"])
-    # Log the error details for debugging (prints to console if no logging configured)
+    # Log the error details for debugging
     logger.error(
-        "Cashfree create order failed: status=%s, response=%s",
-        resp.status_code,
-        json.dumps(data, ensure_ascii=False),
+        f"❌ Cashfree create order failed: status={resp.status_code}, "
+        f"response={json.dumps(data, ensure_ascii=False)}"
     )
-    return {"status": "ERROR", "code": resp.status_code, "data": data}
+    return {"status": "ERROR", "code": resp.status_code, "data": data, "message": data.get("message") or data.get("error")}
 
 
 def refresh_order_status(order: Order):
