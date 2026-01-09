@@ -893,7 +893,7 @@ def expense_ledger(sender, instance, created, **kwargs):
             "expense",
             instance.id,
             -(instance.amount or Decimal(0)),
-            f"Expense #{instance.id}"
+            f"Expense #{instance.id} - {instance.category}" if instance.category else f"Expense #{instance.id}"
         )
 
     # Create CashLedger entry (for cash balance tracking)
