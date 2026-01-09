@@ -716,50 +716,52 @@ class OrderViewSet(viewsets.ModelViewSet):
                 and data["status"] == "ready_to_shipment"
                 and previous_status != "ready_to_shipment"
             ):
-                print("\n" + "=" * 80)
-                print("[Vendor OrderViewSet] Auto-assign on ready_to_shipment")
-                print(f"Order ID: {instance.order_id}")
-                print(f"Previous status: {previous_status}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info("\n" + "=" * 80)
+                logger.info("[Vendor OrderViewSet] Auto-assign on ready_to_shipment")
+                logger.info(f"Order ID: {instance.order_id}")
+                logger.info(f"Previous status: {previous_status}")
 
                 # Identify vendor user from first item
                 item0 = instance.items.select_related("product").first()
                 vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
-                print(f"Vendor user: {vendor_user}")
+                logger.info(f"Vendor user: {vendor_user}")
                 if vendor_user:
                     mode = DeliveryMode.objects.filter(user=vendor_user).first()
                 else:
                     mode = None
-                print(f"Delivery mode: {mode}")
+                logger.info(f"Delivery mode: {mode}")
 
                 if mode and mode.is_auto_assign_enabled:
-                    print(f"Auto-assign enabled (self_delivery={getattr(mode, 'is_self_delivery_enabled', False)})")
+                    logger.info(f"Auto-assign enabled (self_delivery={getattr(mode, 'is_self_delivery_enabled', False)})")
                     # Skip if already assigned or task created
                     if getattr(instance, "delivery_boy_id", None) or getattr(instance, "uengage_task_id", None):
-                        print("Already has delivery_boy or uengage_task_id; skipping assignment")
+                        logger.info("Already has delivery_boy or uengage_task_id; skipping assignment")
                     # Prefer self delivery if enabled and rider available
                     elif getattr(mode, "is_self_delivery_enabled", False):
                         rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
                         if rider:
-                            print(f"Assigned self-delivery rider: {rider}")
+                            logger.info(f"Assigned self-delivery rider: {rider}")
                             instance.delivery_boy = rider
                             instance.is_auto_managed = True  # Auto-assigned
                             instance.save(update_fields=["delivery_boy", "is_auto_managed"])
                         else:
-                            print("No active self-delivery rider found")
+                            logger.warning("No active self-delivery rider found")
                     else:
                         rider = None
 
                     # If no rider was set above, attempt external task creation
                     if not getattr(instance, "delivery_boy_id", None) and not getattr(instance, "uengage_task_id", None):
-                        print("Creating external delivery task via uEngage")
+                        logger.info("Creating external delivery task via uEngage")
                         res = create_delivery_task(instance)
-                        print(f"uEngage response: {res}")
+                        logger.info(f"uEngage response: {res}")
                         if res.get("ok"):
                             # persist task id and tracking across items
                             task_id = res.get("task_id")
                             tracking = res.get("tracking_url")
                             if task_id:
-                                print(f"Saving uEngage task_id: {task_id}")
+                                logger.info(f"Saving uEngage task_id: {task_id}")
                                 instance.uengage_task_id = task_id
                                 instance.is_auto_managed = True  # Auto-assigned via uEngage
                                 instance.save(update_fields=["uengage_task_id", "is_auto_managed"])
@@ -768,13 +770,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                                     if not it.tracking_link:
                                         it.tracking_link = tracking
                                         it.save(update_fields=["tracking_link"])
-                                print(f"Applied tracking link to items: {tracking}")
+                                logger.info(f"Applied tracking link to items: {tracking}")
                         else:
                             # Could notify vendor here about failure; do not block
-                            print("uEngage task creation failed or not ok; skipping assignment")
+                            logger.warning("uEngage task creation failed or not ok; skipping assignment")
                 else:
-                    print("Auto-assign disabled or mode missing; no assignment attempted")
-                print("=" * 80 + "\n")
+                    logger.info("Auto-assign disabled or mode missing; no assignment attempted")
+                logger.info("=" * 80 + "\n")
         except Exception:
             pass
 

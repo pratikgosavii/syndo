@@ -1,4 +1,5 @@
 import logging
+import json
 import requests
 from typing import Dict, List, Optional
 from django.conf import settings
@@ -222,64 +223,64 @@ def create_delivery_task(order) -> Dict:
     Create a delivery task with uEngage for the given order.
     Returns normalized dict: { ok, status_code, task_id, tracking_url, message, error, raw }
     """
-    print("=" * 80)
-    print("🚀 [uEngage] create_delivery_task - START")
-    print(f"Order ID: {getattr(order, 'order_id', 'N/A')}")
+    logger.info("=" * 80)
+    logger.info("🚀 [uEngage] create_delivery_task - START")
+    logger.info(f"Order ID: {getattr(order, 'order_id', 'N/A')}")
     
     # Use Rider API new spec
     if not (UENGAGE_RIDER_BASE and UENGAGE_ACCESS_TOKEN):
-        print("❌ [uEngage] Missing credentials")
-        print(f"UENGAGE_RIDER_BASE: {UENGAGE_RIDER_BASE}")
-        print(f"UENGAGE_ACCESS_TOKEN: {'SET' if UENGAGE_ACCESS_TOKEN else 'MISSING'}")
+        logger.error("❌ [uEngage] Missing credentials")
+        logger.error(f"UENGAGE_RIDER_BASE: {UENGAGE_RIDER_BASE}")
+        logger.error(f"UENGAGE_ACCESS_TOKEN: {'SET' if UENGAGE_ACCESS_TOKEN else 'MISSING'}")
         return {"ok": False, "status_code": None, "error": "missing_credentials", "message": "uEngage rider API not configured"}
 
-    print(f"✅ [uEngage] Credentials check passed")
-    print(f"UENGAGE_RIDER_BASE: {UENGAGE_RIDER_BASE}")
-    print(f"UENGAGE_ACCESS_TOKEN: {UENGAGE_ACCESS_TOKEN[:10]}...")
+    logger.info(f"✅ [uEngage] Credentials check passed")
+    logger.info(f"UENGAGE_RIDER_BASE: {UENGAGE_RIDER_BASE}")
+    logger.info(f"UENGAGE_ACCESS_TOKEN: {UENGAGE_ACCESS_TOKEN[:10]}...")
 
     try:
         item0 = order.items.select_related("product").first()
-        print(f"📦 [uEngage] First order item: {item0}")
+        logger.info(f"📦 [uEngage] First order item: {item0}")
         vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
-        print(f"👤 [uEngage] Vendor user: {vendor_user} (ID: {vendor_user.id if vendor_user else 'N/A'})")
+        logger.info(f"👤 [uEngage] Vendor user: {vendor_user} (ID: {vendor_user.id if vendor_user else 'N/A'})")
         
         pickup = _pickup_from_company_profile(vendor_user)
-        print(f"📍 [uEngage] Pickup details: {pickup}")
+        logger.info(f"📍 [uEngage] Pickup details: {pickup}")
         
         drop = _drop_from_order(order)
-        print(f"🏠 [uEngage] Drop details: {drop}")
+        logger.info(f"🏠 [uEngage] Drop details: {drop}")
         
         if not (pickup and drop):
-            print("❌ [uEngage] Missing pickup or drop addresses")
+            logger.error("❌ [uEngage] Missing pickup or drop addresses")
             return {"ok": False, "status_code": None, "error": "missing_addresses", "message": "Pickup/Drop addresses missing"}
 
         # storeId from CompanyProfile, fallback to default "89" for testing
         store_id = None
         try:
             cp = vendor_user.user_company_profile if vendor_user else None
-            print(f"🏪 [uEngage] Company Profile: {cp}")
+            logger.info(f"🏪 [uEngage] Company Profile: {cp}")
             store_id = getattr(cp, "uengage_store_id", None)
-            print(f"🏪 [uEngage] Store ID from CompanyProfile: {store_id}")
+            logger.info(f"🏪 [uEngage] Store ID from CompanyProfile: {store_id}")
         except Exception as e:
-            print(f"⚠️ [uEngage] Exception getting store_id: {e}")
+            logger.warning(f"⚠️ [uEngage] Exception getting store_id: {e}")
             store_id = None
         if not store_id:
             # Use default store_id "89" for testing if not set in CompanyProfile
             store_id = "89"
-            print(f"🏪 [uEngage] Using default store_id: {store_id}")
+            logger.info(f"🏪 [uEngage] Using default store_id: {store_id}")
 
         # Get vendor store for pickup coordinates
         vs = vendor_user.vendor_store.first() if vendor_user and getattr(vendor_user, "vendor_store", None) else None
-        print(f"🏬 [uEngage] Vendor Store: {vs}")
+        logger.info(f"🏬 [uEngage] Vendor Store: {vs}")
         pickup_lat_str = str(getattr(vs, "latitude", "") or "") if vs else ""
         pickup_lon_str = str(getattr(vs, "longitude", "") or "") if vs else ""
         pickup_city = getattr(cp, "city", "") or "" if cp else ""
-        print(f"📍 [uEngage] Pickup coordinates (raw): lat={pickup_lat_str}, lon={pickup_lon_str}, city={pickup_city}")
+        logger.info(f"📍 [uEngage] Pickup coordinates (raw): lat={pickup_lat_str}, lon={pickup_lon_str}, city={pickup_city}")
         
         # Validate pickup coordinates
         pickup_valid, pickup_lat_float, pickup_lon_float = _validate_coordinates(pickup_lat_str, pickup_lon_str, "Pickup")
         if not pickup_valid:
-            print("❌ [uEngage] Invalid pickup coordinates - cannot create delivery task")
+            logger.error("❌ [uEngage] Invalid pickup coordinates - cannot create delivery task")
             return {"ok": False, "status_code": None, "error": "invalid_pickup_coordinates", "message": f"Invalid pickup coordinates: lat={pickup_lat_str}, lon={pickup_lon_str}"}
         
         pickup_lat = str(pickup_lat_float)
@@ -287,16 +288,16 @@ def create_delivery_task(order) -> Dict:
         
         # Get drop coordinates
         addr = getattr(order, "address", None)
-        print(f"🏠 [uEngage] Order address: {addr}")
+        logger.info(f"🏠 [uEngage] Order address: {addr}")
         drop_city = getattr(addr, "town_city", "") or "" if addr else ""
         drop_lat_str = str(getattr(addr, "latitude", "") or "") if addr else ""
         drop_lon_str = str(getattr(addr, "longitude", "") or "") if addr else ""
-        print(f"📍 [uEngage] Drop coordinates (raw): lat={drop_lat_str}, lon={drop_lon_str}, city={drop_city}")
+        logger.info(f"📍 [uEngage] Drop coordinates (raw): lat={drop_lat_str}, lon={drop_lon_str}, city={drop_city}")
         
         # Validate drop coordinates
         drop_valid, drop_lat_float, drop_lon_float = _validate_coordinates(drop_lat_str, drop_lon_str, "Drop")
         if not drop_valid:
-            print("❌ [uEngage] Invalid drop coordinates - cannot create delivery task")
+            logger.error("❌ [uEngage] Invalid drop coordinates - cannot create delivery task")
             return {"ok": False, "status_code": None, "error": "invalid_drop_coordinates", "message": f"Invalid drop coordinates: lat={drop_lat_str}, lon={drop_lon_str}"}
         
         drop_lat = str(drop_lat_float)
@@ -311,8 +312,8 @@ def create_delivery_task(order) -> Dict:
                 "quantity": item.quantity,
                 "price": float(item.price)
             })
-        print(f"📦 [uEngage] Order items count: {len(order_items)}")
-        print(f"📦 [uEngage] Order items: {order_items}")
+        logger.info(f"📦 [uEngage] Order items count: {len(order_items)}")
+        logger.info(f"📦 [uEngage] Order items: {order_items}")
         
         url = f"{UENGAGE_RIDER_BASE}/createTask"
         payload = {
@@ -348,47 +349,48 @@ def create_delivery_task(order) -> Dict:
         }
         headers = {"Content-Type": "application/json", "access-token": UENGAGE_ACCESS_TOKEN}
         
-        print(f"🌐 [uEngage] API URL: {url}")
-        print(f"🔑 [uEngage] Headers: {headers}")
-        print(f"📤 [uEngage] Payload: {payload}")
+        logger.info(f"🌐 [uEngage] API URL: {url}")
+        logger.info(f"🔑 [uEngage] Headers: {headers}")
+        logger.info(f"📤 [uEngage] Payload: {json.dumps(payload, indent=2)}")
         
+        logger.info(f"🔄 [uEngage] Calling uEngage API: POST {url}")
         resp = requests.post(url, json=payload, headers=headers, timeout=20)
-        print(f"📥 [uEngage] Response Status Code: {resp.status_code}")
-        print(f"📥 [uEngage] Response Headers: {dict(resp.headers)}")
+        logger.info(f"📥 [uEngage] Response Status Code: {resp.status_code}")
+        logger.info(f"📥 [uEngage] Response Headers: {dict(resp.headers)}")
         
         try:
             data = resp.json()
-            print(f"📥 [uEngage] Response JSON: {data}")
+            logger.info(f"📥 [uEngage] Response JSON: {json.dumps(data, indent=2)}")
         except Exception as e:
             data = {"message": resp.text}
-            print(f"⚠️ [uEngage] Failed to parse JSON, raw text: {resp.text}")
-            print(f"⚠️ [uEngage] Exception: {e}")
+            logger.warning(f"⚠️ [uEngage] Failed to parse JSON, raw text: {resp.text}")
+            logger.warning(f"⚠️ [uEngage] Exception: {e}")
 
         # Docs show status as "true"/boolean and keys: taskId, vendor_order_id, Status_code
         status_ok = False
         if isinstance(data, dict):
             status_ok = (data.get("status") in (True, "true", "200", "ACCEPTED"))
-        print(f"✅ [uEngage] Status OK: {status_ok}")
-        print(f"📊 [uEngage] Response status value: {data.get('status') if isinstance(data, dict) else 'N/A'}")
+        logger.info(f"✅ [uEngage] Status OK: {status_ok}")
+        logger.info(f"📊 [uEngage] Response status value: {data.get('status') if isinstance(data, dict) else 'N/A'}")
         
         if resp.status_code in (200, 201) and status_ok:
             task_id = data.get("taskId") or data.get("task_id") or None
             tracking_url = data.get("tracking_url") or None
-            print(f"✅ [uEngage] Task created successfully!")
-            print(f"🆔 [uEngage] Task ID: {task_id}")
-            print(f"🔗 [uEngage] Tracking URL: {tracking_url}")
-            print("=" * 80)
+            logger.info(f"✅ [uEngage] Task created successfully!")
+            logger.info(f"🆔 [uEngage] Task ID: {task_id}")
+            logger.info(f"🔗 [uEngage] Tracking URL: {tracking_url}")
+            logger.info("=" * 80)
             return {"ok": True, "status_code": resp.status_code, "task_id": task_id, "tracking_url": tracking_url, "message": data.get("message"), "raw": data}
         
-        print(f"❌ [uEngage] Task creation failed")
-        print(f"📊 [uEngage] Error: {data.get('error') if isinstance(data, dict) else 'N/A'}")
-        print(f"📊 [uEngage] Message: {data.get('message') if isinstance(data, dict) else resp.text}")
-        print("=" * 80)
+        logger.error(f"❌ [uEngage] Task creation failed")
+        logger.error(f"📊 [uEngage] Error: {data.get('error') if isinstance(data, dict) else 'N/A'}")
+        logger.error(f"📊 [uEngage] Message: {data.get('message') if isinstance(data, dict) else resp.text}")
+        logger.info("=" * 80)
         return {"ok": False, "status_code": resp.status_code, "error": (data.get("error") if isinstance(data, dict) else None), "message": (data.get("message") if isinstance(data, dict) else resp.text), "raw": data}
     except Exception as e:
-        print(f"💥 [uEngage] Exception in create_delivery_task: {str(e)}")
+        logger.error(f"💥 [uEngage] Exception in create_delivery_task: {str(e)}")
         logger.exception("uEngage create_delivery_task exception")
-        print("=" * 80)
+        logger.info("=" * 80)
         return {"ok": False, "status_code": None, "error": "exception", "message": str(e)}
 
 
