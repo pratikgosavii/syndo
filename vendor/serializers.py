@@ -87,10 +87,18 @@ class DeliveryDiscountSerializer(serializers.ModelSerializer):
 
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = PurchaseItem
-        fields = ['product', 'quantity', 'price', 'total', 'amount', 'tax_amount', 'total_with_tax']  # include all needed fields including GST
-        read_only_fields = ['total', 'amount', 'tax_amount', 'total_with_tax']  # these are calculated automatically
+        fields = ['product', 'product_name', 'quantity', 'price', 'total', 'amount', 'tax_amount', 'total_with_tax']  # include all needed fields including GST
+        read_only_fields = ['total', 'amount', 'tax_amount', 'total_with_tax', 'product_name']  # these are calculated automatically
+    
+    def get_product_name(self, obj):
+        """Return the product name"""
+        if obj.product:
+            return obj.product.name
+        return None
 
     
 
