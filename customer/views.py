@@ -745,16 +745,51 @@ def delivery_webhook(request):
     log_both("info", f"[UENGAGE_WEBHOOK] Remote Address: {request.META.get('REMOTE_ADDR', 'Unknown')}")
     log_both("info", f"[UENGAGE_WEBHOOK] Headers: {dict(request.headers)}")
     
+    # Check Content-Length header to see if body should be present
+    content_length = request.META.get('CONTENT_LENGTH', '0')
+    log_both("info", f"[UENGAGE_WEBHOOK] Content-Length header: {content_length} bytes")
+    
+    # Also check request.META for raw body indicators
+    log_both("info", f"[UENGAGE_WEBHOOK] Request META keys related to body: {[k for k in request.META.keys() if 'CONTENT' in k or 'BODY' in k or 'HTTP' in k]}")
+    
     if request.method != "POST":
         log_both("warning", f"[UENGAGE_WEBHOOK] Invalid method: {request.method}")
         return JsonResponse({"detail": "method not allowed"}, status=405)
 
     # Read body once (request.body can only be read once in Django)
     try:
+        # Try to read body multiple ways to debug
         raw = request.body
-        raw_str = raw.decode("utf-8") if raw else ""
         raw_bytes_len = len(raw) if raw else 0
+        
+        # Also try reading from request._body if it exists (internal Django attribute)
+        try:
+            if hasattr(request, '_body'):
+                internal_body_len = len(request._body) if request._body else 0
+                log_both("info", f"[UENGAGE_WEBHOOK] Internal _body length: {internal_body_len} bytes")
+        except Exception:
+            pass
+        
+        # Try reading from request._stream if it exists
+        try:
+            if hasattr(request, '_stream'):
+                stream_pos = getattr(request._stream, 'tell', lambda: 0)()
+                log_both("info", f"[UENGAGE_WEBHOOK] Stream position: {stream_pos}")
+        except Exception:
+            pass
+        
+        raw_str = raw.decode("utf-8") if raw else ""
         log_both("info", f"[UENGAGE_WEBHOOK] Raw payload length: {raw_bytes_len} bytes")
+        log_both("info", f"[UENGAGE_WEBHOOK] Raw payload hex (first 100 bytes): {raw.hex()[:200] if raw and raw_bytes_len > 0 else 'EMPTY'}")
+        
+        # If Content-Length says there should be a body but we have 0 bytes, log warning
+        try:
+            expected_length = int(content_length)
+            if expected_length > 0 and raw_bytes_len == 0:
+                log_both("error", f"[UENGAGE_WEBHOOK] ⚠️ MISMATCH: Content-Length header says {expected_length} bytes, but request.body is {raw_bytes_len} bytes!")
+                log_both("error", f"[UENGAGE_WEBHOOK] ⚠️ Body may have been consumed by middleware or nginx!")
+        except (ValueError, TypeError):
+            pass
         
         # Print curl command equivalent
         try:
