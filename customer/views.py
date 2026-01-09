@@ -742,6 +742,8 @@ def delivery_webhook(request):
     log_both("info", f"[UENGAGE_WEBHOOK] Full URL: {request.build_absolute_uri()}")
     log_both("info", f"[UENGAGE_WEBHOOK] Path: {request.path}")
     log_both("info", f"[UENGAGE_WEBHOOK] Query String: {request.GET.urlencode()}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Body: {request.body}")
+
     log_both("info", f"[UENGAGE_WEBHOOK] Remote Address: {request.META.get('REMOTE_ADDR', 'Unknown')}")
     log_both("info", f"[UENGAGE_WEBHOOK] Headers: {dict(request.headers)}")
     
@@ -765,6 +767,7 @@ def delivery_webhook(request):
         # Also try reading from request._body if it exists (internal Django attribute)
         try:
             if hasattr(request, '_body'):
+                log_both("info", f"[UENGAGE_WEBHOOK] Internal _body: {request._body}")
                 internal_body_len = len(request._body) if request._body else 0
                 log_both("info", f"[UENGAGE_WEBHOOK] Internal _body length: {internal_body_len} bytes")
         except Exception:
