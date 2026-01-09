@@ -275,7 +275,18 @@ def create_delivery_task(order) -> Dict:
         pickup_lat_str = str(getattr(vs, "latitude", "") or "") if vs else ""
         pickup_lon_str = str(getattr(vs, "longitude", "") or "") if vs else ""
         pickup_city = getattr(cp, "city", "") or "" if cp else ""
-        logger.info(f"📍 [uEngage] Pickup coordinates (raw): lat={pickup_lat_str}, lon={pickup_lon_str}, city={pickup_city}")
+        # Get pickup state from CompanyProfile (ForeignKey to masters.State)
+        pickup_state = ""
+        if cp:
+            try:
+                state_obj = getattr(cp, "state", None)
+                if state_obj:
+                    # CompanyProfile.state is a ForeignKey to masters.State, so access .name
+                    pickup_state = getattr(state_obj, "name", None) or str(state_obj) or ""
+            except Exception as e:
+                logger.warning(f"⚠️ [uEngage] Error getting pickup state: {e}")
+                pickup_state = ""
+        logger.info(f"📍 [uEngage] Pickup coordinates (raw): lat={pickup_lat_str}, lon={pickup_lon_str}, city={pickup_city}, state={pickup_state}")
         
         # Validate pickup coordinates
         pickup_valid, pickup_lat_float, pickup_lon_float = _validate_coordinates(pickup_lat_str, pickup_lon_str, "Pickup")
@@ -292,7 +303,9 @@ def create_delivery_task(order) -> Dict:
         drop_city = getattr(addr, "town_city", "") or "" if addr else ""
         drop_lat_str = str(getattr(addr, "latitude", "") or "") if addr else ""
         drop_lon_str = str(getattr(addr, "longitude", "") or "") if addr else ""
-        logger.info(f"📍 [uEngage] Drop coordinates (raw): lat={drop_lat_str}, lon={drop_lon_str}, city={drop_city}")
+        # Get drop state from Address
+        drop_state = getattr(addr, "state", "") or "" if addr else ""
+        logger.info(f"📍 [uEngage] Drop coordinates (raw): lat={drop_lat_str}, lon={drop_lon_str}, city={drop_city}, state={drop_state}")
         
         # Validate drop coordinates
         drop_valid, drop_lat_float, drop_lon_float = _validate_coordinates(drop_lat_str, drop_lon_str, "Drop")
@@ -302,6 +315,14 @@ def create_delivery_task(order) -> Dict:
         
         drop_lat = str(drop_lat_float)
         drop_lon = str(drop_lon_float)
+        
+        # Validate state fields are present (required by uEngage API)
+        if not pickup_state:
+            logger.error("❌ [uEngage] Pickup state is required but not available")
+            return {"ok": False, "status_code": None, "error": "missing_pickup_state", "message": "Pickup state is required but not found in CompanyProfile"}
+        if not drop_state:
+            logger.error("❌ [uEngage] Drop state is required but not available")
+            return {"ok": False, "status_code": None, "error": "missing_drop_state", "message": "Drop state is required but not found in Address"}
         
         # Build order items list
         order_items = []
@@ -323,6 +344,7 @@ def create_delivery_task(order) -> Dict:
                 "contact_number": pickup["phone"],
                 "address": pickup["address"],
                 "city": pickup_city,
+                "state": pickup_state,
                 "latitude": pickup_lat,
                 "longitude": pickup_lon,
             },
@@ -331,6 +353,7 @@ def create_delivery_task(order) -> Dict:
                 "contact_number": drop["phone"],
                 "address": drop["address"],
                 "city": drop_city,
+                "state": drop_state,
                 "latitude": drop_lat,
                 "longitude": drop_lon,
             },
