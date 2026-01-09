@@ -742,7 +742,17 @@ def delivery_webhook(request):
     log_both("info", f"[UENGAGE_WEBHOOK] Full URL: {request.build_absolute_uri()}")
     log_both("info", f"[UENGAGE_WEBHOOK] Path: {request.path}")
     log_both("info", f"[UENGAGE_WEBHOOK] Query String: {request.GET.urlencode()}")
+    log_both("info", f"===========================================")
     log_both("info", f"[UENGAGE_WEBHOOK] Body: {request.body}")
+    log_both("info", f"===========================================")
+
+
+    try:
+        body_str = request.body.decode('utf-8') if request.body else ''
+        log_both("info", f"[UENGAGE_WEBHOOK] Body: {body_str}")
+    except (UnicodeDecodeError, AttributeError) as e:
+        log_both("info", f"[UENGAGE_WEBHOOK] Body (raw bytes): {request.body}")
+        log_both("warning", f"[UENGAGE_WEBHOOK] Could not decode body as UTF-8: {e}")
 
     log_both("info", f"[UENGAGE_WEBHOOK] Remote Address: {request.META.get('REMOTE_ADDR', 'Unknown')}")
     log_both("info", f"[UENGAGE_WEBHOOK] Headers: {dict(request.headers)}")
