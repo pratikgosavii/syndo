@@ -747,14 +747,32 @@ def delivery_webhook(request):
 
     try:
         raw = request.body
-        payload = json.loads(raw.decode("utf-8"))
-        log_both("info", f"[UENGAGE_WEBHOOK] Raw payload: {raw.decode('utf-8')}")
-        log_both("info", f"[UENGAGE_WEBHOOK] Parsed payload: {json.dumps(payload, indent=2)}")
+        raw_str = raw.decode("utf-8") if raw else ""
+        raw_bytes_len = len(raw) if raw else 0
+        log_both("info", f"[UENGAGE_WEBHOOK] Raw payload length: {raw_bytes_len} bytes")
+        
+        if not raw_str or not raw_str.strip():
+            log_both("warning", "[UENGAGE_WEBHOOK] Empty request body received - might be a health check from uEngage")
+            log_both("info", "[UENGAGE_WEBHOOK] Returning 200 OK for empty body (health check)")
+            return JsonResponse({"status": "ok", "message": "webhook endpoint active"}, status=200)
+        
+        log_both("info", f"[UENGAGE_WEBHOOK] Raw payload: {raw_str}")
+        
+        try:
+            payload = json.loads(raw_str)
+            log_both("info", f"[UENGAGE_WEBHOOK] Parsed payload: {json.dumps(payload, indent=2)}")
+        except json.JSONDecodeError as json_err:
+            log_both("error", f"[UENGAGE_WEBHOOK] Invalid JSON: {json_err}")
+            log_both("error", f"[UENGAGE_WEBHOOK] Raw body content (first 1000 chars): {raw_str[:1000]}")
+            log_both("error", f"[UENGAGE_WEBHOOK] Raw body repr: {repr(raw_str[:500])}")
+            import traceback
+            log_both("error", f"[UENGAGE_WEBHOOK] JSON Decode Traceback: {traceback.format_exc()}")
+            return JsonResponse({"detail": "invalid json", "error": str(json_err)}, status=400)
     except Exception as e:
-        log_both("error", f"[UENGAGE_WEBHOOK] Invalid JSON: {e}")
+        log_both("error", f"[UENGAGE_WEBHOOK] Unexpected error parsing payload: {e}")
         import traceback
         log_both("error", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
-        return JsonResponse({"detail": "invalid json"}, status=400)
+        return JsonResponse({"detail": "error parsing request", "error": str(e)}, status=400)
 
     # Extract taskId and status_code
     data = payload.get("data", {})
