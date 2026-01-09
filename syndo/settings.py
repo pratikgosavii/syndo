@@ -145,12 +145,6 @@ LOGGING = {
             "filename": os.path.join(LOG_DIR, "uengage.log"),
             "formatter": "verbose",
         },
-        "uengage_webhook_file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(LOG_DIR, "uengage_webhook.log"),
-            "formatter": "verbose",
-        },
         # Optional console handler (so you also see logs in terminal)
         "console": {
             "class": "logging.StreamHandler",
@@ -204,11 +198,6 @@ LOGGING = {
             "propagate": False,
         },
         "uengage_webhook": {
-            "handlers": ["uengage_file", "console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
-        "integrations.uengage": {
             "handlers": ["uengage_file", "console"],
             "level": "DEBUG",
             "propagate": False,
