@@ -83,92 +83,79 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         delivery_type = request.data.get("delivery_type") or "self_pickup"
         logger.info("[check_delivery_availability] Delivery type: %s", delivery_type)
         
-        # DELIVERY BOY AVAILABILITY CHECK COMMENTED OUT
-        # if delivery_type == "instant_delivery":
-        #     # Only instant_delivery needs rider check (and only if auto_assign is enabled)
-        #     from integrations.uengage import get_serviceability_for_order
-        #     # Build a lightweight order-like object for serviceability check
-        #     temp_order = SimpleNamespace(
-        #         order_id="TEMP",
-        #         address=addr,
-        #         items=SimpleNamespace(
-        #             select_related=lambda *args, **kwargs: SimpleNamespace(
-        #                 first=lambda: SimpleNamespace(product=first_product)
-        #             )
-        #         ),
-        #     )
-        #
-        #     try:
-        #         logger.info("[check_delivery_availability] Calling get_serviceability_for_order with coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
-        #         svc_result = get_serviceability_for_order(temp_order)
-        #         ok = svc_result.get("ok")
-        #         svc = (svc_result.get("raw") or {}).get("serviceability") or {}
-        #         rider_ok = svc.get("riderServiceAble")
-        #         location_ok = svc.get("locationServiceAble")
-        #
-        #         logger.info("[check_delivery_availability] Serviceability result: ok=%s, rider_ok=%s, location_ok=%s", ok, rider_ok, location_ok)
-        #
-        #         if ok:
-        #             logger.info("[check_delivery_availability] Delivery boy available for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
-        #             logger.info("=" * 80)
-        #             return Response({
-        #                 "ok": True,
-        #                 "message": "Delivery boy available",
-        #                 "serviceability": svc_result,
-        #                 "auto_assign_enabled": True
-        #             })
-        #
-        #         # Not serviceable
-        #         if rider_ok is False:
-        #             msg = "No delivery boy present at the moment."
-        #             logger.warning("[check_delivery_availability] No delivery boy available for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
-        #         elif location_ok is False:
-        #             msg = "Delivery location not serviceable."
-        #             logger.warning("[check_delivery_availability] Location not serviceable for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
-        #         else:
-        #             msg = svc_result.get("message") or "Delivery not serviceable."
-        #             logger.warning("[check_delivery_availability] Delivery not serviceable for coordinates: lat=%s, lon=%s, reason: %s", delivery_lat, delivery_lon, msg)
-        #         logger.info("=" * 80)
-        #         return Response({
-        #             "ok": False,
-        #             "message": msg,
-        #             "serviceability": svc_result,
-        #             "auto_assign_enabled": True
-        #         }, status=status.HTTP_400_BAD_REQUEST)
-        #     except Exception as e:
-        #         logger.error("[check_delivery_availability] Exception checking delivery availability for coordinates: lat=%s, lon=%s, error: %s", delivery_lat, delivery_lon, str(e))
-        #         logger.exception("[check_delivery_availability] Full exception traceback:")
-        #         logger.info("=" * 80)
-        #         return Response({
-        #             "ok": False,
-        #             "message": "Unable to confirm delivery availability. Please try again.",
-        #             "auto_assign_enabled": True
-        #         }, status=status.HTTP_502_BAD_GATEWAY)
-        # else:
-        #     # For non-instant delivery types (self_pickup, general_delivery), no rider check needed
-        #     # Get delivery_mode for response
-        #     from vendor.models import DeliveryMode
-        #     delivery_mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
-        #     logger.info("[check_delivery_availability] Non-instant delivery type (%s) - no rider check needed. Coordinates: lat=%s, lon=%s", delivery_type, delivery_lat, delivery_lon)
-        #     logger.info("=" * 80)
-        #     return Response({
-        #         "ok": True,
-        #         "message": "Delivery check bypassed for non-instant delivery type.",
-        #         "serviceability": {},
-        #         "auto_assign_enabled": delivery_mode.is_auto_assign_enabled if delivery_mode else False
-        #     })
-        
-        # TEMPORARY: Bypass delivery boy availability check
-        from vendor.models import DeliveryMode
-        delivery_mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
-        logger.info("[check_delivery_availability] Delivery boy availability check bypassed. Delivery type: %s", delivery_type)
-        logger.info("=" * 80)
-        return Response({
-            "ok": True,
-            "message": "Delivery check bypassed",
-            "serviceability": {},
-            "auto_assign_enabled": delivery_mode.is_auto_assign_enabled if delivery_mode else False
-        })
+        if delivery_type == "instant_delivery":
+            # Only instant_delivery needs rider check (and only if auto_assign is enabled)
+            from integrations.uengage import get_serviceability_for_order
+            # Build a lightweight order-like object for serviceability check
+            temp_order = SimpleNamespace(
+                order_id="TEMP",
+                address=addr,
+                items=SimpleNamespace(
+                    select_related=lambda *args, **kwargs: SimpleNamespace(
+                        first=lambda: SimpleNamespace(product=first_product)
+                    )
+                ),
+            )
+
+            try:
+                logger.info("[check_delivery_availability] Calling get_serviceability_for_order with coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
+                svc_result = get_serviceability_for_order(temp_order)
+                ok = svc_result.get("ok")
+                svc = (svc_result.get("raw") or {}).get("serviceability") or {}
+                rider_ok = svc.get("riderServiceAble")
+                location_ok = svc.get("locationServiceAble")
+
+                logger.info("[check_delivery_availability] Serviceability result: ok=%s, rider_ok=%s, location_ok=%s", ok, rider_ok, location_ok)
+
+                if ok:
+                    logger.info("[check_delivery_availability] Delivery boy available for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
+                    logger.info("=" * 80)
+                    return Response({
+                        "ok": True,
+                        "message": "Delivery boy available",
+                        "serviceability": svc_result,
+                        "auto_assign_enabled": True
+                    })
+
+                # Not serviceable
+                if rider_ok is False:
+                    msg = "No delivery boy present at the moment."
+                    logger.warning("[check_delivery_availability] No delivery boy available for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
+                elif location_ok is False:
+                    msg = "Delivery location not serviceable."
+                    logger.warning("[check_delivery_availability] Location not serviceable for coordinates: lat=%s, lon=%s", delivery_lat, delivery_lon)
+                else:
+                    msg = svc_result.get("message") or "Delivery not serviceable."
+                    logger.warning("[check_delivery_availability] Delivery not serviceable for coordinates: lat=%s, lon=%s, reason: %s", delivery_lat, delivery_lon, msg)
+                logger.info("=" * 80)
+                return Response({
+                    "ok": False,
+                    "message": msg,
+                    "serviceability": svc_result,
+                    "auto_assign_enabled": True
+                }, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                logger.error("[check_delivery_availability] Exception checking delivery availability for coordinates: lat=%s, lon=%s, error: %s", delivery_lat, delivery_lon, str(e))
+                logger.exception("[check_delivery_availability] Full exception traceback:")
+                logger.info("=" * 80)
+                return Response({
+                    "ok": False,
+                    "message": "Unable to confirm delivery availability. Please try again.",
+                    "auto_assign_enabled": True
+                }, status=status.HTTP_502_BAD_GATEWAY)
+        else:
+            # For non-instant delivery types (self_pickup, general_delivery), no rider check needed
+            # Get delivery_mode for response
+            from vendor.models import DeliveryMode
+            delivery_mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
+            logger.info("[check_delivery_availability] Non-instant delivery type (%s) - no rider check needed. Coordinates: lat=%s, lon=%s", delivery_type, delivery_lat, delivery_lon)
+            logger.info("=" * 80)
+            return Response({
+                "ok": True,
+                "message": "Delivery check bypassed for non-instant delivery type.",
+                "serviceability": {},
+                "auto_assign_enabled": delivery_mode.is_auto_assign_enabled if delivery_mode else False
+            })
 
     def create(self, request, *args, **kwargs):
         """
