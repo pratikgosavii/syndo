@@ -739,17 +739,68 @@ def delivery_webhook(request):
     log_both("info", "=" * 80)
     log_both("info", "[UENGAGE_WEBHOOK] ========== WEBHOOK RECEIVED ==========")
     log_both("info", f"[UENGAGE_WEBHOOK] Method: {request.method}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Full URL: {request.build_absolute_uri()}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Path: {request.path}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Query String: {request.GET.urlencode()}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Remote Address: {request.META.get('REMOTE_ADDR', 'Unknown')}")
     log_both("info", f"[UENGAGE_WEBHOOK] Headers: {dict(request.headers)}")
-
+    
     if request.method != "POST":
         log_both("warning", f"[UENGAGE_WEBHOOK] Invalid method: {request.method}")
         return JsonResponse({"detail": "method not allowed"}, status=405)
 
+    # Read body once (request.body can only be read once in Django)
     try:
         raw = request.body
         raw_str = raw.decode("utf-8") if raw else ""
         raw_bytes_len = len(raw) if raw else 0
         log_both("info", f"[UENGAGE_WEBHOOK] Raw payload length: {raw_bytes_len} bytes")
+        
+        # Print curl command equivalent
+        try:
+            # Build curl command in readable format
+            full_url = request.build_absolute_uri()
+            curl_lines = [f"curl -X {request.method} \\"]
+            
+            # Add headers (excluding some that curl handles automatically)
+            skip_headers = {'connection', 'content-length', 'accept-encoding'}
+            for header_name, header_value in request.headers.items():
+                if header_name.lower() not in skip_headers:
+                    # Escape single quotes in header value for shell
+                    escaped_value = str(header_value).replace("'", "'\\''")
+                    curl_lines.append(f"  -H '{header_name}: {escaped_value}' \\")
+            
+            # Add body if present
+            if raw_str and raw_str.strip():
+                # For JSON body, use --data-raw
+                # Escape single quotes and backslashes for shell
+                escaped_body = raw_str.replace("'", "'\\''").replace("\\", "\\\\")
+                curl_lines.append(f"  --data-raw '{escaped_body}' \\")
+            
+            # Remove trailing backslash from last line
+            if curl_lines[-1].endswith(' \\'):
+                curl_lines[-1] = curl_lines[-1][:-2]
+            
+            # Add URL
+            escaped_url = full_url.replace("'", "'\\''")
+            curl_lines.append(f"  '{escaped_url}'")
+            
+            curl_cmd = "\n".join(curl_lines)
+            log_both("info", f"[UENGAGE_WEBHOOK] ========== CURL COMMAND (Full Request) ==========")
+            log_both("info", curl_cmd)
+            log_both("info", f"[UENGAGE_WEBHOOK] =================================================")
+        except Exception as e:
+            log_both("warning", f"[UENGAGE_WEBHOOK] Could not build curl command: {e}")
+            import traceback
+            log_both("warning", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
+        
+    except Exception as e:
+        log_both("error", f"[UENGAGE_WEBHOOK] Error reading request body: {e}")
+        import traceback
+        log_both("error", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
+        return JsonResponse({"detail": "error reading request"}, status=400)
+
+    try:
         
         if not raw_str or not raw_str.strip():
             log_both("warning", "[UENGAGE_WEBHOOK] Empty request body received - might be a health check from uEngage")
