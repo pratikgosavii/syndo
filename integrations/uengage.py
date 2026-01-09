@@ -254,7 +254,7 @@ def create_delivery_task(order) -> Dict:
             logger.error("❌ [uEngage] Missing pickup or drop addresses")
             return {"ok": False, "status_code": None, "error": "missing_addresses", "message": "Pickup/Drop addresses missing"}
 
-        # storeId from CompanyProfile, fallback to default "89" for testing
+        # storeId from CompanyProfile, fallback to default "67214"
         store_id = None
         try:
             cp = vendor_user.user_company_profile if vendor_user else None
@@ -265,8 +265,8 @@ def create_delivery_task(order) -> Dict:
             logger.warning(f"⚠️ [uEngage] Exception getting store_id: {e}")
             store_id = None
         if not store_id:
-            # Use default store_id "89" for testing if not set in CompanyProfile
-            store_id = "89"
+            # Use default store_id "67214" if not set in CompanyProfile
+            store_id = "67214"
             logger.info(f"🏪 [uEngage] Using default store_id: {store_id}")
 
         # Get vendor store for pickup coordinates
@@ -336,7 +336,7 @@ def create_delivery_task(order) -> Dict:
             },
             "order_details": {
                 "order_total": str(order.total_amount or ""),
-                "paid": "true" if getattr(order, "is_paid", False) else "false",
+                "paid": "true",  # Always mark as paid when sending to uEngage
                 "vendor_order_id": getattr(order, "order_id", ""),
                 "order_source": "pos",
                 "customer_orderId": getattr(order, "order_id", ""),
@@ -473,8 +473,8 @@ def get_serviceability_for_order(order) -> Dict:
             logger.warning("[uEngage] Exception getting store_id: %s", e)
             store_id = None
         if not store_id:
-            # Use default store_id "89" for testing if not set in CompanyProfile
-            store_id = "89"
+            # Use default store_id "67214" if not set in CompanyProfile
+            store_id = "67214"
             logger.info("[uEngage] Using default store_id: %s", store_id)
         
         vs = vendor_user.vendor_store.first() if vendor_user and getattr(vendor_user, "vendor_store", None) else None
