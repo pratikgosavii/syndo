@@ -717,16 +717,43 @@ def delivery_webhook(request):
     import json
     import logging
 
-    logger = logging.getLogger(__name__)
+    # Use dedicated uEngage webhook logger
+    logger = logging.getLogger("uengage_webhook")
+    root_logger = logging.getLogger()
+
+    # Also log to root logger as fallback
+    def log_both(level, message):
+        """Log to both uengage_webhook logger and root logger, and print to stderr"""
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        formatted_msg = f"[{timestamp}] {message}"
+        try:
+            getattr(logger, level)(formatted_msg)
+        except Exception:
+            # Fallback if specific logger fails
+            getattr(root_logger, level)(formatted_msg)
+        # Always print to stderr as ultimate fallback
+        import sys
+        print(f"[UENGAGE_WEBHOOK] {formatted_msg}", file=sys.stderr, flush=True)
+
+    log_both("info", "=" * 80)
+    log_both("info", "[UENGAGE_WEBHOOK] ========== WEBHOOK RECEIVED ==========")
+    log_both("info", f"[UENGAGE_WEBHOOK] Method: {request.method}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Headers: {dict(request.headers)}")
 
     if request.method != "POST":
+        log_both("warning", f"[UENGAGE_WEBHOOK] Invalid method: {request.method}")
         return JsonResponse({"detail": "method not allowed"}, status=405)
 
     try:
         raw = request.body
         payload = json.loads(raw.decode("utf-8"))
+        log_both("info", f"[UENGAGE_WEBHOOK] Raw payload: {raw.decode('utf-8')}")
+        log_both("info", f"[UENGAGE_WEBHOOK] Parsed payload: {json.dumps(payload, indent=2)}")
     except Exception as e:
-        logger.error(f"[DELIVERY_WEBHOOK] Invalid JSON: {e}")
+        log_both("error", f"[UENGAGE_WEBHOOK] Invalid JSON: {e}")
+        import traceback
+        log_both("error", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
         return JsonResponse({"detail": "invalid json"}, status=400)
 
     # Extract taskId and status_code
@@ -740,23 +767,28 @@ def delivery_webhook(request):
     rto_reason = data.get("rto_reason")
 
     if not task_id:
-        logger.warning("[DELIVERY_WEBHOOK] Missing taskId in payload")
+        log_both("warning", "[UENGAGE_WEBHOOK] Missing taskId in payload")
         return JsonResponse({"detail": "missing taskId"}, status=400)
 
     if not status_code:
-        logger.warning("[DELIVERY_WEBHOOK] Missing status_code in payload")
+        log_both("warning", "[UENGAGE_WEBHOOK] Missing status_code in payload")
         return JsonResponse({"detail": "missing status_code"}, status=400)
 
-    logger.info(f"[DELIVERY_WEBHOOK] Received webhook for taskId: {task_id}, status_code: {status_code}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Received webhook for taskId: {task_id}, status_code: {status_code}")
+    log_both("info", f"[UENGAGE_WEBHOOK] Rider info - Name: {rider_name}, Contact: {rider_contact}, Location: ({latitude}, {longitude})")
+    if rto_reason:
+        log_both("info", f"[UENGAGE_WEBHOOK] RTO Reason: {rto_reason}")
 
     # Find order by uengage_task_id
     try:
         order = Order.objects.get(uengage_task_id=task_id)
+        log_both("info", f"[UENGAGE_WEBHOOK] Order found: {order.order_id} (ID: {order.id})")
+        log_both("info", f"[UENGAGE_WEBHOOK] Current order status: {order.status}")
     except Order.DoesNotExist:
-        logger.warning(f"[DELIVERY_WEBHOOK] Order not found for taskId: {task_id}")
+        log_both("error", f"[UENGAGE_WEBHOOK] Order not found for taskId: {task_id}")
         return JsonResponse({"detail": "order not found"}, status=404)
     except Order.MultipleObjectsReturned:
-        logger.error(f"[DELIVERY_WEBHOOK] Multiple orders found for taskId: {task_id}")
+        log_both("error", f"[UENGAGE_WEBHOOK] Multiple orders found for taskId: {task_id}")
         order = Order.objects.filter(uengage_task_id=task_id).first()
 
     # Map status_code to OrderItem status
@@ -773,8 +805,10 @@ def delivery_webhook(request):
 
     new_item_status = status_mapping.get(status_code)
     if not new_item_status:
-        logger.warning(f"[DELIVERY_WEBHOOK] Unknown status_code: {status_code}")
+        log_both("warning", f"[UENGAGE_WEBHOOK] Unknown status_code: {status_code}")
         return JsonResponse({"detail": f"unknown status_code: {status_code}"}, status=400)
+    
+    log_both("info", f"[UENGAGE_WEBHOOK] Mapping status_code '{status_code}' to OrderItem status '{new_item_status}'")
 
     # Update all order items with the new status
     from django.db import transaction
@@ -792,8 +826,9 @@ def delivery_webhook(request):
                 try:
                     from customer.serializers import send_order_status_notification
                     send_order_status_notification(order, 'intransit')
+                    log_both("info", f"[UENGAGE_WEBHOOK] Sent 'out for delivery' notification to customer")
                 except Exception as e:
-                    logger.warning(f"[DELIVERY_WEBHOOK] Failed to send out-for-delivery notification: {e}")
+                    log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send out-for-delivery notification: {e}")
 
         # Update order status based on status_code
         if status_code == "ACCEPTED":
@@ -806,17 +841,18 @@ def delivery_webhook(request):
                 from customer.serializers import send_order_status_notification
                 send_order_status_notification(order, 'intransit')
             except Exception as e:
-                logger.warning(f"[DELIVERY_WEBHOOK] Failed to send out-for-delivery notification: {e}")
+                log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send out-for-delivery notification: {e}")
         elif status_code == "DELIVERED":
             # Check if all items are delivered
             all_delivered = all(item.status == "delivered" for item in order.items.all())
             if all_delivered:
                 order.status = "completed"
+                log_both("info", f"[UENGAGE_WEBHOOK] All items delivered - marking order as completed")
                 # For COD orders, mark as paid when order is completed
                 payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
                 if payment_mode in ("cod", "cash") and not order.is_paid:
                     order.is_paid = True
-                    logger.info(f"[DELIVERY_WEBHOOK] Order {order.order_id} marked as completed (COD/Cash) - setting is_paid=True")
+                    log_both("info", f"[UENGAGE_WEBHOOK] Order {order.order_id} marked as completed (COD/Cash) - setting is_paid=True")
         elif status_code in ("RTO_INIT", "RTO_COMPLETE"):
             order.status = "cancelled"
 
@@ -830,11 +866,13 @@ def delivery_webhook(request):
 
         # Send order status notification if order status changed
         if order.status != previous_order_status:
+            log_both("info", f"[UENGAGE_WEBHOOK] Order status changed: {previous_order_status} -> {order.status}")
             try:
                 from customer.serializers import send_order_status_notification
                 send_order_status_notification(order, order.status, previous_order_status)
+                log_both("info", f"[UENGAGE_WEBHOOK] Sent order status notification: {order.status}")
             except Exception as e:
-                logger.warning(f"[DELIVERY_WEBHOOK] Failed to send order status notification: {e}")
+                log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send order status notification: {e}")
 
         # Send notifications based on status
         notification_event_map = {
