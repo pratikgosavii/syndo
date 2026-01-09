@@ -349,7 +349,7 @@ CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
 # uEngage configuration (delivery notifications)
 # --------------------
 # Set your actual uEngage credentials here
-UENGAGE_API_BASE = "https://open-api.flash.uengage.in"  # Change to production URL if needed
+UENGAGE_API_BASE = "https://riderapi-staging.uengage.in"  # Change to production URL if needed
 UENGAGE_API_KEY = ""  # Your uEngage API key for notifications/WhatsApp
 UENGAGE_WABA = ""  # Your WhatsApp Business Account (WABA) number/ID
 # Optional: webhook verification/secret
@@ -357,8 +357,8 @@ UENGAGE_WEBHOOK_SECRET = ""  # Webhook secret for verifying uEngage webhooks
 
 # uEngage Flash Rider API (serviceability / create / track / cancel)
 # These are required for delivery task creation and serviceability checks
-UENGAGE_RIDER_BASE = "https://open-api.flash.uengage.in"  # Change to production URL if needed
-UENGAGE_ACCESS_TOKEN = "UEN6960A5AA35B60"  # Your uEngage Rider API access token (currently test token)
+UENGAGE_RIDER_BASE = "https://riderapi-staging.uengage.in"  # Change to production URL if needed
+UENGAGE_ACCESS_TOKEN = "grdgedhs"  # Your uEngage Rider API access token (currently test token)
 
 # --------------------
 # MSGClub SMS configuration

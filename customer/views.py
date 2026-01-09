@@ -816,10 +816,21 @@ def delivery_webhook(request):
     
     with transaction.atomic():
         order_items = order.items.all()
+        log_both("info", f"[UENGAGE_WEBHOOK] Found {order_items.count()} order item(s) to update")
         for item in order_items:
             previous_item_status = item.status
-            item.status = new_item_status
-            item.save(update_fields=["status"])
+            log_both("info", f"[UENGAGE_WEBHOOK] OrderItem ID {item.id}: Previous status = '{previous_item_status}', New status = '{new_item_status}'")
+            try:
+                item.status = new_item_status
+                item.save(update_fields=["status"])
+                # Refresh from DB to verify save
+                item.refresh_from_db()
+                log_both("info", f"[UENGAGE_WEBHOOK] OrderItem ID {item.id}: Status updated to '{item.status}' (saved successfully, verified from DB)")
+            except Exception as e:
+                log_both("error", f"[UENGAGE_WEBHOOK] Failed to update OrderItem ID {item.id}: {e}")
+                import traceback
+                log_both("error", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
+                raise  # Re-raise to rollback transaction
             
             # Send notification if item status changed to 'intransit' (out for delivery)
             if new_item_status == 'intransit' and previous_item_status != 'intransit':
@@ -843,8 +854,11 @@ def delivery_webhook(request):
             except Exception as e:
                 log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send out-for-delivery notification: {e}")
         elif status_code == "DELIVERED":
-            # Check if all items are delivered
+            # All OrderItems have already been updated to "delivered" in the loop above
+            # Refresh order items from DB to get the latest status
+            order.items.all()  # Trigger queryset refresh
             all_delivered = all(item.status == "delivered" for item in order.items.all())
+            log_both("info", f"[UENGAGE_WEBHOOK] Checking if all items are delivered: {all_delivered}")
             if all_delivered:
                 order.status = "completed"
                 log_both("info", f"[UENGAGE_WEBHOOK] All items delivered - marking order as completed")
@@ -853,16 +867,45 @@ def delivery_webhook(request):
                 if payment_mode in ("cod", "cash") and not order.is_paid:
                     order.is_paid = True
                     log_both("info", f"[UENGAGE_WEBHOOK] Order {order.order_id} marked as completed (COD/Cash) - setting is_paid=True")
+            else:
+                # Some items not yet delivered, but keep order status as accepted or ready_to_shipment
+                log_both("info", f"[UENGAGE_WEBHOOK] Not all items delivered yet - keeping current order status: {order.status}")
         elif status_code in ("RTO_INIT", "RTO_COMPLETE"):
+            # All OrderItems have already been updated to "cancelled" in the loop above
             order.status = "cancelled"
+            log_both("info", f"[UENGAGE_WEBHOOK] RTO status received - marking order as cancelled")
 
+        # Prepare update fields for Order
         update_fields = ["status"]
         if hasattr(order, "is_paid") and order.is_paid:
             update_fields.append("is_paid")
         
         # Store previous status before saving
         previous_order_status = order.status
-        order.save(update_fields=update_fields)
+        log_both("info", f"[UENGAGE_WEBHOOK] Order status update: Previous = '{previous_order_status}', New = '{order.status}'")
+        log_both("info", f"[UENGAGE_WEBHOOK] Updating Order fields: {update_fields}")
+        
+        # Save order status
+        try:
+            order.save(update_fields=update_fields)
+            # Refresh from DB to verify save
+            order.refresh_from_db()
+            log_both("info", f"[UENGAGE_WEBHOOK] Order saved successfully. Verified status from DB: '{order.status}'")
+            if hasattr(order, "is_paid"):
+                log_both("info", f"[UENGAGE_WEBHOOK] Order is_paid status: {order.is_paid}")
+        except Exception as e:
+            log_both("error", f"[UENGAGE_WEBHOOK] Failed to update Order status: {e}")
+            import traceback
+            log_both("error", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
+            raise
+        
+        # Verify all OrderItem statuses were saved correctly
+        log_both("info", f"[UENGAGE_WEBHOOK] Verifying all OrderItem statuses after save:")
+        for item in order.items.all():
+            item.refresh_from_db()  # Get fresh data from DB
+            log_both("info", f"[UENGAGE_WEBHOOK]   - OrderItem ID {item.id}: status = '{item.status}' (expected: '{new_item_status}')")
+            if item.status != new_item_status:
+                log_both("warning", f"[UENGAGE_WEBHOOK]   ⚠️  OrderItem ID {item.id} status mismatch! Expected '{new_item_status}', got '{item.status}'")
 
         # Send order status notification if order status changed
         if order.status != previous_order_status:
