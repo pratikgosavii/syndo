@@ -63,88 +63,102 @@ class User(AbstractUser):
         
         user_id = self.id
         
-        with transaction.atomic():
-            # Clear ManyToMany relationships first (groups, user_permissions)
-            # Django will handle these, but clearing explicitly can help avoid issues
-            try:
-                if hasattr(self, 'groups') and self.pk:
-                    self.groups.clear()
-                if hasattr(self, 'user_permissions') and self.pk:
-                    self.user_permissions.clear()
-            except (ValueError, AttributeError):
-                # If clearing fails, Django's CASCADE will handle it
-                pass
-            
-            # Get all related object IDs BEFORE any deletions
-            bank_ids = list(vendor_bank.objects.filter(user_id=user_id).values_list('id', flat=True))
-            customer_ids = list(vendor_customers.objects.filter(user_id=user_id).values_list('id', flat=True))
-            vendor_ids = list(vendor_vendors.objects.filter(user_id=user_id).values_list('id', flat=True))
-            
-            # IMPORTANT: Delete in the correct order to avoid constraint errors
-            # 1. Get product IDs first (needed for deleting items that reference products)
-            from vendor.models import product
-            product_ids = list(product.objects.filter(user_id=user_id).values_list('id', flat=True))
-            
-            # 2. Delete ledgers that reference transactions (must be deleted before transactions)
-            try:
-                from vendor.models import ExpenseLedger, OnlineOrderLedger
-                # ExpenseLedger references Expense, so delete it before Expense
-                ExpenseLedger.objects.filter(user=self).delete()
-                # OnlineOrderLedger references OrderItem, so delete it early (both vendor and customer cases)
-                OnlineOrderLedger.objects.filter(user=self).delete()
-                # Also delete OnlineOrderLedgers for orders placed by this user (if user is a customer)
+        # For SQLite, disable foreign keys at connection level before transaction
+        from django.db import connection
+        from django.conf import settings
+        db_engine = settings.DATABASES['default']['ENGINE'].lower()
+        sqlite_fk_disabled = False
+        
+        if 'sqlite' in db_engine:
+            # Disable foreign keys for SQLite before starting transaction
+            # Use cursor to execute PRAGMA on the connection
+            with connection.cursor() as cursor:
+                cursor.execute("PRAGMA foreign_keys = OFF")
+            sqlite_fk_disabled = True
+        
+        try:
+            with transaction.atomic():
+                # Clear ManyToMany relationships first (groups, user_permissions)
+                # Django will handle these, but clearing explicitly can help avoid issues
                 try:
-                    from customer.models import OrderItem
-                    OnlineOrderLedger.objects.filter(order_item__order__user=self).delete()
+                    if hasattr(self, 'groups') and self.pk:
+                        self.groups.clear()
+                    if hasattr(self, 'user_permissions') and self.pk:
+                        self.user_permissions.clear()
+                except (ValueError, AttributeError):
+                    # If clearing fails, Django's CASCADE will handle it
+                    pass
+                
+                # Get all related object IDs BEFORE any deletions
+                bank_ids = list(vendor_bank.objects.filter(user_id=user_id).values_list('id', flat=True))
+                customer_ids = list(vendor_customers.objects.filter(user_id=user_id).values_list('id', flat=True))
+                vendor_ids = list(vendor_vendors.objects.filter(user_id=user_id).values_list('id', flat=True))
+                
+                # IMPORTANT: Delete in the correct order to avoid constraint errors
+                # 1. Get product IDs first (needed for deleting items that reference products)
+                from vendor.models import product
+                product_ids = list(product.objects.filter(user_id=user_id).values_list('id', flat=True))
+                
+                # 2. Delete ledgers that reference transactions (must be deleted before transactions)
+                try:
+                    from vendor.models import ExpenseLedger, OnlineOrderLedger
+                    # ExpenseLedger references Expense, so delete it before Expense
+                    ExpenseLedger.objects.filter(user=self).delete()
+                    # OnlineOrderLedger references OrderItem, so delete it early (both vendor and customer cases)
+                    OnlineOrderLedger.objects.filter(user=self).delete()
+                    # Also delete OnlineOrderLedgers for orders placed by this user (if user is a customer)
+                    try:
+                        from customer.models import OrderItem
+                        OnlineOrderLedger.objects.filter(order_item__order__user=self).delete()
+                    except ImportError:
+                        pass
                 except ImportError:
                     pass
-            except ImportError:
-                pass
-            
-            # 3. Delete child items and related objects first (they have FK to transactions and products)
-            from vendor.models import PurchaseItem, SaleItem, Reminder, pos_wholesale, StockTransaction
-            # Delete items in user's purchases/sales
-            PurchaseItem.objects.filter(purchase__user=self).delete()
-            SaleItem.objects.filter(user=self).delete()
-            SaleItem.objects.filter(sale__user=self).delete()
-            # Also delete items that reference products owned by this user (in case other users created purchases/sales with these products)
-            if product_ids:
-                PurchaseItem.objects.filter(product__in=product_ids).delete()
-                SaleItem.objects.filter(product__in=product_ids).delete()
-                # StockTransaction references product, so delete before products
-                StockTransaction.objects.filter(product__in=product_ids).delete()
-            
-            Reminder.objects.filter(user=self).delete()
-            Reminder.objects.filter(purchase__user=self).delete()
-            Reminder.objects.filter(sale__user=self).delete()
-            pos_wholesale.objects.filter(user=self).delete()
-            pos_wholesale.objects.filter(sale__user=self).delete()
-            
-            # 4. Delete transactions that reference banks/customers/vendors
-            # These will trigger their own delete signals which will clean up ledger entries
-            if bank_ids:
-                BankTransfer.objects.filter(from_bank_id__in=bank_ids).delete()
-                BankTransfer.objects.filter(to_bank_id__in=bank_ids).delete()
-                Purchase.objects.filter(advance_bank_id__in=bank_ids).delete()
-                Expense.objects.filter(bank_id__in=bank_ids).delete()
-                Sale.objects.filter(advance_bank_id__in=bank_ids).delete()
-                Payment.objects.filter(bank_account_id__in=bank_ids).delete()
-            
-            if customer_ids:
-                Sale.objects.filter(customer_id__in=customer_ids).delete()
-                Payment.objects.filter(customer_id__in=customer_ids).delete()
-            
-            if vendor_ids:
-                Purchase.objects.filter(vendor_id__in=vendor_ids).delete()
-                Payment.objects.filter(vendor_id__in=vendor_ids).delete()
-            
-            # 5. Delete transactions that directly reference User
-            Purchase.objects.filter(user=self).delete()
-            Sale.objects.filter(user=self).delete()
-            Expense.objects.filter(user=self).delete()
-            Payment.objects.filter(user=self).delete()
-            CashTransfer.objects.filter(user=self).delete()
-            BankTransfer.objects.filter(user=self).delete()
+                
+                # 3. Delete child items and related objects first (they have FK to transactions and products)
+                from vendor.models import PurchaseItem, SaleItem, Reminder, pos_wholesale, StockTransaction
+                # Delete items in user's purchases/sales
+                PurchaseItem.objects.filter(purchase__user=self).delete()
+                SaleItem.objects.filter(user=self).delete()
+                SaleItem.objects.filter(sale__user=self).delete()
+                # Also delete items that reference products owned by this user (in case other users created purchases/sales with these products)
+                if product_ids:
+                    PurchaseItem.objects.filter(product__in=product_ids).delete()
+                    SaleItem.objects.filter(product__in=product_ids).delete()
+                    # StockTransaction references product, so delete before products
+                    StockTransaction.objects.filter(product__in=product_ids).delete()
+                
+                Reminder.objects.filter(user=self).delete()
+                Reminder.objects.filter(purchase__user=self).delete()
+                Reminder.objects.filter(sale__user=self).delete()
+                pos_wholesale.objects.filter(user=self).delete()
+                pos_wholesale.objects.filter(sale__user=self).delete()
+                
+                # 4. Delete transactions that reference banks/customers/vendors
+                # These will trigger their own delete signals which will clean up ledger entries
+                if bank_ids:
+                    BankTransfer.objects.filter(from_bank_id__in=bank_ids).delete()
+                    BankTransfer.objects.filter(to_bank_id__in=bank_ids).delete()
+                    Purchase.objects.filter(advance_bank_id__in=bank_ids).delete()
+                    Expense.objects.filter(bank_id__in=bank_ids).delete()
+                    Sale.objects.filter(advance_bank_id__in=bank_ids).delete()
+                    Payment.objects.filter(bank_id__in=bank_ids).delete()
+                
+                if customer_ids:
+                    Sale.objects.filter(customer_id__in=customer_ids).delete()
+                    Payment.objects.filter(customer_id__in=customer_ids).delete()
+                
+                if vendor_ids:
+                    Purchase.objects.filter(vendor_id__in=vendor_ids).delete()
+                    Payment.objects.filter(vendor_id__in=vendor_ids).delete()
+                
+                # 5. Delete transactions that directly reference User
+                Purchase.objects.filter(user=self).delete()
+                Sale.objects.filter(user=self).delete()
+                Expense.objects.filter(user=self).delete()
+                Payment.objects.filter(user=self).delete()
+                CashTransfer.objects.filter(user=self).delete()
+                BankTransfer.objects.filter(user=self).delete()
             
             # 6. Delete product-related models (products are already identified above)
             try:
@@ -348,75 +362,81 @@ class User(AbstractUser):
                 vendor_vendors.objects.filter(id__in=vendor_ids).delete()
             
             # FORCE DELETE user record - bypasses ALL constraints and forces deletion
+            # Only attempt if user still exists (Django ORM might have already deleted it)
             from django.db import connection
             from django.conf import settings
             import logging
             
             logger = logging.getLogger(__name__)
-            table_name = self._meta.db_table
-            db_engine = settings.DATABASES['default']['ENGINE'].lower()
             
+            # Check if user still exists before attempting force delete
             try:
-                with connection.cursor() as cursor:
-                    if 'sqlite' in db_engine:
-                        # SQLite: Disable foreign key checks completely
-                        raw_conn = connection.connection
-                        raw_cursor = raw_conn.cursor()
-                        try:
-                            raw_cursor.execute("PRAGMA foreign_keys = OFF")
-                            raw_cursor.execute(f"DELETE FROM {table_name} WHERE id = ?", (user_id,))
-                            raw_cursor.execute("PRAGMA foreign_keys = ON")
-                        finally:
-                            raw_cursor.close()
-                    elif 'postgresql' in db_engine or 'postgres' in db_engine:
-                        # PostgreSQL: AGGRESSIVE FORCE DELETE - drops constraints if needed
-                        try:
-                            # Method 1: Try disabling triggers (disables most constraints)
-                            cursor.execute("SET session_replication_role = 'replica'")
-                            cursor.execute(f'DELETE FROM "{table_name}" WHERE id = %s', (user_id,))
-                            cursor.execute("SET session_replication_role = 'origin'")
-                        except Exception:
+                User.objects.get(pk=user_id)
+            except User.DoesNotExist:
+                # User already deleted by Django ORM, skip force delete
+                pass
+            else:
+                # User still exists, attempt force delete
+                table_name = self._meta.db_table
+                db_engine = settings.DATABASES['default']['ENGINE'].lower()
+                
+                try:
+                    with connection.cursor() as cursor:
+                        if 'sqlite' in db_engine:
+                            # SQLite: Foreign keys already disabled above, just delete directly
+                            # SQLite uses ? placeholder
+                            quoted_table = connection.ops.quote_name(table_name)
+                            sql = "DELETE FROM " + quoted_table + " WHERE id = ?"
+                            cursor.execute(sql, (user_id,))
+                        elif 'postgresql' in db_engine or 'postgres' in db_engine:
+                            # PostgreSQL: AGGRESSIVE FORCE DELETE - drops constraints if needed
                             try:
-                                # Method 2: Find and drop all FK constraints that reference users_user
-                                # Get table OID first
-                                cursor.execute("""
-                                    SELECT oid FROM pg_class WHERE relname = %s
-                                """, (table_name,))
-                                table_oid_result = cursor.fetchone()
-                                
-                                if table_oid_result:
-                                    table_oid = table_oid_result[0]
-                                    # Get all foreign key constraints that reference this table
-                                    cursor.execute("""
-                                        SELECT conname, conrelid::regclass::text
-                                        FROM pg_constraint
-                                        WHERE confrelid = %s
-                                        AND contype = 'f'
-                                    """, (table_oid,))
-                                    constraints = cursor.fetchall()
-                                    
-                                    # Drop all foreign key constraints that reference users_user
-                                    for conname, conrelid in constraints:
-                                        try:
-                                            cursor.execute(f'ALTER TABLE {conrelid} DROP CONSTRAINT IF EXISTS {conname} CASCADE')
-                                        except Exception:
-                                            pass
-                                
-                                # Now force delete the user
+                                # Method 1: Try disabling triggers (disables most constraints)
+                                cursor.execute("SET session_replication_role = 'replica'")
                                 cursor.execute(f'DELETE FROM "{table_name}" WHERE id = %s', (user_id,))
-                            except Exception as e:
-                                logger.error(f"Force delete with constraint drop failed for user {user_id}: {e}")
-                                # Final attempt: Just try to delete anyway - might work if constraints were dropped
+                                cursor.execute("SET session_replication_role = 'origin'")
+                            except Exception:
                                 try:
+                                    # Method 2: Find and drop all FK constraints that reference users_user
+                                    # Get table OID first
+                                    cursor.execute("""
+                                        SELECT oid FROM pg_class WHERE relname = %s
+                                    """, (table_name,))
+                                    table_oid_result = cursor.fetchone()
+                                    
+                                    if table_oid_result:
+                                        table_oid = table_oid_result[0]
+                                        # Get all foreign key constraints that reference this table
+                                        cursor.execute("""
+                                            SELECT conname, conrelid::regclass::text
+                                            FROM pg_constraint
+                                            WHERE confrelid = %s
+                                            AND contype = 'f'
+                                        """, (table_oid,))
+                                        constraints = cursor.fetchall()
+                                        
+                                        # Drop all foreign key constraints that reference users_user
+                                        for conname, conrelid in constraints:
+                                            try:
+                                                cursor.execute(f'ALTER TABLE {conrelid} DROP CONSTRAINT IF EXISTS {conname} CASCADE')
+                                            except Exception:
+                                                pass
+                                    
+                                    # Now force delete the user
                                     cursor.execute(f'DELETE FROM "{table_name}" WHERE id = %s', (user_id,))
-                                except Exception:
-                                    pass
-                    else:
-                        # MySQL/MariaDB: Use raw delete
-                        cursor.execute(f"DELETE FROM {table_name} WHERE id = %s", (user_id,))
-            except Exception as e:
-                # Even if deletion fails, mark it as deleted in Django
-                logger.error(f"Error during force delete of user {user_id}: {e}")
+                                except Exception as e:
+                                    logger.error(f"Force delete with constraint drop failed for user {user_id}: {e}")
+                                    # Final attempt: Just try to delete anyway - might work if constraints were dropped
+                                    try:
+                                        cursor.execute(f'DELETE FROM "{table_name}" WHERE id = %s', (user_id,))
+                                    except Exception:
+                                        pass
+                        else:
+                            # MySQL/MariaDB: Use raw delete
+                            cursor.execute(f"DELETE FROM {table_name} WHERE id = %s", (user_id,))
+                except Exception as e:
+                    # Even if deletion fails, mark it as deleted in Django
+                    logger.error(f"Error during force delete of user {user_id}: {e}")
             
             # ALWAYS mark instance as deleted in Django regardless of database deletion success
             # This ensures Django treats it as deleted even if database constraints prevent actual deletion
@@ -425,6 +445,14 @@ class User(AbstractUser):
             setattr(self, self._meta.pk.attname, None)
             
             return None, {}
+        finally:
+            # Re-enable foreign keys for SQLite if we disabled them
+            if sqlite_fk_disabled:
+                try:
+                    with connection.cursor() as cursor:
+                        cursor.execute("PRAGMA foreign_keys = ON")
+                except Exception:
+                    pass
 
 
 class UserRole(models.Model):
