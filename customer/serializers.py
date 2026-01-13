@@ -570,280 +570,280 @@ class OrderSerializer(serializers.ModelSerializer):
                 # If any error, continue without discount
                 pass
 
-            # calculate final total (subtract delivery discount from shipping fee)
-            total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
+        # calculate final total (subtract delivery discount from shipping fee)
+        total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
 
-            # Create order (order_id is generated server-side in Order.save()).
-            # Add an extra retry layer here to avoid crashing the API on rare UNIQUE collisions.
-            from django.db import IntegrityError
-            order = None
-            last_exc = None
-            
-            # Set is_paid=True for online payments (Cashfree or any non-COD payment mode)
-            payment_mode = validated_data.get('payment_mode', 'COD')
-            is_paid = False
-            if payment_mode and payment_mode.lower() not in ('cod', 'cash'):
-                # For online payments (Cashfree, UPI, Card, etc.), mark as paid immediately
-                is_paid = True
-                logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (online) - setting is_paid=True")
-            else:
-                logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (COD/Cash) - is_paid will be set when order is completed")
-            
-            # Remove is_paid from validated_data if it exists to avoid duplicate keyword argument
-            validated_data.pop('is_paid', None)
-            
-            for _attempt in range(5):
-                try:
-                    with transaction.atomic():
-                        order = Order.objects.create(
-                            **validated_data,
-                            item_total=item_total,
-                            tax_total=tax_total,
-                            delivery_discount_amount=delivery_discount_amount,
-                            total_amount=total_amount,
-                            is_paid=is_paid,
-                        )
-                    break
-                except IntegrityError as e:
-                    last_exc = e
-                    if "order_id" in str(e) or "UNIQUE constraint failed" in str(e):
-                        continue
-                    raise
-
-            if order is None:
-                raise last_exc or serializers.ValidationError({"detail": "Unable to create order. Please try again."})
-
-            # bulk create items with linked order
-            logger.info(f"[ORDER_SERIALIZER] About to bulk_create {len(order_items)} order items")
-            for oi in order_items:
-                oi.order = order
-            OrderItem.objects.bulk_create(order_items)
-            logger.info(f"[ORDER_SERIALIZER] ✅ bulk_create completed for {len(order_items)} items")
-            
-            # Refresh order from DB to get saved order items with IDs
-            order.refresh_from_db()
-            logger.info(f"[ORDER_SERIALIZER] Order refreshed from DB. Order ID: {order.id}")
-            
-            # Manually trigger signal logic since bulk_create doesn't fire signals
-            # 1. Create OnlineOrderLedger entries
-            # 2. Reduce stock
-            from vendor.models import OnlineOrderLedger
-            from django.db.models import F
-            # Note: 'product' is already imported at the top of the file (line 110)
-            
-            logger.info("=" * 80)
-            logger.info("[ORDER_SERIALIZER] Manually creating OnlineOrderLedger entries (bulk_create doesn't fire signals)")
-            logger.info(f"[ORDER_SERIALIZER] Order ID: {order.id}, Order Order ID: {order.order_id}")
-            
-            saved_order_items = list(order.items.all())
-            logger.info(f"[ORDER_SERIALIZER] Number of order items: {len(saved_order_items)}")
-            
-            for order_item in saved_order_items:
-                logger.info(f"[ORDER_SERIALIZER] Processing OrderItem ID: {order_item.id}")
-                logger.info(f"[ORDER_SERIALIZER] Product ID: {order_item.product.id}, Quantity: {order_item.quantity}, Price: {order_item.price}")
-                
-                # Create OnlineOrderLedger entry
-                try:
-                    # Check if already exists
-                    existing = OnlineOrderLedger.objects.filter(order_item=order_item).exists()
-                    if existing:
-                        logger.warning(f"[ORDER_SERIALIZER] 💰 OnlineOrderLedger already exists for OrderItem {order_item.id} - skipping")
-                        existing_ledger = OnlineOrderLedger.objects.filter(order_item=order_item).first()
-                        if existing_ledger:
-                            logger.info(f"[ORDER_SERIALIZER] 💰 Existing ledger ID: {existing_ledger.id}, Amount: {existing_ledger.amount}")
-                    else:
-                        amount = order_item.price * order_item.quantity
-                        logger.info(f"[ORDER_SERIALIZER] 💰 LEDGER CREATION - OrderItem ID: {order_item.id}")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Product ID: {order_item.product.id}")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Quantity: {order_item.quantity}, Price: {order_item.price}")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Calculated Amount: {amount}")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 User/Vendor: {order_item.product.user.username} (ID: {order_item.product.user.id})")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Order ID: {order.id}, Order Order ID: {order.order_id}")
-                        
-                        ledger_entry = OnlineOrderLedger.objects.create(
-                            user=order_item.product.user,
-                            order_item=order_item,
-                            product=order_item.product,
-                            order_id=order.id,
-                            quantity=order_item.quantity,
-                            amount=amount,
-                            status='recorded',
-                            note='Online order recorded'
-                        )
-                        logger.info(f"[ORDER_SERIALIZER] 💰 ✅ SUCCESS: OnlineOrderLedger created")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Entry ID: {ledger_entry.id}")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Amount: {ledger_entry.amount}")
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Status: {ledger_entry.status}")
-                        
-                        # Verify it was saved
-                        verify_ledger = OnlineOrderLedger.objects.filter(id=ledger_entry.id).first()
-                        if verify_ledger:
-                            logger.info(f"[ORDER_SERIALIZER] 💰 ✅ VERIFIED: Ledger entry exists in database")
-                        else:
-                            logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Ledger entry not found in database after creation!")
-                except Exception as e:
-                    logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Failed to create OnlineOrderLedger for order_item {order_item.id}: {e}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-                
-                # Reduce stock
-                try:
-                    # Get current stock before update
-                    product_obj = product.objects.get(id=order_item.product.id)
-                    stock_before = product_obj.stock_cached or 0
-                    quantity_to_reduce = order_item.quantity
-                    stock_after_expected = stock_before - quantity_to_reduce
-                    
-                    logger.info(f"[ORDER_SERIALIZER] 📦 STOCK UPDATE - Product ID: {order_item.product.id}")
-                    logger.info(f"[ORDER_SERIALIZER] 📦 Stock BEFORE: {stock_before}")
-                    logger.info(f"[ORDER_SERIALIZER] 📦 Quantity to reduce: {quantity_to_reduce}")
-                    logger.info(f"[ORDER_SERIALIZER] 📦 Expected stock AFTER: {stock_after_expected}")
-                    
-                    # Update stock
-                    product.objects.filter(id=order_item.product.id).update(
-                        stock_cached=F('stock_cached') - order_item.quantity
-                    )
-                    
-                    # Verify stock was updated
-                    product_obj.refresh_from_db()
-                    stock_after_actual = product_obj.stock_cached or 0
-                    
-                    if stock_after_actual == stock_after_expected:
-                        logger.info(f"[ORDER_SERIALIZER] 📦 ✅ SUCCESS: Stock updated correctly")
-                        logger.info(f"[ORDER_SERIALIZER] 📦 Stock AFTER: {stock_after_actual} (matches expected)")
-                    else:
-                        logger.warning(f"[ORDER_SERIALIZER] 📦 ⚠️ WARNING: Stock mismatch!")
-                        logger.warning(f"[ORDER_SERIALIZER] 📦 Expected: {stock_after_expected}, Actual: {stock_after_actual}")
-                    
-                    # Log stock transaction
-                    from vendor.signals import log_stock_transaction
-                    log_stock_transaction(order_item.product, "sale", -order_item.quantity, ref_id=order_item.pk)
-                    logger.info(f"[ORDER_SERIALIZER] 📦 Stock transaction logged")
-                except Exception as e:
-                    logger.error(f"[ORDER_SERIALIZER] 📦 ❌ ERROR: Failed to reduce stock for product {order_item.product.id}: {e}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-            
-            logger.info("=" * 80)
-
-            # Serviceability check (only when vendor has auto-assign enabled)
-            auto_assign_enabled = False
+        # Create order (order_id is generated server-side in Order.save()).
+        # Add an extra retry layer here to avoid crashing the API on rare UNIQUE collisions.
+        from django.db import IntegrityError
+        order = None
+        last_exc = None
+        
+        # Set is_paid=True for online payments (Cashfree or any non-COD payment mode)
+        payment_mode = validated_data.get('payment_mode', 'COD')
+        is_paid = False
+        if payment_mode and payment_mode.lower() not in ('cod', 'cash'):
+            # For online payments (Cashfree, UPI, Card, etc.), mark as paid immediately
+            is_paid = True
+            logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (online) - setting is_paid=True")
+        else:
+            logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (COD/Cash) - is_paid will be set when order is completed")
+        
+        # Remove is_paid from validated_data if it exists to avoid duplicate keyword argument
+        validated_data.pop('is_paid', None)
+        
+        for _attempt in range(5):
             try:
-                if vendor_user:
-                    from vendor.models import DeliveryMode
-
-                    dm = DeliveryMode.objects.filter(user=vendor_user).only("is_auto_assign_enabled").first()
-                    auto_assign_enabled = bool(getattr(dm, "is_auto_assign_enabled", False))
-            except Exception:
-                auto_assign_enabled = False
-
-            print("\n" + "=" * 80)
-            print("[OrderSerializer] Serviceability pre-check")
-            print(f"Order ID: {order.order_id}")
-            print(f"Delivery Type: {order.delivery_type}")
-            print(f"Has Address: {bool(order.address)}")
-            print(f"Vendor auto-assign enabled: {auto_assign_enabled}")
-
-            if auto_assign_enabled and order.delivery_type == "instant_delivery" and order.address:
-                try:
-                    from integrations.uengage import get_serviceability_for_order
-                    print("[OrderSerializer] Checking uEngage serviceability before finalizing order...")
-                    serviceability_result = get_serviceability_for_order(order)
-                    print(f"[OrderSerializer] Serviceability result: {serviceability_result}")
-
-                    ok = serviceability_result.get("ok")
-                    svc = (serviceability_result.get("raw") or {}).get("serviceability") or {}
-                    location_ok = svc.get("locationServiceAble")
-
-                    if not ok:
-                        msg = "No delivery boy present at the moment."
-                        if location_ok is False:
-                            msg = "Delivery location not serviceable."
-                        raise serializers.ValidationError({"delivery": msg})
-                except serializers.ValidationError:
-                    raise
-                except Exception as e:
-                    print(f"[OrderSerializer] Serviceability check exception: {e}")
-                    raise serializers.ValidationError(
-                        {"delivery": "Unable to confirm delivery availability. Please try again."}
+                with transaction.atomic():
+                    order = Order.objects.create(
+                        **validated_data,
+                        item_total=item_total,
+                        tax_total=tax_total,
+                        delivery_discount_amount=delivery_discount_amount,
+                        total_amount=total_amount,
+                        is_paid=is_paid,
                     )
-            else:
-                print("[OrderSerializer] Skipping serviceability: auto-assign disabled or not instant_delivery or no address")
-            
-            # Set is_auto_managed based on whether auto-assign is enabled
-            # If auto-assign is disabled, explicitly set to False (though it's already the default)
-            # If auto-assign is enabled, it will be set to True later when auto-assignment actually happens
-            if not auto_assign_enabled:
-                order.is_auto_managed = False
-                order.save(update_fields=['is_auto_managed'])
-
-            # After bulk create, attach print jobs (if any)
-            # saved_order_items already defined above
-            for oi, pj_payload in zip(saved_order_items, print_jobs_payload):
-                if not pj_payload:
+                break
+            except IntegrityError as e:
+                last_exc = e
+                if "order_id" in str(e) or "UNIQUE constraint failed" in str(e):
                     continue
-                # Resolve foreign keys if IDs provided
-                print_variant = None
-                customize_variant = None
-                if isinstance(pj_payload.get("print_variant"), int):
-                    from vendor.models import PrintVariant as PV
+                raise
 
-                    try:
-                        print_variant = PV.objects.get(id=pj_payload["print_variant"])
-                    except PV.DoesNotExist:
-                        print_variant = None
-                if isinstance(pj_payload.get("customize_variant"), int):
-                    from vendor.models import CustomizePrintVariant as CPV
+        if order is None:
+            raise last_exc or serializers.ValidationError({"detail": "Unable to create order. Please try again."})
 
-                    try:
-                        customize_variant = CPV.objects.get(id=pj_payload["customize_variant"])
-                    except CPV.DoesNotExist:
-                        customize_variant = None
+        # bulk create items with linked order
+        logger.info(f"[ORDER_SERIALIZER] About to bulk_create {len(order_items)} order items")
+        for oi in order_items:
+            oi.order = order
+        OrderItem.objects.bulk_create(order_items)
+        logger.info(f"[ORDER_SERIALIZER] ✅ bulk_create completed for {len(order_items)} items")
+        
+        # Refresh order from DB to get saved order items with IDs
+        order.refresh_from_db()
+        logger.info(f"[ORDER_SERIALIZER] Order refreshed from DB. Order ID: {order.id}")
+        
+        # Manually trigger signal logic since bulk_create doesn't fire signals
+        # 1. Create OnlineOrderLedger entries
+        # 2. Reduce stock
+        from vendor.models import OnlineOrderLedger
+        from django.db.models import F
+        # Note: 'product' is already imported at the top of the file (line 110)
+        
+        logger.info("=" * 80)
+        logger.info("[ORDER_SERIALIZER] Manually creating OnlineOrderLedger entries (bulk_create doesn't fire signals)")
+        logger.info(f"[ORDER_SERIALIZER] Order ID: {order.id}, Order Order ID: {order.order_id}")
+        
+        saved_order_items = list(order.items.all())
+        logger.info(f"[ORDER_SERIALIZER] Number of order items: {len(saved_order_items)}")
+        
+        for order_item in saved_order_items:
+            logger.info(f"[ORDER_SERIALIZER] Processing OrderItem ID: {order_item.id}")
+            logger.info(f"[ORDER_SERIALIZER] Product ID: {order_item.product.id}, Quantity: {order_item.quantity}, Price: {order_item.price}")
+            
+            # Create OnlineOrderLedger entry
+            try:
+                # Check if already exists
+                existing = OnlineOrderLedger.objects.filter(order_item=order_item).exists()
+                if existing:
+                    logger.warning(f"[ORDER_SERIALIZER] 💰 OnlineOrderLedger already exists for OrderItem {order_item.id} - skipping")
+                    existing_ledger = OnlineOrderLedger.objects.filter(order_item=order_item).first()
+                    if existing_ledger:
+                        logger.info(f"[ORDER_SERIALIZER] 💰 Existing ledger ID: {existing_ledger.id}, Amount: {existing_ledger.amount}")
+                else:
+                    amount = order_item.price * order_item.quantity
+                    logger.info(f"[ORDER_SERIALIZER] 💰 LEDGER CREATION - OrderItem ID: {order_item.id}")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Product ID: {order_item.product.id}")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Quantity: {order_item.quantity}, Price: {order_item.price}")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Calculated Amount: {amount}")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 User/Vendor: {order_item.product.user.username} (ID: {order_item.product.user.id})")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Order ID: {order.id}, Order Order ID: {order.order_id}")
+                    
+                    ledger_entry = OnlineOrderLedger.objects.create(
+                        user=order_item.product.user,
+                        order_item=order_item,
+                        product=order_item.product,
+                        order_id=order.id,
+                        quantity=order_item.quantity,
+                        amount=amount,
+                        status='recorded',
+                        note='Online order recorded'
+                    )
+                    logger.info(f"[ORDER_SERIALIZER] 💰 ✅ SUCCESS: OnlineOrderLedger created")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Entry ID: {ledger_entry.id}")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Amount: {ledger_entry.amount}")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Status: {ledger_entry.status}")
+                    
+                    # Verify it was saved
+                    verify_ledger = OnlineOrderLedger.objects.filter(id=ledger_entry.id).first()
+                    if verify_ledger:
+                        logger.info(f"[ORDER_SERIALIZER] 💰 ✅ VERIFIED: Ledger entry exists in database")
+                    else:
+                        logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Ledger entry not found in database after creation!")
+            except Exception as e:
+                logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Failed to create OnlineOrderLedger for order_item {order_item.id}: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+            
+            # Reduce stock
+            try:
+                # Get current stock before update
+                product_obj = product.objects.get(id=order_item.product.id)
+                stock_before = product_obj.stock_cached or 0
+                quantity_to_reduce = order_item.quantity
+                stock_after_expected = stock_before - quantity_to_reduce
+                
+                logger.info(f"[ORDER_SERIALIZER] 📦 STOCK UPDATE - Product ID: {order_item.product.id}")
+                logger.info(f"[ORDER_SERIALIZER] 📦 Stock BEFORE: {stock_before}")
+                logger.info(f"[ORDER_SERIALIZER] 📦 Quantity to reduce: {quantity_to_reduce}")
+                logger.info(f"[ORDER_SERIALIZER] 📦 Expected stock AFTER: {stock_after_expected}")
+                
+                # Update stock
+                product.objects.filter(id=order_item.product.id).update(
+                    stock_cached=F('stock_cached') - order_item.quantity
+                )
+                
+                # Verify stock was updated
+                product_obj.refresh_from_db()
+                stock_after_actual = product_obj.stock_cached or 0
+                
+                if stock_after_actual == stock_after_expected:
+                    logger.info(f"[ORDER_SERIALIZER] 📦 ✅ SUCCESS: Stock updated correctly")
+                    logger.info(f"[ORDER_SERIALIZER] 📦 Stock AFTER: {stock_after_actual} (matches expected)")
+                else:
+                    logger.warning(f"[ORDER_SERIALIZER] 📦 ⚠️ WARNING: Stock mismatch!")
+                    logger.warning(f"[ORDER_SERIALIZER] 📦 Expected: {stock_after_expected}, Actual: {stock_after_actual}")
+                
+                # Log stock transaction
+                from vendor.signals import log_stock_transaction
+                log_stock_transaction(order_item.product, "sale", -order_item.quantity, ref_id=order_item.pk)
+                logger.info(f"[ORDER_SERIALIZER] 📦 Stock transaction logged")
+            except Exception as e:
+                logger.error(f"[ORDER_SERIALIZER] 📦 ❌ ERROR: Failed to reduce stock for product {order_item.product.id}: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+        
+        logger.info("=" * 80)
 
-                order_pj = OrderPrintJob.objects.create(
-                    order_item=oi,
-                    total_amount=pj_payload.get("total_amount") or 0,
-                    print_type=pj_payload.get("print_type") or "single",
-                    print_variant=print_variant,
-                    customize_variant=customize_variant,
+        # Serviceability check (only when vendor has auto-assign enabled)
+        auto_assign_enabled = False
+        try:
+            if vendor_user:
+                from vendor.models import DeliveryMode
+
+                dm = DeliveryMode.objects.filter(user=vendor_user).only("is_auto_assign_enabled").first()
+                auto_assign_enabled = bool(getattr(dm, "is_auto_assign_enabled", False))
+        except Exception:
+            auto_assign_enabled = False
+
+        print("\n" + "=" * 80)
+        print("[OrderSerializer] Serviceability pre-check")
+        print(f"Order ID: {order.order_id}")
+        print(f"Delivery Type: {order.delivery_type}")
+        print(f"Has Address: {bool(order.address)}")
+        print(f"Vendor auto-assign enabled: {auto_assign_enabled}")
+
+        if auto_assign_enabled and order.delivery_type == "instant_delivery" and order.address:
+            try:
+                from integrations.uengage import get_serviceability_for_order
+                print("[OrderSerializer] Checking uEngage serviceability before finalizing order...")
+                serviceability_result = get_serviceability_for_order(order)
+                print(f"[OrderSerializer] Serviceability result: {serviceability_result}")
+
+                ok = serviceability_result.get("ok")
+                svc = (serviceability_result.get("raw") or {}).get("serviceability") or {}
+                location_ok = svc.get("locationServiceAble")
+
+                if not ok:
+                    msg = "No delivery boy present at the moment."
+                    if location_ok is False:
+                        msg = "Delivery location not serviceable."
+                    raise serializers.ValidationError({"delivery": msg})
+            except serializers.ValidationError:
+                raise
+            except Exception as e:
+                print(f"[OrderSerializer] Serviceability check exception: {e}")
+                raise serializers.ValidationError(
+                    {"delivery": "Unable to confirm delivery availability. Please try again."}
+                )
+        else:
+            print("[OrderSerializer] Skipping serviceability: auto-assign disabled or not instant_delivery or no address")
+        
+        # Set is_auto_managed based on whether auto-assign is enabled
+        # If auto-assign is disabled, explicitly set to False (though it's already the default)
+        # If auto-assign is enabled, it will be set to True later when auto-assignment actually happens
+        if not auto_assign_enabled:
+            order.is_auto_managed = False
+            order.save(update_fields=['is_auto_managed'])
+
+        # After bulk create, attach print jobs (if any)
+        # saved_order_items already defined above
+        for oi, pj_payload in zip(saved_order_items, print_jobs_payload):
+            if not pj_payload:
+                continue
+            # Resolve foreign keys if IDs provided
+            print_variant = None
+            customize_variant = None
+            if isinstance(pj_payload.get("print_variant"), int):
+                from vendor.models import PrintVariant as PV
+
+                try:
+                    print_variant = PV.objects.get(id=pj_payload["print_variant"])
+                except PV.DoesNotExist:
+                    print_variant = None
+            if isinstance(pj_payload.get("customize_variant"), int):
+                from vendor.models import CustomizePrintVariant as CPV
+
+                try:
+                    customize_variant = CPV.objects.get(id=pj_payload["customize_variant"])
+                except CPV.DoesNotExist:
+                    customize_variant = None
+
+            order_pj = OrderPrintJob.objects.create(
+                order_item=oi,
+                total_amount=pj_payload.get("total_amount") or 0,
+                print_type=pj_payload.get("print_type") or "single",
+                print_variant=print_variant,
+                customize_variant=customize_variant,
+            )
+
+            # add-ons
+            addon_ids = pj_payload.get("add_ons") or []
+            if addon_ids:
+                from vendor.models import addon as Addon
+
+                valid_addons = Addon.objects.filter(id__in=addon_ids)
+                order_pj.add_ons.set(valid_addons)
+
+            # files
+            files = pj_payload.get("files") or []
+            for f in files:
+                OrderPrintFile.objects.create(
+                    print_job=order_pj,
+                    file=f.get("file"),
+                    instructions=f.get("instructions"),
+                    number_of_copies=f.get("number_of_copies", 1),
+                    page_count=f.get("page_count", 0),
+                    page_numbers=f.get("page_numbers", ""),
                 )
 
-                # add-ons
-                addon_ids = pj_payload.get("add_ons") or []
-                if addon_ids:
-                    from vendor.models import addon as Addon
+        # CLEAR CART AFTER SUCCESSFUL ORDER CREATION
+        Cart.objects.filter(user=request.user).delete()
 
-                    valid_addons = Addon.objects.filter(id__in=addon_ids)
-                    order_pj.add_ons.set(valid_addons)
+        # Send push notifications to customer for each vendor's order notification message
+        try:
+            send_order_notification_to_customer(order)
+            # Also send order placed notification
+            send_order_status_notification(order, 'not_accepted')
+        except Exception as e:
+            logger.error(f"Error sending order notification: {e}", exc_info=True)
 
-                # files
-                files = pj_payload.get("files") or []
-                for f in files:
-                    OrderPrintFile.objects.create(
-                        print_job=order_pj,
-                        file=f.get("file"),
-                        instructions=f.get("instructions"),
-                        number_of_copies=f.get("number_of_copies", 1),
-                        page_count=f.get("page_count", 0),
-                        page_numbers=f.get("page_numbers", ""),
-                    )
+        # Delivery task creation is deferred to vendor when status becomes ready_to_shipment
+        print("[OrderSerializer] Delivery task will be created when vendor marks ready_to_shipment.")
+        print("=" * 80 + "\n")
 
-            # CLEAR CART AFTER SUCCESSFUL ORDER CREATION
-            Cart.objects.filter(user=request.user).delete()
-
-            # Send push notifications to customer for each vendor's order notification message
-            try:
-                send_order_notification_to_customer(order)
-                # Also send order placed notification
-                send_order_status_notification(order, 'not_accepted')
-            except Exception as e:
-                logger.error(f"Error sending order notification: {e}", exc_info=True)
-
-            # Delivery task creation is deferred to vendor when status becomes ready_to_shipment
-            print("[OrderSerializer] Delivery task will be created when vendor marks ready_to_shipment.")
-            print("=" * 80 + "\n")
-
-            return order
+        return order
 
     def update(self, instance, validated_data):
         allowed_fields = ["status", "delivery_boy", "is_paid"]
