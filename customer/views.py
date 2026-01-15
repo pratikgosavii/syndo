@@ -2290,6 +2290,15 @@ class HomeScreenView(APIView):
                 products_qs = products_qs.order_by('?')[:6]  # random 6 products for this main category
 
             products = list(products_qs)  # evaluate
+            
+            # Ensure unique products by ID (remove duplicates)
+            seen_ids = set()
+            unique_products = []
+            for p in products:
+                if p.id not in seen_ids:
+                    seen_ids.add(p.id)
+                    unique_products.append(p)
+            products = unique_products
 
             product_ids = [p.id for p in products]
 
