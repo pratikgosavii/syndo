@@ -116,6 +116,40 @@ from decimal import Decimal
 from users.serializer import UserProfileSerializer
 
 
+def calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee):
+    """
+    Calculate delivery discount amount based on vendor's delivery discount settings.
+    Same calculation logic used in cart and order creation.
+    
+    Args:
+        vendor_user: The vendor user who owns the products
+        item_total: Total value of items in cart/order (Decimal)
+        shipping_fee: Shipping fee amount (Decimal)
+    
+    Returns:
+        Decimal: Delivery discount amount (0.00 if no discount applies)
+    """
+    delivery_discount_amount = Decimal("0.00")
+    if vendor_user and shipping_fee > 0:
+        try:
+            from vendor.models import DeliveryDiscount
+            
+            delivery_discount = DeliveryDiscount.objects.filter(user=vendor_user).first()
+            if delivery_discount and delivery_discount.is_enabled:
+                # Check if cart value meets minimum requirement
+                if item_total >= Decimal(str(delivery_discount.min_cart_value)):
+                    # Calculate discount on shipping fee
+                    discount_percent = Decimal(str(delivery_discount.discount_percent))
+                    delivery_discount_amount = (shipping_fee * discount_percent / Decimal("100")).quantize(
+                        Decimal("0.01")
+                    )
+        except Exception:
+            # If any error, continue without discount
+            pass
+    
+    return delivery_discount_amount
+
+
 def send_order_notification_to_customer(order):
     """
     Send push notification to customer when a new order is placed.
@@ -551,24 +585,8 @@ class OrderSerializer(serializers.ModelSerializer):
         # convert values from validated_data to Decimal safely
         coupon = Decimal(str(validated_data.get("coupon", 0)))
 
-        # Check and apply delivery discount if vendor has it enabled
-        delivery_discount_amount = Decimal("0.00")
-        if vendor_user and shipping_fee > 0:
-            try:
-                from vendor.models import DeliveryDiscount
-
-                delivery_discount = DeliveryDiscount.objects.filter(user=vendor_user).first()
-                if delivery_discount and delivery_discount.is_enabled:
-                    # Check if cart value meets minimum requirement
-                    if item_total >= Decimal(str(delivery_discount.min_cart_value)):
-                        # Calculate discount on shipping fee
-                        discount_percent = Decimal(str(delivery_discount.discount_percent))
-                        delivery_discount_amount = (shipping_fee * discount_percent / Decimal("100")).quantize(
-                            Decimal("0.01")
-                        )
-            except Exception:
-                # If any error, continue without discount
-                pass
+        # Calculate delivery discount using the same calculation logic as cart
+        delivery_discount_amount = calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee)
 
         # calculate final total (subtract delivery discount from shipping fee)
         total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
