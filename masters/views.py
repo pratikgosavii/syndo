@@ -213,6 +213,12 @@ def send_push_notification(user, title, body, campaign_id):
     
     try:
         campaign = NotificationCampaign.objects.select_related('product', 'store', 'store__user').get(id=campaign_id)
+        
+        # Check if campaign is approved - only send notifications for approved campaigns
+        if campaign.status != "approved":
+            print(f"⚠️ Campaign with id={campaign_id} is not approved (status: {campaign.status}). Notifications will not be sent.")
+            return []
+        
         store_id = str(campaign.store.id) if campaign.store else ""
         product_id = str(campaign.product.id) if campaign.product else ""
         
@@ -238,11 +244,16 @@ def send_push_notification(user, title, body, campaign_id):
         token__isnull=False
     ).exclude(token='').values_list('user_id', 'token')
     
-    # Build map: user_id -> list of tokens
+    # Build map: user_id -> list of unique tokens (deduplicated)
     user_tokens_map = {}
     for user_id, token in device_tokens:
         if token and token.strip():
-            user_tokens_map.setdefault(user_id, []).append(token.strip())
+            token_clean = token.strip()
+            # Use set to ensure unique tokens per user
+            if user_id not in user_tokens_map:
+                user_tokens_map[user_id] = []
+            if token_clean not in user_tokens_map[user_id]:
+                user_tokens_map[user_id].append(token_clean)
     
     if not user_tokens_map:
         print(f"ℹ️ No valid device tokens found for any followers of store owner (user_id={store_owner.id})")
@@ -294,23 +305,22 @@ def approve_notification_campaign(request, pk):
     campaign.save()
 
     # send push notifications to all followers
-    followers = User.objects.all()  # adjust as per your relation
-    print(f"🔔 Starting notification sending for campaign={campaign.id}, followers={followers.count()}")
-
-    for follower_relation in followers:
-        follower = follower_relation  # get actual user object
-        try:
-            responses = send_push_notification(
-                user=follower,
-                title=campaign.campaign_name,
-                body=campaign.description,
-                campaign_id=campaign.id
-            )
-            if responses:
-                print(f"✅ Notification sent to user_id={follower.id}, username={follower.username or follower.mobile}, devices={len(responses)}")
-            # If no responses, it means no valid tokens (already logged in send_push_notification)
-        except Exception as e:
-            print(f"❌ Failed to send notification to user_id={follower.id}, username={follower.username or follower.mobile}, error={e}")
+    # send_push_notification internally handles getting all followers and sending to them
+    print(f"🔔 Starting notification sending for campaign={campaign.id}")
+    
+    try:
+        responses = send_push_notification(
+            user=None,  # Not used - function gets followers internally
+            title=campaign.campaign_name,
+            body=campaign.description,
+            campaign_id=campaign.id
+        )
+        if responses:
+            print(f"✅ Notifications sent successfully to {len(responses)} device tokens")
+        else:
+            print(f"ℹ️ No notifications sent (no followers with valid device tokens)")
+    except Exception as e:
+        print(f"❌ Failed to send notifications: {e}")
 
     messages.success(request, "Campaign approved and notification sent.")
     return redirect("list_notification_campaigns")
