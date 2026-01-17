@@ -1464,7 +1464,7 @@ class SMSSetting(models.Model):
     enable_purchase_message = models.BooleanField(default=False)
     enable_quote_message = models.BooleanField(default=False)
     enable_credit_reminder_message = models.BooleanField(default=False)
-    
+         
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
