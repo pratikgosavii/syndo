@@ -3,6 +3,42 @@
 from django.db import migrations, models
 
 
+def cleanup_orphaned_stock_transactions(apps, schema_editor):
+    """
+    Clean up orphaned StockTransaction records that reference non-existent products.
+    This fixes the foreign key constraint violation before running schema migrations.
+    Uses raw SQL for safety and performance.
+    """
+    from django.db import connection
+    
+    with connection.cursor() as cursor:
+        # For SQLite, temporarily disable foreign key checks
+        # Delete StockTransaction records where product_id doesn't exist in product table
+        if 'sqlite' in connection.settings_dict['ENGINE']:
+            cursor.execute("PRAGMA foreign_keys = OFF")
+        
+        cursor.execute("""
+            DELETE FROM vendor_stocktransaction 
+            WHERE product_id NOT IN (SELECT id FROM vendor_product)
+        """)
+        deleted_count = cursor.rowcount
+        
+        if 'sqlite' in connection.settings_dict['ENGINE']:
+            cursor.execute("PRAGMA foreign_keys = ON")
+        
+        if deleted_count > 0:
+            print(f"Cleaned up {deleted_count} orphaned StockTransaction records")
+        else:
+            print("No orphaned StockTransaction records found")
+
+
+def reverse_cleanup(apps, schema_editor):
+    """
+    Reverse operation - nothing to do as deleted orphaned records can't be restored.
+    """
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +46,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Clean up orphaned data before schema changes
+        migrations.RunPython(cleanup_orphaned_stock_transactions, reverse_cleanup),
         migrations.RemoveField(
             model_name='notificationcampaign',
             name='end_time',
