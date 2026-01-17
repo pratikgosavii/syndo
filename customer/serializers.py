@@ -155,10 +155,16 @@ def calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipp
                 if item_total >= Decimal(str(delivery_discount.min_cart_value)):
                     # Calculate discount on order total (item + tax + shipping)
                     discount_percent = Decimal(str(delivery_discount.discount_percent))
-                    delivery_discount_amount = (order_total * discount_percent / Decimal("100")).quantize(
+                    calculated_discount = (order_total * discount_percent / Decimal("100")).quantize(
                         Decimal("0.01")
                     )
-                    logger.info(f"[DELIVERY_DISCOUNT] ✅ Discount Applied: {delivery_discount_amount} ({(discount_percent)}% of {order_total})")
+                    # Cap discount at shipping fee (discount cannot exceed shipping fee)
+                    delivery_discount_amount = min(calculated_discount, shipping_fee)
+                    logger.info(f"[DELIVERY_DISCOUNT] ✅ Discount Calculated: {calculated_discount} ({(discount_percent)}% of {order_total})")
+                    if calculated_discount > shipping_fee:
+                        logger.info(f"[DELIVERY_DISCOUNT] ✅ Discount Capped at Shipping Fee: {delivery_discount_amount} (max: {shipping_fee})")
+                    else:
+                        logger.info(f"[DELIVERY_DISCOUNT] ✅ Discount Applied: {delivery_discount_amount}")
                 else:
                     logger.info(f"[DELIVERY_DISCOUNT] ❌ Min cart value not met: {item_total} < {delivery_discount.min_cart_value}")
             elif delivery_discount:
