@@ -239,7 +239,7 @@ class vendor_customers(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     # Basic
     name = models.CharField(max_length=50)
-    email = models.EmailField()
+    email = models.EmailField(blank=True, null=True)
     contact = models.CharField(max_length=15)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, null=True)
@@ -290,7 +290,7 @@ class vendor_customers(models.Model):
 class vendor_vendors(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     name = models.CharField(max_length=50)
-    email = models.EmailField()
+    email = models.EmailField(blank=True, null=True)
     contact = models.CharField(max_length=15)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -831,14 +831,27 @@ class Purchase(models.Model):
         import re
         pattern = r'^\d{2}-\d{2}/\d{2}/[A-Z]{3}/PUR-\d{4}$'
         if not self.purchase_code or not re.match(pattern, self.purchase_code):
-            # Ensure purchase_date is set before generating code
+            from django.utils import timezone
+            
+            # Ensure purchase_date is set before generating code (use today's date if not set)
             if not self.purchase_date:
-                from django.utils import timezone
                 self.purchase_date = timezone.now().date()
+            
+            # Ensure user is set (required for code generation)
+            if not self.user:
+                # If user is not set, we can't generate a proper code
+                # This should not happen in normal flow, but log a warning
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Purchase.save(): user is None, cannot generate purchase_code properly")
+                # Don't generate code if user is None - let it be handled by the caller
+                super().save(*args, **kwargs)
+                return
             
             from .utils import generate_serial_number
             # Use a retry mechanism to handle race conditions
             max_retries = 5
+            new_code = None
             for attempt in range(max_retries):
                 try:
                     new_code = generate_serial_number(
@@ -859,11 +872,24 @@ class Purchase(models.Model):
                         import time
                         time.sleep(0.1)
                 except Exception as e:
-                    # If generation fails, use a fallback
+                    # Log the error for debugging
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Purchase.save(): Error generating purchase_code (attempt {attempt + 1}/{max_retries}): {e}")
+                    # If generation fails, use a fallback on last attempt
                     if attempt == max_retries - 1:
-                        from django.utils import timezone
                         timestamp = int(timezone.now().timestamp())
-                        self.purchase_code = f"PUR-{timestamp}-{self.id or 'NEW'}"
+                        new_code = f"PUR-{timestamp}-{self.id or 'NEW'}"
+                        self.purchase_code = new_code
+            
+            # Ensure purchase_code is set (fallback if all attempts failed)
+            if not self.purchase_code and new_code:
+                self.purchase_code = new_code
+            elif not self.purchase_code:
+                # Last resort fallback
+                timestamp = int(timezone.now().timestamp())
+                self.purchase_code = f"PUR-FALLBACK-{timestamp}"
+        
         super().save(*args, **kwargs)
     
     def calculate_total(self):

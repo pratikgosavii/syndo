@@ -730,17 +730,10 @@ def purchase_ledger(sender, instance, created, **kwargs):
                     instance.refresh_from_db(fields=["balance_amount"])
             balance_amt = Decimal(instance.balance_amount or 0)
             
-            # Reset vendor running balance from opening + sum(all remaining vendor ledger entries)
-            ledger_total_before = (
-                VendorLedger.objects.filter(vendor=vendor).aggregate(total=Sum("amount"))["total"] or 0
-            )
-            opening_balance = Decimal(vendor.opening_balance or 0) + Decimal(ledger_total_before or 0)
-            vendor.balance = opening_balance
-            vendor.save(update_fields=["balance"])
-
+            # Create vendor ledger entries for ALL purchases (for audit/tracking)
             # Vendor ledger:
             # - For CREDIT purchases, record ONLY remaining due (balance_amount = total - advance)
-            # - For non-credit purchases, record full total_amount
+            # - For non-credit purchases, record full total_amount (for tracking, but won't affect balance)
             if instance.payment_method == "credit":
                 if balance_amt > 0:
                     create_ledger(
@@ -761,6 +754,27 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         total_amt,
                         f"Purchase #{instance.id}",
                     )
+            
+            # Reset vendor running balance from opening + sum(ONLY credit purchase ledger entries)
+            # Only credit purchases affect vendor balance - non-credit purchases are already paid
+            # Credit entries are identified by description containing "(Credit)"
+            credit_ledger_total = (
+                VendorLedger.objects.filter(
+                    vendor=vendor,
+                    description__contains="(Credit)"
+                ).aggregate(total=Sum("amount"))["total"] or 0
+            )
+            # Also include payment entries (which reduce credit balance)
+            payment_ledger_total = (
+                VendorLedger.objects.filter(
+                    vendor=vendor,
+                    transaction_type="payment"
+                ).aggregate(total=Sum("amount"))["total"] or 0
+            )
+            # Total credit balance = opening_balance + credit purchases - payments
+            opening_balance = Decimal(vendor.opening_balance or 0) + Decimal(credit_ledger_total or 0) + Decimal(payment_ledger_total or 0)
+            vendor.balance = opening_balance
+            vendor.save(update_fields=["balance"])
 
         # Cash/Bank ledger for purchases
         # LOGIC:
