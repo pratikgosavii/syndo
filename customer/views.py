@@ -2680,8 +2680,17 @@ class VendorCampaignsAPIView(APIView):
 
     def get(self, request):
         # Get all banner campaigns (only approved ones for customers)
-      
-        notification_campaigns = NotificationCampaign.objects.all().select_related('product', 'store', 'user').order_by('-created_at')
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Calculate date 7 days ago
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        
+        # Filter notification campaigns to only include those created in the last 7 days and not soft-deleted
+        notification_campaigns = NotificationCampaign.objects.filter(
+            created_at__gte=seven_days_ago,
+            is_deleted=False  # Exclude soft-deleted campaigns from customer view
+        ).select_related('product', 'store', 'user').order_by('-created_at')
         
         # Serialize the campaigns
         notification_serializer = NotificationCampaignSerializer(notification_campaigns, many=True, context={'request': request})

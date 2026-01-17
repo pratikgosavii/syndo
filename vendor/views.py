@@ -5727,16 +5727,26 @@ class NotificationCampaignViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return NotificationCampaign.objects.filter(user=self.request.user).order_by("-created_at")
+        # Exclude soft-deleted campaigns for vendor view
+        return NotificationCampaign.objects.filter(user=self.request.user, is_deleted=False).order_by("-created_at")
 
     def perform_create(self, serializer):
         # check monthly quota (e.g., max 3 notifications per month)
+        from django.utils import timezone
+        from datetime import datetime
+        
         user = self.request.user
+        now = timezone.now()
+        
+        # Count campaigns created in the current month and year
         month_count = NotificationCampaign.objects.filter(
-            user=user, created_at__month=self.request.user.date_joined.month
+            user=user,
+            created_at__year=now.year,
+            created_at__month=now.month
         ).count()
+        
         if month_count >= 3:
-            raise serializers.ValidationError("You have reached your monthly limit.")
+            raise serializers.ValidationError("You have reached your monthly limit of 3 notification campaigns per month.")
         
         redirect_to = self.request.data.get('redirect_to')
         
@@ -5757,6 +5767,26 @@ class NotificationCampaignViewSet(viewsets.ModelViewSet):
                     serializer.validated_data['store'] = store
         
         serializer.save(user=user)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Soft delete notification campaigns to maintain monthly limit integrity.
+        Once a campaign is created, it counts toward the monthly limit even if soft-deleted.
+        Soft-deleted campaigns are hidden from vendor view and customer notifications but still count toward monthly limit.
+        """
+        instance = self.get_object()
+        instance.is_deleted = True
+        instance.save()
+        
+        from rest_framework.response import Response
+        from rest_framework import status
+        
+        return Response(
+            {
+                "detail": "Campaign deleted successfully. Note: Deleted campaigns still count toward your monthly limit."
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 

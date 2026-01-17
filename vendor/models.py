@@ -1509,9 +1509,8 @@ class NotificationCampaign(models.Model):
 
     views = models.PositiveIntegerField(default=0)
     clicks = models.PositiveIntegerField(default=0)
+    is_deleted = models.BooleanField(default=False, help_text="Soft delete flag - campaigns marked as deleted still count toward monthly limit")
 
-    start_time = models.DateTimeField(null=True, blank=True)
-    end_time = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
