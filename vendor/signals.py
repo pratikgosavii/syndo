@@ -739,19 +739,27 @@ def purchase_ledger(sender, instance, created, **kwargs):
             vendor.save(update_fields=["balance"])
 
             # Vendor ledger:
-            # - Create ledger entries ONLY for CREDIT purchases (which affect vendor balance)
-            # - For non-credit purchases (cash/upi/cheque): do NOT create ledger entries since vendor is paid immediately
+            # - For CREDIT purchases, record ONLY remaining due (balance_amount = total - advance)
+            # - For non-credit purchases, record full total_amount
             if instance.payment_method == "credit":
-                # Credit purchase: record balance_amount (increases vendor credit)
-                ledger_amount = balance_amt if balance_amt > 0 else Decimal(0)
-                if ledger_amount > 0:  # Only create ledger if there's a balance owed
+                if balance_amt > 0:
                     create_ledger(
                         vendor,
                         VendorLedger,
                         "purchase",
                         instance.id,
-                        ledger_amount,
+                        balance_amt,
                         f"Purchase #{instance.id} (Credit)",
+                    )
+            else:
+                if total_amt > 0:
+                    create_ledger(
+                        vendor,
+                        VendorLedger,
+                        "purchase",
+                        instance.id,
+                        total_amt,
+                        f"Purchase #{instance.id}",
                     )
 
         # Cash/Bank ledger for purchases
