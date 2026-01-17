@@ -652,11 +652,11 @@ class OrderSerializer(serializers.ModelSerializer):
                     if existing_ledger:
                         logger.info(f"[ORDER_SERIALIZER] 💰 Existing ledger ID: {existing_ledger.id}, Amount: {existing_ledger.amount}")
                 else:
-                    amount = order_item.total_price()
+                    amount = order.total_amount
                     logger.info(f"[ORDER_SERIALIZER] 💰 LEDGER CREATION - OrderItem ID: {order_item.id}")
                     logger.info(f"[ORDER_SERIALIZER] 💰 Product ID: {order_item.product.id}")
                     logger.info(f"[ORDER_SERIALIZER] 💰 Quantity: {order_item.quantity}, Price: {order_item.price}")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Calculated Amount: {amount}")
+                    logger.info(f"[ORDER_SERIALIZER] 💰 Order Total Amount: {amount}")
                     logger.info(f"[ORDER_SERIALIZER] 💰 User/Vendor: {order_item.product.user.username} (ID: {order_item.product.user.id})")
                     logger.info(f"[ORDER_SERIALIZER] 💰 Order ID: {order.id}, Order Order ID: {order.order_id}")
                     
