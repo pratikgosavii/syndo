@@ -5544,6 +5544,86 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 'top_product_requests': [],
                 'total_product_requests_count': 0,
             }
+    
+    def _get_sales_expense_chart_data(self, user, months=12):
+        """Get monthly sales and expense data for chart"""
+        from django.db.models import Sum
+        from django.db.models.functions import TruncMonth
+        from decimal import Decimal
+        
+        try:
+            # Get current date and calculate start date (N months ago)
+            end_date = timezone.now().date()
+            start_date = end_date - timedelta(days=months * 30)  # Approximate months
+            
+            # Get monthly sales data
+            sales_data = Sale.objects.filter(
+                user=user,
+                created_at__date__gte=start_date
+            ).annotate(
+                month=TruncMonth('created_at')
+            ).values('month').annotate(
+                total=Sum('total_amount')
+            ).order_by('month')
+            
+            # Get monthly expense data
+            expense_data = Expense.objects.filter(
+                user=user,
+                expense_date__gte=start_date
+            ).annotate(
+                month=TruncMonth('expense_date')
+            ).values('month').annotate(
+                total=Sum('amount')
+            ).order_by('month')
+            
+            # Create dictionaries for easy lookup
+            sales_dict = {}
+            for item in sales_data:
+                month_key = item['month'].strftime('%Y-%m') if item['month'] else None
+                if month_key:
+                    sales_dict[month_key] = float(item['total'] or 0)
+            
+            expense_dict = {}
+            for item in expense_data:
+                month_key = item['month'].strftime('%Y-%m') if item['month'] else None
+                if month_key:
+                    expense_dict[month_key] = float(item['total'] or 0)
+            
+            # Generate data for all months (fill missing months with 0)
+            chart_data = []
+            current_date = start_date.replace(day=1)  # Start from first day of month
+            
+            while current_date <= end_date:
+                month_key = current_date.strftime('%Y-%m')
+                month_label = current_date.strftime('%b %Y')  # e.g., "Jan 2025"
+                
+                sales_amount = sales_dict.get(month_key, 0.0)
+                expense_amount = expense_dict.get(month_key, 0.0)
+                
+                chart_data.append({
+                    'month': month_key,
+                    'month_label': month_label,
+                    'sales': sales_amount,
+                    'expenses': expense_amount,
+                })
+                
+                # Move to next month
+                if current_date.month == 12:
+                    current_date = current_date.replace(year=current_date.year + 1, month=1)
+                else:
+                    current_date = current_date.replace(month=current_date.month + 1)
+            
+            return {
+                'sales': [{'month': item['month'], 'month_label': item['month_label'], 'amount': item['sales']} for item in chart_data],
+                'expenses': [{'month': item['month'], 'month_label': item['month_label'], 'amount': item['expenses']} for item in chart_data],
+                'combined': chart_data,  # Combined data for easier chart rendering
+            }
+        except Exception as e:
+            return {
+                'sales': [],
+                'expenses': [],
+                'combined': [],
+            }
 
 
 class VendorActivityFeedAPIView(APIView):
@@ -5673,86 +5753,6 @@ class VendorActivityFeedAPIView(APIView):
                 'total_activities_count': 0,
                 'error': str(e),
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    def _get_sales_expense_chart_data(self, user, months=12):
-        """Get monthly sales and expense data for chart"""
-        from django.db.models import Sum
-        from django.db.models.functions import TruncMonth
-        from decimal import Decimal
-        
-        try:
-            # Get current date and calculate start date (N months ago)
-            end_date = timezone.now().date()
-            start_date = end_date - timedelta(days=months * 30)  # Approximate months
-            
-            # Get monthly sales data
-            sales_data = Sale.objects.filter(
-                user=user,
-                created_at__date__gte=start_date
-            ).annotate(
-                month=TruncMonth('created_at')
-            ).values('month').annotate(
-                total=Sum('total_amount')
-            ).order_by('month')
-            
-            # Get monthly expense data
-            expense_data = Expense.objects.filter(
-                user=user,
-                expense_date__gte=start_date
-            ).annotate(
-                month=TruncMonth('expense_date')
-            ).values('month').annotate(
-                total=Sum('amount')
-            ).order_by('month')
-            
-            # Create dictionaries for easy lookup
-            sales_dict = {}
-            for item in sales_data:
-                month_key = item['month'].strftime('%Y-%m') if item['month'] else None
-                if month_key:
-                    sales_dict[month_key] = float(item['total'] or 0)
-            
-            expense_dict = {}
-            for item in expense_data:
-                month_key = item['month'].strftime('%Y-%m') if item['month'] else None
-                if month_key:
-                    expense_dict[month_key] = float(item['total'] or 0)
-            
-            # Generate data for all months (fill missing months with 0)
-            chart_data = []
-            current_date = start_date.replace(day=1)  # Start from first day of month
-            
-            while current_date <= end_date:
-                month_key = current_date.strftime('%Y-%m')
-                month_label = current_date.strftime('%b %Y')  # e.g., "Jan 2025"
-                
-                sales_amount = sales_dict.get(month_key, 0.0)
-                expense_amount = expense_dict.get(month_key, 0.0)
-                
-                chart_data.append({
-                    'month': month_key,
-                    'month_label': month_label,
-                    'sales': sales_amount,
-                    'expenses': expense_amount,
-                })
-                
-                # Move to next month
-                if current_date.month == 12:
-                    current_date = current_date.replace(year=current_date.year + 1, month=1)
-                else:
-                    current_date = current_date.replace(month=current_date.month + 1)
-            
-            return {
-                'sales': [{'month': item['month'], 'month_label': item['month_label'], 'amount': item['sales']} for item in chart_data],
-                'expenses': [{'month': item['month'], 'month_label': item['month_label'], 'amount': item['expenses']} for item in chart_data],
-                'combined': chart_data,  # Combined data for easier chart rendering
-            }
-        except Exception as e:
-            return {
-                'sales': [],
-                'expenses': [],
-                'combined': [],
-            }
     
     
 

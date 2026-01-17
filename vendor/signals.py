@@ -739,30 +739,20 @@ def purchase_ledger(sender, instance, created, **kwargs):
             vendor.save(update_fields=["balance"])
 
             # Vendor ledger:
-            # - Create ledger entries for ALL payment types (for audit/tracking purposes)
-            # - For CREDIT purchases: record remaining due (balance_amount) - this AFFECTS vendor balance
-            # - For non-credit purchases: record with amount 0 - tracked but does NOT affect vendor balance
+            # - Create ledger entries ONLY for CREDIT purchases (which affect vendor balance)
+            # - For non-credit purchases (cash/upi/cheque): do NOT create ledger entries since vendor is paid immediately
             if instance.payment_method == "credit":
                 # Credit purchase: record balance_amount (increases vendor credit)
                 ledger_amount = balance_amt if balance_amt > 0 else Decimal(0)
-                create_ledger(
-                    vendor,
-                    VendorLedger,
-                    "purchase",
-                    instance.id,
-                    ledger_amount,
-                    f"Purchase #{instance.id} (Credit)",
-                )
-            else:
-                # Non-credit purchase (cash/upi/cheque): record with 0 amount (tracked but doesn't affect balance)
-                create_ledger(
-                    vendor,
-                    VendorLedger,
-                    "purchase",
-                    instance.id,
-                    Decimal(0),
-                    f"Purchase #{instance.id} ({instance.payment_method.upper()})",
-                )
+                if ledger_amount > 0:  # Only create ledger if there's a balance owed
+                    create_ledger(
+                        vendor,
+                        VendorLedger,
+                        "purchase",
+                        instance.id,
+                        ledger_amount,
+                        f"Purchase #{instance.id} (Credit)",
+                    )
 
         # Cash/Bank ledger for purchases
         # LOGIC:
