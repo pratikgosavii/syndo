@@ -831,17 +831,22 @@ class Purchase(models.Model):
         import re
         pattern = r'^\d{2}-\d{2}/\d{2}/[A-Z]{3}/PUR-\d{4}$'
         if not self.purchase_code or not re.match(pattern, self.purchase_code):
+            # Ensure purchase_date is set before generating code
+            if not self.purchase_date:
+                from django.utils import timezone
+                self.purchase_date = timezone.now().date()
+            
             from .utils import generate_serial_number
             # Use a retry mechanism to handle race conditions
             max_retries = 5
             for attempt in range(max_retries):
                 try:
                     new_code = generate_serial_number(
-                prefix='PUR',
-                model_class=Purchase,
-                date=self.purchase_date,
-                user=self.user
-            )
+                        prefix='PUR',
+                        model_class=Purchase,
+                        date=self.purchase_date,
+                        user=self.user
+                    )
                     # Check if this code already exists (race condition check)
                     existing = Purchase.objects.filter(purchase_code=new_code)
                     if self.pk:  # If updating, exclude current instance
