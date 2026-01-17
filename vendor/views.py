@@ -3824,16 +3824,8 @@ def update_order_item_status(request, order_item_id):
             item.status = status
             item.save()
             
-            # Send notification if item status changed to 'ready_to_shipment' or 'intransit'
-            if status == 'ready_to_shipment' and previous_status != 'ready_to_shipment':
-                try:
-                    from customer.serializers import send_order_status_notification
-                    send_order_status_notification(item.order, 'ready_to_shipment')
-                except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Error sending ready-to-shipment notification: {e}")
-            elif status == 'intransit' and previous_status != 'intransit':
+            # Send notification if item status changed to 'intransit' (out for delivery)
+            if status == 'intransit' and previous_status != 'intransit':
                 try:
                     from customer.serializers import send_order_status_notification
                     send_order_status_notification(item.order, 'intransit')
@@ -3897,25 +3889,8 @@ class UpdateOrderItemStatusAPIView(APIView):
                 pass
 
         if status_value in dict(OrderItem.STATUS_CHOICES):
-            previous_status = item.status
             item.status = status_value
             item.save()
-
-            # Send notification if item status changed to 'ready_to_shipment' or 'intransit'
-            if status_value == 'ready_to_shipment' and previous_status != 'ready_to_shipment':
-                try:
-                    from customer.serializers import send_order_status_notification
-                    send_order_status_notification(item.order, 'ready_to_shipment')
-                    logger.info(f"[ORDER_ITEM_UPDATE] Sent ready_to_shipment notification for order {item.order.order_id}")
-                except Exception as e:
-                    logger.error(f"[ORDER_ITEM_UPDATE] Error sending ready_to_shipment notification: {e}")
-            elif status_value == 'intransit' and previous_status != 'intransit':
-                try:
-                    from customer.serializers import send_order_status_notification
-                    send_order_status_notification(item.order, 'intransit')
-                    logger.info(f"[ORDER_ITEM_UPDATE] Sent intransit notification for order {item.order.order_id}")
-                except Exception as e:
-                    logger.error(f"[ORDER_ITEM_UPDATE] Error sending intransit notification: {e}")
 
             # If all items in the order are delivered, mark the overall order as completed
             order_completed = False
