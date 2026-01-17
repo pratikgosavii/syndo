@@ -1457,7 +1457,7 @@ class SMSSetting(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sms_setting')
     
     # SMS Credits
-    available_credits = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    available_credits = models.DecimalField(max_digits=10, decimal_places=2, default=100.00)
     used_credits = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
     # Message Enablement Toggles

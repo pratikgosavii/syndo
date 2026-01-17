@@ -305,9 +305,12 @@ def send_sale_sms(sale, invoice_type='invoice'):
     logger.info(f"[SMS SALE LOG] Customer: {sale.customer.name} (ID: {sale.customer.id})")
     
     try:
-        sms_setting, created = SMSSetting.objects.get_or_create(user=sale.user)
+        sms_setting, created = SMSSetting.objects.get_or_create(
+            user=sale.user,
+            defaults={'available_credits': Decimal('100.00')}
+        )
         if created:
-            logger.info(f"[SMS SALE LOG] Created new SMS settings for user {sale.user.username}")
+            logger.info(f"[SMS SALE LOG] Created new SMS settings for user {sale.user.username} with 100 default credits")
         else:
             logger.info(f"[SMS SALE LOG] Using existing SMS settings for user {sale.user.username}")
         logger.info(f"[SMS SALE LOG] Available Credits: {sms_setting.available_credits}")
@@ -340,13 +343,20 @@ def send_sale_sms(sale, invoice_type='invoice'):
         logger.info(f"SMS not sent for sale {sale.id} (invoice_type: {invoice_type}): {setting_type.capitalize()} is disabled")
         return False, f"{setting_type.capitalize()} is disabled"
     
-    # Check if there are available credits (optional)
-    # NOTE: This project previously disabled enforcement. We keep sending, but warn loudly.
+    # Check if there are available credits before sending SMS
     try:
-        if Decimal(sms_setting.available_credits or 0) <= 0:
-            logger.warning(f"[SMS SALE LOG] WARNING: available_credits is 0.00 (still attempting send)")
-    except Exception:
-        pass
+        available_credits = Decimal(sms_setting.available_credits or 0)
+        if available_credits <= 0:
+            error_msg = f"Insufficient SMS credits. Available: {available_credits}, Required: 1"
+            logger.warning(f"[SMS SALE LOG] SKIPPED: {error_msg}")
+            logger.warning(f"SMS not sent for sale {sale.id}: {error_msg}")
+            return False, error_msg
+        logger.info(f"[SMS SALE LOG] Available Credits: {available_credits} (sufficient for sending)")
+    except Exception as e:
+        error_msg = f"Error checking SMS credits: {str(e)}"
+        logger.error(f"[SMS SALE LOG] ERROR: {error_msg}")
+        logger.error(f"SMS not sent for sale {sale.id}: {error_msg}")
+        return False, error_msg
     
     # Get customer phone number
     customer = sale.customer
@@ -426,11 +436,16 @@ def send_sale_sms(sale, invoice_type='invoice'):
     
     if success:
         # Update SMS credits (deduct 1 credit for SMS sent)
-        # COMMENTED OUT: Credit deduction disabled as per requirement
-        # old_credits = sms_setting.available_credits
-        # sms_setting.available_credits = max(Decimal('0'), sms_setting.available_credits - Decimal('1'))
-        # sms_setting.used_credits += Decimal('1')
-        # sms_setting.save(update_fields=['available_credits', 'used_credits'])
+        try:
+            old_credits = sms_setting.available_credits
+            sms_setting.available_credits = max(Decimal('0'), sms_setting.available_credits - Decimal('1'))
+            sms_setting.used_credits += Decimal('1')
+            sms_setting.save(update_fields=['available_credits', 'used_credits'])
+            logger.info(f"[SMS SALE LOG] Credits deducted: {old_credits} → {sms_setting.available_credits} (deducted 1)")
+            logger.info(f"[SMS SALE LOG] Used Credits: {sms_setting.used_credits}")
+        except Exception as e:
+            logger.error(f"[SMS SALE LOG] ERROR: Failed to update SMS credits: {str(e)}")
+            # Continue even if credit update fails - SMS was already sent
         
         # "success" here means the gateway accepted the SMS request; delivery to handset can still fail/delay.
         details = ""
@@ -448,8 +463,6 @@ def send_sale_sms(sale, invoice_type='invoice'):
             details = ""
 
         logger.info(f"[SMS SALE LOG] SUCCESS: SMS accepted by gateway for sale {sale.id}{details}")
-        # logger.info(f"[SMS SALE LOG] Credits: {old_credits} → {sms_setting.available_credits} (deducted 1)")
-        # logger.info(f"[SMS SALE LOG] Used Credits: {sms_setting.used_credits}")
         logger.info(f"{'#'*80}")
         logger.info(f"SMS accepted by gateway for sale {sale.id} to {phone_number_cleaned}{details}")
         return True, f"SMS accepted by gateway{details}"

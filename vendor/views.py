@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, render
 import json
+from decimal import Decimal
 
 from masters.filters import EventFilter
 from vendor.filters import productFilter
@@ -6554,7 +6555,10 @@ class SMSSettingViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         # Use get_or_create to get existing instance or create new one
-        instance, _ = SMSSetting.objects.get_or_create(user=request.user)
+        instance, _ = SMSSetting.objects.get_or_create(
+            user=request.user,
+            defaults={'available_credits': Decimal('100.00')}
+        )
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
@@ -6562,13 +6566,19 @@ class SMSSettingViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         # Use get_or_create to ensure instance exists
-        instance, _ = SMSSetting.objects.get_or_create(user=request.user)
+        instance, _ = SMSSetting.objects.get_or_create(
+            user=request.user,
+            defaults={'available_credits': Decimal('100.00')}
+        )
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         # Use get_or_create to ensure instance exists
-        instance, _ = SMSSetting.objects.get_or_create(user=request.user)
+        instance, _ = SMSSetting.objects.get_or_create(
+            user=request.user,
+            defaults={'available_credits': Decimal('100.00')}
+        )
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save(user=request.user)
