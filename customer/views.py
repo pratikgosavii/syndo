@@ -1728,7 +1728,7 @@ class FavouriteViewSet(viewsets.ViewSet):
                 from vendor.models import product
                 product_instance = product.objects.get(id=product_id)
                 vendor_user = product_instance.user
-                liker_name = user.username or user.mobile or f"User {user.id}"
+                liker_name = user.id or user.mobile or f"User {user.id}"
                 send_vendor_notification(
                     vendor_user=vendor_user,
                     notification_type="product_like",
