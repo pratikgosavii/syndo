@@ -116,14 +116,16 @@ from decimal import Decimal
 from users.serializer import UserProfileSerializer
 
 
-def calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee):
+def calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipping_fee):
     """
     Calculate delivery discount amount based on vendor's delivery discount settings.
+    Discount is calculated as percentage of order total (item_total + tax_total + shipping_fee).
     Same calculation logic used in cart and order creation.
     
     Args:
         vendor_user: The vendor user who owns the products
         item_total: Total value of items in cart/order (Decimal)
+        tax_total: Total tax amount (Decimal)
         shipping_fee: Shipping fee amount (Decimal)
     
     Returns:
@@ -133,7 +135,11 @@ def calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee):
     logger = logging.getLogger(__name__)
     
     delivery_discount_amount = Decimal("0.00")
-    if vendor_user and shipping_fee > 0:
+    
+    # Calculate order total (item + tax + shipping) before any discounts
+    order_total = item_total + tax_total + shipping_fee
+    
+    if vendor_user and order_total > 0:
         try:
             from vendor.models import DeliveryDiscount
             
@@ -142,17 +148,17 @@ def calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee):
             
             if delivery_discount:
                 logger.info(f"[DELIVERY_DISCOUNT] Enabled: {delivery_discount.is_enabled}, Min Cart Value: {delivery_discount.min_cart_value}, Discount %: {delivery_discount.discount_percent}")
-                logger.info(f"[DELIVERY_DISCOUNT] Item Total: {item_total}, Shipping Fee: {shipping_fee}")
+                logger.info(f"[DELIVERY_DISCOUNT] Item Total: {item_total}, Tax: {tax_total}, Shipping Fee: {shipping_fee}, Order Total: {order_total}")
                 
             if delivery_discount and delivery_discount.is_enabled:
                 # Check if cart value meets minimum requirement
                 if item_total >= Decimal(str(delivery_discount.min_cart_value)):
-                    # Calculate discount on shipping fee
+                    # Calculate discount on order total (item + tax + shipping)
                     discount_percent = Decimal(str(delivery_discount.discount_percent))
-                    delivery_discount_amount = (shipping_fee * discount_percent / Decimal("100")).quantize(
+                    delivery_discount_amount = (order_total * discount_percent / Decimal("100")).quantize(
                         Decimal("0.01")
                     )
-                    logger.info(f"[DELIVERY_DISCOUNT] ✅ Discount Applied: {delivery_discount_amount} ({(discount_percent)}% of {shipping_fee})")
+                    logger.info(f"[DELIVERY_DISCOUNT] ✅ Discount Applied: {delivery_discount_amount} ({(discount_percent)}% of {order_total})")
                 else:
                     logger.info(f"[DELIVERY_DISCOUNT] ❌ Min cart value not met: {item_total} < {delivery_discount.min_cart_value}")
             elif delivery_discount:
@@ -167,8 +173,8 @@ def calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee):
     
     if not vendor_user:
         logger.info(f"[DELIVERY_DISCOUNT] No vendor_user provided")
-    elif shipping_fee <= 0:
-        logger.info(f"[DELIVERY_DISCOUNT] Shipping fee is 0 or negative: {shipping_fee}")
+    elif order_total <= 0:
+        logger.info(f"[DELIVERY_DISCOUNT] Order total is 0 or negative: {order_total}")
     
     logger.info(f"[DELIVERY_DISCOUNT] Final discount amount: {delivery_discount_amount}")
     return delivery_discount_amount
@@ -610,8 +616,8 @@ class OrderSerializer(serializers.ModelSerializer):
         coupon = Decimal(str(validated_data.get("coupon", 0)))
 
         # Calculate delivery discount using the same calculation logic as cart
-        logger.info(f"[ORDER_SERIALIZER] Calculating delivery discount - Vendor: {vendor_user.id if vendor_user else None}, Item Total: {item_total}, Shipping Fee: {shipping_fee}")
-        delivery_discount_amount = calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee)
+        logger.info(f"[ORDER_SERIALIZER] Calculating delivery discount - Vendor: {vendor_user.id if vendor_user else None}, Item Total: {item_total}, Tax: {tax_total}, Shipping Fee: {shipping_fee}")
+        delivery_discount_amount = calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipping_fee)
         logger.info(f"[ORDER_SERIALIZER] ✅ Delivery discount calculated: {delivery_discount_amount}")
 
         # calculate final total (subtract delivery discount from shipping fee)
