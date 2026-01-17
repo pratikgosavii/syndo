@@ -3,38 +3,67 @@
 from django.db import migrations, models
 
 
-def cleanup_orphaned_stock_transactions(apps, schema_editor):
+def cleanup_orphaned_foreign_keys(apps, schema_editor):
     """
-    Clean up orphaned StockTransaction records that reference non-existent products.
-    This fixes the foreign key constraint violation before running schema migrations.
+    Clean up orphaned foreign key records that reference non-existent parent records.
+    This fixes foreign key constraint violations before running schema migrations.
     Uses raw SQL for safety and performance.
+    
+    Why this happens:
+    - Foreign key constraints may have been disabled during data imports
+    - Users/products were deleted manually via SQL bypassing CASCADE
+    - Database was in an inconsistent state from previous operations
     """
     from django.db import connection
     
     with connection.cursor() as cursor:
         # For SQLite, temporarily disable foreign key checks
-        # Delete StockTransaction records where product_id doesn't exist in product table
         if 'sqlite' in connection.settings_dict['ENGINE']:
             cursor.execute("PRAGMA foreign_keys = OFF")
         
-        cursor.execute("""
-            DELETE FROM vendor_stocktransaction 
-            WHERE product_id NOT IN (SELECT id FROM vendor_product)
-        """)
-        deleted_count = cursor.rowcount
+        total_cleaned = 0
         
+        # 1. Clean up orphaned StockTransaction records
+        try:
+            cursor.execute("""
+                DELETE FROM vendor_stocktransaction 
+                WHERE product_id NOT IN (SELECT id FROM vendor_product)
+            """)
+            count = cursor.rowcount
+            if count > 0:
+                print(f"Cleaned up {count} orphaned StockTransaction records")
+                total_cleaned += count
+        except Exception as e:
+            print(f"Warning: Could not clean StockTransaction: {e}")
+        
+        # 2. Clean up orphaned expense_category records
+        try:
+            cursor.execute("""
+                DELETE FROM masters_expense_category 
+                WHERE user_id IS NOT NULL 
+                AND user_id NOT IN (SELECT id FROM users_user)
+            """)
+            count = cursor.rowcount
+            if count > 0:
+                print(f"Cleaned up {count} orphaned expense_category records")
+                total_cleaned += count
+        except Exception as e:
+            print(f"Warning: Could not clean expense_category: {e}")
+        
+        # Re-enable foreign key checks for SQLite
         if 'sqlite' in connection.settings_dict['ENGINE']:
             cursor.execute("PRAGMA foreign_keys = ON")
         
-        if deleted_count > 0:
-            print(f"Cleaned up {deleted_count} orphaned StockTransaction records")
+        if total_cleaned == 0:
+            print("No orphaned foreign key records found")
         else:
-            print("No orphaned StockTransaction records found")
+            print(f"Total cleaned up: {total_cleaned} orphaned records")
 
 
 def reverse_cleanup(apps, schema_editor):
     """
     Reverse operation - nothing to do as deleted orphaned records can't be restored.
+    Orphaned records are invalid data and shouldn't be restored.
     """
     pass
 
@@ -46,8 +75,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Clean up orphaned data before schema changes
-        migrations.RunPython(cleanup_orphaned_stock_transactions, reverse_cleanup),
+        # Clean up orphaned foreign key data before schema changes
+        # This prevents IntegrityError during migration constraint checks
+        migrations.RunPython(cleanup_orphaned_foreign_keys, reverse_cleanup),
         migrations.RemoveField(
             model_name='notificationcampaign',
             name='end_time',
