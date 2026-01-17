@@ -26,6 +26,7 @@
                                             <tr>
                                                 <th>#</th>
                                                 <th>Campaign Name</th>
+                                                <th>Image</th>
                                                 <th>Description</th>
                                                 <th>Status</th>
                                                 <th>Created At</th>
@@ -37,6 +38,13 @@
                                             <tr>
                                                 <td>{{ forloop.counter }}</td>
                                                 <td>{{ i.name }}</td>
+                                                <td>
+                                                    {% if i.banner %}
+                                                        <img src="{{ i.banner.url }}" alt="{{ i.name }}" style="max-width: 100px; max-height: 100px; object-fit: contain; border-radius: 4px;">
+                                                    {% else %}
+                                                        <span class="text-muted">No Image</span>
+                                                    {% endif %}
+                                                </td>
                                                 <td>{{ i.description }}</td>
                                                 <td>
                                                     {% if i.status == "approved" %}
