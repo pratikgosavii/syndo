@@ -238,6 +238,9 @@ urlpatterns = [
     
     # Top Rated Products API
     path('top-rated-products/', TopRatedProductsAPIView.as_view(), name='top_rated_products'),
+    
+    # Vendor Activity Feed API (no limit)
+    path('activity-feed/', VendorActivityFeedAPIView.as_view(), name='vendor_activity_feed'),
 
 ]  + router.urls
 

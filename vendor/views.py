@@ -5539,6 +5539,135 @@ class VendorDashboardViewSet(viewsets.ViewSet):
                 'top_product_requests': [],
                 'total_product_requests_count': 0,
             }
+
+
+class VendorActivityFeedAPIView(APIView):
+    """
+    API endpoint to get complete activity feed for vendor without any limit.
+    Returns all product likes, followers, store visits, and product requests.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Get complete activity feed for the authenticated vendor:
+        - All product likes
+        - All followers
+        - All store visits
+        - All product requests (or top 4 if needed)
+        """
+        from customer.models import Favourite, Follower, ProductRequest
+        from customer.serializers import ProductRequestSerializer
+        from .models import StoreVisit, vendor_store
+        
+        user = request.user
+        activities = []
+        
+        try:
+            # 1. Get all product likes (users who liked vendor's products) - NO LIMIT
+            all_likes = Favourite.objects.filter(
+                product__user=user
+            ).select_related('user', 'product').order_by('-created_at')
+            
+            for like in all_likes:
+                image_url = None
+                if like.product.image:
+                    try:
+                        image_url = request.build_absolute_uri(like.product.image.url)
+                    except:
+                        image_url = like.product.image.url if like.product.image else None
+                
+                activities.append({
+                    'type': 'product_like',
+                    'message': f"#{like.user.id} liked your product '{like.product.name}'",
+                    'user': {
+                        'id': like.user.id,
+                        'username': like.user.username,
+                        'first_name': like.user.first_name or '',
+                        'last_name': like.user.last_name or '',
+                        'email': like.user.email,
+                    },
+                    'product': {
+                        'id': like.product.id,
+                        'name': like.product.name,
+                        'image': image_url,
+                    },
+                    'created_at': like.created_at,
+                })
+            
+            # 2. Get all followers - NO LIMIT
+            all_followers = Follower.objects.filter(
+                user=user
+            ).select_related('follower').order_by('-created_at')
+            
+            for follow in all_followers:
+                activities.append({
+                    'type': 'follow',
+                    'message': f"#{follow.follower.id} followed you",
+                    'user': {
+                        'id': follow.follower.id,
+                        'username': follow.follower.username,
+                        'first_name': follow.follower.first_name or '',
+                        'last_name': follow.follower.last_name or '',
+                        'email': follow.follower.email,
+                    },
+                    'created_at': follow.created_at,
+                })
+            
+            # 3. Get all store visits - NO LIMIT
+            store = vendor_store.objects.filter(user=user).first()
+            if store:
+                all_store_visits = StoreVisit.objects.filter(
+                    store=store
+                ).select_related('visitor').order_by('-created_at')
+                
+                for visit in all_store_visits:
+                    activities.append({
+                        'type': 'store_visit',
+                        'message': f"#{visit.visitor.id or visit.visitor.email} visited your store",
+                        'user': {
+                            'id': visit.visitor.id,
+                            'username': visit.visitor.username,
+                            'first_name': visit.visitor.first_name or '',
+                            'last_name': visit.visitor.last_name or '',
+                            'email': visit.visitor.email,
+                        },
+                        'created_at': visit.created_at,
+                    })
+            
+            # 4. Get top 4 product requests (most recent)
+            product_requests = ProductRequest.objects.all().select_related(
+                'user', 'category', 'sub_category'
+            ).order_by('-created_at')[:4]
+            
+            product_requests_data = []
+            for req in product_requests:
+                serializer = ProductRequestSerializer(req, context={'request': request})
+                product_requests_data.append(serializer.data)
+            
+            # 5. Get total product request count
+            total_product_requests_count = ProductRequest.objects.all().count()
+            
+            # Sort all activities by created_at (most recent first) - NO LIMIT
+            activities.sort(key=lambda x: x['created_at'], reverse=True)
+            
+            return Response({
+                'activities': activities,  # All activities, no limit
+                'top_product_requests': product_requests_data,
+                'total_product_requests_count': total_product_requests_count,
+                'total_activities_count': len(activities),
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in VendorActivityFeedAPIView: {e}")
+            return Response({
+                'activities': [],
+                'top_product_requests': [],
+                'total_product_requests_count': 0,
+                'total_activities_count': 0,
+                'error': str(e),
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def _get_sales_expense_chart_data(self, user, months=12):
         """Get monthly sales and expense data for chart"""
