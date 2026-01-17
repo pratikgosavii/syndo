@@ -1223,7 +1223,7 @@ class SMSSettingSerializer(serializers.ModelSerializer):
             'enable_quote_message',
             'enable_credit_reminder_message',
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'available_credits', 'used_credits']
 
 
 class ReminderSerializer(serializers.ModelSerializer):
