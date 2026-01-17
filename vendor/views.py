@@ -948,10 +948,12 @@ class VendorLedgerAPIView(APIView):
         # Get balance from vendor model (updated by signals) or calculate from ledger
         try:
             vendor = vendor_vendors.objects.get(id=vendor_id)
+            # Use vendor.balance which is already calculated correctly (opening_balance + sum(ledger entries))
             balance = vendor.balance or 0
         except vendor_vendors.DoesNotExist:
-            # Fallback: calculate from ledger entries
-            balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+            # Fallback: calculate from ledger entries (should include opening_balance, but vendor doesn't exist)
+            ledger_total = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+            balance = Decimal(ledger_total or 0)
        
         # Convert balance to Decimal if it's not already
         if not isinstance(balance, Decimal):
@@ -1001,7 +1003,10 @@ def customer_ledger(request, customer_id):
 
 def vendor_ledger(request, vendor_id):
     ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id).order_by("created_at")
-    balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+    
+    # Use vendor.balance directly (already maintained by signals - opening_balance + sum(ledger entries))
+    vendor = vendor_vendors.objects.get(pk=vendor_id)
+    balance = vendor.balance or 0
 
     return render(request, "vendor_ledger.html", {
         "vendor_id": vendor_id,
