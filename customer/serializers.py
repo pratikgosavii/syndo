@@ -129,12 +129,21 @@ def calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee):
     Returns:
         Decimal: Delivery discount amount (0.00 if no discount applies)
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     delivery_discount_amount = Decimal("0.00")
     if vendor_user and shipping_fee > 0:
         try:
             from vendor.models import DeliveryDiscount
             
             delivery_discount = DeliveryDiscount.objects.filter(user=vendor_user).first()
+            logger.info(f"[DELIVERY_DISCOUNT] Vendor: {vendor_user.id}, Delivery Discount Found: {delivery_discount is not None}")
+            
+            if delivery_discount:
+                logger.info(f"[DELIVERY_DISCOUNT] Enabled: {delivery_discount.is_enabled}, Min Cart Value: {delivery_discount.min_cart_value}, Discount %: {delivery_discount.discount_percent}")
+                logger.info(f"[DELIVERY_DISCOUNT] Item Total: {item_total}, Shipping Fee: {shipping_fee}")
+                
             if delivery_discount and delivery_discount.is_enabled:
                 # Check if cart value meets minimum requirement
                 if item_total >= Decimal(str(delivery_discount.min_cart_value)):
@@ -143,10 +152,25 @@ def calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee):
                     delivery_discount_amount = (shipping_fee * discount_percent / Decimal("100")).quantize(
                         Decimal("0.01")
                     )
-        except Exception:
+                    logger.info(f"[DELIVERY_DISCOUNT] ✅ Discount Applied: {delivery_discount_amount} ({(discount_percent)}% of {shipping_fee})")
+                else:
+                    logger.info(f"[DELIVERY_DISCOUNT] ❌ Min cart value not met: {item_total} < {delivery_discount.min_cart_value}")
+            elif delivery_discount:
+                logger.info(f"[DELIVERY_DISCOUNT] ❌ Discount exists but is not enabled")
+            else:
+                logger.info(f"[DELIVERY_DISCOUNT] ❌ No delivery discount found for vendor {vendor_user.id}")
+        except Exception as e:
             # If any error, continue without discount
-            pass
+            logger.error(f"[DELIVERY_DISCOUNT] ❌ Error calculating discount: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
     
+    if not vendor_user:
+        logger.info(f"[DELIVERY_DISCOUNT] No vendor_user provided")
+    elif shipping_fee <= 0:
+        logger.info(f"[DELIVERY_DISCOUNT] Shipping fee is 0 or negative: {shipping_fee}")
+    
+    logger.info(f"[DELIVERY_DISCOUNT] Final discount amount: {delivery_discount_amount}")
     return delivery_discount_amount
 
 
@@ -586,10 +610,13 @@ class OrderSerializer(serializers.ModelSerializer):
         coupon = Decimal(str(validated_data.get("coupon", 0)))
 
         # Calculate delivery discount using the same calculation logic as cart
+        logger.info(f"[ORDER_SERIALIZER] Calculating delivery discount - Vendor: {vendor_user.id if vendor_user else None}, Item Total: {item_total}, Shipping Fee: {shipping_fee}")
         delivery_discount_amount = calculate_delivery_discount_amount(vendor_user, item_total, shipping_fee)
+        logger.info(f"[ORDER_SERIALIZER] ✅ Delivery discount calculated: {delivery_discount_amount}")
 
         # calculate final total (subtract delivery discount from shipping fee)
         total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
+        logger.info(f"[ORDER_SERIALIZER] Final totals - Item Total: {item_total}, Tax: {tax_total}, Shipping: {shipping_fee}, Coupon: {coupon}, Delivery Discount: {delivery_discount_amount}, Total Amount: {total_amount}")
 
         # Create order (order_id is generated server-side in Order.save()).
         # Add an extra retry layer here to avoid crashing the API on rare UNIQUE collisions.
@@ -705,6 +732,9 @@ class OrderSerializer(serializers.ModelSerializer):
                 logger.error(traceback.format_exc())
             
             # Reduce stock
+            # NOTE: Stock is reduced immediately when order is created (status='not_accepted').
+            # This reserves stock for the order, even if it hasn't been accepted yet.
+            # If order is cancelled later, stock should be restored in the cancellation logic.
             try:
                 # Get current stock before update
                 product_obj = product.objects.get(id=order_item.product.id)
@@ -712,7 +742,7 @@ class OrderSerializer(serializers.ModelSerializer):
                 quantity_to_reduce = order_item.quantity
                 stock_after_expected = stock_before - quantity_to_reduce
                 
-                logger.info(f"[ORDER_SERIALIZER] 📦 STOCK UPDATE - Product ID: {order_item.product.id}")
+                logger.info(f"[ORDER_SERIALIZER] 📦 STOCK UPDATE - Product ID: {order_item.product.id}, Order Status: {order.status}")
                 logger.info(f"[ORDER_SERIALIZER] 📦 Stock BEFORE: {stock_before}")
                 logger.info(f"[ORDER_SERIALIZER] 📦 Quantity to reduce: {quantity_to_reduce}")
                 logger.info(f"[ORDER_SERIALIZER] 📦 Expected stock AFTER: {stock_after_expected}")
