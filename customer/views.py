@@ -958,6 +958,9 @@ def delivery_webhook(request):
                 except Exception as e:
                     log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send out-for-delivery notification: {e}")
 
+        # Store previous status BEFORE any changes
+        previous_order_status = order.status
+        
         # Update order status based on status_code
         if status_code == "ACCEPTED":
             order.status = "accepted"
@@ -996,9 +999,6 @@ def delivery_webhook(request):
         update_fields = ["status"]
         if hasattr(order, "is_paid") and order.is_paid:
             update_fields.append("is_paid")
-        
-        # Store previous status before saving
-        previous_order_status = order.status
         log_both("info", f"[UENGAGE_WEBHOOK] Order status update: Previous = '{previous_order_status}', New = '{order.status}'")
         log_both("info", f"[UENGAGE_WEBHOOK] Updating Order fields: {update_fields}")
         
@@ -1025,7 +1025,9 @@ def delivery_webhook(request):
                 log_both("warning", f"[UENGAGE_WEBHOOK]   ⚠️  OrderItem ID {item.id} status mismatch! Expected '{new_item_status}', got '{item.status}'")
 
         # Send order status notification if order status changed
-        if order.status != previous_order_status:
+        # NOTE: Skip notification for 'accepted' here since it's sent via notify_delivery_event below
+        # to avoid duplicate notifications
+        if order.status != previous_order_status and order.status != "accepted":
             log_both("info", f"[UENGAGE_WEBHOOK] Order status changed: {previous_order_status} -> {order.status}")
             try:
                 from customer.serializers import send_order_status_notification
@@ -1034,7 +1036,8 @@ def delivery_webhook(request):
             except Exception as e:
                 log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send order status notification: {e}")
 
-        # Send notifications based on status
+        # Send notifications based on status (SMS via uEngage templates)
+        # For "accepted" status, also send push notification here to avoid duplicates
         notification_event_map = {
             "ACCEPTED": "packed",
             "ALLOTTED": "out_for_delivery",
@@ -1048,6 +1051,14 @@ def delivery_webhook(request):
         
         event = notification_event_map.get(status_code)
         if event:
+            # For "ACCEPTED" status, send push notification here (SMS is sent via notify_delivery_event)
+            if status_code == "ACCEPTED" and order.status == "accepted" and previous_order_status != "accepted":
+                try:
+                    from customer.serializers import send_order_status_notification
+                    send_order_status_notification(order, 'accepted', previous_order_status)
+                    log_both("info", f"[UENGAGE_WEBHOOK] Sent 'accepted' push notification")
+                except Exception as e:
+                    log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send 'accepted' push notification: {e}")
             # Get tracking link if available (could be from order or stored elsewhere)
             tracking_link = getattr(order.items.first(), "tracking_link", None) if order.items.exists() else None
             try:

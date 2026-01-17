@@ -700,14 +700,20 @@ class OrderViewSet(viewsets.ModelViewSet):
         instance = serializer.save()
 
         # Send notification if order status changed
+        # NOTE: Skip notification for 'ready_to_shipment' at order level since it's managed at OrderItem level
+        # to avoid duplicate notifications
         if "status" in data and data["status"] != previous_status:
-            try:
-                from customer.serializers import send_order_status_notification
-                send_order_status_notification(instance, data["status"], previous_status)
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error sending order status notification: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            if data["status"] == "ready_to_shipment":
+                # ready_to_shipment is managed at OrderItem level, notification sent there
+                logger.info(f"[ORDER_UPDATE] Skipping ready_to_shipment notification at order level (managed at item level)")
+            else:
+                try:
+                    from customer.serializers import send_order_status_notification
+                    send_order_status_notification(instance, data["status"], previous_status)
+                except Exception as e:
+                    logger.error(f"Error sending order status notification: {e}")
 
         # Auto-assign logic when order moves to ready_to_shipment (post-pack)
         try:
@@ -3824,8 +3830,27 @@ def update_order_item_status(request, order_item_id):
             item.status = status
             item.save()
             
-            # Send notification if item status changed to 'intransit' (out for delivery)
-            if status == 'intransit' and previous_status != 'intransit':
+            # Send notification if item status changed to 'ready_to_shipment' or 'intransit'
+            # Only send notification if this is the FIRST item becoming ready_to_shipment (to avoid duplicates)
+            if status == 'ready_to_shipment' and previous_status != 'ready_to_shipment':
+                try:
+                    # Check if any other items are already ready_to_shipment
+                    # If yes, notification was already sent, so skip
+                    order = item.order
+                    other_ready_items = order.items.exclude(id=item.id).filter(status='ready_to_shipment').exists()
+                    if not other_ready_items:
+                        # This is the first item becoming ready_to_shipment, send notification
+                        from customer.serializers import send_order_status_notification
+                        send_order_status_notification(order, 'ready_to_shipment')
+                    else:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.info(f"Skipping notification - other items already ready_to_shipment for order {order.order_id}")
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error sending ready-to-shipment notification: {e}")
+            elif status == 'intransit' and previous_status != 'intransit':
                 try:
                     from customer.serializers import send_order_status_notification
                     send_order_status_notification(item.order, 'intransit')
@@ -3889,8 +3914,34 @@ class UpdateOrderItemStatusAPIView(APIView):
                 pass
 
         if status_value in dict(OrderItem.STATUS_CHOICES):
+            previous_status = item.status
             item.status = status_value
             item.save()
+
+            # Send notification if item status changed to 'ready_to_shipment' or 'intransit'
+            # Only send notification if this is the FIRST item becoming ready_to_shipment (to avoid duplicates)
+            if status_value == 'ready_to_shipment' and previous_status != 'ready_to_shipment':
+                try:
+                    # Check if any other items are already ready_to_shipment
+                    # If yes, notification was already sent, so skip
+                    order = item.order
+                    other_ready_items = order.items.exclude(id=item.id).filter(status='ready_to_shipment').exists()
+                    if not other_ready_items:
+                        # This is the first item becoming ready_to_shipment, send notification
+                        from customer.serializers import send_order_status_notification
+                        send_order_status_notification(order, 'ready_to_shipment')
+                        logger.info(f"[ORDER_ITEM_UPDATE] Sent ready_to_shipment notification for order {order.order_id} (first item)")
+                    else:
+                        logger.info(f"[ORDER_ITEM_UPDATE] Skipping notification - other items already ready_to_shipment for order {order.order_id}")
+                except Exception as e:
+                    logger.error(f"[ORDER_ITEM_UPDATE] Error sending ready_to_shipment notification: {e}")
+            elif status_value == 'intransit' and previous_status != 'intransit':
+                try:
+                    from customer.serializers import send_order_status_notification
+                    send_order_status_notification(item.order, 'intransit')
+                    logger.info(f"[ORDER_ITEM_UPDATE] Sent intransit notification for order {item.order.order_id}")
+                except Exception as e:
+                    logger.error(f"[ORDER_ITEM_UPDATE] Error sending intransit notification: {e}")
 
             # If all items in the order are delivered, mark the overall order as completed
             order_completed = False
@@ -4065,9 +4116,22 @@ def privacy_policy(request):
 def accept_order(request, order_id):
 
     order = Order.objects.prefetch_related('items__product').get(id=order_id)
+    
+    # Store previous status before changing
+    previous_status = order.status
 
     order.status = "accepted"
     order.save()
+    
+    # Send notification only if status actually changed
+    if previous_status != "accepted":
+        try:
+            from customer.serializers import send_order_status_notification
+            send_order_status_notification(order, 'accepted', previous_status)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error sending order accepted notification: {e}")
 
     return redirect('order_details', order_id = order_id)
 
