@@ -627,7 +627,11 @@ class OrderSerializer(serializers.ModelSerializer):
         logger.info(f"[ORDER_SERIALIZER] ✅ Delivery discount calculated: {delivery_discount_amount}")
 
         # calculate final total (subtract delivery discount from shipping fee)
-        total_amount = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
+        calculated_total = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
+        # Round total amount up to nearest whole number (ceiling)
+        import math
+        total_amount = Decimal(str(math.ceil(float(calculated_total)))).quantize(Decimal("0.01"))
+        logger.info(f"[ORDER_SERIALIZER] Calculated Total: {calculated_total}, Rounded Up Total: {total_amount}")
         logger.info(f"[ORDER_SERIALIZER] Final totals - Item Total: {item_total}, Tax: {tax_total}, Shipping: {shipping_fee}, Coupon: {coupon}, Delivery Discount: {delivery_discount_amount}, Total Amount: {total_amount}")
 
         # Create order (order_id is generated server-side in Order.save()).
@@ -898,6 +902,35 @@ class OrderSerializer(serializers.ModelSerializer):
             send_order_status_notification(order, 'not_accepted')
         except Exception as e:
             logger.error(f"Error sending order notification: {e}", exc_info=True)
+        
+        # Send push notifications to vendors (product.user) - 1 notification per vendor per order
+        try:
+            # Get all unique vendors from order items
+            order_items = order.items.select_related('product', 'product__user').all()
+            vendor_users = set()
+            for item in order_items:
+                if item.product and item.product.user:
+                    vendor_users.add(item.product.user)
+            
+            # Send one notification per vendor
+            for vendor_user in vendor_users:
+                try:
+                    send_vendor_notification(
+                        vendor_user=vendor_user,
+                        notification_type="new_order",
+                        title="New Order Received",
+                        body=f"You have received a new order: {order.order_id}",
+                        data={
+                            "order_id": str(order.order_id),
+                            "order_total": str(order.total_amount),
+                            "type": "new_order"
+                        }
+                    )
+                    logger.info(f"[ORDER_SERIALIZER] ✅ Sent order notification to vendor {vendor_user.id} for order {order.order_id}")
+                except Exception as e:
+                    logger.error(f"[ORDER_SERIALIZER] ❌ Error sending notification to vendor {vendor_user.id}: {e}")
+        except Exception as e:
+            logger.error(f"[ORDER_SERIALIZER] ❌ Error sending vendor notifications: {e}", exc_info=True)
 
         # Delivery task creation is deferred to vendor when status becomes ready_to_shipment
         print("[OrderSerializer] Delivery task will be created when vendor marks ready_to_shipment.")
