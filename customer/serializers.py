@@ -500,11 +500,13 @@ class OrderSerializer(serializers.ModelSerializer):
     address_details = AddressSerializer(source="address", read_only = True)
     coupon_details = serializers.SerializerMethodField()
     vendor_mobile = serializers.SerializerMethodField()
+    delivery_boy_details = serializers.SerializerMethodField()
+    uengage_delivery_boy = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "coupon", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details', 'coupon_details', 'vendor_mobile']
+        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "coupon", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details', 'coupon_details', 'vendor_mobile', 'delivery_boy_details', 'uengage_delivery_boy']
     
     def get_coupon_details(self, obj):
         """Return full coupon details if coupon was applied"""
@@ -525,6 +527,25 @@ class OrderSerializer(serializers.ModelSerializer):
                 return str(mobile) if mobile else None
         except Exception:
             pass
+        return None
+    
+    def get_delivery_boy_details(self, obj):
+        """Return full delivery boy details if assigned"""
+        if obj.delivery_boy:
+            from vendor.serializers import DeliveryBoySerializer
+            return DeliveryBoySerializer(obj.delivery_boy).data
+        return None
+    
+    def get_uengage_delivery_boy(self, obj):
+        """Return uEngage delivery boy details from webhook data"""
+        if obj.uengage_task_id:
+            return {
+                "task_id": obj.uengage_task_id,
+                "rider_name": obj.uengage_rider_name,
+                "rider_contact": obj.uengage_rider_contact,
+                "rider_latitude": float(obj.uengage_rider_latitude) if obj.uengage_rider_latitude else None,
+                "rider_longitude": float(obj.uengage_rider_longitude) if obj.uengage_rider_longitude else None,
+            }
         return None
     
     def create(self, validated_data):

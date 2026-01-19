@@ -208,6 +208,10 @@ class Order(models.Model):
 
     # External delivery integration tracking (uEngage)
     uengage_task_id = models.CharField(max_length=100, blank=True, null=True)
+    uengage_rider_name = models.CharField(max_length=100, blank=True, null=True, help_text="Rider name from uEngage webhook")
+    uengage_rider_contact = models.CharField(max_length=15, blank=True, null=True, help_text="Rider contact number from uEngage webhook")
+    uengage_rider_latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Rider latitude from uEngage webhook")
+    uengage_rider_longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, help_text="Rider longitude from uEngage webhook")
 
     # Delivery details
     address = models.ForeignKey(Address, on_delete=models.CASCADE, null=True, blank=True)

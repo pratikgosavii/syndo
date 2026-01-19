@@ -1298,10 +1298,34 @@ def delivery_webhook(request):
             except Exception as e:
                 log_both("warning", f"[UENGAGE_WEBHOOK] Failed to send notification: {e}")
 
-        # Store rider information if provided (could be stored in a separate model or as JSON field)
-        # For now, we'll log it. You might want to create a DeliveryTracking model to store this.
-        if rider_name or rider_contact:
-            log_both("info", f"[UENGAGE_WEBHOOK] Rider info stored - Name: {rider_name}, Contact: {rider_contact}, Location: ({latitude}, {longitude})")
+        # Store rider information in Order model
+        if rider_name or rider_contact or latitude or longitude:
+            from decimal import Decimal, InvalidOperation
+            update_fields = []
+            if rider_name:
+                order.uengage_rider_name = rider_name
+                update_fields.append('uengage_rider_name')
+            if rider_contact:
+                order.uengage_rider_contact = rider_contact
+                update_fields.append('uengage_rider_contact')
+            if latitude:
+                try:
+                    order.uengage_rider_latitude = Decimal(str(latitude))
+                    update_fields.append('uengage_rider_latitude')
+                except (ValueError, TypeError, InvalidOperation):
+                    log_both("warning", f"[UENGAGE_WEBHOOK] Invalid latitude value: {latitude}")
+            if longitude:
+                try:
+                    order.uengage_rider_longitude = Decimal(str(longitude))
+                    update_fields.append('uengage_rider_longitude')
+                except (ValueError, TypeError, InvalidOperation):
+                    log_both("warning", f"[UENGAGE_WEBHOOK] Invalid longitude value: {longitude}")
+            
+            if update_fields:
+                order.save(update_fields=update_fields)
+                log_both("info", f"[UENGAGE_WEBHOOK] ✅ Rider info stored in Order - Name: {rider_name}, Contact: {rider_contact}, Location: ({latitude}, {longitude})")
+            else:
+                log_both("info", f"[UENGAGE_WEBHOOK] Rider info received but not stored - Name: {rider_name}, Contact: {rider_contact}, Location: ({latitude}, {longitude})")
 
         if rto_reason:
             log_both("info", f"[UENGAGE_WEBHOOK] RTO Reason stored: {rto_reason}")
