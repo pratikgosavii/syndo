@@ -144,6 +144,19 @@ def calculate_coupon_discount_amount(coupon_id, item_total, user=None):
     if not coupon_id or item_total <= 0:
         return discount_amount, None, None
     
+    # Handle case where coupon_id might be a coupon instance instead of ID
+    if hasattr(coupon_id, 'id'):
+        coupon_id = coupon_id.id
+    elif hasattr(coupon_id, 'pk'):
+        coupon_id = coupon_id.pk
+    
+    # Convert to int if it's a string
+    try:
+        coupon_id = int(coupon_id)
+    except (ValueError, TypeError):
+        logger.warning(f"[COUPON] Invalid coupon_id type: {type(coupon_id)}, value: {coupon_id}")
+        return discount_amount, None, "Invalid coupon ID format"
+    
     try:
         from vendor.models import coupon
         
@@ -732,6 +745,8 @@ class OrderSerializer(serializers.ModelSerializer):
             if coupon_amount:
                 coupon_discount = Decimal(str(coupon_amount))
                 logger.info(f"[ORDER_SERIALIZER] Using provided coupon amount (backward compatibility): {coupon_discount}")
+            else:
+                logger.info(f"[ORDER_SERIALIZER] No coupon provided - coupon_id: {coupon_id}, coupon amount: {coupon_amount}")
 
         # Calculate delivery discount using the same calculation logic as cart
         logger.info(f"[ORDER_SERIALIZER] Calculating delivery discount - Vendor: {vendor_user.id if vendor_user else None}, Item Total: {item_total}, Tax: {tax_total}, Shipping Fee: {shipping_fee}")
