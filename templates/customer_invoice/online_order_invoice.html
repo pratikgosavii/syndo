@@ -30,6 +30,9 @@
             {% endif %}
         </td>
         <td class="text-right">
+            {% if invoice_image %}
+                <img src="{{ invoice_image }}" alt="Invoice Logo" style="max-width: 150px; max-height: 80px; float: right; margin-bottom: 10px;">
+            {% endif %}
             <h3>Tax Invoice/Bill of Supply/Cash Memo</h3>
             <p>(Original for Recipient)</p>
         </td>
@@ -42,7 +45,7 @@
         <td width="50%">
             <div class="section-title">Sold By :</div>
             <p>
-                <b>{% if company_profile %}{{ company_profile.company_name }}{% else %}{{ vendor_user.username }}{% endif %}</b><br>
+                <b>Svindo</b><br>
                 {% if company_profile %}
                     {{ company_profile.billing_address_line_1 }}<br>
                     {% if company_profile.billing_address_line_2 %}{{ company_profile.billing_address_line_2 }}<br>{% endif %}
@@ -130,24 +133,36 @@
         <td class="text-center">{{ item.quantity }}</td>
         <td class="text-right">{{ item.taxable_value|floatformat:2 }}</td>
         <td class="text-center">
-            {% if store_gst == "cgst" %}
-                {{ item.cgst_percent|floatformat:0 }}% + {{ item.sgst_percent|floatformat:0 }}%
+            {% if tax_total > 0 %}
+                {% if store_gst == "cgst" %}
+                    {{ item.cgst_percent|floatformat:0 }}% + {{ item.sgst_percent|floatformat:0 }}%
+                {% else %}
+                    {{ item.igst_percent|floatformat:0 }}%
+                {% endif %}
             {% else %}
-                {{ item.igst_percent|floatformat:0 }}%
+                00
             {% endif %}
         </td>
         <td class="text-center">
-            {% if store_gst == "cgst" %}
-                CGST/SGST
+            {% if tax_total > 0 %}
+                {% if store_gst == "cgst" %}
+                    CGST/SGST
+                {% else %}
+                    IGST
+                {% endif %}
             {% else %}
-                IGST
+                N/A
             {% endif %}
         </td>
         <td class="text-right">
-            {% if store_gst == "cgst" %}
-                {{ item.cgst_amount|floatformat:2 }} + {{ item.sgst_amount|floatformat:2 }}
+            {% if tax_total > 0 %}
+                {% if store_gst == "cgst" %}
+                    {{ item.cgst_amount|floatformat:2 }} + {{ item.sgst_amount|floatformat:2 }}
+                {% else %}
+                    {{ item.igst_amount|floatformat:2 }}
+                {% endif %}
             {% else %}
-                {{ item.igst_amount|floatformat:2 }}
+                00.00
             {% endif %}
         </td>
         <td class="text-right">{{ item.total_with_tax|floatformat:2 }}</td>
@@ -162,24 +177,36 @@
         <td class="text-center">1</td>
         <td class="text-right">{{ shipping_fee|floatformat:2 }}</td>
         <td class="text-center">
-            {% if store_gst == "cgst" %}
-                9% + 9%
+            {% if tax_total > 0 %}
+                {% if store_gst == "cgst" %}
+                    9% + 9%
+                {% else %}
+                    18%
+                {% endif %}
             {% else %}
-                18%
+                00
             {% endif %}
         </td>
         <td class="text-center">
-            {% if store_gst == "cgst" %}
-                CGST/SGST
+            {% if tax_total > 0 %}
+                {% if store_gst == "cgst" %}
+                    CGST/SGST
+                {% else %}
+                    IGST
+                {% endif %}
             {% else %}
-                IGST
+                N/A
             {% endif %}
         </td>
         <td class="text-right">
-            {% if store_gst == "cgst" %}
-                {{ shipping_cgst|floatformat:2 }} + {{ shipping_sgst|floatformat:2 }}
+            {% if tax_total > 0 %}
+                {% if store_gst == "cgst" %}
+                    {{ shipping_cgst|floatformat:2 }} + {{ shipping_sgst|floatformat:2 }}
+                {% else %}
+                    {{ shipping_igst|floatformat:2 }}
+                {% endif %}
             {% else %}
-                {{ shipping_igst|floatformat:2 }}
+                00.00
             {% endif %}
         </td>
         <td class="text-right">{{ shipping_fee|floatformat:2 }}</td>
@@ -218,6 +245,14 @@
 
 <!-- Total in words -->
 <p class="amount-in-words">Amount in Words: <b>{{ total_in_words }}</b></p>
+
+<!-- Privacy Policy Link -->
+<p style="text-align: center; margin-top: 20px; font-size: 11px; color: #666;">
+    For Privacy Policy, please refer: 
+    <a href="https://svindo.com/#/menu/security-policy/privacy-policy" target="_blank" style="color: #0066cc; text-decoration: underline;">
+        https://svindo.com/#/menu/security-policy/privacy-policy
+    </a>
+</p>
 
 <!-- Footer -->
 <table class="no-border">

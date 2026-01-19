@@ -569,7 +569,14 @@ class OnlineOrderInvoiceAPIView(APIView):
             data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
             data["igst_amount"] = data["total_tax"]
 
-        total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
+        # Convert to INR format: "Rupees [amount] Only"
+        try:
+            # Use num2words with INR currency
+            amount_words = num2words(rounded_total, lang='en_IN').title()
+            total_in_words = f"Rupees {amount_words} Only"
+        except Exception:
+            # Fallback if num2words fails
+            total_in_words = f"Rupees {rounded_total} Only"
 
         # Calculate shipping tax for display (assuming 18% GST on shipping)
         shipping_taxable = shipping_fee / Decimal("1.18") if shipping_fee > 0 else Decimal(0)
@@ -586,6 +593,23 @@ class OnlineOrderInvoiceAPIView(APIView):
                 # IGST (18%)
                 shipping_igst = (shipping_taxable * Decimal("18") / Decimal("100")).quantize(Decimal("0.01"))
 
+        # Get invoice image URL from media folder
+        from django.conf import settings
+        invoice_image_url = None
+        try:
+            # Build full URL for invoice image in media folder
+            invoice_image_path = "invoice_image.jpeg"
+            if hasattr(settings, 'MEDIA_URL'):
+                if request:
+                    # Build full absolute URL for the image
+                    scheme = 'https' if request.is_secure() else 'http'
+                    host = request.get_host()
+                    invoice_image_url = f"{scheme}://{host}{settings.MEDIA_URL}{invoice_image_path}"
+                else:
+                    invoice_image_url = f"{settings.MEDIA_URL}{invoice_image_path}"
+        except Exception:
+            pass
+
         # Prepare context - use order fields directly where available
         context = {
             "order": order,
@@ -599,6 +623,7 @@ class OnlineOrderInvoiceAPIView(APIView):
             "hsn_summary": hsn_summary.items(),
             "total_in_words": total_in_words,
             "total_tax": float(tax_total),  # From order.tax_total
+            "tax_total": float(tax_total),  # Add tax_total for template check
             "store_gst": store_gst,
             "sum_taxable": float(item_total),  # From order.item_total
             "sum_sgst": float(total_sgst.quantize(Decimal("0.01"))),
@@ -616,6 +641,7 @@ class OnlineOrderInvoiceAPIView(APIView):
             "items_with_tax": items_with_tax,
             "payment_mode": order.payment_mode,  # From order
             "is_paid": order.is_paid,  # From order
+            "invoice_image": invoice_image_url,  # Invoice image URL
         }
 
         # Render template to HTML string and convert to PDF
