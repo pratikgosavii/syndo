@@ -450,7 +450,7 @@ class OnlineOrderInvoiceAPIView(APIView):
                 Order.objects
                 .prefetch_related('items__product')
                 .select_related('user', 'address')
-                .get(order_id=order_id)
+                .get(id=order_id)
             )
         except Order.DoesNotExist:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
