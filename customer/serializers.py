@@ -499,17 +499,32 @@ class OrderSerializer(serializers.ModelSerializer):
     user_details = UserProfileSerializer(source = 'user', read_only=True)
     address_details = AddressSerializer(source="address", read_only = True)
     coupon_details = serializers.SerializerMethodField()
+    vendor_mobile = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "coupon", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details', 'coupon_details']
+        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "coupon", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details', 'coupon_details', 'vendor_mobile']
     
     def get_coupon_details(self, obj):
         """Return full coupon details if coupon was applied"""
         if obj.coupon_id:
             from vendor.serializers import coupon_serializer
             return coupon_serializer(obj.coupon_id).data
+        return None
+    
+    def get_vendor_mobile(self, obj):
+        """Return vendor mobile number from order items"""
+        try:
+            # Get first order item to find vendor
+            first_item = obj.items.select_related('product', 'product__user').first()
+            if first_item and first_item.product and first_item.product.user:
+                vendor_user = first_item.product.user
+                # Try to get mobile number from user
+                mobile = getattr(vendor_user, 'mobile_number', None) or getattr(vendor_user, 'mobile', None) or getattr(vendor_user, 'phone', None)
+                return str(mobile) if mobile else None
+        except Exception:
+            pass
         return None
     
     def create(self, validated_data):

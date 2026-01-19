@@ -1696,7 +1696,7 @@ class CartViewSet(viewsets.ModelViewSet):
             try:
                 from customer.serializers import send_vendor_notification
                 vendor_user = product_instance.user
-                customer_name = self.request.user.username or self.request.user.mobile or f"User {self.request.user.id}"
+                customer_name = self.request.user.id or self.request.user.mobile or f"User {self.request.user.id}"
                 send_vendor_notification(
                     vendor_user=vendor_user,
                     notification_type="cart_add",
