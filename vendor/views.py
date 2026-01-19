@@ -20,6 +20,7 @@ from .serializers import *
 
 from users.permissions import *
 from django.db.models import Sum
+from django.db import transaction
 
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
@@ -2757,44 +2758,26 @@ class PurchaseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
     
-    def partial_update(self, request, *args, **kwargs):
-        """Custom partial update method for Purchase"""
+    def update(self, request, *args, **kwargs):
+        """PUT/PATCH update for Purchase - serializer handles all logic"""
+        partial = kwargs.pop('partial', False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         
+        # Use transaction to ensure atomicity
         with transaction.atomic():
-            # Update the purchase
             self.perform_update(serializer)
-            
-            # Handle purchase items if provided
-            if 'items' in request.data:
-                # Delete existing items
-                PurchaseItem.objects.filter(purchase=instance).delete()
-                
-                # Create new items
-                from decimal import Decimal
-                for item_data in request.data['items']:
-                    quantity = item_data.get('quantity', 1)
-                    price = item_data.get('price', 0)
-                    PurchaseItem.objects.create(
-                        purchase=instance,
-                        product_id=item_data['product'],
-                        quantity=quantity,
-                        price=price,
-                        total=Decimal(str(quantity)) * Decimal(str(price)),
-                    )
-                
-                # Calculate and save total_amount from all items
-                instance.calculate_total()
-                
-                # Save again to trigger the signal with correct total_amount for ledger creation
-                instance.save()
-                
-                # Refresh instance to get updated total_amount in response
-                instance.refresh_from_db()
         
+        # Refresh to get updated data (including calculated totals)
+        instance.refresh_from_db()
+        serializer = self.get_serializer(instance)
         return Response(serializer.data)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """PATCH update - same as update with partial=True"""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
 
 
 
