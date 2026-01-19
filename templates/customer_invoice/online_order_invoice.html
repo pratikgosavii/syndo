@@ -47,7 +47,7 @@
                     {{ company_profile.billing_address_line_1 }}<br>
                     {% if company_profile.billing_address_line_2 %}{{ company_profile.billing_address_line_2 }}<br>{% endif %}
                     {% if company_profile.billing_city %}{{ company_profile.billing_city }}, {% endif %}
-                    {% if company_profile.billing_state %}{{ company_profile.billing_state.name }}, {% endif %}
+                    {% if company_profile.billing_state %}{% if company_profile.billing_state.name %}{{ company_profile.billing_state.name }}{% else %}{{ company_profile.billing_state }}{% endif %}, {% endif %}
                     {% if company_profile.billing_pincode %}{{ company_profile.billing_pincode }}{% endif %}<br>
                     {% if company_profile.pan %}PAN No: {{ company_profile.pan }}<br>{% endif %}
                     {% if company_profile.gstin %}GST Registration No: {{ company_profile.gstin }}{% endif %}
@@ -59,13 +59,13 @@
         <td width="50%">
             <div class="section-title">Billing Address :</div>
             <p>
-                <b>{{ customer_address.name }}</b><br>
-                {{ customer_address.address_line_1 }}<br>
-                {% if customer_address.address_line_2 %}{{ customer_address.address_line_2 }}<br>{% endif %}
-                {% if customer_address.city %}{{ customer_address.city }}, {% endif %}
-                {% if customer_address.state %}{{ customer_address.state.name }}, {% endif %}
-                {% if customer_address.pincode %}{{ customer_address.pincode }}{% endif %}<br>
-                {% if customer_address.state %}State/UT Code: {{ customer_address.state.state_code }}{% endif %}
+                <b>{{ customer_address.full_name }}</b><br>
+                {{ customer_address.flat_building }}<br>
+                {% if customer_address.area_street %}{{ customer_address.area_street }}<br>{% endif %}
+                {% if customer_address.landmark %}{{ customer_address.landmark }}<br>{% endif %}
+                {% if customer_address.town_city %}{{ customer_address.town_city }}, {% endif %}
+                {% if customer_address.state %}{{ customer_address.state }}, {% endif %}
+                {% if customer_address.pincode %}{{ customer_address.pincode }}{% endif %}
             </p>
         </td>
     </tr>
@@ -82,13 +82,13 @@
         <td>
             <div class="section-title">Shipping Address :</div>
             <p>
-                <b>{{ customer_address.name }}</b><br>
-                {{ customer_address.address_line_1 }}<br>
-                {% if customer_address.address_line_2 %}{{ customer_address.address_line_2 }}<br>{% endif %}
-                {% if customer_address.city %}{{ customer_address.city }}, {% endif %}
-                {% if customer_address.state %}{{ customer_address.state.name }}, {% endif %}
-                {% if customer_address.pincode %}{{ customer_address.pincode }}{% endif %}<br>
-                {% if customer_address.state %}State/UT Code: {{ customer_address.state.state_code }}{% endif %}
+                <b>{{ customer_address.full_name }}</b><br>
+                {{ customer_address.flat_building }}<br>
+                {% if customer_address.area_street %}{{ customer_address.area_street }}<br>{% endif %}
+                {% if customer_address.landmark %}{{ customer_address.landmark }}<br>{% endif %}
+                {% if customer_address.town_city %}{{ customer_address.town_city }}, {% endif %}
+                {% if customer_address.state %}{{ customer_address.state }}, {% endif %}
+                {% if customer_address.pincode %}{{ customer_address.pincode }}{% endif %}
             </p>
         </td>
     </tr>
@@ -98,8 +98,8 @@
 <table>
     <tr>
         <td>
-            <b>Place of Supply:</b> {% if company_profile and company_profile.billing_state %}{{ company_profile.billing_state.name }}{% else %}N/A{% endif %}<br>
-            <b>Place of Delivery:</b> {% if customer_address.state %}{{ customer_address.state.name }}{% else %}N/A{% endif %}
+            <b>Place of Supply:</b> {% if company_profile and company_profile.billing_state %}{% if company_profile.billing_state.name %}{{ company_profile.billing_state.name }}{% else %}{{ company_profile.billing_state }}{% endif %}{% else %}N/A{% endif %}<br>
+            <b>Place of Delivery:</b> {% if customer_address.state %}{{ customer_address.state }}{% else %}N/A{% endif %}
         </td>
         <td>
             <b>Invoice Number:</b> {{ order.order_id }}<br>

@@ -473,12 +473,20 @@ class OnlineOrderInvoiceAPIView(APIView):
 
         # Determine GST type (CGST if vendor/customer state matches else IGST)
         vendor_state_name = None
-        if company_profile and company_profile.state:
-            vendor_state_name = company_profile.state.name
+        if company_profile:
+            # CompanyProfile.billing_state is CharField, state is ForeignKey - check both
+            if hasattr(company_profile, 'billing_state') and company_profile.billing_state:
+                vendor_state_name = str(company_profile.billing_state)
+            elif hasattr(company_profile, 'state') and company_profile.state:
+                if hasattr(company_profile.state, 'name'):
+                    vendor_state_name = company_profile.state.name
+                else:
+                    vendor_state_name = str(company_profile.state)
         
         customer_state_name = None
         if customer_address.state:
-            customer_state_name = customer_address.state.name
+            # Address.state is a CharField (string), not ForeignKey
+            customer_state_name = str(customer_address.state)
         
         same_state = False
         if vendor_state_name and customer_state_name:
