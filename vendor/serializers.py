@@ -848,12 +848,73 @@ from django.db import IntegrityError, transaction
 class SaleItemSerializer(serializers.ModelSerializer):
     amount = serializers.SerializerMethodField(read_only=True)
     product_details = product_serializer(source = "product", read_only=True)
+    serial_imei_number = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Serial/IMEI number value to link to this sale item (OneToOne)"
+    )
+    serial_imei_value = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = SaleItem
-        fields = ['product', 'quantity', 'price', 'amount', 'product_details']
+        fields = ['product', 'quantity', 'price', 'amount', 'product_details', 'serial_imei_number', 'serial_imei_value']
 
     def get_amount(self, obj):
         return round(obj.quantity * obj.price, 2)
+    
+    def get_serial_imei_value(self, obj):
+        """Return serial/IMEI value for this sale item"""
+        if obj.serial_imei_number:
+            return obj.serial_imei_number.value
+        return None
+    
+    def create(self, validated_data):
+        """Create SaleItem and link serial/IMEI number"""
+        serial_imei_value = validated_data.pop('serial_imei_number', None)
+        sale_item = super().create(validated_data)
+        
+        # Link serial/IMEI number if provided
+        if serial_imei_value:
+            from vendor.models import serial_imei_no
+            # Find serial_imei_no record by value for this product
+            serial_obj = serial_imei_no.objects.filter(
+                product=sale_item.product,
+                value=serial_imei_value,
+                is_sold=False
+            ).first()
+            if serial_obj:
+                sale_item.serial_imei_number = serial_obj
+                sale_item.save()
+        
+        return sale_item
+    
+    def update(self, instance, validated_data):
+        """Update SaleItem and handle serial/IMEI number"""
+        serial_imei_value = validated_data.pop('serial_imei_number', None)
+        sale_item = super().update(instance, validated_data)
+        
+        # Update serial/IMEI number if provided
+        if serial_imei_value is not None:
+            if serial_imei_value:
+                from vendor.models import serial_imei_no
+                # Find serial_imei_no record by value for this product
+                serial_obj = serial_imei_no.objects.filter(
+                    product=sale_item.product,
+                    value=serial_imei_value,
+                    is_sold=False
+                ).first()
+                if serial_obj:
+                    sale_item.serial_imei_number = serial_obj
+                else:
+                    sale_item.serial_imei_number = None
+            else:
+                # Clear the link if empty string or None
+                sale_item.serial_imei_number = None
+            sale_item.save()
+        
+        return sale_item
 
 
 class PosWholesaleSerializer(serializers.ModelSerializer):

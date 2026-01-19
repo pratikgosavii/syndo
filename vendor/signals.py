@@ -1646,6 +1646,152 @@ def restore_stock_on_sale_delete(sender, instance, **kwargs):
 
 
 # -----------------------------------------------------------------------------
+# 🔵 SERIAL/IMEI NUMBER TRACKING FOR SALES
+# -----------------------------------------------------------------------------
+@receiver(pre_save, sender=SaleItem)
+def store_old_serial_imei_before_save(sender, instance, **kwargs):
+    """
+    Store old serial/IMEI number ID before save for comparison.
+    This runs before save, so we can check what changed.
+    """
+    # Skip if this is a new item
+    if instance.pk is None:
+        instance._old_serial_id = None
+        return
+    
+    try:
+        old_instance = SaleItem.objects.get(pk=instance.pk)
+        # Get old serial/IMEI number that was linked (OneToOne)
+        instance._old_serial_id = old_instance.serial_imei_number.id if old_instance.serial_imei_number else None
+    except SaleItem.DoesNotExist:
+        instance._old_serial_id = None
+
+
+@receiver(post_save, sender=SaleItem)
+def track_serial_imei_on_sale_item_save(sender, instance, created, **kwargs):
+    """
+    Handle serial/IMEI number tracking when a SaleItem is created or updated.
+    - For new items: Mark linked serial as sold
+    - For updated items: Restore removed serial, mark new one as sold
+    
+    This signal runs AFTER the SaleItem is saved, so the serial_imei_number relationship
+    should be established if it was set in the serializer.
+    """
+    from .models import serial_imei_no
+    
+    # Check if we should process this sale
+    should_process, reason = should_process_sale(instance.sale)
+    if not should_process:
+        logger.debug(f"[SERIAL_TRACK] Skipping serial tracking for SaleItem ID: {instance.id}, Reason: {reason}")
+        return
+    
+    # Refresh from DB to ensure we have the latest serial_imei_number relationship
+    instance.refresh_from_db(fields=['serial_imei_number'])
+    
+    # Get current serial/IMEI number linked to this sale item (OneToOne)
+    current_serial = instance.serial_imei_number
+    current_serial_id = current_serial.id if current_serial else None
+    
+    if created:
+        # For new items, mark linked serial as sold (if it exists)
+        # Note: Serial might be set after first save in serializer, so this handles both cases
+        if current_serial_id:
+            serial_imei_no.objects.filter(id=current_serial_id).update(is_sold=True)
+            logger.info(f"[SERIAL_TRACK] ✅ Marked serial/IMEI number (ID: {current_serial_id}, Value: {current_serial.value}) as sold for new SaleItem ID: {instance.id}")
+        else:
+            logger.debug(f"[SERIAL_TRACK] No serial/IMEI number linked to new SaleItem ID: {instance.id} (may be set in subsequent save)")
+    else:
+        # For updated items, handle changes
+        old_serial_id = getattr(instance, '_old_serial_id', None)
+        
+        # If serial was removed (old exists but current doesn't)
+        if old_serial_id and not current_serial_id:
+            # Restore removed serial (mark as not sold)
+            serial_imei_no.objects.filter(id=old_serial_id).update(is_sold=False)
+            logger.info(f"[SERIAL_TRACK] ✅ Restored serial/IMEI number (ID: {old_serial_id}) - marked as not sold for SaleItem ID: {instance.id}")
+        
+        # If serial was added or changed (current exists and is different from old)
+        if current_serial_id and current_serial_id != old_serial_id:
+            # Mark new serial as sold
+            serial_imei_no.objects.filter(id=current_serial_id).update(is_sold=True)
+            logger.info(f"[SERIAL_TRACK] ✅ Marked serial/IMEI number (ID: {current_serial_id}, Value: {current_serial.value}) as sold for SaleItem ID: {instance.id}")
+            
+            # If old serial exists and is different, restore it
+            if old_serial_id and old_serial_id != current_serial_id:
+                serial_imei_no.objects.filter(id=old_serial_id).update(is_sold=False)
+                logger.info(f"[SERIAL_TRACK] ✅ Restored old serial/IMEI number (ID: {old_serial_id}) - marked as not sold for SaleItem ID: {instance.id}")
+
+
+@receiver(post_delete, sender=SaleItem)
+def restore_serial_imei_on_sale_item_delete(sender, instance, **kwargs):
+    """
+    Restore serial/IMEI number (mark as not sold) when a SaleItem is deleted.
+    """
+    from .models import serial_imei_no
+    
+    # Check if we should process this sale
+    should_process, reason = should_process_sale(instance.sale)
+    if not should_process:
+        logger.debug(f"[SERIAL_TRACK] Skipping serial restoration for SaleItem ID: {instance.id}, Reason: {reason}")
+        return
+    
+    # Get serial/IMEI number that was linked to this sale item (OneToOne)
+    # Note: We need to get it before the relationship is cleared
+    linked_serial = instance.serial_imei_number
+    
+    if linked_serial:
+        # Restore linked serial (mark as not sold)
+        serial_imei_no.objects.filter(id=linked_serial.id).update(is_sold=False)
+        logger.info(f"[SERIAL_TRACK] Restored serial/IMEI number (ID: {linked_serial.id}) - marked as not sold for deleted SaleItem ID: {instance.id}")
+
+
+# -----------------------------------------------------------------------------
+# 🟢 ONLINE ORDER SERIAL/IMEI NUMBER TRACKING
+# -----------------------------------------------------------------------------
+@receiver(post_delete, sender=OrderItem)
+def restore_serial_imei_on_order_item_delete(sender, instance, **kwargs):
+    """
+    Restore serial/IMEI number (mark as not sold) when an OrderItem is deleted.
+    """
+    from .models import serial_imei_no
+    
+    # Get serial/IMEI number that was linked to this order item (OneToOne)
+    # Note: We need to get it before the relationship is cleared
+    linked_serial = instance.serial_imei_number
+    
+    if linked_serial:
+        # Restore linked serial (mark as not sold)
+        serial_imei_no.objects.filter(id=linked_serial.id).update(is_sold=False)
+        logger.info(f"[ORDER_SERIAL_TRACK] ✅ Restored serial/IMEI number (ID: {linked_serial.id}, Value: {linked_serial.value}) - marked as not sold for deleted OrderItem ID: {instance.id}")
+
+
+@receiver(pre_save, sender=OrderItem)
+def restore_serial_on_order_item_cancelled(sender, instance, **kwargs):
+    """
+    Restore serial/IMEI number when OrderItem status changes to 'cancelled'.
+    """
+    # Skip if this is a new item
+    if instance.pk is None:
+        return
+    
+    from .models import serial_imei_no
+    
+    try:
+        old_instance = OrderItem.objects.get(pk=instance.pk)
+        old_status = old_instance.status
+        new_status = instance.status
+        
+        # If status changed to 'cancelled', restore the serial
+        if old_status != 'cancelled' and new_status == 'cancelled':
+            linked_serial = instance.serial_imei_number
+            if linked_serial:
+                serial_imei_no.objects.filter(id=linked_serial.id).update(is_sold=False)
+                logger.info(f"[ORDER_SERIAL_TRACK] ✅ Restored serial/IMEI number (ID: {linked_serial.id}, Value: {linked_serial.value}) - marked as not sold for cancelled OrderItem ID: {instance.id}")
+    except OrderItem.DoesNotExist:
+        pass
+
+
+# -----------------------------------------------------------------------------
 # 🟠 ORDER
 # -----------------------------------------------------------------------------
 @receiver(post_save, sender=OrderItem)

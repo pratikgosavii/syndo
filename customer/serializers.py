@@ -674,12 +674,39 @@ class OrderSerializer(serializers.ModelSerializer):
         if order is None:
             raise last_exc or serializers.ValidationError({"detail": "Unable to create order. Please try again."})
 
+        # Assign random unsold serial/IMEI numbers to order items if product has any
+        logger.info(f"[ORDER_SERIALIZER] Checking for serial/IMEI numbers to assign")
+        from vendor.models import serial_imei_no
+        import random
+        
+        for order_item in order_items:
+            # Check if product has any unsold serial/IMEI numbers
+            unsold_serials = serial_imei_no.objects.filter(
+                product=order_item.product,
+                is_sold=False
+            )
+            
+            if unsold_serials.exists():
+                # Randomly select one unsold serial/IMEI number
+                random_serial = random.choice(list(unsold_serials))
+                order_item.serial_imei_number = random_serial
+                logger.info(f"[ORDER_SERIALIZER] ✅ Assigned serial/IMEI number (ID: {random_serial.id}, Value: {random_serial.value}) to OrderItem for Product ID: {order_item.product.id}")
+            else:
+                logger.debug(f"[ORDER_SERIALIZER] No unsold serial/IMEI numbers available for Product ID: {order_item.product.id}")
+        
         # bulk create items with linked order
         logger.info(f"[ORDER_SERIALIZER] About to bulk_create {len(order_items)} order items")
         for oi in order_items:
             oi.order = order
         OrderItem.objects.bulk_create(order_items)
         logger.info(f"[ORDER_SERIALIZER] ✅ bulk_create completed for {len(order_items)} items")
+        
+        # Mark assigned serial/IMEI numbers as sold (since bulk_create doesn't fire signals)
+        assigned_serials = [oi.serial_imei_number for oi in order_items if oi.serial_imei_number]
+        if assigned_serials:
+            serial_ids = [s.id for s in assigned_serials]
+            serial_imei_no.objects.filter(id__in=serial_ids).update(is_sold=True)
+            logger.info(f"[ORDER_SERIALIZER] ✅ Marked {len(assigned_serials)} serial/IMEI numbers as sold")
         
         # Refresh order from DB to get saved order items with IDs
         order.refresh_from_db()

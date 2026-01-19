@@ -294,6 +294,9 @@ class OrderItem(models.Model):
     price = models.IntegerField()
     status = models.CharField(max_length=28, choices=STATUS_CHOICES, default='pending')
     tracking_link = models.URLField(max_length=500, blank=True, null=True)  # ✅ added
+    
+    # Serial/IMEI number linked to this order item (OneToOne relationship)
+    serial_imei_number = models.OneToOneField("vendor.serial_imei_no", on_delete=models.SET_NULL, blank=True, null=True, related_name='order_item')
 
     def total_price(self):
         return self.quantity * self.price

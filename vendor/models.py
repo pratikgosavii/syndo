@@ -1155,6 +1155,9 @@ class SaleItem(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)           # taxable value
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)       # GST amount
     total_with_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # final total incl tax
+    
+    # Serial/IMEI number linked to this sale item (OneToOne relationship)
+    serial_imei_number = models.OneToOneField('serial_imei_no', on_delete=models.SET_NULL, blank=True, null=True, related_name='sale_item')
 
     def save(self, *args, **kwargs):
         # Convert inputs to Decimal safely
