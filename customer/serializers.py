@@ -332,8 +332,8 @@ def send_order_notification_to_customer(order):
             try:
                 message = messaging.Message(
                     notification=messaging.Notification(
-                        title="New Order",
-                        body=notification_msg.message,
+                        title="Message from vendor",
+                        body=f"Message from vendor: {notification_msg.message}",
                     ),
                     data={
                         "order_id": str(order.order_id),
