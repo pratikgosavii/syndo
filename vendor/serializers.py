@@ -1332,7 +1332,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
 class PurchaseSerializer(serializers.ModelSerializer):
     items = PurchaseItemSerializer(many=True)
-    bank_details = vendor_bank_serializer(source="advance_bank", read_only=True)
+    bank_details = vendor_bank_serializer(source="bank", read_only=True)
+    advance_bank_details = vendor_bank_serializer(source="advance_bank", read_only=True)
     vendor_details = vendor_vendors_serializer(source="vendor", read_only=True)
     # Backward-compatible aliases from some clients
     delivery_charges = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False)

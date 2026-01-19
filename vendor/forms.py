@@ -429,6 +429,7 @@ class PurchaseForm(forms.ModelForm):
             'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'discount-amount-input'}),
             'discount_percentage': forms.NumberInput(attrs={'class': 'form-control', 'id': 'discount-percentage'}),
             'payment_method': forms.Select(attrs={'class': 'form-control', 'id': 'payment_method'}),
+            'bank': forms.Select(attrs={'class': 'form-control'}),
             'advance_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'advance_mode': forms.Select(attrs={'class': 'form-control'}),
             'advance_bank': forms.Select(attrs={'class': 'form-control'}),
@@ -469,6 +470,7 @@ class PurchaseForm(forms.ModelForm):
 
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
+            self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
             self.fields['advance_bank'].queryset = vendor_bank.objects.filter(user=user)
 
 

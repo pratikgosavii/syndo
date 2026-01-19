@@ -795,6 +795,7 @@ class Purchase(models.Model):
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True, related_name="purchases")
     advance_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True) 
     advance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     advance_mode = models.CharField(max_length=10, choices=ADVANCE_MODE_CHOICES, blank=True, null=True)
