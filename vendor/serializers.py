@@ -1450,20 +1450,46 @@ class PurchaseSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', None)
-        # Aliases -> model fields
-        if 'delivery_shipping_charges' not in validated_data and 'delivery_charges' in validated_data:
-            validated_data['delivery_shipping_charges'] = validated_data.pop('delivery_charges')
+        
+        # Get original request data to check for explicit None/null values
+        request = self.context.get('request')
+        if request and hasattr(request, 'data'):
+            request_data = request.data
         else:
+            request_data = {}
+        
+        # Handle aliases -> model fields
+        # Check request_data first to see if the user sent delivery_charges or packing_charges
+        if 'delivery_charges' in request_data:
+            if 'delivery_shipping_charges' not in validated_data:
+                # User sent delivery_charges, convert to delivery_shipping_charges
+                validated_data['delivery_shipping_charges'] = request_data.get('delivery_charges')
+            # Remove alias from validated_data if present
             validated_data.pop('delivery_charges', None)
-        if 'packaging_charges' not in validated_data and 'packing_charges' in validated_data:
-            validated_data['packaging_charges'] = validated_data.pop('packing_charges')
-        else:
+        
+        if 'packing_charges' in request_data:
+            if 'packaging_charges' not in validated_data:
+                # User sent packing_charges, convert to packaging_charges
+                validated_data['packaging_charges'] = request_data.get('packing_charges')
+            # Remove alias from validated_data if present
             validated_data.pop('packing_charges', None)
-
+        
+        # Handle bank field explicitly - check if it's in request_data (even if None)
+        if 'bank' in request_data:
+            bank_value = request_data.get('bank')
+            # Convert empty string or 'null' string to None
+            if bank_value in (None, '', 'null', 'None'):
+                validated_data['bank'] = None
+            else:
+                # Let validated_data handle it (it will have the proper bank object or ID)
+                if 'bank' not in validated_data:
+                    validated_data['bank'] = bank_value
+        
         # Check if delivery_shipping_charges or packaging_charges are being updated
         charges_updated = 'delivery_shipping_charges' in validated_data or 'packaging_charges' in validated_data
 
         # Update Purchase fields except purchase_code
+        # Explicitly handle all fields, including None values
         for attr, value in validated_data.items():
             if attr != 'purchase_code':  # prevent manual change
                 setattr(instance, attr, value)
