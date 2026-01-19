@@ -408,13 +408,13 @@ class AllRequestOfferAPIView(APIView):
 
     def get(self, request):
         """
-        Get all Return/Exchange requests of logged-in user
+        Get all Return/Exchange requests of logged-in user with full product details
         """
         from vendor.models import Offer
         from vendor.serializers import OfferSerializer
 
         queryset = Offer.objects.filter(request__user=request.user).order_by('-created_at')
-        serializer = OfferSerializer(queryset, many=True)
+        serializer = OfferSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

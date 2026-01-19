@@ -1597,6 +1597,7 @@ class OfferSerializer(serializers.ModelSerializer):
     seller_user_details = UserProfileSerializer(source = 'seller', read_only = True)
     store = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
+    product_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Offer
@@ -1617,6 +1618,44 @@ class OfferSerializer(serializers.ModelSerializer):
                 from .serializers import VendorStoreSerializer2
                 return VendorStoreSerializer2(store).data
         except:
+            return None
+    
+    def get_product_details(self, obj):
+        """Return full product details matching the request's category/sub_category from seller's products"""
+        try:
+            request = obj.request
+            if not request:
+                return None
+            
+            # Get products from the seller that match the request's category and sub_category
+            matching_products = product.objects.filter(
+                user=obj.seller,
+                category=request.category,
+                sub_category=request.sub_category,
+                is_active=True
+            )[:10]  # Limit to 10 products
+            
+            if matching_products.exists():
+                # Use product_serializer to get full product details
+                context = getattr(self, 'context', {})
+                return product_serializer(matching_products, many=True, context=context).data
+            else:
+                # If no exact match, try to find products by category only
+                category_products = product.objects.filter(
+                    user=obj.seller,
+                    category=request.category,
+                    is_active=True
+                )[:10]
+                
+                if category_products.exists():
+                    context = getattr(self, 'context', {})
+                    return product_serializer(category_products, many=True, context=context).data
+                else:
+                    return []
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error getting product details for Offer {obj.id}: {e}")
             return None
         
     def create(self, validated_data):
