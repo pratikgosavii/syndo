@@ -1041,22 +1041,61 @@ class SaleSerializer(serializers.ModelSerializer):
         return sale
 
     def update(self, instance, validated_data):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info("=" * 80)
+        logger.info(f"[SALE_SERIALIZER] ========== UPDATE METHOD CALLED ==========")
+        logger.info(f"[SALE_SERIALIZER] Sale ID: {instance.id}")
+        logger.info(f"[SALE_SERIALIZER] Invoice Number: {instance.invoice_number}")
+        logger.info(f"[SALE_SERIALIZER] Current Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info(f"[SALE_SERIALIZER] Validated Data Keys: {list(validated_data.keys())}")
+        
         validated_data = self._normalize(validated_data)
         items_data = validated_data.pop('items', None)
         wholesale_data = validated_data.pop('wholesale_invoice', None)
         
+        # Get original request data to check for explicit None/null values
+        request = self.context.get('request')
+        if request and hasattr(request, 'data'):
+            request_data = request.data
+            logger.info(f"[SALE_SERIALIZER] Request Data Keys: {list(request_data.keys()) if isinstance(request_data, dict) else 'Not a dict'}")
+        else:
+            request_data = {}
+            logger.warning("[SALE_SERIALIZER] No request in context!")
+        
+        # Handle bank field explicitly - check if it's in request_data (even if None)
+        if 'bank' in request_data:
+            bank_value = request_data.get('bank')
+            logger.info(f"[SALE_SERIALIZER] Bank in request_data: {bank_value} (type: {type(bank_value).__name__})")
+            # Convert empty string or 'null' string to None
+            if bank_value in (None, '', 'null', 'None'):
+                validated_data['bank'] = None
+                logger.info("[SALE_SERIALIZER] Setting bank to None")
+            else:
+                # Let validated_data handle it (it will have the proper bank object or ID)
+                if 'bank' not in validated_data:
+                    validated_data['bank'] = bank_value
+                    logger.info(f"[SALE_SERIALIZER] Adding bank to validated_data: {bank_value}")
+                else:
+                    logger.info(f"[SALE_SERIALIZER] Bank already in validated_data: {validated_data.get('bank')}")
+        else:
+            logger.info("[SALE_SERIALIZER] Bank not in request_data")
+        
         # Log validated_data to debug advance_payment_method
-        import logging
-        logger = logging.getLogger('vendor.signals')
-        logger.debug(f"[SALE_SERIALIZER] Updating sale ID: {instance.id}")
-        logger.debug(f"[SALE_SERIALIZER] advance_payment_method in validated_data: {'advance_payment_method' in validated_data}")
+        logger.info(f"[SALE_SERIALIZER] advance_payment_method in validated_data: {'advance_payment_method' in validated_data}")
         if 'advance_payment_method' in validated_data:
-            logger.debug(f"[SALE_SERIALIZER] advance_payment_method value: {validated_data.get('advance_payment_method')}")
+            logger.info(f"[SALE_SERIALIZER] advance_payment_method value: {validated_data.get('advance_payment_method')}")
 
         # Update base fields
+        logger.info(f"[SALE_SERIALIZER] Updating fields: {list(validated_data.keys())}")
         for attr, value in validated_data.items():
+            old_value = getattr(instance, attr, None)
+            logger.info(f"[SALE_SERIALIZER] Setting {attr}: {old_value} -> {value}")
             setattr(instance, attr, value)
+        logger.info("[SALE_SERIALIZER] Saving instance...")
         instance.save()
+        logger.info(f"[SALE_SERIALIZER] Instance saved. Bank after save: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
         logger.debug(f"[SALE_SERIALIZER] Sale advance_payment_method after update: {instance.advance_payment_method}")
 
         # Replace items if sent
@@ -1071,15 +1110,40 @@ class SaleSerializer(serializers.ModelSerializer):
 
         # Wholesale - update before recalculating totals so charges are included
         if instance.is_wholesale_rate and wholesale_data is not None:
+            logger.info(f"[SALE_SERIALIZER] Updating wholesale invoice with data: {list(wholesale_data.keys())}")
             invoice, _ = pos_wholesale.objects.get_or_create(
                 user=instance.user, sale=instance
             )
+            logger.info(f"[SALE_SERIALIZER] Wholesale invoice: {invoice.invoice_number if invoice else 'New'}")
+            # Handle delivery_charges and packaging_charges explicitly
+            # Check request_data for aliases (delivery_charges, packing_charges)
+            if 'wholesale_invoice' in request_data:
+                wholesale_request = request_data.get('wholesale_invoice', {})
+                if isinstance(wholesale_request, dict):
+                    logger.info(f"[SALE_SERIALIZER] Wholesale request data keys: {list(wholesale_request.keys())}")
+                    # Handle delivery_charges alias
+                    if 'delivery_charges' in wholesale_request and 'delivery_charges' not in wholesale_data:
+                        wholesale_data['delivery_charges'] = wholesale_request.get('delivery_charges')
+                        logger.info(f"[SALE_SERIALIZER] Added delivery_charges from request: {wholesale_data['delivery_charges']}")
+                    # Handle packing_charges alias
+                    if 'packing_charges' in wholesale_request and 'packaging_charges' not in wholesale_data:
+                        wholesale_data['packaging_charges'] = wholesale_request.get('packing_charges')
+                        logger.info(f"[SALE_SERIALIZER] Added packaging_charges from request: {wholesale_data['packaging_charges']}")
+            
             for attr, value in wholesale_data.items():
+                old_value = getattr(invoice, attr, None)
+                logger.info(f"[SALE_SERIALIZER] Setting wholesale {attr}: {old_value} -> {value}")
                 setattr(invoice, attr, value)
             invoice.save()
+            logger.info(f"[SALE_SERIALIZER] Wholesale invoice saved. Delivery: {invoice.delivery_charges}, Packaging: {invoice.packaging_charges}")
 
         # Recalculate totals - recalculate after wholesale is updated
+        logger.info("[SALE_SERIALIZER] Recalculating totals...")
         self._recalculate_totals(instance)
+        logger.info(f"[SALE_SERIALIZER] Final Total Amount: {instance.total_amount}")
+        logger.info("=" * 80)
+        logger.info("[SALE_SERIALIZER] ========== UPDATE METHOD COMPLETED ==========")
+        logger.info("=" * 80)
 
         return instance
 
@@ -1257,6 +1321,60 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = '__all__'
         read_only_fields = ['user']
+    
+    def update(self, instance, validated_data):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info("=" * 80)
+        logger.info(f"[PAYMENT_SERIALIZER] ========== UPDATE METHOD CALLED ==========")
+        logger.info(f"[PAYMENT_SERIALIZER] Payment ID: {instance.id}")
+        logger.info(f"[PAYMENT_SERIALIZER] Payment Number: {instance.payment_number}")
+        logger.info(f"[PAYMENT_SERIALIZER] Current Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info(f"[PAYMENT_SERIALIZER] Current Amount: {instance.amount}")
+        logger.info(f"[PAYMENT_SERIALIZER] Validated Data Keys: {list(validated_data.keys())}")
+        
+        # Get original request data to check for explicit None/null values
+        request = self.context.get('request')
+        if request and hasattr(request, 'data'):
+            request_data = request.data
+            logger.info(f"[PAYMENT_SERIALIZER] Request Data Keys: {list(request_data.keys()) if isinstance(request_data, dict) else 'Not a dict'}")
+        else:
+            request_data = {}
+            logger.warning("[PAYMENT_SERIALIZER] No request in context!")
+        
+        # Handle bank field explicitly - check if it's in request_data (even if None)
+        if 'bank' in request_data:
+            bank_value = request_data.get('bank')
+            logger.info(f"[PAYMENT_SERIALIZER] Bank in request_data: {bank_value} (type: {type(bank_value).__name__})")
+            # Convert empty string or 'null' string to None
+            if bank_value in (None, '', 'null', 'None'):
+                validated_data['bank'] = None
+                logger.info("[PAYMENT_SERIALIZER] Setting bank to None")
+            else:
+                # Let validated_data handle it (it will have the proper bank object or ID)
+                if 'bank' not in validated_data:
+                    validated_data['bank'] = bank_value
+                    logger.info(f"[PAYMENT_SERIALIZER] Adding bank to validated_data: {bank_value}")
+                else:
+                    logger.info(f"[PAYMENT_SERIALIZER] Bank already in validated_data: {validated_data.get('bank')}")
+        else:
+            logger.info("[PAYMENT_SERIALIZER] Bank not in request_data")
+        
+        # Update all fields
+        logger.info(f"[PAYMENT_SERIALIZER] Updating fields: {list(validated_data.keys())}")
+        for attr, value in validated_data.items():
+            old_value = getattr(instance, attr, None)
+            logger.info(f"[PAYMENT_SERIALIZER] Setting {attr}: {old_value} -> {value}")
+            setattr(instance, attr, value)
+        logger.info("[PAYMENT_SERIALIZER] Saving instance...")
+        instance.save()
+        logger.info(f"[PAYMENT_SERIALIZER] Instance saved. Bank after save: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info("=" * 80)
+        logger.info("[PAYMENT_SERIALIZER] ========== UPDATE METHOD COMPLETED ==========")
+        logger.info("=" * 80)
+        
+        return instance
 
         
 
@@ -1386,6 +1504,59 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "payment_date", "description", "attachment"
         ]
         read_only_fields = ["user"]
+    
+    def update(self, instance, validated_data):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info("=" * 80)
+        logger.info(f"[EXPENSE_SERIALIZER] ========== UPDATE METHOD CALLED ==========")
+        logger.info(f"[EXPENSE_SERIALIZER] Expense ID: {instance.id}")
+        logger.info(f"[EXPENSE_SERIALIZER] Current Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info(f"[EXPENSE_SERIALIZER] Current Amount: {instance.amount}")
+        logger.info(f"[EXPENSE_SERIALIZER] Validated Data Keys: {list(validated_data.keys())}")
+        
+        # Get original request data to check for explicit None/null values
+        request = self.context.get('request')
+        if request and hasattr(request, 'data'):
+            request_data = request.data
+            logger.info(f"[EXPENSE_SERIALIZER] Request Data Keys: {list(request_data.keys()) if isinstance(request_data, dict) else 'Not a dict'}")
+        else:
+            request_data = {}
+            logger.warning("[EXPENSE_SERIALIZER] No request in context!")
+        
+        # Handle bank field explicitly - check if it's in request_data (even if None)
+        if 'bank' in request_data:
+            bank_value = request_data.get('bank')
+            logger.info(f"[EXPENSE_SERIALIZER] Bank in request_data: {bank_value} (type: {type(bank_value).__name__})")
+            # Convert empty string or 'null' string to None
+            if bank_value in (None, '', 'null', 'None'):
+                validated_data['bank'] = None
+                logger.info("[EXPENSE_SERIALIZER] Setting bank to None")
+            else:
+                # Let validated_data handle it (it will have the proper bank object or ID)
+                if 'bank' not in validated_data:
+                    validated_data['bank'] = bank_value
+                    logger.info(f"[EXPENSE_SERIALIZER] Adding bank to validated_data: {bank_value}")
+                else:
+                    logger.info(f"[EXPENSE_SERIALIZER] Bank already in validated_data: {validated_data.get('bank')}")
+        else:
+            logger.info("[EXPENSE_SERIALIZER] Bank not in request_data")
+        
+        # Update all fields
+        logger.info(f"[EXPENSE_SERIALIZER] Updating fields: {list(validated_data.keys())}")
+        for attr, value in validated_data.items():
+            old_value = getattr(instance, attr, None)
+            logger.info(f"[EXPENSE_SERIALIZER] Setting {attr}: {old_value} -> {value}")
+            setattr(instance, attr, value)
+        logger.info("[EXPENSE_SERIALIZER] Saving instance...")
+        instance.save()
+        logger.info(f"[EXPENSE_SERIALIZER] Instance saved. Bank after save: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info("=" * 80)
+        logger.info("[EXPENSE_SERIALIZER] ========== UPDATE METHOD COMPLETED ==========")
+        logger.info("=" * 80)
+        
+        return instance
 
 
 
@@ -1449,53 +1620,87 @@ class PurchaseSerializer(serializers.ModelSerializer):
         return purchase
 
     def update(self, instance, validated_data):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info("=" * 80)
+        logger.info(f"[PURCHASE_SERIALIZER] ========== UPDATE METHOD CALLED ==========")
+        logger.info(f"[PURCHASE_SERIALIZER] Purchase ID: {instance.id}")
+        logger.info(f"[PURCHASE_SERIALIZER] Purchase Code: {instance.purchase_code}")
+        logger.info(f"[PURCHASE_SERIALIZER] Current Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info(f"[PURCHASE_SERIALIZER] Current Delivery Charges: {instance.delivery_shipping_charges}")
+        logger.info(f"[PURCHASE_SERIALIZER] Current Packaging Charges: {instance.packaging_charges}")
+        logger.info(f"[PURCHASE_SERIALIZER] Validated Data Keys: {list(validated_data.keys())}")
+        
         items_data = validated_data.pop('items', None)
         
         # Get original request data to check for explicit None/null values
         request = self.context.get('request')
         if request and hasattr(request, 'data'):
             request_data = request.data
+            logger.info(f"[PURCHASE_SERIALIZER] Request Data Keys: {list(request_data.keys()) if isinstance(request_data, dict) else 'Not a dict'}")
         else:
             request_data = {}
+            logger.warning("[PURCHASE_SERIALIZER] No request in context!")
         
         # Handle aliases -> model fields
         # Check request_data first to see if the user sent delivery_charges or packing_charges
         if 'delivery_charges' in request_data:
+            logger.info(f"[PURCHASE_SERIALIZER] Found delivery_charges alias in request: {request_data.get('delivery_charges')}")
             if 'delivery_shipping_charges' not in validated_data:
                 # User sent delivery_charges, convert to delivery_shipping_charges
                 validated_data['delivery_shipping_charges'] = request_data.get('delivery_charges')
+                logger.info(f"[PURCHASE_SERIALIZER] Converted delivery_charges -> delivery_shipping_charges: {validated_data['delivery_shipping_charges']}")
             # Remove alias from validated_data if present
             validated_data.pop('delivery_charges', None)
         
         if 'packing_charges' in request_data:
+            logger.info(f"[PURCHASE_SERIALIZER] Found packing_charges alias in request: {request_data.get('packing_charges')}")
             if 'packaging_charges' not in validated_data:
                 # User sent packing_charges, convert to packaging_charges
                 validated_data['packaging_charges'] = request_data.get('packing_charges')
+                logger.info(f"[PURCHASE_SERIALIZER] Converted packing_charges -> packaging_charges: {validated_data['packaging_charges']}")
             # Remove alias from validated_data if present
             validated_data.pop('packing_charges', None)
         
         # Handle bank field explicitly - check if it's in request_data (even if None)
         if 'bank' in request_data:
             bank_value = request_data.get('bank')
+            logger.info(f"[PURCHASE_SERIALIZER] Bank in request_data: {bank_value} (type: {type(bank_value).__name__})")
             # Convert empty string or 'null' string to None
             if bank_value in (None, '', 'null', 'None'):
                 validated_data['bank'] = None
+                logger.info("[PURCHASE_SERIALIZER] Setting bank to None")
             else:
                 # Let validated_data handle it (it will have the proper bank object or ID)
                 if 'bank' not in validated_data:
                     validated_data['bank'] = bank_value
+                    logger.info(f"[PURCHASE_SERIALIZER] Adding bank to validated_data: {bank_value}")
+                else:
+                    logger.info(f"[PURCHASE_SERIALIZER] Bank already in validated_data: {validated_data.get('bank')}")
+        else:
+            logger.info("[PURCHASE_SERIALIZER] Bank not in request_data")
         
         # Check if delivery_shipping_charges or packaging_charges are being updated
         charges_updated = 'delivery_shipping_charges' in validated_data or 'packaging_charges' in validated_data
+        logger.info(f"[PURCHASE_SERIALIZER] Charges Updated: {charges_updated}")
+        if 'delivery_shipping_charges' in validated_data:
+            logger.info(f"[PURCHASE_SERIALIZER] New Delivery Charges: {validated_data['delivery_shipping_charges']}")
+        if 'packaging_charges' in validated_data:
+            logger.info(f"[PURCHASE_SERIALIZER] New Packaging Charges: {validated_data['packaging_charges']}")
 
         # Update Purchase fields except purchase_code
         # Explicitly handle all fields, including None values
+        logger.info(f"[PURCHASE_SERIALIZER] Updating fields: {list(validated_data.keys())}")
         for attr, value in validated_data.items():
             if attr != 'purchase_code':  # prevent manual change
+                old_value = getattr(instance, attr, None)
+                logger.info(f"[PURCHASE_SERIALIZER] Setting {attr}: {old_value} -> {value}")
                 setattr(instance, attr, value)
 
         # Replace items only if provided
         if items_data is not None:
+            logger.info(f"[PURCHASE_SERIALIZER] Replacing {len(items_data)} items")
             instance.items.all().delete()
             from decimal import Decimal
             for item_data in items_data:
@@ -1505,18 +1710,30 @@ class PurchaseSerializer(serializers.ModelSerializer):
                 # Calculate total for this item (quantity * price)
                 item_data['total'] = Decimal(str(quantity)) * Decimal(str(price))
                 PurchaseItem.objects.create(purchase=instance, **item_data)
+        else:
+            logger.info("[PURCHASE_SERIALIZER] No items data provided, keeping existing items")
         
         # Totals - recalculate after items are created/updated and charges are set
         # This ensures delivery_shipping_charges and packaging_charges are included in total_amount
         # IMPORTANT: Call calculate_total() BEFORE save() so the signal uses the correct total_amount
         # (Just like POS sales where _recalculate_totals() is called after wholesale is created)
+        logger.info("[PURCHASE_SERIALIZER] Calling calculate_total()...")
         instance.calculate_total()
+        logger.info(f"[PURCHASE_SERIALIZER] Calculated Total Amount: {instance.total_amount}")
         
         # Save instance (this will trigger the signal which uses the updated total_amount)
+        logger.info("[PURCHASE_SERIALIZER] Saving instance...")
         instance.save()
+        logger.info(f"[PURCHASE_SERIALIZER] Instance saved. Bank after save: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info(f"[PURCHASE_SERIALIZER] Delivery Charges after save: {instance.delivery_shipping_charges}")
+        logger.info(f"[PURCHASE_SERIALIZER] Packaging Charges after save: {instance.packaging_charges}")
         
         # Refresh instance to get updated total_amount in response
         instance.refresh_from_db()
+        logger.info(f"[PURCHASE_SERIALIZER] Instance refreshed. Final Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+        logger.info("=" * 80)
+        logger.info("[PURCHASE_SERIALIZER] ========== UPDATE METHOD COMPLETED ==========")
+        logger.info("=" * 80)
 
         return instance
 
