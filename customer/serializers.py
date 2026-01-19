@@ -116,6 +116,85 @@ from decimal import Decimal
 from users.serializer import UserProfileSerializer
 
 
+def calculate_coupon_discount_amount(coupon_id, item_total, user=None):
+    """
+    Calculate coupon discount amount based on coupon settings.
+    Coupon is calculated on item_total only (items only, no tax/shipping).
+    Same calculation logic used in cart and order creation.
+    
+    Args:
+        coupon_id: The coupon ID to apply
+        item_total: Total value of items in cart/order (Decimal)
+        user: The customer user applying the coupon (for validation)
+    
+    Returns:
+        tuple: (discount_amount: Decimal, coupon_instance: coupon or None, error_message: str or None)
+        Returns (0.00, None, None) if no discount applies or coupon is invalid
+    """
+    from decimal import Decimal
+    from django.utils import timezone
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    discount_amount = Decimal("0.00")
+    coupon_instance = None
+    error_message = None
+    
+    if not coupon_id or item_total <= 0:
+        return discount_amount, None, None
+    
+    try:
+        from vendor.models import coupon
+        
+        coupon_instance = coupon.objects.get(id=coupon_id, is_active=True)
+    except coupon.DoesNotExist:
+        logger.warning(f"[COUPON] Coupon with id {coupon_id} not found or inactive")
+        return discount_amount, None, "Invalid or inactive coupon"
+    
+    # Check validity dates
+    now = timezone.now()
+    if coupon_instance.start_date > now or coupon_instance.end_date < now:
+        logger.warning(f"[COUPON] Coupon {coupon_instance.code} is not valid at this time")
+        return discount_amount, None, "Coupon is not valid at this time"
+    
+    # Check customer_id: if set, must match user.id
+    if coupon_instance.customer_id is not None:
+        if not user or coupon_instance.customer_id != user.id:
+            logger.warning(f"[COUPON] Coupon {coupon_instance.code} is not available for this user")
+            return discount_amount, None, "This coupon is not available for your account"
+    
+    # Only apply discount-type coupons
+    if coupon_instance.coupon_type != "discount":
+        logger.warning(f"[COUPON] Coupon {coupon_instance.code} is not a discount coupon")
+        return discount_amount, None, "This coupon cannot be applied to cart total"
+    
+    # Check minimum purchase condition (against item_total only, as per cart logic)
+    if coupon_instance.min_purchase and item_total < coupon_instance.min_purchase:
+        logger.warning(f"[COUPON] Cart value {item_total} is less than minimum purchase {coupon_instance.min_purchase}")
+        return discount_amount, None, f"Cart value is less to apply this coupon. Minimum cart value required is {coupon_instance.min_purchase}."
+    
+    # Calculate discount based on item_total only (same as cart)
+    if coupon_instance.type == "percent" and coupon_instance.discount_percentage:
+        discount_amount = (item_total * coupon_instance.discount_percentage / Decimal("100")).quantize(Decimal("0.01"))
+        # Apply max_discount limit if set
+        if coupon_instance.max_discount:
+            discount_amount = min(discount_amount, coupon_instance.max_discount)
+    elif coupon_instance.type == "amount" and coupon_instance.discount_amount:
+        discount_amount = coupon_instance.discount_amount
+        # Apply max_discount limit if set (for amount type coupons too)
+        if coupon_instance.max_discount:
+            discount_amount = min(discount_amount, coupon_instance.max_discount)
+    
+    # Ensure discount does not exceed item_total
+    discount_amount = min(discount_amount, item_total)
+    discount_amount = discount_amount.quantize(Decimal("0.01"))
+    
+    logger.info(f"[COUPON] ✅ Coupon {coupon_instance.code} applied - Discount: {discount_amount} on item_total: {item_total}")
+    
+    return discount_amount, coupon_instance, None
+
+
 def calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipping_fee):
     """
     Calculate delivery discount amount based on vendor's delivery discount settings.
@@ -406,11 +485,19 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     user_details = UserProfileSerializer(source = 'user', read_only=True)
     address_details = AddressSerializer(source="address", read_only = True)
+    coupon_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details']
+        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "coupon", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details', 'coupon_details']
+    
+    def get_coupon_details(self, obj):
+        """Return full coupon details if coupon was applied"""
+        if obj.coupon_id:
+            from vendor.serializers import coupon_serializer
+            return coupon_serializer(obj.coupon_id).data
+        return None
     
     def create(self, validated_data):
         logger.info("=" * 80)
@@ -618,21 +705,46 @@ class OrderSerializer(serializers.ModelSerializer):
         # ensure shipping fee in validated_data reflects computed value
         validated_data["shipping_fee"] = shipping_fee
 
-        # convert values from validated_data to Decimal safely
-        coupon = Decimal(str(validated_data.get("coupon", 0)))
+        # Calculate coupon discount - recalculate based on actual order totals
+        coupon_id = validated_data.get("coupon_id") or request.data.get("coupon_id")
+        coupon_discount = Decimal("0.00")
+        coupon_instance = None
+        
+        if coupon_id:
+            logger.info(f"[ORDER_SERIALIZER] Calculating coupon discount - Coupon ID: {coupon_id}, Item Total: {item_total}")
+            coupon_discount, coupon_instance, coupon_error = calculate_coupon_discount_amount(
+                coupon_id=coupon_id,
+                item_total=item_total,
+                user=request.user
+            )
+            
+            if coupon_error:
+                logger.warning(f"[ORDER_SERIALIZER] ❌ Coupon validation failed: {coupon_error}")
+                raise serializers.ValidationError({"coupon_id": [coupon_error]})
+            
+            if coupon_discount > 0:
+                logger.info(f"[ORDER_SERIALIZER] ✅ Coupon discount calculated: {coupon_discount}")
+            else:
+                logger.info(f"[ORDER_SERIALIZER] No coupon discount applied")
+        else:
+            # Fallback: if coupon amount is provided directly (for backward compatibility)
+            coupon_amount = validated_data.get("coupon", 0)
+            if coupon_amount:
+                coupon_discount = Decimal(str(coupon_amount))
+                logger.info(f"[ORDER_SERIALIZER] Using provided coupon amount (backward compatibility): {coupon_discount}")
 
         # Calculate delivery discount using the same calculation logic as cart
         logger.info(f"[ORDER_SERIALIZER] Calculating delivery discount - Vendor: {vendor_user.id if vendor_user else None}, Item Total: {item_total}, Tax: {tax_total}, Shipping Fee: {shipping_fee}")
         delivery_discount_amount = calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipping_fee)
         logger.info(f"[ORDER_SERIALIZER] ✅ Delivery discount calculated: {delivery_discount_amount}")
 
-        # calculate final total (subtract delivery discount from shipping fee)
-        calculated_total = item_total + tax_total + shipping_fee - coupon - delivery_discount_amount
+        # calculate final total (subtract coupon and delivery discount)
+        calculated_total = item_total + tax_total + shipping_fee - coupon_discount - delivery_discount_amount
         # Round total amount up to nearest whole number (ceiling)
         import math
         total_amount = Decimal(str(math.ceil(float(calculated_total)))).quantize(Decimal("0.01"))
         logger.info(f"[ORDER_SERIALIZER] Calculated Total: {calculated_total}, Rounded Up Total: {total_amount}")
-        logger.info(f"[ORDER_SERIALIZER] Final totals - Item Total: {item_total}, Tax: {tax_total}, Shipping: {shipping_fee}, Coupon: {coupon}, Delivery Discount: {delivery_discount_amount}, Total Amount: {total_amount}")
+        logger.info(f"[ORDER_SERIALIZER] Final totals - Item Total: {item_total}, Tax: {tax_total}, Shipping: {shipping_fee}, Coupon: {coupon_discount}, Delivery Discount: {delivery_discount_amount}, Total Amount: {total_amount}")
 
         # Create order (order_id is generated server-side in Order.save()).
         # Add an extra retry layer here to avoid crashing the API on rare UNIQUE collisions.
@@ -656,10 +768,16 @@ class OrderSerializer(serializers.ModelSerializer):
         for _attempt in range(5):
             try:
                 with transaction.atomic():
+                    # Remove coupon_id from validated_data if it exists to avoid duplicate
+                    validated_data.pop('coupon_id', None)
+                    validated_data.pop('coupon', None)  # Remove old coupon amount field
+                    
                     order = Order.objects.create(
                         **validated_data,
                         item_total=item_total,
                         tax_total=tax_total,
+                        coupon=coupon_discount,
+                        coupon_id=coupon_instance,
                         delivery_discount_amount=delivery_discount_amount,
                         total_amount=total_amount,
                         is_paid=is_paid,

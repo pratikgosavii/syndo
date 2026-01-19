@@ -418,6 +418,232 @@ class AllRequestOfferAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class OnlineOrderInvoiceAPIView(APIView):
+    """
+    Generate PDF invoice for online orders
+    Similar to POS invoice generation but for online orders
+    """
+    permission_classes = [permissions.AllowAny]  # Allow access via order_id
+
+    def get(self, request, order_id=None):
+        """
+        Return online order invoice PDF
+        """
+        from django.http import HttpResponse
+        from django.template.loader import get_template
+        from django.conf import settings
+        import requests
+        from num2words import num2words
+        from decimal import Decimal
+        from customer.models import Order, OrderItem
+        from vendor.models import vendor_store, CompanyProfile
+
+        # Accept order_id from URL or query params
+        if order_id is None:
+            order_id = request.query_params.get("id") if hasattr(request, "query_params") else request.GET.get("id")
+        if not order_id:
+            return Response({"error": "order_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get order with related data
+        try:
+            order = (
+                Order.objects
+                .prefetch_related('items__product')
+                .select_related('user', 'address')
+                .get(order_id=order_id)
+            )
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get vendor information from first order item
+        first_item = order.items.first()
+        if not first_item:
+            return Response({"error": "Order has no items"}, status=status.HTTP_400_BAD_REQUEST)
+
+        vendor_user = first_item.product.user
+        
+        # Get vendor store and company profile
+        store = vendor_store.objects.filter(user=vendor_user).first()
+        company_profile = CompanyProfile.objects.filter(user=vendor_user).first()
+
+        # Get customer address
+        customer_address = order.address
+        if not customer_address:
+            return Response({"error": "Order has no address"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Determine GST type (CGST if vendor/customer state matches else IGST)
+        vendor_state_name = None
+        if company_profile and company_profile.state:
+            vendor_state_name = company_profile.state.name
+        
+        customer_state_name = None
+        if customer_address.state:
+            customer_state_name = customer_address.state.name
+        
+        same_state = False
+        if vendor_state_name and customer_state_name:
+            same_state = vendor_state_name.strip().lower() == customer_state_name.strip().lower()
+        store_gst = "cgst" if same_state else "igst"
+
+        # Use existing order totals (no need to recalculate)
+        item_total = Decimal(order.item_total or 0)
+        tax_total = Decimal(order.tax_total or 0)
+        shipping_fee = Decimal(order.shipping_fee or 0)
+        delivery_discount = Decimal(order.delivery_discount_amount or 0)
+        coupon = Decimal(order.coupon or 0)
+        total_amount = Decimal(order.total_amount or 0)
+        
+        # Round total
+        rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
+        round_off_value = float(Decimal(rounded_total) - total_amount)
+
+        # Process items for display (HSN summary and item details for table)
+        # Note: We only calculate display values here, totals come from order instance
+        hsn_summary = {}
+        total_quantity = 0
+        total_sgst = Decimal(0)
+        total_cgst = Decimal(0)
+        total_igst = Decimal(0)
+        items_with_tax = []
+
+        for item in order.items.all():
+            if not item.product:
+                continue
+            
+            hsn = getattr(item.product, "hsn", None) or "N/A"
+            sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
+            cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
+            
+            # Use price and quantity from order item (already stored)
+            unit_price = Decimal(item.price or 0)
+            quantity = int(item.quantity or 0)
+            taxable_val = unit_price * quantity
+
+            # Build HSN summary for display
+            if hsn not in hsn_summary:
+                hsn_summary[hsn] = {"taxable_value": Decimal(0), "sgst_rate": sgst_rate, "cgst_rate": cgst_rate}
+            hsn_summary[hsn]["taxable_value"] += taxable_val
+
+            # Calculate tax amounts for display only
+            sgst_amt = (taxable_val * sgst_rate / Decimal(100)).quantize(Decimal("0.01"))
+            cgst_amt = (taxable_val * cgst_rate / Decimal(100)).quantize(Decimal("0.01"))
+            total_sgst += sgst_amt
+            total_cgst += cgst_amt
+            
+            if same_state:
+                item_tax = sgst_amt + cgst_amt
+            else:
+                item_tax = (taxable_val * Decimal(getattr(item.product, "gst", 0) or 0) / Decimal(100)).quantize(Decimal("0.01"))
+                total_igst += item_tax
+            
+            total_quantity += quantity
+
+            items_with_tax.append({
+                "name": getattr(item.product, "name", "N/A"),
+                "hsn": hsn,
+                "price": float(unit_price),
+                "quantity": quantity,
+                "taxable_value": float(taxable_val),
+                "sgst_percent": float(sgst_rate),
+                "cgst_percent": float(cgst_rate),
+                "sgst_amount": float(sgst_amt),
+                "cgst_amount": float(cgst_amt),
+                "igst_percent": float(getattr(item.product, "gst", 0) or 0),
+                "igst_amount": float(item_tax) if not same_state else 0.0,
+                "total_with_tax": float(taxable_val + item_tax),
+            })
+
+        # Calculate HSN summary totals for display
+        for hsn, data in hsn_summary.items():
+            data["sgst_amount"] = (data["taxable_value"] * data["sgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
+            data["cgst_amount"] = (data["taxable_value"] * data["cgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
+            data["total_tax"] = (data["sgst_amount"] + data["cgst_amount"]).quantize(Decimal("0.01"))
+            data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
+            data["igst_amount"] = data["total_tax"]
+
+        total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
+
+        # Calculate shipping tax for display (assuming 18% GST on shipping)
+        shipping_taxable = shipping_fee / Decimal("1.18") if shipping_fee > 0 else Decimal(0)
+        shipping_cgst = Decimal(0)
+        shipping_sgst = Decimal(0)
+        shipping_igst = Decimal(0)
+        
+        if shipping_fee > 0:
+            if same_state:
+                # CGST + SGST (9% each)
+                shipping_cgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
+                shipping_sgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
+            else:
+                # IGST (18%)
+                shipping_igst = (shipping_taxable * Decimal("18") / Decimal("100")).quantize(Decimal("0.01"))
+
+        # Prepare context - use order fields directly where available
+        context = {
+            "order": order,
+            "company_profile": company_profile,
+            "store": store,
+            "customer_address": customer_address,
+            "vendor_user": vendor_user,
+            "total_amount": float(total_amount),  # From order.total_amount
+            "rounded_total": rounded_total,
+            "round_off_value": round_off_value,
+            "hsn_summary": hsn_summary.items(),
+            "total_in_words": total_in_words,
+            "total_tax": float(tax_total),  # From order.tax_total
+            "store_gst": store_gst,
+            "sum_taxable": float(item_total),  # From order.item_total
+            "sum_sgst": float(total_sgst.quantize(Decimal("0.01"))),
+            "sum_cgst": float(total_cgst.quantize(Decimal("0.01"))),
+            "sum_igst": float(total_igst.quantize(Decimal("0.01"))),
+            "total_quantity": total_quantity,
+            "item_total": float(item_total),  # From order.item_total
+            "tax_total": float(tax_total),  # From order.tax_total
+            "shipping_fee": float(shipping_fee),  # From order.shipping_fee
+            "shipping_cgst": float(shipping_cgst),
+            "shipping_sgst": float(shipping_sgst),
+            "shipping_igst": float(shipping_igst),
+            "delivery_discount": float(delivery_discount),  # From order.delivery_discount_amount
+            "coupon": float(coupon),  # From order.coupon
+            "items_with_tax": items_with_tax,
+            "payment_mode": order.payment_mode,  # From order
+            "is_paid": order.is_paid,  # From order
+        }
+
+        # Render template to HTML string and convert to PDF
+        template_name = "customer_invoice/online_order_invoice.html"
+        template = get_template(template_name)
+        html_content = template.render(context, request._request if hasattr(request, "_request") else request)
+
+        # Generate PDF using html2pdf.app API
+        try:
+            api_response = requests.post(
+                "https://api.html2pdf.app/v1/generate",
+                json={
+                    "html": html_content,
+                    "apiKey": getattr(settings, "HTML2PDF_API_KEY", ""),
+                    "options": {"printBackground": True, "margin": "1cm", "pageSize": "A4"},
+                },
+                timeout=30,
+            )
+
+            if api_response.status_code == 200:
+                response = HttpResponse(api_response.content, content_type="application/pdf")
+                filename = f"online_order_invoice_{order.order_id}.pdf"
+                response["Content-Disposition"] = f'inline; filename="{filename}"'
+                return response
+            else:
+                return Response(
+                    {"error": "Error generating PDF", "details": api_response.text},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        except Exception as e:
+            return Response(
+                {"error": "Error generating PDF", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 @csrf_exempt
 def cashfree_webhook(request):
     """

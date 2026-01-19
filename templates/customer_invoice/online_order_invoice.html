@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tax Invoice - Online Order</title>
+<style>
+    body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; color: #000; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    td, th { border: 1px solid #000; padding: 5px; vertical-align: top; }
+    th { background-color: #f0f0f0; text-align: center; }
+    .no-border td, .no-border th { border: none; }
+    .header-logo img { width: 150px; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .bold { font-weight: bold; }
+    .section-title { background: #eee; padding: 4px; font-weight: bold; }
+    .amount-in-words { font-style: italic; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<table class="no-border">
+    <tr>
+        <td class="header-logo">
+            {% if store and store.logo %}
+                <img src="{{ store.logo.url }}" alt="Store Logo">
+            {% else %}
+                <h2>{% if company_profile %}{{ company_profile.company_name }}{% else %}Store{% endif %}</h2>
+            {% endif %}
+        </td>
+        <td class="text-right">
+            <h3>Tax Invoice/Bill of Supply/Cash Memo</h3>
+            <p>(Original for Recipient)</p>
+        </td>
+    </tr>
+</table>
+
+<!-- Seller & Buyer Info -->
+<table>
+    <tr>
+        <td width="50%">
+            <div class="section-title">Sold By :</div>
+            <p>
+                <b>{% if company_profile %}{{ company_profile.company_name }}{% else %}{{ vendor_user.username }}{% endif %}</b><br>
+                {% if company_profile %}
+                    {{ company_profile.billing_address_line_1 }}<br>
+                    {% if company_profile.billing_address_line_2 %}{{ company_profile.billing_address_line_2 }}<br>{% endif %}
+                    {% if company_profile.billing_city %}{{ company_profile.billing_city }}, {% endif %}
+                    {% if company_profile.billing_state %}{{ company_profile.billing_state.name }}, {% endif %}
+                    {% if company_profile.billing_pincode %}{{ company_profile.billing_pincode }}{% endif %}<br>
+                    {% if company_profile.pan %}PAN No: {{ company_profile.pan }}<br>{% endif %}
+                    {% if company_profile.gstin %}GST Registration No: {{ company_profile.gstin }}{% endif %}
+                {% else %}
+                    {% if store %}{{ store.address }}{% endif %}
+                {% endif %}
+            </p>
+        </td>
+        <td width="50%">
+            <div class="section-title">Billing Address :</div>
+            <p>
+                <b>{{ customer_address.name }}</b><br>
+                {{ customer_address.address_line_1 }}<br>
+                {% if customer_address.address_line_2 %}{{ customer_address.address_line_2 }}<br>{% endif %}
+                {% if customer_address.city %}{{ customer_address.city }}, {% endif %}
+                {% if customer_address.state %}{{ customer_address.state.name }}, {% endif %}
+                {% if customer_address.pincode %}{{ customer_address.pincode }}{% endif %}<br>
+                {% if customer_address.state %}State/UT Code: {{ customer_address.state.state_code }}{% endif %}
+            </p>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <div class="section-title">Order Info :</div>
+            <p>
+                Order Number: {{ order.order_id }}<br>
+                Order Date: {{ order.created_at|date:"d.m.Y" }}<br>
+                Invoice Number: {{ order.order_id }}<br>
+                Invoice Date: {{ order.created_at|date:"d.m.Y" }}
+            </p>
+        </td>
+        <td>
+            <div class="section-title">Shipping Address :</div>
+            <p>
+                <b>{{ customer_address.name }}</b><br>
+                {{ customer_address.address_line_1 }}<br>
+                {% if customer_address.address_line_2 %}{{ customer_address.address_line_2 }}<br>{% endif %}
+                {% if customer_address.city %}{{ customer_address.city }}, {% endif %}
+                {% if customer_address.state %}{{ customer_address.state.name }}, {% endif %}
+                {% if customer_address.pincode %}{{ customer_address.pincode }}{% endif %}<br>
+                {% if customer_address.state %}State/UT Code: {{ customer_address.state.state_code }}{% endif %}
+            </p>
+        </td>
+    </tr>
+</table>
+
+<!-- Place and Invoice Info -->
+<table>
+    <tr>
+        <td>
+            <b>Place of Supply:</b> {% if company_profile and company_profile.billing_state %}{{ company_profile.billing_state.name }}{% else %}N/A{% endif %}<br>
+            <b>Place of Delivery:</b> {% if customer_address.state %}{{ customer_address.state.name }}{% else %}N/A{% endif %}
+        </td>
+        <td>
+            <b>Invoice Number:</b> {{ order.order_id }}<br>
+            <b>Invoice Date:</b> {{ order.created_at|date:"d.m.Y" }}
+        </td>
+    </tr>
+</table>
+
+<!-- Items Table -->
+<table>
+    <tr>
+        <th>SL No.</th>
+        <th>Description</th>
+        <th>Unit Price</th>
+        <th>Qty</th>
+        <th>Net Amount</th>
+        <th>Tax Rate</th>
+        <th>Tax Type</th>
+        <th>Tax Amount</th>
+        <th>Total Amount</th>
+    </tr>
+
+    {% for item in items_with_tax %}
+    <tr>
+        <td class="text-center">{{ forloop.counter }}</td>
+        <td>{{ item.name }}<br>HSN: {{ item.hsn }}</td>
+        <td class="text-right">{{ item.price|floatformat:2 }}</td>
+        <td class="text-center">{{ item.quantity }}</td>
+        <td class="text-right">{{ item.taxable_value|floatformat:2 }}</td>
+        <td class="text-center">
+            {% if store_gst == "cgst" %}
+                {{ item.cgst_percent|floatformat:0 }}% + {{ item.sgst_percent|floatformat:0 }}%
+            {% else %}
+                {{ item.igst_percent|floatformat:0 }}%
+            {% endif %}
+        </td>
+        <td class="text-center">
+            {% if store_gst == "cgst" %}
+                CGST/SGST
+            {% else %}
+                IGST
+            {% endif %}
+        </td>
+        <td class="text-right">
+            {% if store_gst == "cgst" %}
+                {{ item.cgst_amount|floatformat:2 }} + {{ item.sgst_amount|floatformat:2 }}
+            {% else %}
+                {{ item.igst_amount|floatformat:2 }}
+            {% endif %}
+        </td>
+        <td class="text-right">{{ item.total_with_tax|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+
+    {% if shipping_fee > 0 %}
+    <tr>
+        <td class="text-center">-</td>
+        <td>Shipping Charges</td>
+        <td class="text-right">{{ shipping_fee|floatformat:2 }}</td>
+        <td class="text-center">1</td>
+        <td class="text-right">{{ shipping_fee|floatformat:2 }}</td>
+        <td class="text-center">
+            {% if store_gst == "cgst" %}
+                9% + 9%
+            {% else %}
+                18%
+            {% endif %}
+        </td>
+        <td class="text-center">
+            {% if store_gst == "cgst" %}
+                CGST/SGST
+            {% else %}
+                IGST
+            {% endif %}
+        </td>
+        <td class="text-right">
+            {% if store_gst == "cgst" %}
+                {{ shipping_cgst|floatformat:2 }} + {{ shipping_sgst|floatformat:2 }}
+            {% else %}
+                {{ shipping_igst|floatformat:2 }}
+            {% endif %}
+        </td>
+        <td class="text-right">{{ shipping_fee|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+
+    {% if delivery_discount > 0 %}
+    <tr>
+        <td class="text-center">-</td>
+        <td>Delivery Discount</td>
+        <td class="text-right">-{{ delivery_discount|floatformat:2 }}</td>
+        <td class="text-center">1</td>
+        <td class="text-right">-{{ delivery_discount|floatformat:2 }}</td>
+        <td colspan="3"></td>
+        <td class="text-right">-{{ delivery_discount|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+
+    {% if coupon > 0 %}
+    <tr>
+        <td class="text-center">-</td>
+        <td>Coupon Discount</td>
+        <td class="text-right">-{{ coupon|floatformat:2 }}</td>
+        <td class="text-center">1</td>
+        <td class="text-right">-{{ coupon|floatformat:2 }}</td>
+        <td colspan="3"></td>
+        <td class="text-right">-{{ coupon|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+
+    <tr>
+        <td colspan="8" class="text-right bold">TOTAL:</td>
+        <td class="text-right bold">{{ rounded_total|floatformat:2 }}</td>
+    </tr>
+</table>
+
+<!-- Total in words -->
+<p class="amount-in-words">Amount in Words: <b>{{ total_in_words }}</b></p>
+
+<!-- Footer -->
+<table class="no-border">
+    <tr>
+        <td>
+            Whether tax is payable under reverse charge - <b>No</b><br><br>
+            Payment Transaction ID: {% if order.cashfree_order_id %}{{ order.cashfree_order_id }}{% else %}N/A{% endif %}<br>
+            Date & Time: {{ order.created_at|date:"d/m/Y, H:i:s" }} hrs<br>
+            Invoice Value: {{ rounded_total|floatformat:2 }}<br>
+            Mode of Payment: {{ payment_mode|upper }}
+        </td>
+        <td class="text-right">
+            {% if company_profile %}
+                <p><b>Authorized Signatory</b><br>
+                {% if company_profile.signature %}
+                    <img src="{{ company_profile.signature.url }}" alt="Signature" style="max-width: 150px; max-height: 80px;">
+                {% endif %}
+                <br>{{ company_profile.company_name }}</p>
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
+

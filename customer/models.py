@@ -196,6 +196,7 @@ class Order(models.Model):
     tax_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     coupon = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    coupon_id = models.ForeignKey("vendor.coupon", on_delete=models.SET_NULL, null=True, blank=True, related_name="orders", help_text="Coupon applied to this order")
     delivery_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Delivery discount applied on shipping fee")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
