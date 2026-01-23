@@ -409,6 +409,14 @@ def sale_ledger(sender, instance, created, **kwargs):
             customer.balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total or 0)
             customer.save(update_fields=['balance'])
 
+        if instance.bank:
+            bank = instance.bank
+            remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
+            bank.save(update_fields=['balance'])
+
         if instance.advance_bank:
             bank = instance.advance_bank
             remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
@@ -468,14 +476,28 @@ def sale_ledger(sender, instance, created, **kwargs):
             customer.balance = balance_after
             customer.save()
 
-            # Bank ledger → for credit sales with bank advance payment
-            # Only create if advance_payment_method is "bank" AND advance_bank is set AND advance_amount > 0
+            # Bank ledger:
+            # 1. UPI/cheque: instance.bank gets +total_amount (sale = money in)
+            # 2. Credit + bank advance: instance.advance_bank gets +advance_amount
             logger.debug("[SALE_LEDGER] Checking bank ledger creation...")
             logger.debug(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
             logger.debug(f"[SALE_LEDGER] Advance Payment Method: {instance.advance_payment_method}")
+            logger.debug(f"[SALE_LEDGER] Bank: {instance.bank}")
             logger.debug(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
-            
-            if instance.payment_method == "credit" and instance.advance_payment_method == "bank":
+
+            if instance.payment_method in ("upi", "cheque") and instance.bank:
+                bank_amt = Decimal(instance.total_amount or 0)
+                if bank_amt > 0:
+                    create_ledger(
+                        instance.bank,
+                        BankLedger,
+                        "sale",
+                        instance.id,
+                        bank_amt,
+                        f"Sale #{instance.id} ({instance.payment_method.upper()})",
+                    )
+                    logger.info(f"[SALE_LEDGER] Bank ledger created for Sale #{instance.id} using bank: {instance.bank}")
+            elif instance.payment_method == "credit" and instance.advance_payment_method == "bank":
                 logger.info("[SALE_LEDGER] Credit sale with bank advance detected")
                 # Check both advance_amount and advance_payment_amount fields
                 advance_amt = Decimal(instance.advance_amount or instance.advance_payment_amount or 0)
@@ -1261,6 +1283,14 @@ def sale_delete_ledger(sender, instance, **kwargs):
         customer.balance = Decimal(customer.opening_balance or 0) + Decimal(remaining_total or 0)
         customer.save(update_fields=['balance'])
 
+    if instance.bank:
+        bank = instance.bank
+        remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
+        bank.save(update_fields=['balance'])
+
     if instance.advance_bank:
         bank = instance.advance_bank
         remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
@@ -1796,9 +1826,19 @@ def restore_serial_on_order_item_cancelled(sender, instance, **kwargs):
 # -----------------------------------------------------------------------------
 @receiver(post_save, sender=OrderItem)
 def reduce_stock_on_order_create(sender, instance, created, **kwargs):
-    if created:
-        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
-        log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
+    """Only reduce stock when order is accepted. Ledger/stock are done in on_order_accepted on accept."""
+    if not created:
+        return
+    order = getattr(instance, "order", None)
+    if order is None and hasattr(instance, "order_id") and instance.order_id:
+        try:
+            order = instance.order
+        except Exception:
+            order = None
+    if order is None or getattr(order, "status", None) != "accepted":
+        return
+    product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
+    log_stock_transaction(instance.product, "sale", -instance.quantity, ref_id=instance.pk)
 
 @receiver(pre_save, sender=OrderItem)
 def update_stock_on_order_edit(sender, instance, **kwargs):
@@ -1874,8 +1914,10 @@ def restore_stock_on_cancelled(sender, instance, **kwargs):
     except OrderItem.DoesNotExist:
         return
     
-    # Only restore stock when transitioning TO 'cancelled' status (not already cancelled)
+    # Only restore stock when transitioning TO 'cancelled' and we had reduced (order was accepted: ledger exists)
     if old_status != 'cancelled' and new_status == 'cancelled':
+        if not OnlineOrderLedger.objects.filter(order_item=instance).exists():
+            return  # Order was never accepted; we never reduced stock
         product.objects.filter(id=instance.product.id).update(
             stock_cached=F('stock_cached') + instance.quantity
         )
@@ -1898,7 +1940,7 @@ def create_online_order_ledger_on_create(sender, instance, created, **kwargs):
     5. OrderItem must have a valid price
     
     NOTE: This signal will NOT fire if OrderItems are created via bulk_create().
-    In that case, ledger entries must be created manually (see OrderSerializer.create).
+    Ledger (and stock, serial) are created in on_order_accepted() when the vendor accepts.
     """
     logger.info("=" * 80)
     logger.info("[ONLINE_ORDER_LEDGER] Signal triggered for OrderItem")
@@ -1935,6 +1977,12 @@ def create_online_order_ledger_on_create(sender, instance, created, **kwargs):
     order_obj = getattr(instance, 'order', None)
     if not order_obj:
         logger.warning("[ONLINE_ORDER_LEDGER] SKIPPED: OrderItem has no order")
+        logger.info("=" * 80)
+        return
+
+    # Ledger/stock are created in on_order_accepted when vendor accepts; skip if order not yet accepted
+    if getattr(order_obj, "status", None) != "accepted":
+        logger.info("[ONLINE_ORDER_LEDGER] SKIPPED: Order not yet accepted (ledger created on accept)")
         logger.info("=" * 80)
         return
     
@@ -2212,6 +2260,13 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
 # --- Ensure stock logs on create have proper reference ids ---
 @receiver(post_delete, sender=OrderItem)
 def restore_stock_on_order_delete(sender, instance, **kwargs):
+    # Only restore if we had reduced (order was accepted). Ledger may be cascade-deleted; check order.
+    try:
+        order = Order.objects.filter(id=instance.order_id).first()
+        if not order or getattr(order, "status", None) != "accepted":
+            return
+    except Exception:
+        return
     product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
     log_stock_transaction(instance.product, "sale", instance.quantity, ref_id=instance.pk)
 

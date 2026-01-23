@@ -578,6 +578,7 @@ class SaleForm(forms.ModelForm):
 
             # payment type (main payment)
             'payment_method': forms.Select(attrs={'class': 'form-select'}),
+            'bank': forms.Select(attrs={'class': 'form-select'}),
 
             'company_profile': forms.Select(attrs={'class': 'form-select'}),
             'total_amount': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),

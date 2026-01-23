@@ -1090,6 +1090,7 @@ class Sale(models.Model):
     customer = models.ForeignKey('vendor_customers', on_delete=models.SET_NULL, null=True, blank=True)
     
     payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES)
+    bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True, related_name="sales")
     advance_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     advance_payment_method = models.CharField(max_length=10, choices=ADVANCE_PAYMENT_METHOD_CHOICES, null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)

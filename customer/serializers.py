@@ -463,6 +463,14 @@ def send_order_status_notification(order, status, previous_status=None):
         'completed': {
             'title': 'Order Completed',
             'body': f'Your order {order.order_id} has been delivered successfully!'
+        },
+        'cancelled': {
+            'title': 'Order Cancelled',
+            'body': f'Your order {order.order_id} has been cancelled.'
+        },
+        'cancelled_by_vendor': {
+            'title': 'Order Cancelled',
+            'body': f'Your order {order.order_id} has been cancelled by the vendor.'
         }
     }
     
@@ -492,6 +500,48 @@ def send_order_status_notification(order, status, previous_status=None):
     except Exception as e:
         logger.error(f"❌ Error sending order status notification to customer {customer.id} for order {order.order_id}: {e}")
         return False
+
+
+def on_order_accepted(order):
+    """
+    When vendor accepts an online order: create OnlineOrderLedger per item, reduce stock,
+    assign serial/IMEI where applicable. Call from accept_order, OrderViewSet.update, uEngage webhook.
+    """
+    from vendor.models import OnlineOrderLedger, serial_imei_no
+    from vendor.signals import log_stock_transaction
+    from django.db.models import F
+
+    for oi in order.items.select_related("product", "product__user").all():
+        # Idempotent: if ledger exists, we already processed this item
+        if OnlineOrderLedger.objects.filter(order_item=oi).exists():
+            continue
+        # 1. OnlineOrderLedger
+        OnlineOrderLedger.objects.create(
+            user=oi.product.user,
+            order_item=oi,
+            product=oi.product,
+            order_id=order.id,
+            quantity=oi.quantity,
+            amount=order.total_amount,
+            status="recorded",
+            note="Online order recorded (accepted)",
+        )
+        logger.info(f"[ON_ORDER_ACCEPTED] OnlineOrderLedger created for OrderItem {oi.id}")
+        # 2. Stock
+        product.objects.filter(id=oi.product.id).update(
+            stock_cached=F("stock_cached") - oi.quantity
+        )
+        log_stock_transaction(oi.product, "sale", -oi.quantity, ref_id=oi.pk)
+        logger.info(f"[ON_ORDER_ACCEPTED] Stock reduced for Product {oi.product.id} by {oi.quantity}")
+        # 3. Serial/IMEI if not already assigned
+        if not oi.serial_imei_number_id:
+            unsold = serial_imei_no.objects.filter(product=oi.product, is_sold=False)
+            if unsold.exists():
+                s = random.choice(list(unsold))
+                oi.serial_imei_number = s
+                oi.save(update_fields=["serial_imei_number"])
+                serial_imei_no.objects.filter(id=s.id).update(is_sold=True)
+                logger.info(f"[ON_ORDER_ACCEPTED] Assigned serial/IMEI {s.id} to OrderItem {oi.id}")
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -843,148 +893,18 @@ class OrderSerializer(serializers.ModelSerializer):
         if order is None:
             raise last_exc or serializers.ValidationError({"detail": "Unable to create order. Please try again."})
 
-        # Assign random unsold serial/IMEI numbers to order items if product has any
-        logger.info(f"[ORDER_SERIALIZER] Checking for serial/IMEI numbers to assign")
-        from vendor.models import serial_imei_no
-        import random
-        
-        for order_item in order_items:
-            # Check if product has any unsold serial/IMEI numbers
-            unsold_serials = serial_imei_no.objects.filter(
-                product=order_item.product,
-                is_sold=False
-            )
-            
-            if unsold_serials.exists():
-                # Randomly select one unsold serial/IMEI number
-                random_serial = random.choice(list(unsold_serials))
-                order_item.serial_imei_number = random_serial
-                logger.info(f"[ORDER_SERIALIZER] ✅ Assigned serial/IMEI number (ID: {random_serial.id}, Value: {random_serial.value}) to OrderItem for Product ID: {order_item.product.id}")
-            else:
-                logger.debug(f"[ORDER_SERIALIZER] No unsold serial/IMEI numbers available for Product ID: {order_item.product.id}")
-        
-        # bulk create items with linked order
+        # bulk create items with linked order (serial/IMEI, ledger, stock: deferred to order accepted)
         logger.info(f"[ORDER_SERIALIZER] About to bulk_create {len(order_items)} order items")
         for oi in order_items:
             oi.order = order
         OrderItem.objects.bulk_create(order_items)
         logger.info(f"[ORDER_SERIALIZER] ✅ bulk_create completed for {len(order_items)} items")
         
-        # Mark assigned serial/IMEI numbers as sold (since bulk_create doesn't fire signals)
-        assigned_serials = [oi.serial_imei_number for oi in order_items if oi.serial_imei_number]
-        if assigned_serials:
-            serial_ids = [s.id for s in assigned_serials]
-            serial_imei_no.objects.filter(id__in=serial_ids).update(is_sold=True)
-            logger.info(f"[ORDER_SERIALIZER] ✅ Marked {len(assigned_serials)} serial/IMEI numbers as sold")
-        
         # Refresh order from DB to get saved order items with IDs
         order.refresh_from_db()
         logger.info(f"[ORDER_SERIALIZER] Order refreshed from DB. Order ID: {order.id}")
-        
-        # Manually trigger signal logic since bulk_create doesn't fire signals
-        # 1. Create OnlineOrderLedger entries
-        # 2. Reduce stock
-        from vendor.models import OnlineOrderLedger
-        from django.db.models import F
-        # Note: 'product' is already imported at the top of the file (line 110)
-        
-        logger.info("=" * 80)
-        logger.info("[ORDER_SERIALIZER] Manually creating OnlineOrderLedger entries (bulk_create doesn't fire signals)")
-        logger.info(f"[ORDER_SERIALIZER] Order ID: {order.id}, Order Order ID: {order.order_id}")
-        
-        saved_order_items = list(order.items.all())
-        logger.info(f"[ORDER_SERIALIZER] Number of order items: {len(saved_order_items)}")
-        
-        for order_item in saved_order_items:
-            logger.info(f"[ORDER_SERIALIZER] Processing OrderItem ID: {order_item.id}")
-            logger.info(f"[ORDER_SERIALIZER] Product ID: {order_item.product.id}, Quantity: {order_item.quantity}, Price: {order_item.price}")
-            
-            # Create OnlineOrderLedger entry
-            try:
-                # Check if already exists
-                existing = OnlineOrderLedger.objects.filter(order_item=order_item).exists()
-                if existing:
-                    logger.warning(f"[ORDER_SERIALIZER] 💰 OnlineOrderLedger already exists for OrderItem {order_item.id} - skipping")
-                    existing_ledger = OnlineOrderLedger.objects.filter(order_item=order_item).first()
-                    if existing_ledger:
-                        logger.info(f"[ORDER_SERIALIZER] 💰 Existing ledger ID: {existing_ledger.id}, Amount: {existing_ledger.amount}")
-                else:
-                    amount = order.total_amount
-                    logger.info(f"[ORDER_SERIALIZER] 💰 LEDGER CREATION - OrderItem ID: {order_item.id}")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Product ID: {order_item.product.id}")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Quantity: {order_item.quantity}, Price: {order_item.price}")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Order Total Amount: {amount}")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 User/Vendor: {order_item.product.user.username} (ID: {order_item.product.user.id})")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Order ID: {order.id}, Order Order ID: {order.order_id}")
-                    
-                    ledger_entry = OnlineOrderLedger.objects.create(
-                        user=order_item.product.user,
-                        order_item=order_item,
-                        product=order_item.product,
-                        order_id=order.id,
-                        quantity=order_item.quantity,
-                        amount=amount,
-                        status='recorded',
-                        note='Online order recorded'
-                    )
-                    logger.info(f"[ORDER_SERIALIZER] 💰 ✅ SUCCESS: OnlineOrderLedger created")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Entry ID: {ledger_entry.id}")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Amount: {ledger_entry.amount}")
-                    logger.info(f"[ORDER_SERIALIZER] 💰 Ledger Status: {ledger_entry.status}")
-                    
-                    # Verify it was saved
-                    verify_ledger = OnlineOrderLedger.objects.filter(id=ledger_entry.id).first()
-                    if verify_ledger:
-                        logger.info(f"[ORDER_SERIALIZER] 💰 ✅ VERIFIED: Ledger entry exists in database")
-                    else:
-                        logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Ledger entry not found in database after creation!")
-            except Exception as e:
-                logger.error(f"[ORDER_SERIALIZER] 💰 ❌ ERROR: Failed to create OnlineOrderLedger for order_item {order_item.id}: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
-            
-            # Reduce stock
-            # NOTE: Stock is reduced immediately when order is created (status='not_accepted').
-            # This reserves stock for the order, even if it hasn't been accepted yet.
-            # If order is cancelled later, stock should be restored in the cancellation logic.
-            try:
-                # Get current stock before update
-                product_obj = product.objects.get(id=order_item.product.id)
-                stock_before = product_obj.stock_cached or 0
-                quantity_to_reduce = order_item.quantity
-                stock_after_expected = stock_before - quantity_to_reduce
-                
-                logger.info(f"[ORDER_SERIALIZER] 📦 STOCK UPDATE - Product ID: {order_item.product.id}, Order Status: {order.status}")
-                logger.info(f"[ORDER_SERIALIZER] 📦 Stock BEFORE: {stock_before}")
-                logger.info(f"[ORDER_SERIALIZER] 📦 Quantity to reduce: {quantity_to_reduce}")
-                logger.info(f"[ORDER_SERIALIZER] 📦 Expected stock AFTER: {stock_after_expected}")
-                
-                # Update stock
-                product.objects.filter(id=order_item.product.id).update(
-                    stock_cached=F('stock_cached') - order_item.quantity
-                )
-                
-                # Verify stock was updated
-                product_obj.refresh_from_db()
-                stock_after_actual = product_obj.stock_cached or 0
-                
-                if stock_after_actual == stock_after_expected:
-                    logger.info(f"[ORDER_SERIALIZER] 📦 ✅ SUCCESS: Stock updated correctly")
-                    logger.info(f"[ORDER_SERIALIZER] 📦 Stock AFTER: {stock_after_actual} (matches expected)")
-                else:
-                    logger.warning(f"[ORDER_SERIALIZER] 📦 ⚠️ WARNING: Stock mismatch!")
-                    logger.warning(f"[ORDER_SERIALIZER] 📦 Expected: {stock_after_expected}, Actual: {stock_after_actual}")
-                
-                # Log stock transaction
-                from vendor.signals import log_stock_transaction
-                log_stock_transaction(order_item.product, "sale", -order_item.quantity, ref_id=order_item.pk)
-                logger.info(f"[ORDER_SERIALIZER] 📦 Stock transaction logged")
-            except Exception as e:
-                logger.error(f"[ORDER_SERIALIZER] 📦 ❌ ERROR: Failed to reduce stock for product {order_item.product.id}: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
-        
-        logger.info("=" * 80)
+        # OnlineOrderLedger, stock reduction, serial/IMEI assignment: done in on_order_accepted() when vendor accepts
+        saved_order_items = list(order.items.all().order_by("id"))
 
         # Serviceability check (only when vendor has auto-assign enabled)
         auto_assign_enabled = False
@@ -1038,7 +958,6 @@ class OrderSerializer(serializers.ModelSerializer):
             order.save(update_fields=['is_auto_managed'])
 
         # After bulk create, attach print jobs (if any)
-        # saved_order_items already defined above
         for oi, pj_payload in zip(saved_order_items, print_jobs_payload):
             if not pj_payload:
                 continue

@@ -686,6 +686,40 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], url_path="cancel-by-vendor")
+    def cancel_by_vendor(self, request, pk=None):
+        """
+        Vendor cancels the order (sets status to cancelled_by_vendor).
+        Cancels all OrderItems (triggers stock/serial restore) and notifies customer.
+
+        URL: POST /vendor/orders/<order_pk>/cancel-by-vendor/
+        """
+        order = self.get_object()
+        if order.status in ("completed", "cancelled", "cancelled_by_vendor"):
+            return Response(
+                {"error": f"Order cannot be cancelled. Current status: {order.status}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        previous_status = order.status
+        # Cancel all OrderItems first (signals restore stock and serial/IMEI)
+        for item in order.items.all():
+            if item.status != "cancelled":
+                item.status = "cancelled"
+                item.save(update_fields=["status"])
+        order.status = "cancelled_by_vendor"
+        order.save(update_fields=["status"])
+        try:
+            from customer.serializers import send_order_status_notification
+            send_order_status_notification(order, "cancelled_by_vendor", previous_status)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Error sending cancel-by-vendor notification: {e}")
+        try:
+            notify_delivery_event(order, "cancelled")
+        except Exception:
+            pass
+        return Response(self.get_serializer(order).data, status=status.HTTP_200_OK)
+
     def update(self, request, *args, **kwargs):
         """Restrict update to only allowed fields"""
         instance = self.get_object()
@@ -700,6 +734,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
+
+        # When status is set to cancelled_by_vendor: cancel all OrderItems so restore_stock/restore_serial signals run
+        if data.get("status") == "cancelled_by_vendor":
+            for item in instance.items.all():
+                if item.status != "cancelled":
+                    item.status = "cancelled"
+                    item.save(update_fields=["status"])
+
+        # When status is set to accepted: create ledgers, reduce stock, assign serial/IMEI
+        if data.get("status") == "accepted" and previous_status != "accepted":
+            try:
+                from customer.serializers import on_order_accepted
+                on_order_accepted(instance)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Error in on_order_accepted: {e}")
 
         # Send notification if order status changed
         # NOTE: Skip notification for 'ready_to_shipment' at order level since it's managed at OrderItem level
@@ -795,6 +845,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     "accepted": "order_confirmed",
                     "completed": "delivered",
                     "cancelled": "cancelled",
+                    "cancelled_by_vendor": "cancelled",
                 }
                 evt = mapping.get(instance.status)
                 if evt:
@@ -3136,32 +3187,165 @@ class SaleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
     
-    def partial_update(self, request, *args, **kwargs):
-        """Custom partial update method for Sale"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
+    def update(self, request, *args, **kwargs):
+        """PUT update method for Sale - same as partial_update"""
+        import logging
+        logger = logging.getLogger(__name__)
         
-        with transaction.atomic():
-            # Update the sale
-            self.perform_update(serializer)
+        logger.info("=" * 80)
+        logger.info(f"[SALE_VIEWSET] ========== UPDATE (PUT) METHOD CALLED ==========")
+        logger.info(f"[SALE_VIEWSET] Sale ID from URL: {kwargs.get('pk')}")
+        logger.info(f"[SALE_VIEWSET] Request Method: {request.method}")
+        logger.info(f"[SALE_VIEWSET] Request User: {request.user} (ID: {request.user.id if request.user else None})")
+        logger.info(f"[SALE_VIEWSET] Request Data: {request.data}")
+        logger.info(f"[SALE_VIEWSET] Request Data Keys: {list(request.data.keys()) if isinstance(request.data, dict) else 'Not a dict'}")
+        
+        try:
+            instance = self.get_object()
+            logger.info(f"[SALE_VIEWSET] Instance found - ID: {instance.id}, Invoice: {instance.invoice_number}")
+            logger.info(f"[SALE_VIEWSET] Instance User: {instance.user} (ID: {instance.user.id if instance.user else None})")
+            logger.info(f"[SALE_VIEWSET] Current Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
             
-            # Handle sale items if provided
-            if 'items' in request.data:
-                # Delete existing items
-                SaleItem.objects.filter(sale=instance).delete()
+            logger.info("[SALE_VIEWSET] Creating serializer with partial=True (treating PUT as PATCH)...")
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            logger.info("[SALE_VIEWSET] Validating serializer...")
+            
+            # Log validation errors before raising exception
+            if not serializer.is_valid():
+                logger.error("=" * 80)
+                logger.error("[SALE_VIEWSET] ❌ SERIALIZER VALIDATION FAILED")
+                logger.error(f"[SALE_VIEWSET] Validation Errors: {serializer.errors}")
+                logger.error("=" * 80)
+            else:
+                logger.info("[SALE_VIEWSET] ✅ Serializer validation passed")
+            
+            serializer.is_valid(raise_exception=True)
+            
+            logger.info("[SALE_VIEWSET] Starting transaction...")
+            with transaction.atomic():
+                # Update the sale
+                logger.info("[SALE_VIEWSET] Calling perform_update...")
+                self.perform_update(serializer)
+                logger.info("[SALE_VIEWSET] perform_update completed")
                 
-                # Create new items
-                for item_data in request.data['items']:
-                    SaleItem.objects.create(
-                        user=request.user,
-                        sale=instance,
-                        product_id=item_data['product'],
-                        quantity=item_data['quantity'],
-                        price=item_data['price'],
-                    )
+                # Handle sale items if provided
+                if 'items' in request.data:
+                    logger.info(f"[SALE_VIEWSET] Items found in request: {len(request.data['items'])} items")
+                    # Delete existing items
+                    deleted_count = SaleItem.objects.filter(sale=instance).delete()[0]
+                    logger.info(f"[SALE_VIEWSET] Deleted {deleted_count} existing items")
+                    
+                    # Create new items
+                    for idx, item_data in enumerate(request.data['items']):
+                        logger.info(f"[SALE_VIEWSET] Creating item {idx + 1}: {item_data}")
+                        SaleItem.objects.create(
+                            user=request.user,
+                            sale=instance,
+                            product_id=item_data['product'],
+                            quantity=item_data['quantity'],
+                            price=item_data['price'],
+                        )
+                    logger.info("[SALE_VIEWSET] All items created")
+                else:
+                    logger.info("[SALE_VIEWSET] No items in request data, keeping existing items")
+            
+            logger.info("[SALE_VIEWSET] Transaction completed successfully")
+            logger.info(f"[SALE_VIEWSET] Final Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+            logger.info("=" * 80)
+            logger.info("[SALE_VIEWSET] ========== UPDATE (PUT) METHOD COMPLETED ==========")
+            logger.info("=" * 80)
+            
+            return Response(serializer.data)
+        except Exception as e:
+            import traceback
+            logger.error("=" * 80)
+            logger.error("[SALE_VIEWSET] ❌ ERROR IN UPDATE (PUT)")
+            logger.error(f"[SALE_VIEWSET] Error Type: {type(e).__name__}")
+            logger.error(f"[SALE_VIEWSET] Error Message: {str(e)}")
+            logger.error("[SALE_VIEWSET] Traceback:")
+            logger.error(traceback.format_exc())
+            logger.error("=" * 80)
+            raise
+    
+    def partial_update(self, request, *args, **kwargs):
+        """PATCH update method for Sale - same as update"""
+        import logging
+        logger = logging.getLogger(__name__)
         
-        return Response(serializer.data)
+        logger.info("=" * 80)
+        logger.info(f"[SALE_VIEWSET] ========== PARTIAL_UPDATE (PATCH) METHOD CALLED ==========")
+        logger.info(f"[SALE_VIEWSET] Sale ID from URL: {kwargs.get('pk')}")
+        logger.info(f"[SALE_VIEWSET] Request Method: {request.method}")
+        logger.info(f"[SALE_VIEWSET] Request User: {request.user} (ID: {request.user.id if request.user else None})")
+        logger.info(f"[SALE_VIEWSET] Request Data: {request.data}")
+        logger.info(f"[SALE_VIEWSET] Request Data Keys: {list(request.data.keys()) if isinstance(request.data, dict) else 'Not a dict'}")
+        
+        try:
+            instance = self.get_object()
+            logger.info(f"[SALE_VIEWSET] Instance found - ID: {instance.id}, Invoice: {instance.invoice_number}")
+            logger.info(f"[SALE_VIEWSET] Instance User: {instance.user} (ID: {instance.user.id if instance.user else None})")
+            logger.info(f"[SALE_VIEWSET] Current Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+            
+            logger.info("[SALE_VIEWSET] Creating serializer with partial=True...")
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            logger.info("[SALE_VIEWSET] Validating serializer...")
+            
+            # Log validation errors before raising exception
+            if not serializer.is_valid():
+                logger.error("=" * 80)
+                logger.error("[SALE_VIEWSET] ❌ SERIALIZER VALIDATION FAILED")
+                logger.error(f"[SALE_VIEWSET] Validation Errors: {serializer.errors}")
+                logger.error("=" * 80)
+            else:
+                logger.info("[SALE_VIEWSET] ✅ Serializer validation passed")
+            
+            serializer.is_valid(raise_exception=True)
+            
+            logger.info("[SALE_VIEWSET] Starting transaction...")
+            with transaction.atomic():
+                # Update the sale
+                logger.info("[SALE_VIEWSET] Calling perform_update...")
+                self.perform_update(serializer)
+                logger.info("[SALE_VIEWSET] perform_update completed")
+                
+                # Handle sale items if provided
+                if 'items' in request.data:
+                    logger.info(f"[SALE_VIEWSET] Items found in request: {len(request.data['items'])} items")
+                    # Delete existing items
+                    deleted_count = SaleItem.objects.filter(sale=instance).delete()[0]
+                    logger.info(f"[SALE_VIEWSET] Deleted {deleted_count} existing items")
+                    
+                    # Create new items
+                    for idx, item_data in enumerate(request.data['items']):
+                        logger.info(f"[SALE_VIEWSET] Creating item {idx + 1}: {item_data}")
+                        SaleItem.objects.create(
+                            user=request.user,
+                            sale=instance,
+                            product_id=item_data['product'],
+                            quantity=item_data['quantity'],
+                            price=item_data['price'],
+                        )
+                    logger.info("[SALE_VIEWSET] All items created")
+                else:
+                    logger.info("[SALE_VIEWSET] No items in request data, keeping existing items")
+            
+            logger.info("[SALE_VIEWSET] Transaction completed successfully")
+            logger.info(f"[SALE_VIEWSET] Final Bank: {instance.bank} (ID: {instance.bank_id if instance.bank else None})")
+            logger.info("=" * 80)
+            logger.info("[SALE_VIEWSET] ========== PARTIAL_UPDATE (PATCH) METHOD COMPLETED ==========")
+            logger.info("=" * 80)
+            
+            return Response(serializer.data)
+        except Exception as e:
+            import traceback
+            logger.error("=" * 80)
+            logger.error("[SALE_VIEWSET] ❌ ERROR IN PARTIAL_UPDATE (PATCH)")
+            logger.error(f"[SALE_VIEWSET] Error Type: {type(e).__name__}")
+            logger.error(f"[SALE_VIEWSET] Error Message: {str(e)}")
+            logger.error("[SALE_VIEWSET] Traceback:")
+            logger.error(traceback.format_exc())
+            logger.error("=" * 80)
+            raise
 
 
 from django.db import transaction
@@ -4106,7 +4290,16 @@ def accept_order(request, order_id):
 
     order.status = "accepted"
     order.save()
-    
+
+    # On first accept: create ledgers, reduce stock, assign serial/IMEI
+    if previous_status != "accepted":
+        try:
+            from customer.serializers import on_order_accepted
+            on_order_accepted(order)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Error in on_order_accepted: {e}")
+
     # Send notification only if status actually changed
     if previous_status != "accepted":
         try:

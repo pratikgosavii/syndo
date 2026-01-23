@@ -168,6 +168,7 @@ class Order(models.Model):
         ('accepted', 'Accepted'),
         ('ready_to_shipment', 'Ready to Shipment'),
         ('cancelled', 'Cancelled'),
+        ('cancelled_by_vendor', 'Cancelled by Vendor'),
         ('completed', 'Completed'),
     ]
 

@@ -1275,6 +1275,15 @@ def delivery_webhook(request):
             import traceback
             log_both("error", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
             raise
+
+        # On first accept (ACCEPTED): create ledgers, reduce stock, assign serial/IMEI
+        if status_code == "ACCEPTED" and previous_order_status != "accepted":
+            try:
+                from customer.serializers import on_order_accepted
+                on_order_accepted(order)
+                log_both("info", "[UENGAGE_WEBHOOK] on_order_accepted executed (ledgers, stock, serial/IMEI)")
+            except Exception as e:
+                log_both("warning", f"[UENGAGE_WEBHOOK] on_order_accepted failed: {e}")
         
         # Verify all OrderItem statuses were saved correctly
         log_both("info", f"[UENGAGE_WEBHOOK] Verifying all OrderItem statuses after save:")
@@ -1490,7 +1499,7 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
                 try:
                     from customer.serializers import send_vendor_notification
                     vendor_user = store.user
-                    visitor_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+                    visitor_name = request.user.id or request.user.mobile or f"User {request.user.id}"
                     send_vendor_notification(
                         vendor_user=vendor_user,
                         notification_type="shop_visit",
@@ -1643,7 +1652,7 @@ class FollowUserAPIView(APIView):
                 # Send notification to vendor (target_user is the vendor being followed)
                 try:
                     from customer.serializers import send_vendor_notification
-                    follower_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+                    follower_name = request.user.id or request.user.username or f"User {request.user.id}"
                     send_vendor_notification(
                         vendor_user=target_user,
                         notification_type="follow",
@@ -1679,7 +1688,7 @@ class UnfollowUserAPIView(APIView):
                 # Send notification to vendor (target_user is the vendor being unfollowed)
                 try:
                     from customer.serializers import send_vendor_notification
-                    unfollower_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+                    unfollower_name = request.user.id or request.user.username or f"User {request.user.id}"
                     send_vendor_notification(
                         vendor_user=target_user,
                         notification_type="unfollow",
