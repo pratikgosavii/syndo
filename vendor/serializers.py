@@ -1315,6 +1315,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     customer_details = vendor_customers_serializer(source="customer", read_only=True)
     vendor_details = vendor_vendors_serializer(source="vendor", read_only=True)
+    bank_details = vendor_bank_serializer(source="bank", read_only=True)
 
 
     class Meta:
