@@ -177,10 +177,10 @@ def calculate_coupon_discount_amount(coupon_id, item_total, user=None):
             logger.warning(f"[COUPON] Coupon {coupon_instance.code} is not available for this user")
             return discount_amount, None, "This coupon is not available for your account"
     
-    # Only apply discount-type coupons
-    if coupon_instance.coupon_type != "discount":
-        logger.warning(f"[COUPON] Coupon {coupon_instance.code} is not a discount coupon")
-        return discount_amount, None, "This coupon cannot be applied to cart total"
+    # # Only apply discount-type coupons
+    # if coupon_instance.coupon_type != "discount":
+    #     logger.warning(f"[COUPON] Coupon {coupon_instance.code} is not a discount coupon")
+    #     return discount_amount, None, "This coupon cannot be applied to cart total"
     
     # Check minimum purchase condition (against item_total only, as per cart logic)
     if coupon_instance.min_purchase and item_total < coupon_instance.min_purchase:
