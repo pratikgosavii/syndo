@@ -2269,10 +2269,7 @@ class CartCouponAPIView(APIView):
             if coupon_instance.customer_id != request.user.id:
                 return Response({"error": "This coupon is not available for your account."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Only apply discount-type coupons
-        if coupon_instance.coupon_type != "discount":
-            return Response({"error": "This coupon cannot be applied to cart total."}, status=status.HTTP_400_BAD_REQUEST)
-
+      
         # Calculate total cart value
         total_cart_amount = sum(item.product.sales_price * item.quantity for item in cart_items)
 
