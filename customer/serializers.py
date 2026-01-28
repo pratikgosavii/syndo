@@ -14,9 +14,19 @@ import datetime
 from django.db import transaction
 
 class OrderPrintFileSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+    
     class Meta:
         model = OrderPrintFile
         fields = ["id", "file", "instructions", "number_of_copies", "page_count", "page_numbers"]
+    
+    def get_file(self, obj):
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
 
 
 class OrderPrintJobSerializer(serializers.ModelSerializer):
@@ -26,6 +36,19 @@ class OrderPrintJobSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderPrintJob
         fields = ["total_amount", "print_type", "print_variant", "customize_variant", "add_ons", "files"]
+    
+    def to_representation(self, instance):
+        """Override to pass context to nested OrderPrintFileSerializer"""
+        representation = super().to_representation(instance)
+        # Get files with proper context
+        if hasattr(instance, 'files'):
+            files_serializer = OrderPrintFileSerializer(
+                instance.files.all(), 
+                many=True, 
+                context=self.context
+            )
+            representation['files'] = files_serializer.data
+        return representation
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -49,6 +72,18 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'tracking_link',
             'is_reviewed'  # ✅ add here also
         ]
+    
+    def to_representation(self, instance):
+        """Override to pass context to nested OrderPrintJobSerializer"""
+        representation = super().to_representation(instance)
+        # Get print_job with proper context
+        if hasattr(instance, 'print_job') and instance.print_job:
+            print_job_serializer = OrderPrintJobSerializer(
+                instance.print_job,
+                context=self.context
+            )
+            representation['print_job'] = print_job_serializer.data
+        return representation
 
         
     def _is_allowed_check(self, obj, return_type):
