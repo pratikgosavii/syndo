@@ -70,6 +70,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'is_exchange_eligible',
             'status',
             'tracking_link',
+            'delivery_date',
             'is_reviewed'  # ✅ add here also
         ]
     
@@ -603,7 +604,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "coupon", "delivery_discount_amount", "total_amount", "order_id", "delivery_date", 'user_details', 'address_details', 'store_details', 'coupon_details', 'vendor_mobile', 'delivery_boy_details', 'uengage_delivery_boy']
+        read_only_fields = ["id", "created_at", "items", "item_total", "tax_total", "coupon", "delivery_discount_amount", "total_amount", "order_id", 'user_details', 'address_details', 'store_details', 'coupon_details', 'vendor_mobile', 'delivery_boy_details', 'uengage_delivery_boy']
     
     def get_coupon_details(self, obj):
         """Return full coupon details if coupon was applied"""
