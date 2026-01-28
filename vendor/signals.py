@@ -1506,6 +1506,156 @@ def pos_wholesale_sms(sender, instance, created, **kwargs):
 
 #-------------------------------------------------------
 
+# -------------------------------
+# POS (NON-WHOLESALE) → Send SMS
+# -------------------------------
+@receiver(pre_save, sender=Sale)
+def _capture_sale_sms_state(sender, instance, **kwargs):
+    """
+    Capture previous Sale total to avoid re-sending SMS on every update.
+    We send SMS when:
+      - Sale is created (and total > 0), OR
+      - total_amount transitions from 0 -> >0 (common when items are added after create)
+    """
+    try:
+        from decimal import Decimal
+        if instance.pk is None:
+            instance._sms_old_total_amount = Decimal("0")
+            return
+        old = Sale.objects.filter(pk=instance.pk).only("total_amount").first()
+        instance._sms_old_total_amount = Decimal(getattr(old, "total_amount", 0) or 0) if old else Decimal("0")
+    except Exception:
+        return
+
+
+@receiver(post_save, sender=Sale)
+def pos_sale_sms_any(sender, instance, created, **kwargs):
+    """
+    Send SMS for ANY POS sale (non-wholesale).
+    Wholesale invoice SMS is handled by pos_wholesale_sms.
+    """
+    try:
+        import logging
+        from decimal import Decimal
+        from datetime import datetime
+        from django.db import transaction
+        from .sms_utils import send_sale_sms
+
+        # Wholesale sales are handled via pos_wholesale invoices
+        if bool(getattr(instance, "is_wholesale_rate", False)):
+            return
+
+        # Must have a customer + creator user for SMS settings
+        if not getattr(instance, "customer", None) or not getattr(instance, "user", None):
+            return
+
+        signal_logger = logging.getLogger(__name__)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        new_total = Decimal(getattr(instance, "total_amount", 0) or 0)
+        old_total = getattr(instance, "_sms_old_total_amount", Decimal("0"))
+
+        should_send = False
+        if created and new_total > 0:
+            should_send = True
+            reason = "created_with_total"
+        elif (old_total == 0) and (new_total > 0):
+            should_send = True
+            reason = "total_transition_0_to_positive"
+        else:
+            reason = f"created={created}, old_total={old_total}, new_total={new_total}"
+
+        if not should_send:
+            signal_logger.info(f"[SMS SIGNAL] [{timestamp}] POS sale SMS skipped (Sale #{instance.id}) reason={reason}")
+            return
+
+        def _send_sms_after_commit():
+            try:
+                instance.refresh_from_db()
+            except Exception:
+                pass
+            success, msg = send_sale_sms(instance, "invoice")
+            signal_logger.info(
+                f"[SMS SUMMARY] sale_id={instance.id} invoice_id=None invoice_type=invoice "
+                f"customer={getattr(getattr(instance, 'customer', None), 'name', None)} "
+                f"phone={getattr(getattr(instance, 'customer', None), 'contact', None)} "
+                f"result={'SENT' if success else 'NOT_SENT'} reason={msg} trigger={reason}"
+            )
+
+        transaction.on_commit(_send_sms_after_commit)
+    except Exception:
+        return
+
+
+# -------------------------------
+# PURCHASE → Send SMS (to user + vendor)
+# -------------------------------
+@receiver(pre_save, sender=Purchase)
+def _capture_purchase_sms_state(sender, instance, **kwargs):
+    try:
+        from decimal import Decimal
+        if instance.pk is None:
+            instance._sms_old_total_amount = Decimal("0")
+            return
+        old = Purchase.objects.filter(pk=instance.pk).only("total_amount").first()
+        instance._sms_old_total_amount = Decimal(getattr(old, "total_amount", 0) or 0) if old else Decimal("0")
+    except Exception:
+        return
+
+
+@receiver(post_save, sender=Purchase)
+def purchase_sms_to_customer_and_vendor(sender, instance, created, **kwargs):
+    """
+    Send Purchase SMS to:
+      - Purchase.user.mobile (creator / "customer" side)
+      - Purchase.vendor.contact (supplier / vendor)
+
+    Trigger when created (and total > 0) OR when total becomes >0 after items are added.
+    """
+    try:
+        import logging
+        from decimal import Decimal
+        from datetime import datetime
+        from django.db import transaction
+        from .sms_utils import send_purchase_sms
+
+        if not getattr(instance, "user", None):
+            return
+
+        signal_logger = logging.getLogger(__name__)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        new_total = Decimal(getattr(instance, "total_amount", 0) or 0)
+        old_total = getattr(instance, "_sms_old_total_amount", Decimal("0"))
+
+        should_send = False
+        if created and new_total > 0:
+            should_send = True
+            reason = "created_with_total"
+        elif (old_total == 0) and (new_total > 0):
+            should_send = True
+            reason = "total_transition_0_to_positive"
+        else:
+            reason = f"created={created}, old_total={old_total}, new_total={new_total}"
+
+        if not should_send:
+            signal_logger.info(f"[SMS SIGNAL] [{timestamp}] Purchase SMS skipped (Purchase #{instance.id}) reason={reason}")
+            return
+
+        def _send_sms_after_commit():
+            try:
+                instance.refresh_from_db()
+            except Exception:
+                pass
+            success, msg = send_purchase_sms(instance, send_to_user=True, send_to_vendor=True)
+            signal_logger.info(
+                f"[SMS SUMMARY] purchase_id={instance.id} result={'SENT' if success else 'NOT_SENT'} reason={msg} trigger={reason}"
+            )
+
+        transaction.on_commit(_send_sms_after_commit)
+    except Exception:
+        return
+
 
 
 # signals.py
@@ -2052,6 +2202,7 @@ def create_online_order_ledger_on_create(sender, instance, created, **kwargs):
         logger.error(f"[ONLINE_ORDER_LEDGER] Traceback:")
         logger.error(traceback.format_exc())
         logger.error("=" * 80)
+
 
 
 @receiver(post_save, sender=OrderItem)

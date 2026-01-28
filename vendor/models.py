@@ -1619,7 +1619,7 @@ class Offer(models.Model):
         on_delete=models.CASCADE,
         related_name="offers"
     )
-    product = models.CharField(max_length=50, blank=True, null=True)
+    product = models.ForeignKey("vendor.product", on_delete=models.SET_NULL, blank=True, null=True, related_name="offers")
     heading = models.CharField(max_length=255)
     selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True, null=True)

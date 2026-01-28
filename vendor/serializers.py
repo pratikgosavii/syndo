@@ -1841,7 +1841,8 @@ class OfferSerializer(serializers.ModelSerializer):
     seller_user_details = UserProfileSerializer(source = 'seller', read_only = True)
     store = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
-    product_details = serializers.SerializerMethodField()
+    # New FK product details (structured)
+    details = product_serializer(source="product", read_only=True)
 
     class Meta:
         model = Offer
@@ -1901,7 +1902,7 @@ class OfferSerializer(serializers.ModelSerializer):
             logger = logging.getLogger(__name__)
             logger.error(f"Error getting product details for Offer {obj.id}: {e}")
             return None
-        
+
     def create(self, validated_data):
         """Create Offer and handle multiple media uploads"""
         from .models import OfferMedia

@@ -473,3 +473,125 @@ def send_sale_sms(sale, invoice_type='invoice'):
         logger.error(f"SMS failed for sale {sale.id} to {phone_number_cleaned}: {error_msg}")
         return False, error_msg
 
+
+def _normalize_indian_phone_for_gateway(phone_number):
+    """
+    Normalize phone numbers for MSGClub.
+    - Removes non-digits (keeps leading + then strips it)
+    - Strips leading 0
+    - If 10 digits, prepends 91
+    Returns normalized digits-only string or "".
+    """
+    if not phone_number:
+        return ""
+    import re
+    cleaned = re.sub(r"[^\d+]", "", str(phone_number)).strip()
+    if cleaned.startswith("+"):
+        cleaned = cleaned[1:]
+    cleaned = cleaned.lstrip("0")
+    if len(cleaned) == 10 and cleaned.isdigit():
+        cleaned = "91" + cleaned
+    return cleaned
+
+
+def _deduct_sms_credits(sms_setting, credits_to_deduct=1):
+    """
+    Deduct SMS credits safely. Returns (success: bool, message: str).
+    """
+    try:
+        from decimal import Decimal
+        credits_to_deduct = Decimal(str(credits_to_deduct or 0))
+        if credits_to_deduct <= 0:
+            return True, "No credits to deduct"
+        old_credits = Decimal(sms_setting.available_credits or 0)
+        if old_credits < credits_to_deduct:
+            return False, f"Insufficient SMS credits. Available: {old_credits}, Required: {credits_to_deduct}"
+        sms_setting.available_credits = max(Decimal("0"), old_credits - credits_to_deduct)
+        sms_setting.used_credits = Decimal(sms_setting.used_credits or 0) + credits_to_deduct
+        sms_setting.save(update_fields=["available_credits", "used_credits"])
+        return True, f"Credits deducted: {old_credits} → {sms_setting.available_credits} (deducted {credits_to_deduct})"
+    except Exception as e:
+        return False, f"Failed to update SMS credits: {str(e)}"
+
+
+def send_purchase_sms(purchase, send_to_user=True, send_to_vendor=True):
+    """
+    Send SMS for a Purchase to:
+    - Purchase.user (store owner/creator) mobile
+    - Purchase.vendor (supplier) contact
+
+    Uses SMSSetting of Purchase.user for credit + enablement (enable_purchase_message).
+    Deducts 1 credit per SMS actually accepted by gateway.
+    """
+    from decimal import Decimal
+    from datetime import datetime
+    from django.conf import settings
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"{'#'*80}")
+    logger.info(f"[SMS PURCHASE LOG] [{timestamp}] Processing SMS for Purchase #{getattr(purchase, 'id', None)}")
+    logger.info(f"{'#'*80}")
+
+    if not getattr(purchase, "user", None):
+        return False, "No user associated with purchase"
+
+    from .models import SMSSetting
+
+    try:
+        sms_setting, _ = SMSSetting.objects.get_or_create(
+            user=purchase.user,
+            defaults={"available_credits": Decimal("100.00")},
+        )
+    except Exception as e:
+        return False, f"Error getting SMS settings: {str(e)}"
+
+    if not sms_setting.enable_purchase_message:
+        return False, "Purchase message is disabled"
+
+    # Build message
+    total_amount = getattr(purchase, "total_amount", None) or 0
+    purchase_code = getattr(purchase, "purchase_code", None) or f"#{purchase.id}"
+    vendor_name = getattr(getattr(purchase, "vendor", None), "name", None) or "Vendor"
+
+    # Link (optional)
+    try:
+        base = getattr(settings, "SITE_BASE_URL", "").rstrip("/")
+    except Exception:
+        base = ""
+    purchase_link = f"{base}/vendor/purchase-invoice/?id={purchase.id}" if base else ""
+
+    message = (
+        f"From Svindo: Purchase {purchase_code} recorded with {vendor_name}. "
+        f"Total amount Rs. {total_amount}."
+        + (f" View: {purchase_link}" if purchase_link else "")
+    )
+
+    results = []
+
+    def _send_one(raw_phone, label):
+        normalized = _normalize_indian_phone_for_gateway(raw_phone)
+        if not normalized:
+            results.append((False, f"{label}: phone not found"))
+            return
+        # Credit check (1 per SMS)
+        available = Decimal(sms_setting.available_credits or 0)
+        if available <= 0:
+            results.append((False, f"{label}: insufficient credits"))
+            return
+        ok, resp = send_sms_via_msgclub(normalized, message)
+        if ok:
+            # Deduct 1 credit per accepted SMS
+            _deduct_sms_credits(sms_setting, 1)
+            results.append((True, f"{label}: SMS accepted by gateway"))
+        else:
+            results.append((False, f"{label}: failed ({resp})"))
+
+    if send_to_user:
+        _send_one(getattr(purchase.user, "mobile", None), "user")
+    if send_to_vendor:
+        _send_one(getattr(getattr(purchase, "vendor", None), "contact", None), "vendor")
+
+    any_sent = any(ok for ok, _ in results)
+    summary = "; ".join([msg for _, msg in results]) if results else "no recipients"
+    return any_sent, summary
+
