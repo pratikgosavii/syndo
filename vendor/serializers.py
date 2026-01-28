@@ -1842,7 +1842,7 @@ class OfferSerializer(serializers.ModelSerializer):
     store = serializers.SerializerMethodField()
     media = serializers.SerializerMethodField()
     # New FK product details (structured)
-    details = product_serializer(source="product", read_only=True)
+    product_details = product_serializer(source="product", read_only=True)
 
     class Meta:
         model = Offer
