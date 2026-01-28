@@ -1221,23 +1221,6 @@ class OrderSerializer(serializers.ModelSerializer):
                     logger.error(f"[ORDER_SERIALIZER] Error reading file for order: {e}", exc_info=True)
                     continue
 
-                if not data:
-                    logger.warning(f"[ORDER_SERIALIZER] No data read from file, skipping")
-                    continue
-
-                filename = os.path.basename(filename) if filename else "file"
-                new_file = ContentFile(data)
-                new_file.name = filename  # upload_to will prepend order_print_jobs/files/
-
-                OrderPrintFile.objects.create(
-                    print_job=order_pj,
-                    file=new_file,
-                    instructions=f.get("instructions"),
-                    number_of_copies=f.get("number_of_copies", 1),
-                    page_count=f.get("page_count", 0),
-                    page_numbers=f.get("page_numbers", ""),
-                )
-
         # CLEAR CART AFTER SUCCESSFUL ORDER CREATION
         Cart.objects.filter(user=request.user).delete()
 
