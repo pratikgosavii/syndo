@@ -1005,9 +1005,109 @@ class OrderSerializer(serializers.ModelSerializer):
             order.save(update_fields=['is_auto_managed'])
 
         # After bulk create, attach print jobs (if any)
+        # IMPORTANT: Read all file data FIRST before any deletions happen
+        # This prevents files from being deleted when cart is cleared
+        files_data_cache = []  # Store file data before cart deletion
+        
         for oi, pj_payload in zip(saved_order_items, print_jobs_payload):
             if not pj_payload:
+                files_data_cache.append(None)
                 continue
+            
+            # Pre-read all file data from cart BEFORE cart deletion
+            files = pj_payload.get("files") or []
+            cached_files = []
+            
+            for f in files:
+                src = f.get("file")
+                if not src:
+                    cached_files.append(None)
+                    continue
+
+                from django.core.files.base import ContentFile
+                from django.core.files.storage import default_storage
+                import os
+
+                # Read bytes from source file IMMEDIATELY (before cart deletion)
+                data = None
+                filename = "file"
+                
+                try:
+                    # Handle different file types
+                    if hasattr(src, "read"):
+                        # It's an UploadedFile or open file handle
+                        if hasattr(src, "seek"):
+                            src.seek(0)  # Reset to beginning
+                        data = src.read()
+                        filename = getattr(src, "name", "file")
+                        if hasattr(src, "close") and not hasattr(src, "closed"):
+                            try:
+                                src.close()
+                            except Exception:
+                                pass
+                    elif hasattr(src, "name"):
+                        # It's a FieldFile (Django model file field)
+                        # Check if file actually exists on disk
+                        if hasattr(src, "storage") and hasattr(src, "name"):
+                            if src.storage.exists(src.name):
+                                src.open("rb")
+                                data = src.read()
+                                src.close()
+                                filename = os.path.basename(src.name)
+                            else:
+                                logger.warning(f"[ORDER_SERIALIZER] File does not exist on disk: {src.name}")
+                                cached_files.append(None)
+                                continue
+                        else:
+                            # Fallback: try to open it
+                            try:
+                                if hasattr(src, "open"):
+                                    src.open("rb")
+                                data = src.read()
+                                filename = getattr(src, "name", "file")
+                            finally:
+                                try:
+                                    if hasattr(src, "close"):
+                                        src.close()
+                                except Exception:
+                                    pass
+                    else:
+                        logger.warning(f"[ORDER_SERIALIZER] Unknown file type: {type(src)}")
+                        cached_files.append(None)
+                        continue
+                        
+                except Exception as e:
+                    logger.error(f"[ORDER_SERIALIZER] Error reading file for order: {e}", exc_info=True)
+                    cached_files.append(None)
+                    continue
+
+                if not data:
+                    logger.warning(f"[ORDER_SERIALIZER] No data read from file, skipping")
+                    cached_files.append(None)
+                    continue
+
+                filename = os.path.basename(filename) if filename else "file"
+                cached_files.append({
+                    "data": data,
+                    "filename": filename,
+                    "instructions": f.get("instructions"),
+                    "number_of_copies": f.get("number_of_copies", 1),
+                    "page_count": f.get("page_count", 0),
+                    "page_numbers": f.get("page_numbers", ""),
+                })
+            
+            files_data_cache.append({
+                "pj_payload": pj_payload,
+                "files": cached_files
+            })
+
+        # NOW create OrderPrintJob and OrderPrintFile using cached data
+        for oi, cached_data in zip(saved_order_items, files_data_cache):
+            if not cached_data or not cached_data.get("pj_payload"):
+                continue
+                
+            pj_payload = cached_data["pj_payload"]
+            
             # Resolve foreign keys if IDs provided
             print_variant = None
             customize_variant = None
@@ -1042,12 +1142,96 @@ class OrderSerializer(serializers.ModelSerializer):
                 valid_addons = Addon.objects.filter(id__in=addon_ids)
                 order_pj.add_ons.set(valid_addons)
 
-            # files
-            files = pj_payload.get("files") or []
-            for f in files:
+            # files - use cached data (already read from disk)
+            cached_files = cached_data.get("files", [])
+            for f_data in cached_files:
+                if not f_data:
+                    continue
+                
+                from django.core.files.base import ContentFile
+                
+                new_file = ContentFile(f_data["data"])
+                new_file.name = f_data["filename"]  # upload_to will prepend order_print_jobs/files/
+
                 OrderPrintFile.objects.create(
                     print_job=order_pj,
-                    file=f.get("file"),
+                    file=new_file,
+                    instructions=f_data.get("instructions"),
+                    number_of_copies=f_data.get("number_of_copies", 1),
+                    page_count=f_data.get("page_count", 0),
+                    page_numbers=f_data.get("page_numbers", ""),
+                )
+                # Do NOT reuse original path; create a fresh file so
+                # OrderPrintFile.upload_to("order_print_jobs/files/") is applied.
+                src = f.get("file")
+                if not src:
+                    continue
+
+                from django.core.files.base import ContentFile
+                from django.core.files.storage import default_storage
+                import os
+
+                # Read bytes from source file / FieldFile / UploadedFile
+                data = None
+                filename = "file"
+                
+                try:
+                    # Handle different file types
+                    if hasattr(src, "read"):
+                        # It's an UploadedFile or open file handle
+                        if hasattr(src, "seek"):
+                            src.seek(0)  # Reset to beginning
+                        data = src.read()
+                        filename = getattr(src, "name", "file")
+                        if hasattr(src, "close") and not hasattr(src, "closed"):
+                            try:
+                                src.close()
+                            except Exception:
+                                pass
+                    elif hasattr(src, "name"):
+                        # It's a FieldFile (Django model file field)
+                        # Check if file actually exists on disk
+                        if hasattr(src, "storage") and hasattr(src, "name"):
+                            if src.storage.exists(src.name):
+                                src.open("rb")
+                                data = src.read()
+                                src.close()
+                                filename = os.path.basename(src.name)
+                            else:
+                                logger.warning(f"[ORDER_SERIALIZER] File does not exist on disk: {src.name}")
+                                continue
+                        else:
+                            # Fallback: try to open it
+                            try:
+                                if hasattr(src, "open"):
+                                    src.open("rb")
+                                data = src.read()
+                                filename = getattr(src, "name", "file")
+                            finally:
+                                try:
+                                    if hasattr(src, "close"):
+                                        src.close()
+                                except Exception:
+                                    pass
+                    else:
+                        logger.warning(f"[ORDER_SERIALIZER] Unknown file type: {type(src)}")
+                        continue
+                        
+                except Exception as e:
+                    logger.error(f"[ORDER_SERIALIZER] Error reading file for order: {e}", exc_info=True)
+                    continue
+
+                if not data:
+                    logger.warning(f"[ORDER_SERIALIZER] No data read from file, skipping")
+                    continue
+
+                filename = os.path.basename(filename) if filename else "file"
+                new_file = ContentFile(data)
+                new_file.name = filename  # upload_to will prepend order_print_jobs/files/
+
+                OrderPrintFile.objects.create(
+                    print_job=order_pj,
+                    file=new_file,
                     instructions=f.get("instructions"),
                     number_of_copies=f.get("number_of_copies", 1),
                     page_count=f.get("page_count", 0),
