@@ -7144,12 +7144,6 @@ class VendorReturnManageAPIView(APIView):
             instance.status = 'returned/replaced_approved'
             instance.order_item.status = 'returned/replaced_approved'
             instance.order_item.save()
-            
-            # Update Order status when return/replace is approved
-            order = instance.order_item.order
-            if order:
-                # Ensure order is saved to trigger any signals/logic
-                order.save()
 
         elif action == "reject":
             if instance.order_item.status != 'returned/replaced_requested':
@@ -7158,12 +7152,6 @@ class VendorReturnManageAPIView(APIView):
             instance.status = 'returned/replaced_rejected'
             instance.order_item.status = 'returned/replaced_rejected'
             instance.order_item.save()
-            
-            # Update Order status when return/replace is rejected
-            order = instance.order_item.order
-            if order:
-                # Ensure order is saved to trigger any signals/logic
-                order.save()
 
         elif action == "complete":
             if instance.order_item.status != 'returned/replaced_approved':
@@ -7172,18 +7160,6 @@ class VendorReturnManageAPIView(APIView):
             instance.status = 'returned/replacement_completed'
             instance.order_item.status = 'returned/replaced_completed'
             instance.order_item.save()
-            
-            # Update Order status when return/replace is completed
-            order = instance.order_item.order
-            if order:
-                # Check if all items are completed/returned, then mark order as completed
-                from django.db.models import Q
-                all_items_completed = not order.items.filter(
-                    ~Q(status__in=['returned/replaced_completed', 'delivered', 'cancelled'])
-                ).exists()
-                if all_items_completed and order.status != 'completed':
-                    order.status = 'completed'
-                order.save()
 
         else:
             return Response({"error": "Invalid action. Use 'approve', 'reject', or 'complete'."}, status=400)
