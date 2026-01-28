@@ -7095,6 +7095,7 @@ class VendorReturnManageAPIView(APIView):
         List all return/exchange requests related to vendor's products
         (order_item_id is ignored for GET; use list endpoint)
         """
+        from customer.models import ReturnExchange
         vendor_user = request.user
         queryset = ReturnExchange.objects.filter(order_item__product__user=vendor_user).order_by('-created_at')
         serializer = ReturnExchangeVendorSerializer(queryset, many=True)
@@ -7106,10 +7107,15 @@ class VendorReturnManageAPIView(APIView):
         action = "approve" | "reject" | "complete"
         Expects OrderItem ID in URL: /vendor/return-exchange/<order_item_id>/
         """
+        from customer.models import ReturnExchange
+        
         action = request.data.get("action")
 
-        if not order_item_id or not action:
-            return Response({"error": "Both 'order_item_id' (in URL) and 'action' are required."}, status=400)
+        if not order_item_id:
+            return Response({"error": "order_item_id is required in URL path."}, status=400)
+        
+        if not action:
+            return Response({"error": "'action' is required in request body."}, status=400)
 
         try:
             # Work on the latest ReturnExchange for this OrderItem belonging to this vendor's products
@@ -7120,9 +7126,15 @@ class VendorReturnManageAPIView(APIView):
                 .first()
             )
             if not instance:
-                raise ReturnExchange.DoesNotExist
-        except ReturnExchange.DoesNotExist:
-            return Response({"error": "Invalid request or not related to your products."}, status=404)
+                return Response({
+                    "error": "No return/exchange request found for this order item or not related to your products.",
+                    "order_item_id": order_item_id
+                }, status=404)
+        except Exception as e:
+            return Response({
+                "error": "Error processing request.",
+                "details": str(e)
+            }, status=500)
 
         # ✅ Logic same as before
         if action == "approve":
