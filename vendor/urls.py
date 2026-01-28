@@ -78,6 +78,7 @@ urlpatterns = [
     # Customer-facing invoice PDF (POS)
     path('customer-sale-invoice/', customer_sale_invoice.as_view(), name='customer-sale-invoice'),
     path('return-exchange/', VendorReturnManageAPIView.as_view(), name='vendor-return-manage'),
+    path('return-exchange/<int:order_item_id>/', VendorReturnManageAPIView.as_view(), name='vendor-return-manage-detail'),
     path('daybook/', DayBookAPIView.as_view(), name='daybook'),
     path('daybook-report/', daybook_report, name='daybook_report'),
     

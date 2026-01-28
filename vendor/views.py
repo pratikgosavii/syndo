@@ -7090,28 +7090,37 @@ class VendorReturnManageAPIView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated, IsVendor]
 
-    def get(self, request):
+    def get(self, request, order_item_id=None):
         """
         List all return/exchange requests related to vendor's products
+        (order_item_id is ignored for GET; use list endpoint)
         """
         vendor_user = request.user
         queryset = ReturnExchange.objects.filter(order_item__product__user=vendor_user).order_by('-created_at')
         serializer = ReturnExchangeVendorSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def patch(self, request):
+    def patch(self, request, order_item_id=None):
         """
         Update status of a return/exchange request
         action = "approve" | "reject" | "complete"
+        Expects OrderItem ID in URL: /vendor/return-exchange/<order_item_id>/
         """
-        req_id = request.data.get("id")
         action = request.data.get("action")
 
-        if not req_id or not action:
-            return Response({"error": "Both 'id' and 'action' are required."}, status=400)
+        if not order_item_id or not action:
+            return Response({"error": "Both 'order_item_id' (in URL) and 'action' are required."}, status=400)
 
         try:
-            instance = ReturnExchange.objects.get(id=req_id, order_item__product__user=request.user)
+            # Work on the latest ReturnExchange for this OrderItem belonging to this vendor's products
+            instance = (
+                ReturnExchange.objects
+                .filter(order_item_id=order_item_id, order_item__product__user=request.user)
+                .order_by('-created_at')
+                .first()
+            )
+            if not instance:
+                raise ReturnExchange.DoesNotExist
         except ReturnExchange.DoesNotExist:
             return Response({"error": "Invalid request or not related to your products."}, status=404)
 
