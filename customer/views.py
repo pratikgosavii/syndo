@@ -1420,11 +1420,28 @@ class ReturnExchangeAPIView(APIView):
         except ReturnExchange.DoesNotExist:
             return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if instance.status not in ['returned/replaced_approved', 'returned/replaced_completed']:
-            return Response({"error": "Cannot cancel. Request already processed or completed."}, status=status.HTTP_400_BAD_REQUEST)
+        # ReturnExchange has no status field; status is tracked on OrderItem
+        oi = instance.order_item
+        current = getattr(oi, "status", None)
 
-        instance.order_item.status = 'returned/replaced_cancelled'
-        instance.save()
+        # Allow cancel only while it's still requested
+        allowed_requested_statuses = {
+            "return_requested",
+            "exchange_requested",
+            "returned/replaced_requested",  # legacy
+        }
+        if current not in allowed_requested_statuses:
+            return Response(
+                {"error": "Cannot cancel. Request already processed or completed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Set cancelled status based on request type
+        if instance.type in ("return", "exchange"):
+            oi.status = f"{instance.type}_cancelled"
+        else:
+            oi.status = "returned/replaced_cancelled"
+        oi.save(update_fields=["status"])
 
         return Response({"success": "Return/Exchange request cancelled successfully."}, status=status.HTTP_200_OK)
 

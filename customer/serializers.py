@@ -498,7 +498,19 @@ def send_order_status_notification(order, status, previous_status=None):
         logger.info(f"✅ Successfully sent order status notification to customer {customer.id} for order {order.order_id}: {status} - {response}")
         return True
     except Exception as e:
-        logger.error(f"❌ Error sending order status notification to customer {customer.id} for order {order.order_id}: {e}")
+        # Common Firebase error: token is no longer valid (user uninstalled app / token rotated)
+        # Example message: "Requested entity was not found."
+        msg = str(e)
+        logger.error(
+            f"❌ Error sending order status notification to customer {customer.id} for order {order.order_id}: {msg}"
+        )
+        try:
+            if "Requested entity was not found" in msg:
+                # Delete invalid token so we don't keep failing for this user
+                DeviceToken.objects.filter(user=customer).delete()
+                logger.warning(f"[FCM] Deleted invalid device token for customer {customer.id}")
+        except Exception:
+            pass
         return False
 
 

@@ -7177,13 +7177,19 @@ class VendorReturnManageAPIView(APIView):
         else:
             return Response({"error": "Invalid action. Use 'approve', 'reject', or 'complete'."}, status=400)
 
+        # Persist ReturnExchange update timestamp (model has no status field)
         instance.save()
 
-        return Response({
-            "success": f"{action.capitalize()} successful",
-            "id": instance.id,
-            "status": instance.status
-        }, status=200)
+        return Response(
+            {
+                "success": f"{action.capitalize()} successful",
+                "return_exchange_id": instance.id,
+                "order_item_id": instance.order_item_id,
+                "type": instance.type,
+                "order_item_status": instance.order_item.status,
+            },
+            status=200,
+        )
 
 
 

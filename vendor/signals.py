@@ -2028,14 +2028,15 @@ def update_stock_on_return_exchange(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=OrderItem)
 def add_stock_on_return_completed(sender, instance, created, **kwargs):
-    # When OrderItem status transitions to returned/replaced_completed, add stock back for returns
+    # When OrderItem status transitions to return_completed (or legacy returned/replaced_completed),
+    # add stock back for RETURNS only.
     if created:
         return
     try:
         new_status = instance.status
     except Exception:
         return
-    if new_status == 'returned/replaced_completed':
+    if new_status in ('return_completed', 'returned/replaced_completed'):
         try:
             from customer.models import ReturnExchange
             req = ReturnExchange.objects.filter(order_item=instance).order_by('-created_at').first()
