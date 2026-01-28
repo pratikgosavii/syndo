@@ -2,26 +2,26 @@ from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from .models import Order
+from .models import OrderItem
 
 
-@receiver(pre_save, sender=Order)
-def set_delivery_date_on_completed(sender, instance: Order, **kwargs):
+@receiver(pre_save, sender=OrderItem)
+def set_item_delivery_date_on_delivered(sender, instance: OrderItem, **kwargs):
     """
-    Whenever an order is marked as delivered/completed (status -> 'completed'),
-    automatically store the delivery date/time in Order.delivery_date.
+    Whenever an OrderItem is marked as delivered (status -> 'delivered'),
+    automatically store the delivery date/time in OrderItem.delivery_date.
     """
-    # New orders (no pk yet): nothing to compare against
+    # New items: nothing to compare against
     if instance.pk is None:
         return
 
     try:
-        old = Order.objects.get(pk=instance.pk)
-    except Order.DoesNotExist:
+        old = OrderItem.objects.get(pk=instance.pk)
+    except OrderItem.DoesNotExist:
         return
 
-    # Transition to completed from any other status
-    if old.status != "completed" and instance.status == "completed":
+    # Transition to delivered from any other status
+    if old.status != "delivered" and instance.status == "delivered":
         # Only set once (don't overwrite if already set)
         if not instance.delivery_date:
             instance.delivery_date = timezone.now()

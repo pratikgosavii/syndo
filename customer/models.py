@@ -202,7 +202,6 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     # Cashfree payment tracking
-    delivery_date = models.DateTimeField(blank=True, null=True, help_text="Date/time when order was marked delivered/completed")
     payment_link = models.URLField(blank=True, null=True)
     cashfree_order_id = models.CharField(max_length=100, blank=True, null=True)
     cashfree_session_id = models.CharField(max_length=255, blank=True, null=True)
@@ -325,6 +324,8 @@ class OrderItem(models.Model):
     price = models.IntegerField()
     status = models.CharField(max_length=40, choices=STATUS_CHOICES, default='pending')
     tracking_link = models.URLField(max_length=500, blank=True, null=True)  # ✅ added
+    # Per-item delivery timestamp (when this specific item is marked delivered)
+    delivery_date = models.DateTimeField(blank=True, null=True, help_text="Date/time when this item was marked delivered")
     
     # Serial/IMEI number linked to this order item (OneToOne relationship)
     serial_imei_number = models.OneToOneField("vendor.serial_imei_no", on_delete=models.SET_NULL, blank=True, null=True, related_name='order_item')
