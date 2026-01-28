@@ -7136,29 +7136,42 @@ class VendorReturnManageAPIView(APIView):
                 "details": str(e)
             }, status=500)
 
-        # ✅ Logic same as before
+        # Determine status prefix based on ReturnExchange type
+        return_type = instance.type  # 'return' or 'exchange'
+        status_prefix = return_type  # 'return' or 'exchange'
+        
+        # ✅ Logic with separate return/exchange statuses
         if action == "approve":
-            if instance.order_item.status != 'returned/replaced_requested':
+            # Check if current status is requested (either return_requested or exchange_requested or legacy)
+            current_status = instance.order_item.status
+            if current_status not in [f'{status_prefix}_requested', 'returned/replaced_requested']:
                 return Response({"error": "Only requested items can be approved."}, status=400)
 
-            instance.status = 'returned/replaced_approved'
-            instance.order_item.status = 'returned/replaced_approved'
+            # Set status based on type (only OrderItem has status, ReturnExchange doesn't)
+            new_status = f'{status_prefix}_approved'
+            instance.order_item.status = new_status
             instance.order_item.save()
 
         elif action == "reject":
-            if instance.order_item.status != 'returned/replaced_requested':
+            # Check if current status is requested
+            current_status = instance.order_item.status
+            if current_status not in [f'{status_prefix}_requested', 'returned/replaced_requested']:
                 return Response({"error": "Only requested items can be rejected."}, status=400)
 
-            instance.status = 'returned/replaced_rejected'
-            instance.order_item.status = 'returned/replaced_rejected'
+            # Set status based on type
+            new_status = f'{status_prefix}_rejected'
+            instance.order_item.status = new_status
             instance.order_item.save()
 
         elif action == "complete":
-            if instance.order_item.status != 'returned/replaced_approved':
+            # Check if current status is approved
+            current_status = instance.order_item.status
+            if current_status not in [f'{status_prefix}_approved', 'returned/replaced_approved']:
                 return Response({"error": "Only approved requests can be marked as completed."}, status=400)
 
-            instance.status = 'returned/replacement_completed'
-            instance.order_item.status = 'returned/replaced_completed'
+            # Set status based on type
+            new_status = f'{status_prefix}_completed'
+            instance.order_item.status = new_status
             instance.order_item.save()
 
         else:

@@ -286,8 +286,32 @@ class OrderItem(models.Model):
         ('intransit', 'In Transit'),
         ('delivered', 'Delivered'),
         
+        # Return statuses
+        ('return_requested', 'Return Requested'),
+        ('return_approved', 'Return Approved'),
+        ('return_ready_to_shipment', 'Return Ready to Shipment'),
+        ('return_in_transit', 'Return In Transit'),
+        ('return_ready_to_deliver', 'Return Ready to Deliver'),
+        ('return_rejected', 'Return Rejected'),
+        ('return_completed', 'Return Completed'),
+        ('return_cancelled', 'Return Cancelled'),
+        
+        # Exchange statuses
+        ('exchange_requested', 'Exchange Requested'),
+        ('exchange_approved', 'Exchange Approved'),
+        ('exchange_ready_to_shipment', 'Exchange Ready to Shipment'),
+        ('exchange_in_transit', 'Exchange In Transit'),
+        ('exchange_ready_to_deliver', 'Exchange Ready to Deliver'),
+        ('exchange_rejected', 'Exchange Rejected'),
+        ('exchange_completed', 'Exchange Completed'),
+        ('exchange_cancelled', 'Exchange Cancelled'),
+        
+        # Legacy combined statuses (for backward compatibility)
         ('returned/replaced_requested', 'returned/replaced_requested'),
         ('returned/replaced_approved', 'returned/replaced_approved'),
+        ('returned/replaced_ready_to_shipment', 'returned/replaced_ready_to_shipment'),
+        ('returned/replaced_in_transit', 'returned/replaced_in_transit'),
+        ('returned/replaced_ready_to_deliver', 'returned/replaced_ready_to_deliver'),
         ('returned/replaced_rejected', 'returned/replaced_rejected'),
         ('returned/replaced_completed', 'returned/replaced_completed'),
         ('returned/replaced_cancelled', 'returned/replaced_cancelled'),
@@ -299,7 +323,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey("vendor.product", on_delete=models.CASCADE, related_name="items")
     quantity = models.IntegerField(default=1)
     price = models.IntegerField()
-    status = models.CharField(max_length=28, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=40, choices=STATUS_CHOICES, default='pending')
     tracking_link = models.URLField(max_length=500, blank=True, null=True)  # ✅ added
     
     # Serial/IMEI number linked to this order item (OneToOne relationship)

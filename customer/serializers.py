@@ -1090,9 +1090,10 @@ class ReturnExchangeSerializer(serializers.ModelSerializer):
 
         instance = super().create(validated_data)
 
-        # ✅ Update OrderItem status to 'returned'
+        # ✅ Update OrderItem status based on return/exchange type
         order_item = instance.order_item
-        order_item.status = 'returned/replaced_requested'
+        return_type = instance.type  # 'return' or 'exchange'
+        order_item.status = f'{return_type}_requested'  # 'return_requested' or 'exchange_requested'
         order_item.save(update_fields=['status'])
 
         return instance
