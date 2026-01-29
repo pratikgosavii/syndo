@@ -290,30 +290,20 @@ class OrderItem(models.Model):
         ('return_approved', 'Return Approved'),
         ('return_ready_to_shipment', 'Return Ready to Shipment'),
         ('return_in_transit', 'Return In Transit'),
-        ('return_ready_to_deliver', 'Return Ready to Deliver'),
         ('return_rejected', 'Return Rejected'),
         ('return_completed', 'Return Completed'),
-        ('return_cancelled', 'Return Cancelled'),
+        ('return_cancelled_by_user', 'Return Cancelled by User'),
+        ('return_picked_up', 'Return Picked Up'),
         
         # Exchange statuses
         ('exchange_requested', 'Exchange Requested'),
         ('exchange_approved', 'Exchange Approved'),
         ('exchange_ready_to_shipment', 'Exchange Ready to Shipment'),
         ('exchange_in_transit', 'Exchange In Transit'),
-        ('exchange_ready_to_deliver', 'Exchange Ready to Deliver'),
         ('exchange_rejected', 'Exchange Rejected'),
         ('exchange_completed', 'Exchange Completed'),
-        ('exchange_cancelled', 'Exchange Cancelled'),
-        
-        # Legacy combined statuses (for backward compatibility)
-        ('returned/replaced_requested', 'returned/replaced_requested'),
-        ('returned/replaced_approved', 'returned/replaced_approved'),
-        ('returned/replaced_ready_to_shipment', 'returned/replaced_ready_to_shipment'),
-        ('returned/replaced_in_transit', 'returned/replaced_in_transit'),
-        ('returned/replaced_ready_to_deliver', 'returned/replaced_ready_to_deliver'),
-        ('returned/replaced_rejected', 'returned/replaced_rejected'),
-        ('returned/replaced_completed', 'returned/replaced_completed'),
-        ('returned/replaced_cancelled', 'returned/replaced_cancelled'),
+        ('exchange_cancelled_by_user', 'Exchange Cancelled by User'),
+        ('exchange_picked_up', 'Exchange Picked Up'),
         
         ('cancelled', 'Cancelled'),
     ]
@@ -379,6 +369,7 @@ class ReturnExchange(models.Model):
 
     type = models.CharField(max_length=10, choices=RETURN_TYPES)
     reason = models.TextField(null=True, blank=True)
+    image = models.ImageField(upload_to="return_exchange/", blank=True, null=True, help_text="Image for return/exchange (e.g. product condition)")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

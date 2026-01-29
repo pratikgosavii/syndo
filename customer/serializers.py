@@ -1283,7 +1283,7 @@ class OrderSerializer(serializers.ModelSerializer):
 class ReturnExchangeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReturnExchange
-        fields = ['id', 'order_item', 'type', 'reason', 'created_at']
+        fields = ['id', 'order_item', 'type', 'reason', 'image', 'created_at', 'updated_at']
 
     def validate(self, data):
         user = self.context['request'].user

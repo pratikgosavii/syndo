@@ -167,6 +167,7 @@ urlpatterns = [
     path('list-expense/', list_expense, name='list_expense'),
 
     path('add-purchase/', add_purchase, name='add_purchase'),
+    path('purchase-invoice/', purchase_invoice_view, name='purchase-invoice'),
     path('update-purchase/<int:purchase_id>/', update_purchase, name='update_purchase'),
     path('delete_purchase/<int:purchase_id>/', delete_purchase, name='delete_purchase'),
     path('list-purchase/', list_purchase, name='list_purchase'),

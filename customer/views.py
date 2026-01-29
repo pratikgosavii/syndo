@@ -1428,7 +1428,6 @@ class ReturnExchangeAPIView(APIView):
         allowed_requested_statuses = {
             "return_requested",
             "exchange_requested",
-            "returned/replaced_requested",  # legacy
         }
         if current not in allowed_requested_statuses:
             return Response(
@@ -1436,11 +1435,8 @@ class ReturnExchangeAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Set cancelled status based on request type
-        if instance.type in ("return", "exchange"):
-            oi.status = f"{instance.type}_cancelled"
-        else:
-            oi.status = "returned/replaced_cancelled"
+        # Set cancelled-by-user status based on request type
+        oi.status = f"{instance.type}_cancelled_by_user"  # return_cancelled_by_user or exchange_cancelled_by_user
         oi.save(update_fields=["status"])
 
         return Response({"success": "Return/Exchange request cancelled successfully."}, status=status.HTTP_200_OK)

@@ -548,12 +548,10 @@ def send_purchase_sms(purchase, send_to_user=True, send_to_vendor=True):
     if not sms_setting.enable_purchase_message:
         return False, "Purchase message is disabled"
 
-    # Build message
+    # Use same DLT-approved message as POS (invoice template)
     total_amount = getattr(purchase, "total_amount", None) or 0
-    purchase_code = getattr(purchase, "purchase_code", None) or f"#{purchase.id}"
     vendor_name = getattr(getattr(purchase, "vendor", None), "name", None) or "Vendor"
 
-    # Link (optional)
     try:
         base = getattr(settings, "SITE_BASE_URL", "").rstrip("/")
     except Exception:
@@ -561,9 +559,9 @@ def send_purchase_sms(purchase, send_to_user=True, send_to_vendor=True):
     purchase_link = f"{base}/vendor/purchase-invoice/?id={purchase.id}" if base else ""
 
     message = (
-        f"From Svindo: Purchase {purchase_code} recorded with {vendor_name}. "
-        f"Total amount Rs. {total_amount}."
-        + (f" View: {purchase_link}" if purchase_link else "")
+        f"From Svindo: Your purchase invoice is generated. Thank you for shopping with {vendor_name}. "
+        f"Your purchase amount is Rs. {total_amount}. "
+        f"Download your invoice: {purchase_link} (Valid for 7 days)."
     )
 
     results = []

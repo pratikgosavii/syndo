@@ -2208,47 +2208,38 @@ def create_online_order_ledger_on_create(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=OrderItem)
 def update_online_order_ledger_on_return(sender, instance, created, **kwargs):
-    # When order item is completed as returned/replaced, update the previous ledger note/status
+    # Update OnlineOrderLedger only when RETURN is marked as completed. No ledger update for exchange (replace).
     if created:
         return
     try:
         new_status = instance.status
     except Exception:
         return
-    if new_status == 'returned/replaced_completed':
-        try:
-            req = ReturnExchange.objects.filter(order_item=instance).order_by('-created_at').first()
-        except Exception:
-            req = None
-
-        try:
-            entry = OnlineOrderLedger.objects.filter(order_item=instance).order_by('-created_at').first()
-        except OnlineOrderLedger.DoesNotExist:
-            entry = None
-
-        if entry:
-            if req and req.type == 'return':
-                entry.status = 'returned'
-                entry.note = (entry.note or '') + ' | Marked returned'
-            elif req and req.type == 'exchange':
-                entry.status = 'replaced'
-                entry.note = (entry.note or '') + ' | Marked replaced'
-            else:
-                entry.note = (entry.note or '') + ' | Marked completed'
-            entry.save(update_fields=['status', 'note', 'updated_at'])
-            # Avoid duplicate transaction per request id
-            from django.db.models import Q
-            if not StockTransaction.objects.filter(
-                product=instance.product,
-                transaction_type='return',
-                reference_id=req.pk
-            ).exists():
-                log_stock_transaction(
-                        instance.product,
-                        'return',
-                        instance.quantity,
-                        ref_id=req.pk
-                    )
+    if new_status not in ('return_completed', 'returned/replaced_completed'):
+        return
+    try:
+        req = ReturnExchange.objects.filter(order_item=instance).order_by('-created_at').first()
+    except Exception:
+        req = None
+    # Only update ledger for return type; do nothing for exchange (no ledger for replace)
+    if not req or req.type != 'return':
+        return
+    try:
+        entry = OnlineOrderLedger.objects.filter(order_item=instance).order_by('-created_at').first()
+    except OnlineOrderLedger.DoesNotExist:
+        entry = None
+    if not entry:
+        return
+    entry.status = 'returned'
+    entry.note = (entry.note or '') + ' | Marked returned'
+    entry.save(update_fields=['status', 'note', 'updated_at'])
+    # Stock for return only: avoid duplicate StockTransaction per request
+    if not StockTransaction.objects.filter(
+        product=instance.product,
+        transaction_type='return',
+        reference_id=req.pk
+    ).exists():
+        log_stock_transaction(instance.product, 'return', instance.quantity, ref_id=req.pk)
 
 # -----------------------------------------------------------------------------
 # COD / Cash Online Orders -> CashLedger credit when OrderItem is delivered

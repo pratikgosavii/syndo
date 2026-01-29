@@ -768,6 +768,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     logger.error(f"Error sending order status notification: {e}")
 
         # Auto-assign logic when order moves to ready_to_shipment (post-pack)
+        # Only create uEngage task for instant_delivery orders; skip for general_delivery, self_pickup, etc.
         try:
             if (
                 "status" in data
@@ -780,61 +781,66 @@ class OrderViewSet(viewsets.ModelViewSet):
                 logger.info("[Vendor OrderViewSet] Auto-assign on ready_to_shipment")
                 logger.info(f"Order ID: {instance.order_id}")
                 logger.info(f"Previous status: {previous_status}")
+                logger.info(f"Delivery type: {getattr(instance, 'delivery_type', None)}")
 
-                # Identify vendor user from first item
-                item0 = instance.items.select_related("product").first()
-                vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
-                logger.info(f"Vendor user: {vendor_user}")
-                if vendor_user:
-                    mode = DeliveryMode.objects.filter(user=vendor_user).first()
+                if getattr(instance, "delivery_type", None) != "instant_delivery":
+                    logger.info("Order is not instant_delivery; skipping uEngage task creation")
+                    logger.info("=" * 80 + "\n")
                 else:
-                    mode = None
-                logger.info(f"Delivery mode: {mode}")
-
-                if mode and mode.is_auto_assign_enabled:
-                    logger.info(f"Auto-assign enabled (self_delivery={getattr(mode, 'is_self_delivery_enabled', False)})")
-                    # Skip if already assigned or task created
-                    if getattr(instance, "delivery_boy_id", None) or getattr(instance, "uengage_task_id", None):
-                        logger.info("Already has delivery_boy or uengage_task_id; skipping assignment")
-                    # Prefer self delivery if enabled and rider available
-                    elif getattr(mode, "is_self_delivery_enabled", False):
-                        rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
-                        if rider:
-                            logger.info(f"Assigned self-delivery rider: {rider}")
-                            instance.delivery_boy = rider
-                            instance.is_auto_managed = True  # Auto-assigned
-                            instance.save(update_fields=["delivery_boy", "is_auto_managed"])
-                        else:
-                            logger.warning("No active self-delivery rider found")
+                    # Identify vendor user from first item
+                    item0 = instance.items.select_related("product").first()
+                    vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
+                    logger.info(f"Vendor user: {vendor_user}")
+                    if vendor_user:
+                        mode = DeliveryMode.objects.filter(user=vendor_user).first()
                     else:
-                        rider = None
+                        mode = None
+                    logger.info(f"Delivery mode: {mode}")
 
-                    # If no rider was set above, attempt external task creation
-                    if not getattr(instance, "delivery_boy_id", None) and not getattr(instance, "uengage_task_id", None):
-                        logger.info("Creating external delivery task via uEngage")
-                        res = create_delivery_task(instance)
-                        logger.info(f"uEngage response: {res}")
-                        if res.get("ok"):
-                            # persist task id and tracking across items
-                            task_id = res.get("task_id")
-                            tracking = res.get("tracking_url")
-                            if task_id:
-                                logger.info(f"Saving uEngage task_id: {task_id}")
-                                instance.uengage_task_id = task_id
-                                instance.is_auto_managed = True  # Auto-assigned via uEngage
-                                instance.save(update_fields=["uengage_task_id", "is_auto_managed"])
-                            if tracking:
-                                for it in instance.items.all():
-                                    if not it.tracking_link:
-                                        it.tracking_link = tracking
-                                        it.save(update_fields=["tracking_link"])
-                                logger.info(f"Applied tracking link to items: {tracking}")
+                    if mode and mode.is_auto_assign_enabled:
+                        logger.info(f"Auto-assign enabled (self_delivery={getattr(mode, 'is_self_delivery_enabled', False)})")
+                        # Skip if already assigned or task created
+                        if getattr(instance, "delivery_boy_id", None) or getattr(instance, "uengage_task_id", None):
+                            logger.info("Already has delivery_boy or uengage_task_id; skipping assignment")
+                        # Prefer self delivery if enabled and rider available
+                        elif getattr(mode, "is_self_delivery_enabled", False):
+                            rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
+                            if rider:
+                                logger.info(f"Assigned self-delivery rider: {rider}")
+                                instance.delivery_boy = rider
+                                instance.is_auto_managed = True  # Auto-assigned
+                                instance.save(update_fields=["delivery_boy", "is_auto_managed"])
+                            else:
+                                logger.warning("No active self-delivery rider found")
                         else:
-                            # Could notify vendor here about failure; do not block
-                            logger.warning("uEngage task creation failed or not ok; skipping assignment")
-                else:
-                    logger.info("Auto-assign disabled or mode missing; no assignment attempted")
-                logger.info("=" * 80 + "\n")
+                            rider = None
+
+                        # If no rider was set above, attempt external task creation
+                        if not getattr(instance, "delivery_boy_id", None) and not getattr(instance, "uengage_task_id", None):
+                            logger.info("Creating external delivery task via uEngage")
+                            res = create_delivery_task(instance)
+                            logger.info(f"uEngage response: {res}")
+                            if res.get("ok"):
+                                # persist task id and tracking across items
+                                task_id = res.get("task_id")
+                                tracking = res.get("tracking_url")
+                                if task_id:
+                                    logger.info(f"Saving uEngage task_id: {task_id}")
+                                    instance.uengage_task_id = task_id
+                                    instance.is_auto_managed = True  # Auto-assigned via uEngage
+                                    instance.save(update_fields=["uengage_task_id", "is_auto_managed"])
+                                if tracking:
+                                    for it in instance.items.all():
+                                        if not it.tracking_link:
+                                            it.tracking_link = tracking
+                                            it.save(update_fields=["tracking_link"])
+                                    logger.info(f"Applied tracking link to items: {tracking}")
+                            else:
+                                # Could notify vendor here about failure; do not block
+                                logger.warning("uEngage task creation failed or not ok; skipping assignment")
+                    else:
+                        logger.info("Auto-assign disabled or mode missing; no assignment attempted")
+                    logger.info("=" * 80 + "\n")
         except Exception:
             pass
 
@@ -2810,8 +2816,9 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
     
     def update(self, request, *args, **kwargs):
-        """PUT/PATCH update for Purchase - serializer handles all logic"""
-        partial = kwargs.pop('partial', False)
+        """PUT/PATCH update for Purchase - serializer handles all logic.
+        PUT is treated as partial so clients can send only the fields they want to update."""
+        partial = kwargs.pop('partial', True)  # Default True: both PUT and PATCH are partial
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -3010,6 +3017,49 @@ def list_purchase(request):
         'data': data
     }
     return render(request, 'list_purchase.html', context)
+
+
+def purchase_invoice_view(request):
+    """
+    Purchase invoice page for SMS link: /vendor/purchase-invoice/?id=<purchase_id>
+    If user is logged-in vendor who owns the purchase, redirect to update-purchase.
+    Otherwise show a simple summary (for SMS recipients who may not be logged in).
+    """
+    from django.http import HttpResponseNotFound
+    from django.urls import reverse
+    purchase_id = request.GET.get('id')
+    if not purchase_id:
+        return HttpResponseNotFound('<h1>Purchase ID required</h1><p>Use ?id=&lt;purchase_id&gt;</p>')
+    purchase = (
+        Purchase.objects
+        .select_related('vendor')
+        .prefetch_related('items')
+        .filter(id=purchase_id)
+        .first()
+    )
+    if not purchase:
+        return HttpResponseNotFound('<h1>Purchase not found</h1>')
+    # Logged-in vendor who owns this purchase → redirect to edit page
+    if request.user.is_authenticated and getattr(purchase, 'user_id', None) == request.user.id:
+        from django.shortcuts import redirect
+        return redirect('update_purchase', purchase_id=purchase.id)
+    # Otherwise show simple summary (SMS link for vendor/supplier)
+    code = getattr(purchase, 'purchase_code', None) or f'#{purchase.id}'
+    vendor_name = getattr(purchase.vendor, 'name', None) if purchase.vendor else 'Vendor'
+    total = getattr(purchase, 'total_amount', None) or 0
+    login_url = request.build_absolute_uri(reverse('login_admin'))
+    html = (
+        f'<!DOCTYPE html><html><head><meta charset="utf-8"><title>Purchase {code}</title>'
+        f'<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f'<style>body{{font-family:sans-serif;max-width:400px;margin:2rem auto;padding:1rem;}}'
+        f'h1{{font-size:1.25rem;}} p{{color:#333;}}</style></head><body>'
+        f'<h1>Purchase {code}</h1>'
+        f'<p><strong>Vendor:</strong> {vendor_name}</p>'
+        f'<p><strong>Total:</strong> Rs. {total}</p>'
+        f'<p><a href="{login_url}">Log in</a> to view full details.</p>'
+        f'</body></html>'
+    )
+    return HttpResponse(html)
 
 
 class NextPurchaseNumberAPI(APIView):
@@ -4051,33 +4101,36 @@ class UpdateOrderItemStatusAPIView(APIView):
         import logging
         logger = logging.getLogger(__name__)
 
-        # Guard: auto-assign rider/external task when moving to ready_to_shipment (instead of intransit)
+        # Guard: auto-assign rider/external task when moving to ready_to_shipment (only for instant_delivery)
         if status_value == "ready_to_shipment":
             try:
                 order = item.order
-                item0 = order.items.select_related("product").first()
-                vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
-                mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
-                if mode and mode.is_auto_assign_enabled:
-                    if not (getattr(order, "delivery_boy_id", None) or getattr(order, "uengage_task_id", None)):
-                        # Try auto-assign now
-                        rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
-                        if rider:
-                            order.delivery_boy = rider
-                            order.is_auto_managed = True  # Auto-assigned
-                            order.save(update_fields=["delivery_boy", "is_auto_managed"])
-                        else:
-                            res = create_delivery_task(order)
-                            if res.get("ok"):
-                                order.uengage_task_id = res.get("task_id")
-                                order.is_auto_managed = True  # Auto-assigned via uEngage
-                                order.save(update_fields=["uengage_task_id", "is_auto_managed"])
-                                tracking = res.get("tracking_url")
-                                if tracking and not item.tracking_link:
-                                    item.tracking_link = tracking
-                                    item.save(update_fields=["tracking_link"])
+                if getattr(order, "delivery_type", None) != "instant_delivery":
+                    logger.info(f"[ORDER_ITEM_UPDATE] Order delivery_type is not instant_delivery; skipping uEngage task creation")
+                else:
+                    item0 = order.items.select_related("product").first()
+                    vendor_user = item0.product.user if item0 and getattr(item0.product, "user", None) else None
+                    mode = DeliveryMode.objects.filter(user=vendor_user).first() if vendor_user else None
+                    if mode and mode.is_auto_assign_enabled:
+                        if not (getattr(order, "delivery_boy_id", None) or getattr(order, "uengage_task_id", None)):
+                            # Try auto-assign now
+                            rider = DeliveryBoy.objects.filter(user=vendor_user, is_active=True).order_by("total_deliveries").first()
+                            if rider:
+                                order.delivery_boy = rider
+                                order.is_auto_managed = True  # Auto-assigned
+                                order.save(update_fields=["delivery_boy", "is_auto_managed"])
                             else:
-                                return Response({"error": "No delivery boy available and external assignment failed."}, status=status.HTTP_400_BAD_REQUEST)
+                                res = create_delivery_task(order)
+                                if res.get("ok"):
+                                    order.uengage_task_id = res.get("task_id")
+                                    order.is_auto_managed = True  # Auto-assigned via uEngage
+                                    order.save(update_fields=["uengage_task_id", "is_auto_managed"])
+                                    tracking = res.get("tracking_url")
+                                    if tracking and not item.tracking_link:
+                                        item.tracking_link = tracking
+                                        item.save(update_fields=["tracking_link"])
+                                else:
+                                    return Response({"error": "No delivery boy available and external assignment failed."}, status=status.HTTP_400_BAD_REQUEST)
             except Exception:
                 pass
 
