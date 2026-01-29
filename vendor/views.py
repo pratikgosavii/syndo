@@ -655,7 +655,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # (Order.user is the customer in the customer app).
         return (
             Order.objects
-            .prefetch_related("items__product")
+            .prefetch_related("items__product", "items__return_exchanges")
             .filter(items__product__user=self.request.user)
             .distinct()
             .order_by("-id")

@@ -51,6 +51,24 @@ class OrderPrintJobSerializer(serializers.ModelSerializer):
         return representation
 
 
+class ReturnExchangeEmbedSerializer(serializers.ModelSerializer):
+    """Read-only serializer for embedding return/exchange in order item (vendor/orders API, etc.)."""
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ReturnExchange
+        fields = ['id', 'type', 'reason', 'image', 'created_at', 'updated_at']
+        read_only_fields = fields
+
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
     product_details = product_serializer(source="product", read_only=True)
     is_return_eligible = serializers.SerializerMethodField()
@@ -58,6 +76,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
     is_reviewed = serializers.SerializerMethodField()  # ✅ NEW FIELD
     # Include print job details if any (read-only)
     print_job = OrderPrintJobSerializer(read_only=True)
+    # Active return/exchange for this order item (single object: latest one) - for vendor/orders API
+    return_exchange = serializers.SerializerMethodField()
     class Meta:
         model = OrderItem
         fields = [
@@ -71,8 +91,23 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'status',
             'tracking_link',
             'delivery_date',
-            'is_reviewed'  # ✅ add here also
+            'is_reviewed',  # ✅ add here also
+            'return_exchange',
         ]
+
+    def get_return_exchange(self, obj):
+        """Return the active (latest) return/exchange request for this order item, or None."""
+        active = getattr(obj, 'return_exchanges', None)
+        if active is None:
+            return None
+        if hasattr(active, 'all'):
+            all_re = list(active.all())
+        else:
+            all_re = list(ReturnExchange.objects.filter(order_item=obj).order_by('-created_at'))
+        if not all_re:
+            return None
+        latest = max(all_re, key=lambda r: r.created_at) if len(all_re) > 1 else all_re[0]
+        return ReturnExchangeEmbedSerializer(latest, context=self.context).data
     
     def to_representation(self, instance):
         """Override to pass context to nested OrderPrintJobSerializer"""
