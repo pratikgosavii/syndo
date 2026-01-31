@@ -186,6 +186,13 @@ class User(AbstractUser):
             # 7. Delete store and related models
             try:
                 from vendor.models import vendor_store, StoreWorkingHour, StoreVisit
+                # Delete customer FavouriteStore/Favourite first (they reference vendor_store)
+                try:
+                    from customer.models import FavouriteStore, Favourite
+                    FavouriteStore.objects.filter(user=self).delete()
+                    Favourite.objects.filter(user=self).delete()
+                except ImportError:
+                    pass
                 store_ids = list(vendor_store.objects.filter(user=self).values_list('id', flat=True))
                 
                 # Delete store visits (references both store and visitor)
@@ -292,10 +299,10 @@ class User(AbstractUser):
                 # Use raw SQL to avoid ORM queries that might fail due to missing columns
                 from django.db import connection
                 
-                # Get order IDs using raw SQL to avoid model query issues (SQLite uses ? placeholder)
+                # Get order IDs using raw SQL to avoid model query issues (%s works for all DB backends)
                 try:
                     with connection.cursor() as cursor:
-                        cursor.execute("SELECT id FROM customer_order WHERE user_id = ?", [self.id])
+                        cursor.execute("SELECT id FROM customer_order WHERE user_id = %s", [self.id])
                         order_ids = [row[0] for row in cursor.fetchall()]
                     
                     if order_ids:
@@ -306,7 +313,7 @@ class User(AbstractUser):
                         OrderItem.objects.filter(order_id__in=order_ids).delete()
                         # Delete orders using raw SQL to avoid model query issues
                         with connection.cursor() as cursor:
-                            cursor.execute("DELETE FROM customer_order WHERE user_id = ?", [self.id])
+                            cursor.execute("DELETE FROM customer_order WHERE user_id = %s", [self.id])
                     
                     # Also delete ReturnExchange by user (in case user field exists)
                     try:
@@ -318,12 +325,12 @@ class User(AbstractUser):
                     # Delete child records first, then orders using raw SQL
                     try:
                         with connection.cursor() as cursor:
-                            # Delete child records by user_id directly
-                            cursor.execute("DELETE FROM customer_orderprintfile WHERE print_job_id IN (SELECT id FROM customer_orderprintjob WHERE order_item_id IN (SELECT id FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = ?)))", [self.id])
-                            cursor.execute("DELETE FROM customer_orderprintjob WHERE order_item_id IN (SELECT id FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = ?))", [self.id])
-                            cursor.execute("DELETE FROM customer_returnexchange WHERE order_item_id IN (SELECT id FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = ?))", [self.id])
-                            cursor.execute("DELETE FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = ?)", [self.id])
-                            cursor.execute("DELETE FROM customer_order WHERE user_id = ?", [self.id])
+                            # Delete child records by user_id directly (%s for all DB backends)
+                            cursor.execute("DELETE FROM customer_orderprintfile WHERE print_job_id IN (SELECT id FROM customer_orderprintjob WHERE order_item_id IN (SELECT id FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = %s)))", [self.id])
+                            cursor.execute("DELETE FROM customer_orderprintjob WHERE order_item_id IN (SELECT id FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = %s))", [self.id])
+                            cursor.execute("DELETE FROM customer_returnexchange WHERE order_item_id IN (SELECT id FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = %s))", [self.id])
+                            cursor.execute("DELETE FROM customer_orderitem WHERE order_id IN (SELECT id FROM customer_order WHERE user_id = %s)", [self.id])
+                            cursor.execute("DELETE FROM customer_order WHERE user_id = %s", [self.id])
                     except Exception:
                         # If all else fails, just skip order deletion
                         pass
@@ -350,16 +357,35 @@ class User(AbstractUser):
                 # If customer models are not available, Django's CASCADE will handle it
                 pass
             
-            # 11. Delete UserRole relationships (Django CASCADE will handle this, but being explicit)
-            # Note: UserRole is defined later in this file, but Django CASCADE should handle it automatically
+            # 11. Delete UserRole (FK to User)
+            try:
+                UserRole.objects.filter(user=self).delete()
+            except (AttributeError, NameError):
+                pass
             
-            # 12. Delete vendor banks, customers, and vendors (these should be last as many things reference them)
+            # 12. Delete masters app data (expense_category, company, customer_address - all have user FK)
+            try:
+                from masters.models import expense_category, company, customer_address
+                expense_category.objects.filter(user=self).delete()
+                company.objects.filter(user=self).delete()
+                customer_address.objects.filter(user=self).delete()
+            except ImportError:
+                pass
+            
+            # 13. Delete vendor banks, customers, and vendors (these should be last as many things reference them)
             if bank_ids:
                 vendor_bank.objects.filter(id__in=bank_ids).delete()
             if customer_ids:
                 vendor_customers.objects.filter(id__in=customer_ids).delete()
             if vendor_ids:
                 vendor_vendors.objects.filter(id__in=vendor_ids).delete()
+            
+            # 14. Delete JWT outstanding tokens if simplejwt token_blacklist is used
+            try:
+                from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
+                OutstandingToken.objects.filter(user_id=user_id).delete()
+            except (ImportError, Exception):
+                pass
             
             # FORCE DELETE user record - bypasses ALL constraints and forces deletion
             # Only attempt if user still exists (Django ORM might have already deleted it)
