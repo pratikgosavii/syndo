@@ -35,6 +35,9 @@ urlpatterns = [
     path('user_list/', user_list, name='user_list'),
     path('list-user-customer/', list_user_customer, name='list_user_customer'),
     path('list-user-vendor/', list_user_vendor, name='list_user_vendor'),
+    path('verify-vendor/<int:store_id>/', verify_vendor, name='verify_vendor'),
+    path('verify-vendor-gst/', verify_vendor_gst, name='verify_vendor_gst'),
+    path('verify-vendor-bank/', verify_vendor_bank, name='verify_vendor_bank'),
 
     path('roles/create/', role_create, name='role_create'),
     path('roles/<int:pk>/edit/', role_update, name='role_update'),

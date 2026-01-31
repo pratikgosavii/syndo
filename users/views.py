@@ -605,3 +605,57 @@ def toggle_global_supplier(request):
         "user_id": target_user.id,
         "global_supplier": vendor_store_obj.global_supplier
     })
+
+
+@login_required(login_url='login_admin')
+def verify_vendor(request, store_id):
+    """
+    Show vendor verification page: submitted data + API responses, with Verify GST / Verify Bank buttons.
+    """
+    store = get_object_or_404(vendor_store, pk=store_id)
+    user = store.user
+    import json
+    gstin_response_json = json.dumps(store.gstin_response_data, indent=2, default=str) if store.gstin_response_data else ""
+    bank_response_json = json.dumps(store.bank_response_data, indent=2, default=str) if store.bank_response_data else ""
+    return render(request, 'verify_vendor.html', {
+        'store': store,
+        'user': user,
+        'gstin_response_json': gstin_response_json,
+        'bank_response_json': bank_response_json,
+    })
+
+
+@login_required(login_url='login_admin')
+def verify_vendor_gst(request):
+    """POST: set is_gstin_verified=True for the given store_id."""
+    if request.method != 'POST':
+        return redirect('list_user_vendor')
+    from django.utils import timezone
+    store_id = request.POST.get('store_id')
+    if not store_id:
+        messages.error(request, 'Store ID is required.')
+        return redirect('list_user_vendor')
+    store = get_object_or_404(vendor_store, pk=store_id)
+    store.is_gstin_verified = True
+    store.gstin_verified_at = timezone.now()
+    store.save(update_fields=['is_gstin_verified', 'gstin_verified_at'])
+    messages.success(request, 'GST verified for this vendor.')
+    return redirect('verify_vendor', store_id=store.id)
+
+
+@login_required(login_url='login_admin')
+def verify_vendor_bank(request):
+    """POST: set is_bank_verified=True for the given store_id."""
+    if request.method != 'POST':
+        return redirect('list_user_vendor')
+    from django.utils import timezone
+    store_id = request.POST.get('store_id')
+    if not store_id:
+        messages.error(request, 'Store ID is required.')
+        return redirect('list_user_vendor')
+    store = get_object_or_404(vendor_store, pk=store_id)
+    store.is_bank_verified = True
+    store.bank_verified_at = timezone.now()
+    store.save(update_fields=['is_bank_verified', 'bank_verified_at'])
+    messages.success(request, 'Bank verified for this vendor.')
+    return redirect('verify_vendor', store_id=store.id)

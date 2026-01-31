@@ -1,0 +1,147 @@
+{% extends "partials/adminBase.html" %}
+{% load static %}
+
+{% block title %}Verify Vendor – GST & Bank{% endblock title %}
+
+{% block extra_css %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        body { background-color: gainsboro; color: #775599; }
+        .card {
+            background-color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #775599;
+            color: #ffffff;
+            border-radius: 8px 8px 0 0;
+            padding: 16px 20px;
+        }
+        .card-title { margin: 0; }
+        .card-body { padding: 20px; }
+        .api-response {
+            max-height: 320px;
+            overflow: auto;
+            white-space: pre-wrap;
+            font-size: 13px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .submitted-table td:first-child { font-weight: 600; width: 180px; }
+    </style>
+{% endblock extra_css %}
+
+{% block content %}
+    <div class="main-content">
+        <div class="page-content">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                            <h4 class="mb-sm-0 font-size-18">Verify Vendor – GST & Bank</h4>
+                            <a href="{% url 'list_user_vendor' %}" class="btn btn-outline-secondary btn-sm">← Back to Vendor List</a>
+                        </div>
+                    </div>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="card-title">Vendor & store</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm submitted-table">
+                                    <tr><td>Store name</td><td>{{ store.name|default:"N/A" }}</td></tr>
+                                    <tr><td>Vendor name</td><td>{{ user.first_name|default:user.last_name|default:user.mobile|default:"N/A" }}</td></tr>
+                                    <tr><td>Email</td><td>{{ user.email|default:"N/A" }}</td></tr>
+                                    <tr><td>Mobile</td><td>{{ user.mobile|default:"N/A" }}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Submitted for verification (GST)</h5>
+                                {% if store.is_gstin_verified %}
+                                    <span class="badge bg-success">GST Verified</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm submitted-table">
+                                    <tr><td>GSTIN</td><td>{{ store.gstin|default:"—" }}</td></tr>
+                                </table>
+                                <h6 class="mt-3">API response (stored)</h6>
+                                {% if gstin_response_json %}
+                                    <div class="api-response">{{ gstin_response_json }}</div>
+                                {% else %}
+                                    <p class="text-muted small mb-0">No API response stored yet.</p>
+                                {% endif %}
+                                {% if not store.is_gstin_verified %}
+                                    <form method="post" action="{% url 'verify_vendor_gst' %}" class="mt-3">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="store_id" value="{{ store.id }}">
+                                        <button type="submit" class="btn btn-success">Verify GST</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Submitted for verification (Bank)</h5>
+                                {% if store.is_bank_verified %}
+                                    <span class="badge bg-success">Bank Verified</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm submitted-table">
+                                    <tr><td>Account number</td><td>{{ store.bank_account_number|default:"—" }}</td></tr>
+                                    <tr><td>IFSC</td><td>{{ store.bank_ifsc|default:"—" }}</td></tr>
+                                </table>
+                                <h6 class="mt-3">API response (stored)</h6>
+                                {% if bank_response_json %}
+                                    <div class="api-response">{{ bank_response_json }}</div>
+                                {% else %}
+                                    <p class="text-muted small mb-0">No API response stored yet.</p>
+                                {% endif %}
+                                {% if not store.is_bank_verified %}
+                                    <form method="post" action="{% url 'verify_vendor_bank' %}" class="mt-3">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="store_id" value="{{ store.id }}">
+                                        <button type="submit" class="btn btn-success">Verify Bank</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% block footer %}
+            {% include 'partials/footer.html' %}
+        {% endblock footer %}
+    </div>
+{% endblock content %}

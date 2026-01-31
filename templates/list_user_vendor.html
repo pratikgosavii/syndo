@@ -198,6 +198,9 @@
                 {% if i.is_active %}Disable{% else %}Enable{% endif %}
             </button>
             {% if store %}
+                <a href="{% url 'verify_vendor' store.id %}" class="btn btn-sm btn-warning mt-1" title="Verify GST & Bank">
+                    Verify
+                </a>
                 <button class="btn btn-sm btn-info mt-1" 
                         onclick="toggleGlobalSupplier({{ i.id }})"
                         title="Toggle Global Supplier">
