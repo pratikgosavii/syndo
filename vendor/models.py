@@ -89,8 +89,10 @@ class vendor_store(models.Model):
     pan_verified_at = models.DateTimeField(blank=True, null=True)
     is_gstin_verified = models.BooleanField(default=False)
     gstin_verified_at = models.DateTimeField(blank=True, null=True)
+    gstin_response_data = models.JSONField(blank=True, null=True, help_text="Stored GSTIN API response for admin review")
     is_bank_verified = models.BooleanField(default=False)
     bank_verified_at = models.DateTimeField(blank=True, null=True)
+    bank_response_data = models.JSONField(blank=True, null=True, help_text="Stored Bank API response for admin review")
     kyc_last_error = models.CharField(max_length=255, blank=True, null=True)
     # FSSAI
     fssai_number = models.CharField(max_length=20, blank=True, null=True)
@@ -99,7 +101,20 @@ class vendor_store(models.Model):
     
     # Global Supplier
     global_supplier = models.BooleanField(default=False, help_text="Mark vendor as global supplier")
-    
+
+    class Meta:
+        verbose_name = "Vendor store"
+        verbose_name_plural = "Vendor stores"
+
+
+class VendorList(vendor_store):
+    """Proxy model to show vendor list under User management in admin."""
+    class Meta:
+        proxy = True
+        app_label = "users"
+        verbose_name = "Vendor"
+        verbose_name_plural = "Vendor list"
+
 
 DAYS_OF_WEEK = [
     ('sunday', 'Sunday'),

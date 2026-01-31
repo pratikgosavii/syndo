@@ -151,10 +151,13 @@ class VendorStoreAPIView(APIView):
             return Response({"detail": "Store not found."}, status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request):
-        """Update the logged-in vendor's store"""
+        """Update the logged-in vendor's store. Name cannot be changed once PAN is verified."""
         try:
             store = vendor_store.objects.get(user=request.user)
-            serializer = VendorStoreSerializer(store, data=request.data, partial=True)
+            data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+            if store.is_pan_verified and "name" in data:
+                data.pop("name", None)  # do not allow name change after PAN verification
+            serializer = VendorStoreSerializer(store, data=data, partial=True)
             if serializer.is_valid():
                 serializer.save(user=request.user)  # make sure store stays linked to vendor
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -2007,6 +2010,38 @@ from .services.quickkyc import (
 from .models import vendor_store
 
 
+def _normalize_name(s):
+    """Normalize name for comparison: strip, lowercase, collapse spaces."""
+    if not s or not isinstance(s, str):
+        return ""
+    return " ".join(str(s).strip().lower().split())
+
+
+def _get_pan_name_from_result(result: dict) -> str:
+    """Extract name from PAN verification API response (common response shapes)."""
+    if not result:
+        return ""
+    # Try common keys: name, full_name, name_as_per_pan, data.name, data.full_name
+    name = (
+        result.get("name")
+        or result.get("full_name")
+        or result.get("name_as_per_pan")
+        or (result.get("data") or {}).get("name")
+        or (result.get("data") or {}).get("full_name")
+        or (result.get("data") or {}).get("name_as_per_pan")
+    )
+    if name and isinstance(name, str):
+        return name.strip()
+    # OneFin-style: filler or first_name + middle_name + last_name
+    data = result.get("data") or result
+    if data.get("filler"):
+        return str(data["filler"]).strip()
+    parts = [data.get("first_name"), data.get("middle_name"), data.get("last_name")]
+    if any(parts):
+        return " ".join(p for p in parts if p).strip()
+    return ""
+
+
 class VerifyPANAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -2028,11 +2063,34 @@ class VerifyPANAPIView(APIView):
         try:
             result = kyc_verify_pan(pan, name)
             success = _is_success(result)
+
             store.pan_number = pan
             store.is_pan_verified = success
-            store.pan_verified_at = timezone.now() if success else None
-            store.kyc_last_error = None if success else (result.get("message") or "PAN verification failed")
-            store.save(update_fields=["pan_number", "is_pan_verified", "pan_verified_at", "kyc_last_error"])
+            if success:
+                store.pan_verified_at = timezone.now()
+                store.kyc_last_error = None
+                # Set user and store name from PAN response when name is present
+                pan_name = _get_pan_name_from_result(result)
+                if pan_name:
+                    pan_name_clean = pan_name.strip()
+                    if pan_name_clean:
+                        # Update vendor_store.name (max 50 chars)
+                        store.name = pan_name_clean[:50]
+                        # Update User first_name / last_name (split on first space)
+                        if request.user:
+                            parts = pan_name_clean.split(None, 1)  # max 2 parts
+                            first_name = (parts[0] or "")[:150]
+                            last_name = (parts[1] if len(parts) > 1 else "")[:150]
+                            request.user.first_name = first_name
+                            request.user.last_name = last_name
+                            request.user.save(update_fields=["first_name", "last_name"])
+            else:
+                store.pan_verified_at = None
+                store.kyc_last_error = result.get("message") or "PAN verification failed"
+            update_fields = ["pan_number", "is_pan_verified", "pan_verified_at", "kyc_last_error"]
+            if success and _get_pan_name_from_result(result):
+                update_fields.append("name")
+            store.save(update_fields=update_fields)
             return Response({"verified": success, "result": result}, status=200 if success else 400)
         except QuickKYCError as e:
             store.kyc_last_error = str(e)
@@ -2062,10 +2120,10 @@ class VerifyGSTINAPIView(APIView):
             result = kyc_verify_gstin(gstin)
             success = _is_success(result)
             store.gstin = gstin
-            store.is_gstin_verified = success
-            store.gstin_verified_at = timezone.now() if success else None
+            store.gstin_response_data = result  # store API response for admin review
+            # Do not set is_gstin_verified from API; admin verifies manually in admin panel
             store.kyc_last_error = None if success else (result.get("message") or "GSTIN verification failed")
-            store.save(update_fields=["gstin", "is_gstin_verified", "gstin_verified_at", "kyc_last_error"])
+            store.save(update_fields=["gstin", "gstin_response_data", "kyc_last_error"])
             return Response({"verified": success, "result": result}, status=200 if success else 400)
         except QuickKYCError as e:
             store.kyc_last_error = str(e)
@@ -2131,12 +2189,12 @@ class VerifyBankAPIView(APIView):
             
             store.bank_account_number = account_number
             store.bank_ifsc = ifsc
-            store.is_bank_verified = success
-            store.bank_verified_at = timezone.now() if success else None
+            store.bank_response_data = result  # store API response for admin review
+            # Do not set is_bank_verified from API; admin verifies manually in admin panel
             store.kyc_last_error = None if success else (result.get("message") or "Bank verification failed")
             store.save(update_fields=[
-                "bank_account_number", "bank_ifsc",
-                "is_bank_verified", "bank_verified_at", "kyc_last_error"
+                "bank_account_number", "bank_ifsc", "bank_response_data",
+                "kyc_last_error"
             ])
             
             # If verification is successful, check/create bank in vendor_bank table
@@ -2660,8 +2718,8 @@ class CompanyProfileViewSet(viewsets.ModelViewSet):
                 store.profile_image = company_profile.profile_image
                 update_fields.append('profile_image')
             
-            # Update store name from brand_name if store doesn't have a name
-            if company_profile.brand_name and not store.name:
+            # Update store name from brand_name only if store doesn't have a name and PAN is not verified
+            if company_profile.brand_name and not store.name and not store.is_pan_verified:
                 store.name = company_profile.brand_name
                 update_fields.append('name')
             

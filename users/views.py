@@ -281,9 +281,18 @@ class UserUpdateView(APIView):
 
         updated = False
 
+        # Do not allow name change once PAN is verified (vendor_store.is_pan_verified)
         if name:
-            user.first_name = name
-            updated = True
+            try:
+                from vendor.models import vendor_store
+                store = vendor_store.objects.filter(user=user).first()
+                if store and store.is_pan_verified:
+                    name = None  # ignore name update
+            except Exception:
+                pass
+            if name:
+                user.first_name = name
+                updated = True
 
         if email:
             user.email = email

@@ -37,6 +37,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
 
+        # Do not allow first_name/last_name change once PAN is verified (vendor_store.is_pan_verified)
+        try:
+            from vendor.models import vendor_store
+            store = vendor_store.objects.filter(user=instance).first()
+            if store and store.is_pan_verified:
+                validated_data.pop('first_name', None)
+                validated_data.pop('last_name', None)
+        except Exception:
+            pass
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 

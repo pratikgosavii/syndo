@@ -740,7 +740,8 @@ def cashfree_webhook(request):
     signature = request.headers.get("x-webhook-signature") or request.headers.get("X-Webhook-Signature")
     timestamp = request.headers.get("x-webhook-timestamp") or request.headers.get("X-Webhook-Timestamp")
     webhook_version = request.headers.get("x-webhook-version") or request.headers.get("X-Webhook-Version")
-    secret = os.getenv("CASHFREE_WEBHOOK_SECRET", "test_webhook_secret")
+    from django.conf import settings as django_settings
+    secret = (getattr(django_settings, "CASHFREE_WEBHOOK_SECRET", None) or os.getenv("CASHFREE_WEBHOOK_SECRET") or "").strip() or "test_webhook_secret"
     log_both("info", f"[CASHFREE_WEBHOOK] Signature present: {bool(signature)}")
     log_both("info", f"[CASHFREE_WEBHOOK] Timestamp present: {bool(timestamp)}")
     log_both("info", f"[CASHFREE_WEBHOOK] Webhook version: {webhook_version}")
@@ -767,8 +768,8 @@ def cashfree_webhook(request):
                 computed_signatures["2021-09-21_format"] = computed1
                 log_both("info", f"[CASHFREE_WEBHOOK] Computed signature (2021-09-21: timestamp+body): {computed1[:30]}...")
             
-            # Format 2: 2023-08-01 format (timestamp + "." + body_string)
-            if webhook_version == "2023-08-01" and timestamp:
+            # Format 2: 2023-08-01 format (timestamp + "." + body_string) – try when version is 2023-08-01 or None (Cashfree may omit version header)
+            if timestamp:
                 message2 = f"{timestamp}.{raw_body_str}"
                 computed2 = base64.b64encode(hmac.new(secret.encode("utf-8"), message2.encode("utf-8"), hashlib.sha256).digest()).decode()
                 computed_signatures["2023-08-01_format"] = computed2
