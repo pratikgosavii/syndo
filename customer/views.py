@@ -723,6 +723,8 @@ def cashfree_webhook(request):
     log_both("info", f"[CASHFREE_WEBHOOK] Request Path: {request.path}")
     
     if request.method != "POST":
+        if request.method == "GET":
+            return JsonResponse({"message": "Cashfree webhook; use POST to send events"}, status=200)
         log_both("warning", f"[CASHFREE_WEBHOOK] Invalid method: {request.method}")
         return JsonResponse({"detail": "method not allowed"}, status=405)
 
