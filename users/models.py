@@ -163,8 +163,8 @@ class User(AbstractUser):
             # 6. Delete product-related models (products are already identified above)
             try:
                 from vendor.models import (
-                    ProductSerial, PrintVariant, CustomizePrintVariant, 
-                    product_addon, SpotlightProduct, serial_imei_no
+                    ProductSerial, PrintVariant, CustomizePrintVariant,
+                    product_addon, addon, SpotlightProduct, serial_imei_no
                 )
                 
                 # Delete product-related child models
@@ -177,6 +177,8 @@ class User(AbstractUser):
                     SpotlightProduct.objects.filter(product__in=product_ids).delete()
                     # Note: Offer.product is a CharField, not ForeignKey, so we filter by seller later
                 
+                # Delete addons owned by this user (addon has user FK; must run after product_addon)
+                addon.objects.filter(user=self).delete()
                 # Delete products (this will cascade delete any remaining PurchaseItems/SaleItems)
                 product.objects.filter(user=self).delete()
                 SpotlightProduct.objects.filter(user=self).delete()
