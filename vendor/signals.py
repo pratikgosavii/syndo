@@ -2068,6 +2068,12 @@ def add_stock_on_return_completed(sender, instance, created, **kwargs):
                                 f"[RETURN_REFUND] Refund initiated for order {order.order_id} "
                                 f"item {instance.id}: cf_refund_id={result.get('cf_refund_id')} amount={refund_amount}"
                             )
+                            try:
+                                from customer.serializers import send_order_status_notification
+                                send_order_status_notification(order, 'refund_initiated')
+                                logger.info(f"[RETURN_REFUND] Sent refund-initiated notification to customer for order {order.order_id}")
+                            except Exception as notif_e:
+                                logger.warning(f"[RETURN_REFUND] Failed to send refund notification to customer: {notif_e}")
                         else:
                             logger.warning(
                                 f"[RETURN_REFUND] Refund failed for order {order.order_id} item {instance.id}: {result.get('message')}"

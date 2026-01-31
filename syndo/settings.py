@@ -335,13 +335,16 @@ QUICKKYC_BASE_URL = "https://api.quickekyc.com/api/v1"
 QUICKKYC_API_KEY = "69cabe8b-255c-4d14-9225-aaad46cd01b6"
 
 # --------------------
-# Cashfree configuration (set credentials here only; no env)
+# Cashfree configuration (from environment only; do not commit secrets)
 # --------------------
-# Sandbox: https://sandbox.cashfree.com/pg | Live: https://api.cashfree.com/pg
-CASHFREE_APP_ID = "TEST108865764e007be25d954f99c5e067568801"
-CASHFREE_SECRET_KEY = "cfsk_ma_test_f5a5d06b79b70e17a1da4ca3e27daa51_3f74a0da"
-CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
-CASHFREE_WEBHOOK_SECRET = ""
+# Set in .env or server env:
+#   CASHFREE_APP_ID, CASHFREE_SECRET_KEY, CASHFREE_BASE_URL, CASHFREE_WEBHOOK_SECRET
+# Sandbox: CASHFREE_BASE_URL=https://sandbox.cashfree.com/pg
+# Live:    CASHFREE_BASE_URL=https://api.cashfree.com/pg
+CASHFREE_APP_ID = os.environ.get("CASHFREE_APP_ID", "")
+CASHFREE_SECRET_KEY = os.environ.get("CASHFREE_SECRET_KEY", "")
+CASHFREE_BASE_URL = os.environ.get("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/pg")
+CASHFREE_WEBHOOK_SECRET = os.environ.get("CASHFREE_WEBHOOK_SECRET", "")
 
 # --------------------
 # uEngage configuration (delivery notifications)

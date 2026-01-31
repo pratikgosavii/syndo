@@ -542,6 +542,10 @@ def send_order_status_notification(order, status, previous_status=None):
         'cancelled_by_vendor': {
             'title': 'Order Cancelled',
             'body': f'Your order {order.order_id} has been cancelled by the vendor.'
+        },
+        'refund_initiated': {
+            'title': 'Refund Initiated',
+            'body': f'Refund for your order {order.order_id} has been initiated. Please wait up to 48 hours for the amount to reflect in your account.'
         }
     }
     

@@ -852,23 +852,32 @@ def cashfree_webhook(request):
     # If event_type exists but is not in payment_events and not in non_payment_events, it's unknown
     # We'll still try to process it if it has order_id, otherwise acknowledge it
     
-    # Extract order_id and status robustly (for payment webhooks)
+    # Extract order_id and status robustly (for payment webhooks; REFUND_STATUS_WEBHOOK has order_id in data.refund)
+    data = payload.get("data") or {}
     order_id = (
         payload.get("order_id")
-        or payload.get("data", {}).get("order", {}).get("order_id")
-        or payload.get("data", {}).get("order_id")
-        or payload.get("orderId")  # Alternative field name
+        or data.get("order", {}).get("order_id")
+        or data.get("order_id")
+        or data.get("refund", {}).get("order_id")  # REFUND_STATUS_WEBHOOK
+        or payload.get("orderId")
     )
     status_cf = (
         payload.get("order_status")
-        or payload.get("data", {}).get("order", {}).get("order_status")
-        or payload.get("data", {}).get("payment", {}).get("payment_status")
+        or data.get("order", {}).get("order_status")
+        or data.get("payment", {}).get("payment_status")
+        or data.get("refund", {}).get("refund_status")  # REFUND_STATUS_WEBHOOK
         or payload.get("payment_status")
         or payload.get("status")
     )
     
     log_both("info", f"[CASHFREE_WEBHOOK] Extracted order_id: {order_id}")
     log_both("info", f"[CASHFREE_WEBHOOK] Extracted status: {status_cf}")
+
+    # REFUND_STATUS_WEBHOOK: Cashfree notifies refund result. Refund is already done to customer's original method by Cashfree; we just acknowledge.
+    if event_type == "REFUND_STATUS_WEBHOOK":
+        refund_data = data.get("refund") or {}
+        log_both("info", f"[CASHFREE_WEBHOOK] Refund webhook: order_id={order_id} refund_status={refund_data.get('refund_status')} amount={refund_data.get('refund_amount')} refund_id={refund_data.get('refund_id')}")
+        return JsonResponse({"success": True, "event": event_type, "message": "Refund webhook acknowledged"}, status=200)
 
     # If no order_id, this might be a non-payment webhook or malformed payload
     if not order_id:
