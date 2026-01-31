@@ -936,13 +936,13 @@ class OrderSerializer(serializers.ModelSerializer):
         order = None
         last_exc = None
         
-        # Set is_paid=True for online payments (Cashfree or any non-COD payment mode)
+        # is_paid: False at creation for all orders. Set True only when payment is confirmed:
+        # - Online (Cashfree): webhook sets is_paid=True when Cashfree sends PAYMENT_SUCCESS
+        # - COD/Cash: set is_paid=True when order is completed/delivered (vendor or uengage webhook)
         payment_mode = validated_data.get('payment_mode', 'COD')
         is_paid = False
         if payment_mode and payment_mode.lower() not in ('cod', 'cash'):
-            # For online payments (Cashfree, UPI, Card, etc.), mark as paid immediately
-            is_paid = True
-            logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (online) - setting is_paid=True")
+            logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (online) - is_paid=False until Cashfree webhook confirms payment")
         else:
             logger.info(f"[ORDER_SERIALIZER] Payment mode is '{payment_mode}' (COD/Cash) - is_paid will be set when order is completed")
         

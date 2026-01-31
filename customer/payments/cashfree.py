@@ -399,12 +399,17 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         order.save(update_fields=["cashfree_order_id", "cashfree_session_id", "cashfree_status", "payment_link"])
         logger.info(f"✅ Cashfree order created successfully: {order.cashfree_order_id}")
         cf_id = order.cashfree_order_id
-        session_id = order.cashfree_session_id
+        session_id = (order.cashfree_session_id or "").strip()
+        if not session_id:
+            logger.error("Cashfree returned empty payment_session_id")
+            order.cashfree_status = "ERROR:EMPTY_SESSION"
+            order.save(update_fields=["cashfree_status"])
+            return {"status": "ERROR", "code": 500, "message": "Payment session not received from Cashfree"}
         return {
             "order_id": cf_id,
             "cashfree_order_id": cf_id,
             "payment_session_id": session_id,
-            "order_token": session_id,  # Cashfree SDK expects this as the token for checkout
+            "order_token": session_id,
             "status": order.cashfree_status,
             "payment_link": order.payment_link,
         }
