@@ -2048,6 +2048,33 @@ def add_stock_on_return_completed(sender, instance, created, **kwargs):
             )
             log_stock_transaction(instance.product, "return", instance.quantity, ref_id=instance.pk)
 
+            # Refund user to original payment mode when order was paid online (Cashfree)
+            try:
+                order = getattr(instance, "order", None)
+                if order and getattr(order, "is_paid", False) and getattr(order, "cashfree_order_id", None):
+                    payment_mode = (getattr(order, "payment_mode", "") or "").strip().lower()
+                    if payment_mode in ("cashfree", "online", "upi", "card", "netbanking"):
+                        from customer.payments.cashfree import create_refund
+                        from decimal import Decimal
+                        refund_amount = Decimal(str(instance.price)) * Decimal(str(instance.quantity))
+                        result = create_refund(
+                            order,
+                            refund_amount=float(refund_amount),
+                            refund_id=f"ret_req_{req.id}",
+                            refund_note=f"Return completed - Order {order.order_id} item #{instance.id}",
+                        )
+                        if result.get("status") == "OK":
+                            logger.info(
+                                f"[RETURN_REFUND] Refund initiated for order {order.order_id} "
+                                f"item {instance.id}: cf_refund_id={result.get('cf_refund_id')} amount={refund_amount}"
+                            )
+                        else:
+                            logger.warning(
+                                f"[RETURN_REFUND] Refund failed for order {order.order_id} item {instance.id}: {result.get('message')}"
+                            )
+            except Exception as e:
+                logger.exception(f"[RETURN_REFUND] Error initiating Cashfree refund for order item {instance.id}: {e}")
+
 
 @receiver(pre_save, sender=OrderItem)
 def restore_stock_on_cancelled(sender, instance, **kwargs):

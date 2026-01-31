@@ -225,10 +225,11 @@ def _calculate_vendor_splits(order: Order):
         return None
 
 
-def create_order_for(order: Order, customer_id=None, customer_email=None, customer_phone=None, return_url=None, notify_url=None, enable_easy_split=True):
+def create_order_for(order: Order, customer_id=None, customer_email=None, customer_phone=None, return_url=None, notify_url=None, enable_easy_split=False):
     """
     Creates a Cashfree order for a given Order instance and stores payment_session_id.
-    Supports Easy Split for multi-vendor orders.
+    Normal payment: user (customer) pays to owner (platform/aggregator); vendor is credited
+    via internal ledger (OnlineOrderLedger) when order is paid. No vendor-to-vendor split.
     
     Args:
         order: Order instance
@@ -237,7 +238,7 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         customer_phone: Optional customer phone
         return_url: Optional return URL
         notify_url: Optional notify URL
-        enable_easy_split: If True, automatically calculate and add vendor splits (default: True)
+        enable_easy_split: If True, add vendor splits (default: False — normal user→owner payment)
     
     Idempotent per order_id: if already created, returns existing session.
     """
@@ -474,6 +475,85 @@ def refresh_order_status(order: Order):
         order.cashfree_status = cf_status
         order.save(update_fields=["cashfree_status"])
     return data
+
+
+def create_refund(order: Order, refund_amount, refund_id=None, refund_note=None):
+    """
+    Refund the user via Cashfree to original payment mode (same as they paid).
+    Call when return/exchange is completed for an online-paid order.
+
+    Args:
+        order: Order instance (must have cashfree_order_id and be paid via Cashfree)
+        refund_amount: Amount to refund in INR (float or Decimal)
+        refund_id: Idempotency key (e.g. ret_req_<ReturnExchange.id>). If not set, one is generated.
+        refund_note: Optional note for the refund.
+
+    Returns:
+        dict: {"status": "OK", "cf_refund_id": "...", "refund_status": "SUCCESS"} on success,
+              or {"status": "ERROR", "message": "...", "code": ...} on failure.
+    """
+    import uuid
+    if not order.cashfree_order_id:
+        logger.warning(f"[Cashfree Refund] Order {order.order_id} has no cashfree_order_id, skipping refund")
+        return {"status": "ERROR", "message": "Order was not paid via Cashfree", "code": 400}
+
+    payment_mode = (getattr(order, "payment_mode", "") or "").strip().lower()
+    if payment_mode not in ("cashfree", "online", "upi", "card", "netbanking"):
+        logger.info(f"[Cashfree Refund] Order {order.order_id} payment_mode={payment_mode}, not Cashfree; skipping refund")
+        return {"status": "ERROR", "message": "Order was not paid via Cashfree", "code": 400}
+
+    try:
+        amount_float = float(refund_amount)
+    except (TypeError, ValueError):
+        logger.error(f"[Cashfree Refund] Invalid refund_amount: {refund_amount}")
+        return {"status": "ERROR", "message": "Invalid refund amount", "code": 400}
+
+    if amount_float <= 0:
+        logger.warning(f"[Cashfree Refund] Refund amount must be positive, got {amount_float}")
+        return {"status": "ERROR", "message": "Refund amount must be positive", "code": 400}
+
+    order_id_cf = order.cashfree_order_id or _sanitize_order_id_for_cashfree(order.order_id)
+    if not refund_id:
+        refund_id = f"ret_{order_id_cf}_{uuid.uuid4().hex[:12]}"
+
+    # Cashfree accepts alphanumeric, hyphens, underscores for refund_id
+    refund_id = re.sub(r"[^a-zA-Z0-9_-]", "", str(refund_id))[:64] or f"ret_{uuid.uuid4().hex[:12]}"
+
+    payload = {
+        "refund_id": refund_id,
+        "refund_amount": round(amount_float, 2),
+        "refund_note": (refund_note or "Return completed")[:500],
+    }
+
+    url = f"{CASHFREE_BASE_URL}/orders/{order_id_cf}/refunds"
+    headers = _cashfree_headers(api_version="2023-08-01")
+    logger.info(f"[Cashfree Refund] POST {url} refund_id={refund_id} amount={amount_float} order={order.order_id}")
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+    except Exception as e:
+        logger.error(f"[Cashfree Refund] Request failed: {e}", exc_info=True)
+        return {"status": "ERROR", "message": str(e), "code": 500}
+
+    try:
+        data = resp.json()
+    except Exception:
+        data = {"message": resp.text}
+
+    if resp.status_code in (200, 201):
+        cf_refund_id = data.get("cf_refund_id") or data.get("refund_id")
+        refund_status = data.get("refund_status") or data.get("status")
+        logger.info(f"[Cashfree Refund] Success: cf_refund_id={cf_refund_id} refund_status={refund_status}")
+        return {
+            "status": "OK",
+            "cf_refund_id": cf_refund_id,
+            "refund_id": refund_id,
+            "refund_status": refund_status,
+            "refund_amount": amount_float,
+        }
+    error_message = data.get("message") or data.get("error") or resp.text or f"HTTP {resp.status_code}"
+    logger.error(f"[Cashfree Refund] Failed: {resp.status_code} {error_message}")
+    return {"status": "ERROR", "message": error_message, "code": resp.status_code, "data": data}
 
 
 def verify_webhook_signature(raw_body, signature):
