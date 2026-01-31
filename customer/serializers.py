@@ -1261,45 +1261,51 @@ class OrderSerializer(serializers.ModelSerializer):
                     logger.error(f"[ORDER_SERIALIZER] Error reading file for order: {e}", exc_info=True)
                     continue
 
-        # CLEAR CART AFTER SUCCESSFUL ORDER CREATION
-        Cart.objects.filter(user=request.user).delete()
+        # Clear cart only when order is confirmed: COD/cash immediately; online pay only after payment success (cleared in webhook).
+        payment_mode = (getattr(order, "payment_mode", "") or "COD").strip().lower()
+        is_online_pay = payment_mode not in ("cod", "cash")
+        should_clear_cart = not is_online_pay or getattr(order, "is_paid", False)
+        if should_clear_cart:
+            Cart.objects.filter(user=request.user).delete()
+        else:
+            logger.info(f"[ORDER_SERIALIZER] Skipping cart clear (online pay, payment not confirmed yet) for order {order.order_id}")
 
-        # Send push notifications to customer for each vendor's order notification message
-        try:
-            send_order_notification_to_customer(order)
-            # Also send order placed notification
-            send_order_status_notification(order, 'not_accepted')
-        except Exception as e:
-            logger.error(f"Error sending order notification: {e}", exc_info=True)
-        
-        # Send push notifications to vendors (product.user) - 1 notification per vendor per order
-        try:
-            # Get all unique vendors from order items
-            order_items = order.items.select_related('product', 'product__user').all()
-            vendor_users = set()
-            for item in order_items:
-                if item.product and item.product.user:
-                    vendor_users.add(item.product.user)
-            
-            # Send one notification per vendor
-            for vendor_user in vendor_users:
-                try:
-                    send_vendor_notification(
-                        vendor_user=vendor_user,
-                        notification_type="new_order",
-                        title="New Order Received",
-                        body=f"You have received a new order: {order.order_id}",
-                        data={
-                            "order_id": str(order.order_id),
-                            "order_total": str(order.total_amount),
-                            "type": "new_order"
-                        }
-                    )
-                    logger.info(f"[ORDER_SERIALIZER] ✅ Sent order notification to vendor {vendor_user.id} for order {order.order_id}")
-                except Exception as e:
-                    logger.error(f"[ORDER_SERIALIZER] ❌ Error sending notification to vendor {vendor_user.id}: {e}")
-        except Exception as e:
-            logger.error(f"[ORDER_SERIALIZER] ❌ Error sending vendor notifications: {e}", exc_info=True)
+        # Send order-placed notifications only if NOT online pay, or if online pay then only when already paid.
+        # For online pay, payment is not confirmed yet at create time → skip; notifications sent when webhook sets is_paid=True.
+        is_online_pay = payment_mode not in ("cod", "cash")
+        should_send_order_placed = not is_online_pay or getattr(order, "is_paid", False)
+        if should_send_order_placed:
+            try:
+                send_order_notification_to_customer(order)
+                send_order_status_notification(order, 'not_accepted')
+            except Exception as e:
+                logger.error(f"Error sending order notification: {e}", exc_info=True)
+            try:
+                order_items = order.items.select_related('product', 'product__user').all()
+                vendor_users = set()
+                for item in order_items:
+                    if item.product and item.product.user:
+                        vendor_users.add(item.product.user)
+                for vendor_user in vendor_users:
+                    try:
+                        send_vendor_notification(
+                            vendor_user=vendor_user,
+                            notification_type="new_order",
+                            title="New Order Received",
+                            body=f"You have received a new order: {order.order_id}",
+                            data={
+                                "order_id": str(order.order_id),
+                                "order_total": str(order.total_amount),
+                                "type": "new_order"
+                            }
+                        )
+                        logger.info(f"[ORDER_SERIALIZER] ✅ Sent order notification to vendor {vendor_user.id} for order {order.order_id}")
+                    except Exception as e:
+                        logger.error(f"[ORDER_SERIALIZER] ❌ Error sending notification to vendor {vendor_user.id}: {e}")
+            except Exception as e:
+                logger.error(f"[ORDER_SERIALIZER] ❌ Error sending vendor notifications: {e}", exc_info=True)
+        else:
+            logger.info(f"[ORDER_SERIALIZER] Skipping order-placed notifications (online pay, payment not confirmed yet) for order {order.order_id}")
 
         # Delivery task creation is deferred to vendor when status becomes ready_to_shipment
         print("[OrderSerializer] Delivery task will be created when vendor marks ready_to_shipment.")

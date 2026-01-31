@@ -957,6 +957,40 @@ def cashfree_webhook(request):
             order.payment_mode = "Cashfree"
         order.save(update_fields=["cashfree_status", "is_paid", "payment_mode"])
         log_both("info", f"[CASHFREE_WEBHOOK] Order updated successfully. New status: cashfree_status={order.cashfree_status}, is_paid={order.is_paid}")
+
+        # Send order-placed notifications and clear cart now (online pay was skipped at order create)
+        if str(status_cf).upper() in ("PAID", "SUCCESS", "CAPTURED"):
+            try:
+                from customer.models import Cart
+                Cart.objects.filter(user=order.user).delete()
+                log_both("info", f"[CASHFREE_WEBHOOK] Cleared cart for user {order.user_id} after payment success")
+            except Exception as e:
+                log_both("warning", f"[CASHFREE_WEBHOOK] Failed to clear cart: {e}")
+            try:
+                from customer.serializers import (
+                    send_order_notification_to_customer,
+                    send_order_status_notification,
+                    send_vendor_notification,
+                )
+                send_order_notification_to_customer(order)
+                send_order_status_notification(order, "not_accepted")
+                order_items = order.items.select_related("product", "product__user").all()
+                vendor_users = {item.product.user for item in order_items if item.product and getattr(item.product, "user", None)}
+                for vendor_user in vendor_users:
+                    try:
+                        send_vendor_notification(
+                            vendor_user=vendor_user,
+                            notification_type="new_order",
+                            title="New Order Received",
+                            body=f"You have received a new order: {order.order_id}",
+                            data={"order_id": str(order.order_id), "order_total": str(order.total_amount), "type": "new_order"},
+                        )
+                        log_both("info", f"[CASHFREE_WEBHOOK] Sent order-placed notification to vendor {vendor_user.id}")
+                    except Exception as e:
+                        log_both("warning", f"[CASHFREE_WEBHOOK] Failed to send vendor notification: {e}")
+                log_both("info", "[CASHFREE_WEBHOOK] Sent order-placed notifications to customer and vendors")
+            except Exception as e:
+                log_both("warning", f"[CASHFREE_WEBHOOK] Failed to send order-placed notifications: {e}")
     else:
         log_both("warning", f"[CASHFREE_WEBHOOK] No status found in payload, order not updated")
 

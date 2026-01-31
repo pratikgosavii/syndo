@@ -15,7 +15,12 @@ from pathlib import Path
 
 import os
 
-
+# Load .env so CASHFREE_* and other env vars are available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -340,11 +345,17 @@ QUICKKYC_API_KEY = "69cabe8b-255c-4d14-9225-aaad46cd01b6"
 # Set in .env or server env:
 #   CASHFREE_APP_ID, CASHFREE_SECRET_KEY, CASHFREE_BASE_URL, CASHFREE_WEBHOOK_SECRET
 # Sandbox: CASHFREE_BASE_URL=https://sandbox.cashfree.com/pg
-# Live:    CASHFREE_BASE_URL=https://api.cashfree.com/pg
-CASHFREE_APP_ID = os.environ.get("CASHFREE_APP_ID", "")
-CASHFREE_SECRET_KEY = os.environ.get("CASHFREE_SECRET_KEY", "")
-CASHFREE_BASE_URL = os.environ.get("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/pg")
-CASHFREE_WEBHOOK_SECRET = os.environ.get("CASHFREE_WEBHOOK_SECRET", "")
+# Live (required for prod creds): CASHFREE_BASE_URL=https://api.cashfree.com/pg
+def _env(key, default=""):
+    val = os.environ.get(key, default) or ""
+    if isinstance(val, str):
+        val = val.strip().strip('"').strip("'")
+    return val
+
+CASHFREE_APP_ID = _env("CASHFREE_APP_ID", "")
+CASHFREE_SECRET_KEY = _env("CASHFREE_SECRET_KEY", "")
+CASHFREE_BASE_URL = _env("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/pg") or "https://sandbox.cashfree.com/pg"
+CASHFREE_WEBHOOK_SECRET = _env("CASHFREE_WEBHOOK_SECRET", "")
 
 # --------------------
 # uEngage configuration (delivery notifications)

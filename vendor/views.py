@@ -654,12 +654,14 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Vendor should see orders that contain at least one item whose product belongs to them
-        # (Order.user is the customer in the customer app).
+        from django.db.models import Q
+        # Vendor should see orders that contain at least one item whose product belongs to them.
+        # Exclude online-pay orders until payment is successful (is_paid=True).
         return (
             Order.objects
             .prefetch_related("items__product", "items__return_exchanges")
             .filter(items__product__user=self.request.user)
+            .filter(Q(payment_mode__iexact="cod") | Q(payment_mode__iexact="cash") | Q(is_paid=True))
             .distinct()
             .order_by("-id")
         )
@@ -2103,14 +2105,22 @@ class VerifyGSTINAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+
         def _is_success(result: dict) -> bool:
             status_txt = str(result.get("status", "")).lower()
             code = result.get("status_code")
             return status_txt == "success" and str(code) == "200"
 
-        gstin = request.data.get("gstin")
+        # Accept "gstin" or "gstin_number"; strip whitespace
+        gstin = (request.data.get("gstin") or request.data.get("gstin_number") or "").strip()
         if not gstin:
-            return Response({"detail": "gstin is required"}, status=status.HTTP_400_BAD_REQUEST)
+            logger.warning("[GSTIN_VERIFY] Bad Request: gstin missing or empty. request.data keys: %s", list(request.data.keys()) if request.data else "empty")
+            return Response(
+                {"detail": "gstin is required", "reason": "missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         store = vendor_store.objects.filter(user=request.user).first()
         if not store:
@@ -2124,11 +2134,24 @@ class VerifyGSTINAPIView(APIView):
             # Do not set is_gstin_verified from API; admin verifies manually in admin panel
             store.kyc_last_error = None if success else (result.get("message") or "GSTIN verification failed")
             store.save(update_fields=["gstin", "gstin_response_data", "kyc_last_error"])
-            return Response({"verified": success, "result": result}, status=200 if success else 400)
+            if success:
+                return Response({"verified": True, "result": result}, status=200)
+            logger.warning(
+                "[GSTIN_VERIFY] Verification failed for gstin=%s: status=%s status_code=%s message=%s",
+                gstin[:6] + "***",
+                result.get("status"),
+                result.get("status_code"),
+                result.get("message"),
+            )
+            return Response(
+                {"verified": False, "result": result, "detail": result.get("message") or "GSTIN verification failed", "reason": "verification_failed"},
+                status=400,
+            )
         except QuickKYCError as e:
             store.kyc_last_error = str(e)
             store.is_gstin_verified = False
             store.save(update_fields=["kyc_last_error", "is_gstin_verified"])
+            logger.warning("[GSTIN_VERIFY] QuickKYCError: %s", e)
             return Response({"verified": False, "error": str(e)}, status=502)
 
 
@@ -4084,15 +4107,16 @@ from customer.models import *
 
 
 def order_list(request):
-
-    data = Order.objects.filter(
-        items__product__user=request.user
-    ).distinct().order_by('-created_at')
-
-    context = {
-        "data" : data
-    }
-    return render(request, 'list_order.html', context)
+    from django.db.models import Q
+    # Vendor sees orders that contain their products. Exclude online-pay orders until payment is successful.
+    data = (
+        Order.objects.filter(items__product__user=request.user)
+        .filter(Q(payment_mode__iexact="cod") | Q(payment_mode__iexact="cash") | Q(is_paid=True))
+        .distinct()
+        .order_by("-created_at")
+    )
+    context = {"data": data}
+    return render(request, "list_order.html", context)
 
 
 
