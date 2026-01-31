@@ -201,7 +201,7 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
             or ""
         )
 
-        # Initiate payment
+        # Initiate payment (payment.order_id / payment.cashfree_order_id = Cashfree-safe; use these for Cashfree SDK)
         payment = create_order_for(
             order,
             customer_id=order.user_id,

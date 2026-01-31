@@ -243,8 +243,11 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
     Idempotent per order_id: if already created, returns existing session.
     """
     if order.cashfree_session_id and order.cashfree_status in (None, "", "CREATED"):
+        # Always return Cashfree-safe order_id (frontend must use this for SDK, not order.order_id)
+        cf_order_id = order.cashfree_order_id or _sanitize_order_id_for_cashfree(order.order_id)
         return {
-            "order_id": order.cashfree_order_id or order.order_id,
+            "order_id": cf_order_id,
+            "cashfree_order_id": cf_order_id,
             "payment_session_id": order.cashfree_session_id,
             "status": order.cashfree_status or "CREATED",
             "payment_link": order.payment_link,
@@ -393,8 +396,10 @@ def create_order_for(order: Order, customer_id=None, customer_email=None, custom
         order.payment_link = data.get("payment_link")
         order.save(update_fields=["cashfree_order_id", "cashfree_session_id", "cashfree_status", "payment_link"])
         logger.info(f"✅ Cashfree order created successfully: {order.cashfree_order_id}")
+        cf_id = order.cashfree_order_id
         return {
-            "order_id": order.cashfree_order_id,
+            "order_id": cf_id,
+            "cashfree_order_id": cf_id,
             "payment_session_id": order.cashfree_session_id,
             "status": order.cashfree_status,
             "payment_link": order.payment_link,
