@@ -1816,40 +1816,11 @@ class CartViewSet(viewsets.ModelViewSet):
             .select_related("product")
             .prefetch_related("print_job__add_ons", "print_job__files")
         )
-            defaults={"quantity": quantity},
-        )
-        if not created:
-            cart_item.quantity += quantity
-            cart_item.save()
-        else:
-            # Send notification to vendor when item is first added to cart
-            try:
-                from customer.serializers import send_vendor_notification
-                vendor_user = product_instance.user
-                customer_name = self.request.user.id or self.request.user.mobile or f"User {self.request.user.id}"
-                send_vendor_notification(
-                    vendor_user=vendor_user,
-                    notification_type="cart_add",
-                    title="Product Added to Cart",
-                    body=f"{customer_name} added {product_instance.name} to their cart",
-                    data={
-                        "product_id": str(product_instance.id),
-                        "customer_id": str(self.request.user.id),
-                        "quantity": str(quantity)
-                    }
-                )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error sending cart add notification: {e}")
-
-        return cart_item
 
     # ✅ Clear cart and add new product
     @action(detail=False, methods=["post"])
     @transaction.atomic
     def clear_and_add(self, request):
-                logger = logging.getLogger(__name__)
         product_id = request.data.get("product")
         quantity = request.data.get("quantity", 1)
 
@@ -1897,21 +1868,21 @@ class CartViewSet(viewsets.ModelViewSet):
         try:
             cart_item = Cart.objects.get(pk=pk, user=request.user)
         except Cart.DoesNotExist:
-            return Response({"error": "Cart item not found."}, status=404)
+            return Response({"error": "Cart item not found."}, status=status.HTTP_404_NOT_FOUND)
 
         new_qty = request.data.get("quantity")
         if not new_qty:
-            return Response({"error": "quantity is required."}, status=400)
+            return Response({"error": "quantity is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         new_qty = int(new_qty)
         if new_qty <= 0:
             cart_item.delete()
-            return Response({"message": "Item removed from cart"}, status=200)
+            return Response({"message": "Item removed from cart"}, status=status.HTTP_200_OK)
 
         cart_item.quantity = new_qty
         cart_item.save()
-        return Response({"message": "Quantity updated ✅", "quantity": cart_item.quantity}, status=200)
-                    file=uploaded_file,
+        return Response({"message": "Quantity updated ✅", "quantity": cart_item.quantity}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["post"])
     def clear_cart(self, request):
         Cart.objects.filter(user=request.user).delete()
