@@ -341,35 +341,13 @@ QUICKKYC_BASE_URL = "https://api.quickekyc.com/api/v1"
 QUICKKYC_API_KEY = "69cabe8b-255c-4d14-9225-aaad46cd01b6"
 
 # --------------------
-# Cashfree configuration (from environment only; do not commit secrets)
+# Cashfree configuration (auth keys set directly)
 # --------------------
-# Set in .env or server env:
-#   CASHFREE_APP_ID, CASHFREE_SECRET_KEY, CASHFREE_BASE_URL, CASHFREE_WEBHOOK_SECRET
-# Sandbox: CASHFREE_BASE_URL=https://sandbox.cashfree.com/pg
-# Live (required for prod creds): CASHFREE_BASE_URL=https://api.cashfree.com/pg
-def _env(key, default=""):
-    val = os.environ.get(key, default) or ""
-    if isinstance(val, str):
-        val = val.strip().strip('"').strip("'")
-    return val
-
-CASHFREE_APP_ID = _env("CASHFREE_APP_ID", "")
-CASHFREE_SECRET_KEY = _env("CASHFREE_SECRET_KEY", "")
-CASHFREE_BASE_URL = _env("CASHFREE_BASE_URL", "https://sandbox.cashfree.com/pg") or "https://sandbox.cashfree.com/pg"
-CASHFREE_WEBHOOK_SECRET = _env("CASHFREE_WEBHOOK_SECRET", "")
-
-# Log whether Cashfree creds came from environment (helps debug 401 / wrong env)
-import logging as _logging
-_cf_log = _logging.getLogger("syndo.settings")
-_cf_log.info(
-    "Cashfree config: APP_ID from env=%s, SECRET from env=%s, BASE_URL from env=%s, WEBHOOK_SECRET from env=%s; BASE_URL=%s",
-    bool(os.environ.get("CASHFREE_APP_ID")),
-    bool(os.environ.get("CASHFREE_SECRET_KEY")),
-    bool(os.environ.get("CASHFREE_BASE_URL")),
-    bool(os.environ.get("CASHFREE_WEBHOOK_SECRET")),
-    CASHFREE_BASE_URL,
-)
-
+# Sandbox: use sandbox URL; Live: use https://api.cashfree.com/pg
+CASHFREE_SECRET_KEY = "YOUR_CASHFREE_SECRET_KEY"
+CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"  # Live: "https://api.cashfree.com/pg"
+CASHFREE_APP_ID = "11331192aa86983269b373198aa9113311"
+CASHFREE_SECRET_KEY = "cfsk_ma_prod_7535446dedf461f9e0d109c4d531bd38_31a8565c"
 # --------------------
 # uEngage configuration (delivery notifications)
 # --------------------
