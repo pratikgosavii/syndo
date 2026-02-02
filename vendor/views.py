@@ -15,7 +15,6 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.http.response import HttpResponseRedirect
-from django.http import HttpResponse
 from .serializers import *
 
 from users.permissions import *
@@ -1038,45 +1037,47 @@ class VendorLedgerAPIView(APIView):
     
 
 def bank_ledger(request, bank_id):
+    # Same calculation as BankLedgerAPIView: opening + sum(ledger) = balance
     bank = get_object_or_404(vendor_bank, id=bank_id)
     ledger_entries = bank.ledger_entries.order_by("created_at")
-
     ledger_total = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
-    balance = (bank.opening_balance or 0) + ledger_total
+    opening = bank.opening_balance or 0
+    balance = opening + ledger_total
 
     return render(request, "bank_ledger.html", {
         "bank": bank,
+        "opening": opening,
         "balance": balance,
         "ledger": ledger_entries,
     })
 
 
 def customer_ledger(request, customer_id):
+    # Same calculation as CustomerLedgerAPIView: balance, total_sales, ledger
     from .models import vendor_customers
-    
+
     ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
-    
-    # Get balance from customer model (updated by signals) or calculate from ledger
     try:
         customer = vendor_customers.objects.get(id=customer_id)
         balance = customer.balance or 0
     except vendor_customers.DoesNotExist:
-        # Fallback: calculate from ledger entries
         balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+
+    total_sales = Sale.objects.filter(customer_id=customer_id).aggregate(total=Sum("total_amount"))["total"] or 0
 
     return render(request, "customer_ledger.html", {
         "customer_id": customer_id,
         "balance": balance,
+        "total_sales": total_sales,
         "ledger": ledger_entries,
     })
 
 
 def vendor_ledger(request, vendor_id):
+    # Same calculation as VendorLedgerAPIView: vendor.balance or fallback from ledger
+    vendor = get_object_or_404(vendor_vendors, pk=vendor_id)
     ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id).order_by("created_at")
-    
-    # Use vendor.balance directly (already maintained by signals - opening_balance + sum(ledger entries))
-    vendor = vendor_vendors.objects.get(pk=vendor_id)
-    balance = vendor.balance or 0
+    balance = vendor.balance or ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
     return render(request, "vendor_ledger.html", {
         "vendor_id": vendor_id,
@@ -1085,8 +1086,14 @@ def vendor_ledger(request, vendor_id):
     })
 
 def cash_ledger(request):
-    ledger_entries = CashLedger.objects.filter(user = request.user).order_by("created_at")
-    balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+    # Same calculation as CashLedgerAPIView: CashBalance model first, else sum(ledger)
+    ledger_entries = CashLedger.objects.filter(user=request.user).order_by("created_at")
+    try:
+        from .models import CashBalance
+        balance_obj = CashBalance.objects.get(user=request.user)
+        balance = balance_obj.balance or 0
+    except Exception:
+        balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
     return render(request, "cash_ledger.html", {
         "balance": balance,
@@ -4091,16 +4098,58 @@ def pos_wholesaless(request, sale_id):
 
 
 def order_details(request, order_id):
-
-    order = Order.objects.get(id=order_id)
-    delivery_boy_data = DeliveryBoy.objects.filter(user = request.user)
+    # Load order with delivery_boy for delivery boy details section; restrict to vendor's orders
+    order = (
+        Order.objects.filter(id=order_id, items__product__user=request.user)
+        .select_related('delivery_boy', 'address')
+        .prefetch_related('items__product')
+        .distinct()
+        .first()
+    )
+    if not order:
+        raise Http404("Order not found")
+    delivery_boy_data = DeliveryBoy.objects.filter(user=request.user)
 
     context = {
-        "data" : order,
-        "delivery_boy_data" : delivery_boy_data
+        "data": order,
+        "delivery_boy_data": delivery_boy_data,
     }
-
     return render(request, 'order_details.html', context)
+
+
+@login_required(login_url='login_admin')
+def order_invoice_pdf(request, order_id):
+    """
+    Serve online order invoice PDF for vendor order-details page.
+    Calls customer OnlineOrderInvoiceAPIView; returns PDF or error page so new tab is never blank.
+    """
+    order = (
+        Order.objects.filter(id=order_id, items__product__user=request.user)
+        .select_related('address')
+        .prefetch_related('items__product')
+        .distinct()
+        .first()
+    )
+    if not order:
+        raise Http404("Order not found")
+
+    from customer.views import OnlineOrderInvoiceAPIView
+    api_view = OnlineOrderInvoiceAPIView()
+    result = api_view.get(request, order_id=order_id)
+
+    if isinstance(result, HttpResponse) and result.get("Content-Type", "").startswith("application/pdf"):
+        result["Content-Disposition"] = f'attachment; filename="online_order_invoice_{order.order_id}.pdf"'
+        return result
+
+    # Error: return simple HTML so new tab is not blank
+    error_msg = "Invoice could not be generated."
+    if hasattr(result, "data") and isinstance(result.data, dict):
+        error_msg = result.data.get("error", error_msg)
+        details = result.data.get("details", "")
+        if details:
+            error_msg = f"{error_msg} {details}"
+    html = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>Invoice</title></head><body><p>{error_msg}</p><p><a href='javascript:window.close()'>Close</a></p></body></html>"
+    return HttpResponse(html, content_type="text/html", status=getattr(result, "status_code", 500))
 
 
 from customer.models import *
@@ -5022,9 +5071,9 @@ def daybook_report(request):
     receipts_total = cash_receipts + bank_receipts + customer_payments
     
     payments_total = abs(_sum_amount(VendorLedger.objects.filter(vendor__user=user, transaction_type='payment', created_at__range=(start, end))))
-    # Use ExpenseLedger for expense totals (more accurate with category)
+    # Use ExpenseLedger for expense totals (match API: date range)
     from .models import ExpenseLedger
-    expenses_total = abs(_sum_amount(ExpenseLedger.objects.filter(user=user, expense_date=date_iso)))
+    expenses_total = abs(_sum_amount(ExpenseLedger.objects.filter(user=user, expense_date__range=(start.date(), end.date()))))
 
     stock_count = StockTransaction.objects.filter(product__user=user, created_at__range=(start, end)).count()
 
@@ -5080,8 +5129,13 @@ def daybook_report(request):
         }
 
     cash_entries = [entry_from_cash(e) for e in CashLedgerModel.objects.filter(user=user, created_at__range=(start, end)).order_by('created_at')]
-    bank_entries = [entry_from_bank(e) for e in BankLedgerModel.objects.filter(bank__user=user, created_at__range=(start, end)).order_by('created_at')]
-    expense_entries = [entry_from_expense(e) for e in ExpenseLedger.objects.filter(user=user, expense_date=date_iso).order_by('created_at')]
+    # Bank entries: same as API – iterate active banks, then filter ledger by bank and date
+    bank_accounts_list = vendor_bank.objects.filter(user=user, is_active=True)
+    bank_entries = []
+    for bank in bank_accounts_list:
+        bank_qs = BankLedgerModel.objects.filter(bank=bank, created_at__range=(start, end)).order_by('created_at')
+        bank_entries.extend([entry_from_bank(e) for e in bank_qs])
+    expense_entries = [entry_from_expense(e) for e in ExpenseLedger.objects.filter(user=user, expense_date__range=(start.date(), end.date())).order_by('created_at')]
     entries = sorted(cash_entries + bank_entries + expense_entries, key=lambda x: x['time'])
 
     context = {

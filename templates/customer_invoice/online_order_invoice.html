@@ -19,20 +19,15 @@
 </head>
 <body>
 
-<!-- Header -->
+<!-- Header: single logo on left, title on right -->
 <table class="no-border">
     <tr>
-        <td class="header-logo">
-            {% if store and store.logo %}
-                <img src="{{ store.logo.url }}" alt="Store Logo">
-            {% else %}
-                <h2>{% if company_profile %}{{ company_profile.company_name }}{% else %}Store{% endif %}</h2>
+        <td class="header-logo" width="200">
+            {% if invoice_logo_data_uri %}
+                <img src="{{ invoice_logo_data_uri }}" alt="Invoice Logo" style="max-width: 180px; max-height: 80px; display: block;">
             {% endif %}
         </td>
         <td class="text-right">
-            {% if invoice_image %}
-                <img src="{{ invoice_image }}" alt="Invoice Logo" style="max-width: 150px; max-height: 80px; float: right; margin-bottom: 10px;">
-            {% endif %}
             <h3>Tax Invoice/Bill of Supply/Cash Memo</h3>
             <p>(Original for Recipient)</p>
         </td>
@@ -243,17 +238,6 @@
     </tr>
 </table>
 
-<!-- Total in words -->
-<p class="amount-in-words">Amount in Words: <b>{{ total_in_words }}</b></p>
-
-<!-- Privacy Policy Link -->
-<p style="text-align: center; margin-top: 20px; font-size: 11px; color: #666;">
-    For Privacy Policy, please refer: 
-    <a href="https://svindo.com/#/menu/security-policy/privacy-policy" target="_blank" style="color: #0066cc; text-decoration: underline;">
-        https://svindo.com/#/menu/security-policy/privacy-policy
-    </a>
-</p>
-
 <!-- Footer -->
 <table class="no-border">
     <tr>
@@ -275,6 +259,17 @@
         </td>
     </tr>
 </table>
+
+<!-- Total in words -->
+<p class="amount-in-words">Amount in Words: <b>{{ total_in_words }}</b></p>
+
+<!-- Privacy Policy Link -->
+<p style="text-align: center; margin-top: 20px; font-size: 11px; color: #666;">
+    For Privacy Policy, please refer: 
+    <a href="https://svindo.com/#/menu/security-policy/privacy-policy" target="_blank" style="color: #0066cc; text-decoration: underline;">
+        https://svindo.com/#/menu/security-policy/privacy-policy
+    </a>
+</p>
 
 </body>
 </html>

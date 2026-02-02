@@ -1,5 +1,6 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Day Book{% endblock title %}
 
@@ -26,7 +27,7 @@
             <div class="row">
                 <div class="col-12 d-flex align-items-center justify-content-between">
                     <h4 class="mb-sm-0 font-size-18">Day Book</h4>
-                    <form method="get" action="" class="d-flex align-items-center">
+                    <form method="get" action="{% url 'daybook_report' %}" class="d-flex align-items-center">
                         <input type="date" name="date" value="{{ date }}" class="form-control me-2" style="max-width: 200px;">
                         <button class="btn btn-outline-warning" style="color: black; border: 2px solid #ffcc5a;">Apply</button>
                     </form>
@@ -34,12 +35,12 @@
             </div>
 
             <div class="row mt-3 g-2">
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Sales</h6><div class="value">{{ tiles.sales.total }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Purchase</h6><div class="value">{{ tiles.purchases.total }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Stock</h6><div class="value">{{ tiles.stock.count }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Receipts</h6><div class="value">{{ tiles.receipts.total }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Payments</h6><div class="value">{{ tiles.payments.total }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Expenses</h6><div class="value">{{ tiles.expenses.total }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Sales</h6><div class="value">{{ tiles.sales.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Purchase</h6><div class="value">{{ tiles.purchases.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Stock</h6><div class="value">{{ tiles.stock.count|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Receipts</h6><div class="value">{{ tiles.receipts.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Payments</h6><div class="value">{{ tiles.payments.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Expenses</h6><div class="value">{{ tiles.expenses.total|intcomma }}</div></div></div>
             </div>
 
             <div class="card mt-3">
@@ -57,13 +58,13 @@
                             <tbody>
                                 <tr>
                                     <td>Cash in hand</td>
-                                    <td>{{ accounts.cash_in_hand.opening }}</td>
-                                    <td>{{ accounts.cash_in_hand.closing }}</td>
+                                    <td>{{ accounts.cash_in_hand.opening|intcomma }}</td>
+                                    <td>{{ accounts.cash_in_hand.closing|intcomma }}</td>
                                 </tr>
                                 <tr>
                                     <td>Bank Balance</td>
-                                    <td>{{ accounts.bank_balance.opening }}</td>
-                                    <td>{{ accounts.bank_balance.closing }}</td>
+                                    <td>{{ accounts.bank_balance.opening|intcomma }}</td>
+                                    <td>{{ accounts.bank_balance.closing|intcomma }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -72,6 +73,7 @@
             </div>
 
             <div class="card mt-3">
+                <div class="card-header"><h5 class="card-title mb-0">Entries</h5></div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped">
@@ -91,8 +93,8 @@
                                 <tr>
                                     <td>{{ e.type }}</td>
                                     <td>{{ e.medium }}</td>
-                                    <td>{{ e.debit }}</td>
-                                    <td>{{ e.credit }}</td>
+                                    <td>{{ e.debit|intcomma }}</td>
+                                    <td>{{ e.credit|intcomma }}</td>
                                     <td>{{ e.time|date:"H:i:s" }}</td>
                                     <td>{{ e.reference_id|default:"-" }}</td>
                                     <td>{{ e.description|default:"-" }}</td>

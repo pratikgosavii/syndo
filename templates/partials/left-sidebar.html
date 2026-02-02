@@ -67,7 +67,8 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
             <div data-simplebar class="h-100">
 
 
-                <!-- Quick Actions -->
+                <!-- Quick Actions (hidden for admin/staff) -->
+                {% if not request.user.is_staff %}
                 <div class="quick-actions">
 
                 <a href="{% url 'create-sale' %}" class="text-center text-decoration-none m-2">
@@ -99,6 +100,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                 </a>
 
                 </div>
+                {% endif %}
 
 
 
@@ -216,7 +218,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                             </li>
                         <li>
 
-                        <li>
+                        {% comment %} <li>
                             <li>
                                 <a href="javascript: void(0);" class="has-arrow">
                                     <i data-feather="layers"></i>
@@ -227,9 +229,9 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                     <li><a href="{% url 'list_state' %}">State List</a></li>
                                 </ul>
                             </li>
-                        <li>
+                        <li> {% endcomment %}
 
-
+{% comment %} 
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
@@ -240,7 +242,9 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                 <li><a href="{% url 'list_event' %}">Event List</a></li>
 
                             </ul>
-                        </li>
+                        </li> {% endcomment %}
+
+                        
                         <li>
                             <li>
                                 <a href="javascript: void(0);" class="has-arrow">

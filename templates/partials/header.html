@@ -185,7 +185,10 @@
                             <div class="dropdown-divider"></div>
                             {% if user.is_authenticated %}
                             <a class="dropdown-item" href=""><i class="mdi mdi-cog font-size-16 align-middle me-1"></i> Settings</a>
-                            <a class="dropdown-item" href=""><i class="mdi mdi-logout font-size-16 align-middle me-1"></i> Logout</a>
+                            <form method="POST" action="{% url 'logout' %}" class="dropdown-item py-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary border-0 w-100 text-start" style="background-color: #775599;"><i class="mdi mdi-logout font-size-16 align-middle me-1"></i> Logout</button>
+                            </form>
                             {% endif %}
                         </div>
                     </div>

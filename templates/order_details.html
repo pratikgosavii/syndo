@@ -136,7 +136,7 @@
 
                             
                         </div>
-                        <button class="btn btn-warning bill-button">Download Bill</button>
+                        <a href="{% url 'order_invoice_pdf' data.id %}" target="_blank" class="btn btn-warning bill-button">Download Bill</a>
                     </div>
 
                     <hr>
@@ -196,12 +196,26 @@
                     <div class="mb-3">
                         <div class="section-title">Delivery Details</div>
                         <p class="mb-0">Address: <strong>{{ data.address.full_address }}</strong></p>
-<p class="mb-0">Mobile: <strong>{{ data.address.mobile_number }}</strong></p>
-                            {% comment %} <button class="btn btn-sm btn-call ms-2">Call</button> {% endcomment %}
-                        </p>
+                        <p class="mb-0">Mobile: <strong>{{ data.address.mobile_number }}</strong></p>
                         <p class="mb-0">Payment Mode: <strong>{{ data.payment_mode }}</strong></p>
                     </div>
-                    
+
+                    {% if data.uengage_task_id %}
+                    <div class="mb-3">
+                        <div class="section-title">Delivery Boy (Uenage)</div>
+                        <p class="mb-0">Task ID: <strong>{{ data.uengage_task_id }}</strong></p>
+                        {% if data.uengage_rider_name %}<p class="mb-0">Rider Name: <strong>{{ data.uengage_rider_name }}</strong></p>{% endif %}
+                        {% if data.uengage_rider_contact %}<p class="mb-0">Rider Contact: <strong>{{ data.uengage_rider_contact }}</strong></p>{% endif %}
+                        {% if data.uengage_rider_latitude and data.uengage_rider_longitude %}<p class="mb-0 text-muted small">Location: {{ data.uengage_rider_latitude }}, {{ data.uengage_rider_longitude }}</p>{% endif %}
+                    </div>
+                    {% elif data.delivery_boy %}
+                    <div class="mb-3">
+                        <div class="section-title">Delivery Boy (Own)</div>
+                        <p class="mb-0">Name: <strong>{{ data.delivery_boy.name }}</strong></p>
+                        <p class="mb-0">Mobile: <strong>{{ data.delivery_boy.mobile }}</strong></p>
+                    </div>
+                    {% endif %}
+
                     {% if data.status != "accepted" %}
 
                     <div class="text-center my-4">

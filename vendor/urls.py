@@ -203,6 +203,7 @@ urlpatterns = [
     path('sale-invoice/<sale_id>', sale_invoice, name='sale_invoice'),
 
     path('order-details/<order_id>', order_details, name='order_details'),
+    path('order-invoice-pdf/<int:order_id>/', order_invoice_pdf, name='order_invoice_pdf'),
     path('order-list/', order_list, name='order_list'),
     path('update-order-item-status/<order_item_id>/', update_order_item_status, name='update_order_item_status'),
     path('order-item-status/<order_item_id>/', UpdateOrderItemStatusAPIView.as_view(), name='order_item_status'),

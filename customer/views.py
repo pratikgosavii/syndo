@@ -593,20 +593,28 @@ class OnlineOrderInvoiceAPIView(APIView):
                 # IGST (18%)
                 shipping_igst = (shipping_taxable * Decimal("18") / Decimal("100")).quantize(Decimal("0.01"))
 
-        # Get invoice image URL from media folder
+        # Embed invoice logo as base64 so PDF service (html2pdf.app) doesn't need to fetch a URL
+        # (external service cannot reach localhost/private hosts)
+        import base64
+        import os
         from django.conf import settings
-        invoice_image_url = None
+        invoice_logo_data_uri = None
         try:
-            # Build full URL for invoice image in media folder
-            invoice_image_path = "invoice_image.jpeg"
-            if hasattr(settings, 'MEDIA_URL'):
-                if request:
-                    # Build full absolute URL for the image
-                    scheme = 'https' if request.is_secure() else 'http'
-                    host = request.get_host()
-                    invoice_image_url = f"{scheme}://{host}{settings.MEDIA_URL}{invoice_image_path}"
-                else:
-                    invoice_image_url = f"{settings.MEDIA_URL}{invoice_image_path}"
+            static_dirs = getattr(settings, 'STATICFILES_DIRS', None) or []
+            if not static_dirs and hasattr(settings, 'BASE_DIR'):
+                static_dirs = [os.path.join(settings.BASE_DIR, 'static')]
+            logo_path = None
+            for static_dir in static_dirs:
+                path = os.path.join(static_dir, 'images', 'invoice_logo.jpeg')
+                if os.path.isfile(path):
+                    logo_path = path
+                    break
+            if not logo_path and hasattr(settings, 'BASE_DIR'):
+                logo_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'invoice_logo.jpeg')
+            if logo_path and os.path.isfile(logo_path):
+                with open(logo_path, 'rb') as f:
+                    logo_b64 = base64.b64encode(f.read()).decode('ascii')
+                invoice_logo_data_uri = f"data:image/jpeg;base64,{logo_b64}"
         except Exception:
             pass
 
@@ -641,7 +649,7 @@ class OnlineOrderInvoiceAPIView(APIView):
             "items_with_tax": items_with_tax,
             "payment_mode": order.payment_mode,  # From order
             "is_paid": order.is_paid,  # From order
-            "invoice_image": invoice_image_url,  # Invoice image URL
+            "invoice_logo_data_uri": invoice_logo_data_uri,  # Base64 data URI so PDF service shows logo
         }
 
         # Render template to HTML string and convert to PDF
@@ -661,11 +669,16 @@ class OnlineOrderInvoiceAPIView(APIView):
                 timeout=30,
             )
 
-            if api_response.status_code == 200:
+            if api_response.status_code == 200 and api_response.content:
                 response = HttpResponse(api_response.content, content_type="application/pdf")
                 filename = f"online_order_invoice_{order.order_id}.pdf"
                 response["Content-Disposition"] = f'inline; filename="{filename}"'
                 return response
+            elif api_response.status_code == 200:
+                return Response(
+                    {"error": "Error generating PDF", "details": "PDF service returned empty content"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
             else:
                 return Response(
                     {"error": "Error generating PDF", "details": api_response.text},
@@ -1803,15 +1816,6 @@ class CartViewSet(viewsets.ModelViewSet):
             .select_related("product")
             .prefetch_related("print_job__add_ons", "print_job__files")
         )
-
-    def perform_create(self, serializer):
-        product_instance = serializer.validated_data["product"]
-        quantity = serializer.validated_data.get("quantity", 1)
-
-        # ✅ Create or update cart item
-        cart_item, created = Cart.objects.get_or_create(
-            user=self.request.user,
-            product=product_instance,
             defaults={"quantity": quantity},
         )
         if not created:
@@ -1839,80 +1843,13 @@ class CartViewSet(viewsets.ModelViewSet):
                 logger = logging.getLogger(__name__)
                 logger.error(f"Error sending cart add notification: {e}")
 
-        # ✅ Handle print jobs
-        print_job_data = self.request.data.get("print_job")
-
-        if print_job_data and getattr(product_instance, "product_type", None) == "print":
-            # Parse JSON string if necessary
-            if isinstance(print_job_data, str):
-                try:
-                    print_job_data = json.loads(print_job_data)
-                except json.JSONDecodeError:
-                    raise serializers.ValidationError({"print_job": "Invalid JSON format."})
-
-            # Extract related data
-            add_ons = print_job_data.pop("add_ons", [])
-            files_data = print_job_data.pop("files", [])
-
-            # 🔧 Convert FK IDs to model instances
-            print_variant_id = print_job_data.get("print_variant")
-            customize_variant_id = print_job_data.get("customize_variant")
-
-            if print_variant_id:
-                try:
-                    print_job_data["print_variant"] = PrintVariant.objects.get(id=print_variant_id)
-                except PrintVariant.DoesNotExist:
-                    raise serializers.ValidationError({"print_variant": "Invalid ID."})
-
-            if customize_variant_id:
-                try:
-                    print_job_data["customize_variant"] = CustomizePrintVariant.objects.get(id=customize_variant_id)
-                except CustomizePrintVariant.DoesNotExist:
-                    raise serializers.ValidationError({"customize_variant": "Invalid ID."})
-
-            # Remove instructions if present (instructions moved to file level)
-            print_job_data.pop("instructions", None)
-
-            # ✅ Create or update print job
-            print_job, _ = PrintJob.objects.update_or_create(
-                cart=cart_item, defaults=print_job_data
-            )
-
-            # Handle add-ons (many-to-many)
-            if add_ons:
-                valid_addons = addon.objects.filter(id__in=add_ons)
-                print_job.add_ons.set(valid_addons)
-
-            # Delete old files and recreate
-            print_job.files.all().delete()
-
-            # ✅ Handle JSON inline files
-            for file_data in files_data:
-                PrintFile.objects.create(print_job=print_job, **file_data)
-
-            # ✅ Handle actual uploaded files
-            index = 0
-            while True:
-                uploaded_file = self.request.FILES.get(f"files[{index}].file")
-                if not uploaded_file:
-                    break
-                PrintFile.objects.create(
-                    print_job=print_job,
-                    file=uploaded_file,
-                    instructions=self.request.data.get(f"files[{index}].instructions"),
-                    number_of_copies=self.request.data.get(f"files[{index}].number_of_copies", 1),
-                    page_count=self.request.data.get(f"files[{index}].page_count", 0),
-                    page_numbers=self.request.data.get(f"files[{index}].page_numbers", ""),
-                )
-                index += 1
-
         return cart_item
 
     # ✅ Clear cart and add new product
     @action(detail=False, methods=["post"])
     @transaction.atomic
     def clear_and_add(self, request):
-        """Clears cart and adds new product (supports print job & file uploads)."""
+                logger = logging.getLogger(__name__)
         product_id = request.data.get("product")
         quantity = request.data.get("quantity", 1)
 
@@ -1951,63 +1888,6 @@ class CartViewSet(viewsets.ModelViewSet):
             logger = logging.getLogger(__name__)
             logger.error(f"Error sending cart add notification: {e}")
 
-        # ✅ Handle print job and file uploads
-        print_job_data = request.data.get("print_job")
-        if print_job_data and getattr(product_instance, "product_type", None) == "print":
-            if isinstance(print_job_data, str):
-                try:
-                    print_job_data = json.loads(print_job_data)
-                except json.JSONDecodeError:
-                    raise serializers.ValidationError({"print_job": "Invalid JSON format."})
-
-            add_ons = print_job_data.pop("add_ons", [])
-            files_data = print_job_data.pop("files", [])
-
-            # 🔧 Convert FK IDs to model instances
-            print_variant_id = print_job_data.get("print_variant")
-            customize_variant_id = print_job_data.get("customize_variant")
-
-            if print_variant_id:
-                try:
-                    print_job_data["print_variant"] = PrintVariant.objects.get(id=print_variant_id)
-                except PrintVariant.DoesNotExist:
-                    raise serializers.ValidationError({"print_variant": "Invalid ID."})
-
-            if customize_variant_id:
-                try:
-                    print_job_data["customize_variant"] = CustomizePrintVariant.objects.get(id=customize_variant_id)
-                except CustomizePrintVariant.DoesNotExist:
-                    raise serializers.ValidationError({"customize_variant": "Invalid ID."})
-
-            # Remove instructions if present (instructions moved to file level)
-            print_job_data.pop("instructions", None)
-
-            print_job = PrintJob.objects.create(cart=cart_item, **print_job_data)
-
-            if add_ons:
-                valid_addons = addon.objects.filter(id__in=add_ons)
-                print_job.add_ons.set(valid_addons)
-
-            # JSON-style file data
-            for file_data in files_data:
-                PrintFile.objects.create(print_job=print_job, **file_data)
-
-            # Multipart-style file data
-            index = 0
-            while True:
-                uploaded_file = request.FILES.get(f"files[{index}].file")
-                if not uploaded_file:
-                    break
-                PrintFile.objects.create(
-                    print_job=print_job,
-                    file=uploaded_file,
-                    instructions=request.data.get(f"files[{index}].instructions"),
-                    number_of_copies=request.data.get(f"files[{index}].number_of_copies", 1),
-                    page_count=request.data.get(f"files[{index}].page_count", 0),
-                    page_numbers=request.data.get(f"files[{index}].page_numbers", ""),
-                )
-                index += 1
-
         serializer = self.get_serializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -2031,9 +1911,7 @@ class CartViewSet(viewsets.ModelViewSet):
         cart_item.quantity = new_qty
         cart_item.save()
         return Response({"message": "Quantity updated ✅", "quantity": cart_item.quantity}, status=200)
-    
-
-        # ✅ Clear entire cart
+                    file=uploaded_file,
     @action(detail=False, methods=["post"])
     def clear_cart(self, request):
         Cart.objects.filter(user=request.user).delete()
