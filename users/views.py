@@ -407,7 +407,14 @@ def  login_vendor(request):
 
 
 def logout_page(request):
+    # Determine redirect before logout (request.user is anonymous after logout)
+    is_staff = getattr(request.user, 'is_staff', False) if request.user.is_authenticated else False
+    is_vendor = getattr(request.user, 'is_vendor', False) if request.user.is_authenticated else False
     logout(request)
+    if is_staff:
+        return redirect('login_admin')
+    if is_vendor:
+        return redirect('login_vendor')
     return redirect('login_admin')
 
 def user_list(request):

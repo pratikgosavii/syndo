@@ -81,6 +81,11 @@
                             <div class="card-body">
                                 <form method="post" action="">
                                     {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label for="id_note" class="form-label">Note (optional)</label>
+                                        <input type="text" class="form-control" name="note" id="id_note" maxlength="200" placeholder="Enter note to print on barcode">
+                                        <small class="text-muted">If entered, this note will be printed on the generated barcode label.</small>
+                                    </div>
                                     <div class="table-responsive">
                                         <p> Select product to generate barcode </p>
                                         <table id="datatable" class="table table-bordered table-striped">

@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404, render
+from django.http import Http404
 import json
 from decimal import Decimal
 
@@ -26,7 +27,7 @@ from rest_framework.views import APIView
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import ValidationError
 from integrations.uengage import notify_delivery_event, create_delivery_task
-from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDiscount
+from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDiscount, VendorNotification
 
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -1555,6 +1556,7 @@ def generate_barcode(request):
 
         ids = request.POST.getlist("selected_products")
         products = product.objects.filter(id__in=ids, is_active=True)
+        note_text = (request.POST.get("note") or "").strip()
 
         if not products.exists(): 
             return HttpResponse("No products selected", status=400) 
@@ -1605,7 +1607,7 @@ def generate_barcode(request):
             discount = i.wholesale_price
             sale_price = i.sales_price
             package_date = datetime.now().strftime("%d/%m/%Y")
-            note = "The small note here"
+            note = note_text if note_text else ""
             barcode_value = str("svindo" + i.id)
 
           
@@ -1655,10 +1657,12 @@ def generate_barcode(request):
             note_box_height = 12 * mm
             note_box_y = y_margin + 8 * mm  # padding from bottom
             p.setFont("Helvetica-Bold", font_text)
-            p.drawString(x_left, note_box_y + 14 * mm, "Note:")  # was 12 * mm
+            p.drawString(x_left, note_box_y + 14 * mm, "Note:")
             p.rect(x_left, note_box_y-2, 45 * mm, 12 * mm)
             p.setFont("Helvetica", font_text - 1)
-            p.drawString(x_left + 5, note_box_y + note_box_height / 2 - 3, note)
+            # Print user-entered note if any; otherwise leave note area blank
+            display_note = (note[:50] + "...") if len(note) > 50 else note
+            p.drawString(x_left + 5, note_box_y + note_box_height / 2 - 3, display_note)
 
             # === RIGHT SIDE (Package Date / Barcode / Sale Price / In Word) ===
             right_start_x = PAGE_WIDTH - (x_margin + 45 * mm)
@@ -3010,19 +3014,20 @@ def add_purchase(request):
             context = {
                 'form': forms,
                 'data': data,
+                'existing_items': [],
+                'banks': vendor_bank.objects.filter(user=request.user),
             }
             return render(request, 'add_purchase.html', context)
     
     else:
 
-
         forms = PurchaseForm(user=request.user)
 
         context = {
             'form': forms,
-            "banks" : vendor_bank.objects.all(),
-
+            'banks': vendor_bank.objects.filter(user=request.user),
             'data': data,
+            'existing_items': [],
         }
         return render(request, 'add_purchase.html', context)
 
@@ -3075,12 +3080,16 @@ def update_purchase(request, purchase_id):
     else:
         form = PurchaseForm(instance=instance, user=request.user)
 
-    existing_product_ids = list(instance.items.values_list('product_id', flat=True))
+    existing_items = [
+        {'product_id': i.product_id, 'quantity': i.quantity, 'price': i.price, 'total': i.total}
+        for i in instance.items.select_related('product').all()
+    ]
 
     context = {
         'form': form,
-        'existing_product_ids': existing_product_ids,
+        'existing_items': existing_items,
         'data': data,
+        'banks': vendor_bank.objects.filter(user=request.user),
     }
     return render(request, 'add_purchase.html', context)
 
@@ -3573,7 +3582,7 @@ def get_next_invoice_number_api(request):
 @login_required
 def pos(request):
 
-    sale_form = SaleForm()
+    sale_form = SaleForm(user=request.user)
     customer_form = vendor_customersForm()
     wholesale_form = pos_wholesaleForm()
 
@@ -3590,7 +3599,7 @@ def pos(request):
 
     if request.method == 'POST':
         print(request.POST)
-        sale_form = SaleForm(request.POST)
+        sale_form = SaleForm(request.POST, user=request.user)
         customer_form = vendor_customersForm(request.POST)  # if needed
         wholesale_form = pos_wholesaleForm(request.POST, request.FILES)
 
@@ -3608,6 +3617,7 @@ def pos(request):
                 "wholesale_forms": wholesale_form,
                 "saleitemform": SaleItemForm(),
                 "products": product.objects.filter(user=request.user, is_active=True),
+                "banks": vendor_bank.objects.filter(user=request.user),
             }
             return render(request, "pos_form.html", context)
 
@@ -3661,13 +3671,14 @@ def pos(request):
                     "wholesale_forms": wholesale_form,
                     "saleitemform": SaleItemForm(),
                     "products": product.objects.filter(user=request.user, is_active=True),
+                    "banks": vendor_bank.objects.filter(user=request.user),
                     "error_message": str(e),
                 }
                 return render(request, "pos_form.html", context)
 
     return render(request, "pos_form.html", {
         "form": sale_form,
-        "banks" : vendor_bank.objects.all(),
+        "banks": vendor_bank.objects.filter(user=request.user),
         "customer_forms": customer_form,
         "wholesale_forms": wholesale_form,
         "saleitemform": SaleItemForm(),
@@ -3856,10 +3867,16 @@ from django.views.decorators.http import require_GET
 
 @require_GET
 def get_product_price(request):
+    """Return purchase_price for a product (vendor's products only)."""
     product_id = request.GET.get('product_id')
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
     try:
-        product_instance = product.objects.get(id=product_id, is_active=True)
-        return JsonResponse({'price': str(product_instance.purchase_price)})
+        product_instance = product.objects.get(
+            id=product_id, is_active=True, user=request.user
+        )
+        price = getattr(product_instance, 'purchase_price', 0) or 0
+        return JsonResponse({'price': str(price)})
     except product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
     
@@ -4157,22 +4174,62 @@ from customer.models import *
 
 def order_list(request):
     from django.db.models import Q
-    # Vendor sees orders that contain their products. Exclude online-pay orders until payment is successful.
-    data = (
+    # Vendor sees orders that contain their products
+    qs = (
         Order.objects.filter(items__product__user=request.user)
-        .filter(Q(payment_mode__iexact="cod") | Q(payment_mode__iexact="cash") | Q(is_paid=True))
         .distinct()
         .order_by("-created_at")
     )
-    context = {"data": data}
+    # Optional filters (GET)
+    status_filter = request.GET.get("status", "").strip()
+    paid_filter = request.GET.get("paid", "")  # paid | unpaid | all
+    payment_filter = request.GET.get("payment_mode", "").strip().lower()  # cod | cash | online | all
+
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if paid_filter == "paid":
+        qs = qs.filter(is_paid=True)
+    elif paid_filter == "unpaid":
+        qs = qs.filter(is_paid=False)
+    elif paid_filter != "all":
+        # default (no param): hide unpaid online orders (same as before)
+        qs = qs.filter(Q(payment_mode__iexact="cod") | Q(payment_mode__iexact="cash") | Q(is_paid=True))
+    if payment_filter and payment_filter != "all":
+        if payment_filter == "online":
+            qs = qs.exclude(payment_mode__iexact="cod").exclude(payment_mode__iexact="cash")
+        else:
+            qs = qs.filter(payment_mode__iexact=payment_filter)
+
+    context = {
+        "data": qs,
+        "filter_status": status_filter,
+        "filter_paid": paid_filter,
+        "filter_payment_mode": payment_filter,
+    }
     return render(request, "list_order.html", context)
 
+
+@login_required(login_url='login_admin')
+def list_notifications(request):
+    """List notifications for the logged-in vendor (request.user)."""
+    notifications = VendorNotification.objects.filter(user=request.user).order_by("-created_at")[:100]
+    # Optional: mark as read when visiting list (uncomment to enable)
+    # VendorNotification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    context = {"notifications": notifications}
+    return render(request, "list_notifications.html", context)
 
 
 def update_order_item_status(request, order_item_id):
 
     if request.method == "POST":
         item = get_object_or_404(OrderItem, id=order_item_id)
+        # Only allow update if order is accepted and item belongs to this vendor
+        if item.product.user_id != request.user.id:
+            messages.error(request, "You cannot update this order item.")
+            return redirect(request.META.get("HTTP_REFERER", "/"))
+        if item.order.status != "accepted":
+            messages.error(request, "Accept the order first before updating item status.")
+            return redirect(request.META.get("HTTP_REFERER", "/"))
         status = request.POST.get("status")
         if status in dict(OrderItem.STATUS_CHOICES):
             previous_status = item.status
@@ -4496,16 +4553,25 @@ def accept_order(request, order_id):
 
     return redirect('order_details', order_id = order_id)
 
+@login_required(login_url='login_admin')
 def assign_delivery_boy(request, order_id):
-
-    order = Order.objects.prefetch_related('items__product').get(id=order_id)
+    # Restrict to vendor's orders (order must contain this vendor's products)
+    order = (
+        Order.objects.filter(id=order_id, items__product__user=request.user)
+        .prefetch_related('items__product')
+        .distinct()
+        .first()
+    )
+    if not order:
+        raise Http404("Order not found")
     delivery_boy_id = request.POST.get('delivery_boy_id')
-    delivery_boy_instance = DeliveryBoy.objects.get(id = delivery_boy_id)
+    if not delivery_boy_id:
+        return redirect('order_details', order_id=order_id)
+    delivery_boy_instance = get_object_or_404(DeliveryBoy, id=delivery_boy_id, user=request.user)
     order.delivery_boy = delivery_boy_instance
     order.is_auto_managed = False  # Manual assignment
-    order.save()
-
-    return redirect('order_details', order_id = order_id)
+    order.save(update_fields=['delivery_boy', 'is_auto_managed'])
+    return redirect('order_details', order_id=order_id)
 
 
 
@@ -6857,9 +6923,9 @@ def invoice_setting(request):
             form.save()
             return redirect('online_store_setting')
     else:
-        form = OnlineStoreSettingForm(instance=setting)
+        form = InvoiceSettingsForm(instance=setting)
 
-    return render(request, 'InvoiceSettings.html', {'form': form})
+    return render(request, 'InvoiceSettings.html', {'invoice_form': form})
 
 
 class PrintVariantChoiceAPIView(APIView):

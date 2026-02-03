@@ -205,6 +205,7 @@ urlpatterns = [
     path('order-details/<order_id>', order_details, name='order_details'),
     path('order-invoice-pdf/<int:order_id>/', order_invoice_pdf, name='order_invoice_pdf'),
     path('order-list/', order_list, name='order_list'),
+    path('list-notifications/', list_notifications, name='list_notifications'),
     path('update-order-item-status/<order_item_id>/', update_order_item_status, name='update_order_item_status'),
     path('order-item-status/<order_item_id>/', UpdateOrderItemStatusAPIView.as_view(), name='order_item_status'),
     path('order-item-tracking/<order_item_id>/', UpdateOrderItemTrackingAPIView.as_view(), name='order_item_tracking'),

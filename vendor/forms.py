@@ -312,8 +312,20 @@ class vendor_vendorsForm(forms.ModelForm):
             'city', 'state', 'country', 'opening_balance'
         ]
         widgets = {
-            field: forms.TextInput(attrs={'class': 'form-control'}) 
-            for field in fields
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'contact': forms.TextInput(attrs={'class': 'form-control'}),
+            'company_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'gst': forms.TextInput(attrs={'class': 'form-control'}),
+            'aadhar': forms.TextInput(attrs={'class': 'form-control'}),
+            'pan': forms.TextInput(attrs={'class': 'form-control'}),
+            'address_line_1': forms.TextInput(attrs={'class': 'form-control'}),
+            'address_line_2': forms.TextInput(attrs={'class': 'form-control'}),
+            'pincode': forms.TextInput(attrs={'class': 'form-control'}),
+            'city': forms.TextInput(attrs={'class': 'form-control'}),
+            'state': forms.Select(attrs={'class': 'form-control form-select'}),
+            'country': forms.TextInput(attrs={'class': 'form-control'}),
+            'opening_balance': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
 
@@ -759,16 +771,20 @@ class TaxSettingsForm(forms.ModelForm):
 class BarcodeSettingsForm(forms.ModelForm):
     class Meta:
         model = BarcodeSettings
-        fields = '__all__'
-        widgets = {
-            "note_label": forms.TextInput(attrs={"class": "form-control", "placeholder": "Note", "id" : "note-box"}),
-        }
+        fields = ['show_package_date', 'show_discount', 'show_price_with_text', 'barcode_size', 'show_note']
+        # mrp_label and note_label removed from form per requirement
 
 class InvoiceSettingsForm(forms.ModelForm):
     class Meta:
         model = InvoiceSettings
         exclude = ['user']
-        widgets = {field: forms.CheckboxInput(attrs={'class': 'form-check-input'}) for field in model._meta.get_fields() if field.name != 'user'}
+        widgets = {
+            'show_round_off': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_due_date': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_dispatch_address': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_hsn_sac_summary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'terms_and_conditions': forms.Textarea(attrs={'class': 'form-control', 'rows': 12, 'id': 'id_terms_and_conditions'}),
+        }
 
 
         

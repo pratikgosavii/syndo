@@ -473,6 +473,18 @@ def send_vendor_notification(vendor_user, notification_type, title, body, data=N
         
         response = messaging.send(message)
         logger.info(f"✅ Successfully sent {notification_type} notification to vendor {vendor_user.id}: {response}")
+        # Store in VendorNotification for list/header
+        try:
+            from vendor.models import VendorNotification
+            VendorNotification.objects.create(
+                user=vendor_user,
+                title=title,
+                body=body or "",
+                notification_type=notification_type or "",
+                data=data,
+            )
+        except Exception as db_e:
+            logger.warning(f"Could not save VendorNotification: {db_e}")
         return True
     except Exception as e:
         logger.error(f"❌ Error sending {notification_type} notification to vendor {vendor_user.id}: {e}")

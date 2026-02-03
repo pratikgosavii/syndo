@@ -86,6 +86,15 @@
             background-color: #28a745;
             color: white;
         }
+        .item-status-disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .item-status-disabled .form-select,
+        .item-status-disabled .btn {
+            background-color: #e9ecef;
+            color: #6c757d;
+        }
     </style>
     
 
@@ -143,9 +152,12 @@
 
                     <div class="mb-3">
                        <div class="section-title">{{ data.items.all|length }} Items in this Order</div>
+                       {% if data.status != 'accepted' %}
+                       <p class="text-muted small mb-2">Accept the order first to update item status.</p>
+                       {% endif %}
 
                         {% for item in data.items.all %}
-    <div class="d-flex mb-3 align-items-center">
+    <div class="d-flex mb-3 align-items-center {% if data.status != 'accepted' %}item-status-disabled{% endif %}">
         {% if item.product.image %}
             <img src="{{ item.product.image.url }}" alt="Product" class="product-img me-3">
         {% else %}
@@ -159,18 +171,22 @@
                 <span class="price-new">Rs. {{ item.price }}</span>
             </p>
 
-            <!-- Status Update Form -->
-            {% if item.status == 'intransit' or item.status == 'delivered' or item.status == 'pending' %}
-                <form action="{% url 'update_order_item_status' item.id %}" method="post" class="mt-2 d-flex align-items-center">
-                    {% csrf_token %}
-                    <select name="status" class="form-select me-2" style="width: 150px;">
-                        <option value="intransit" {% if item.status == 'intransit' %}selected{% endif %}>In Transit</option>
-                        <option value="delivered" {% if item.status == 'delivered' %}selected{% endif %}>Delivered</option>
-                    </select>
-                    <button type="submit" class="btn btn-primary btn-sm">Update</button>
-                </form>
+            <!-- Status: editable only when order is accepted -->
+            {% if data.status == 'accepted' %}
+                {% if item.status == 'intransit' or item.status == 'delivered' or item.status == 'pending' %}
+                    <form action="{% url 'update_order_item_status' item.id %}" method="post" class="mt-2 d-flex align-items-center">
+                        {% csrf_token %}
+                        <select name="status" class="form-select me-2" style="width: 150px;">
+                            <option value="intransit" {% if item.status == 'intransit' %}selected{% endif %}>In Transit</option>
+                            <option value="delivered" {% if item.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                    </form>
+                {% else %}
+                    <span class="badge bg-secondary">{{ item.get_status_display }}</span>
+                {% endif %}
             {% else %}
-                <span class="badge bg-secondary">{{ item.get_status_display }}</span>
+                <span class="badge bg-light text-dark border">{{ item.get_status_display }}</span>
             {% endif %}
 
 
@@ -188,6 +204,7 @@
                         <ul class="list-unstyled">
                             <li>Item Total & GST: <strong>Rs {{ data.item_total }}</strong></li>
                             <li>Shipping Fee: <strong>Rs {{ data.shipping_fee }}</strong></li>
+                            <li>Delivery cashback: <strong>Rs {{ data.delivery_discount_amount|default:0 }}</strong></li>
                             <li>Coupon: <strong>Rs {{ data.coupon }}</strong></li>
                             <li class="mt-2">Total Amount: <strong class="text-primary">Rs {{ data.total_amount }}</strong></li>
                         </ul>
@@ -224,22 +241,23 @@
 
                     {% endif %}
 
-                    {% if request.user.delivery_mode.is_self_delivery_enabled == "True" %}
-                        <div class="mb-2">
-                            <form action="{% url 'assign_delivery_boy' data.id %}" method="post">
-                                {% csrf_token %}
-                                <div class="section-title">Delivery Boy  </div>
-                                <div class="input-group">
-                                    <select name="delivery_boy_id" class="form-select">
-                                        <option selected>Select delivery boy</option>
-                                        {% for i in delivery_boy_data %}
-                                            <option value="{{ i.id }}" {% if i.id == data.delivery_boy_id %}selected{% endif %}>{{ i.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <button type="submit" class="btn btn-success">Assign</button>
-                                </div>
-                            </form>
-                        </div>
+                    <!-- Assign Delivery Boy: show when order is accepted and (self delivery enabled or delivery_mode not set) and there are delivery boys -->
+                    {% if data.status == "accepted" and delivery_boy_data %}
+                    <div class="mb-2">
+                        <form action="{% url 'assign_delivery_boy' data.id %}" method="post">
+                            {% csrf_token %}
+                            <div class="section-title">Assign Delivery Boy</div>
+                            <div class="input-group">
+                                <select name="delivery_boy_id" class="form-select" required>
+                                    <option value="">Select delivery boy</option>
+                                    {% for i in delivery_boy_data %}
+                                        <option value="{{ i.id }}" {% if data.delivery_boy_id == i.id %}selected{% endif %}>{{ i.name }} {% if i.mobile %}({{ i.mobile }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-success">Assign</button>
+                            </div>
+                        </form>
+                    </div>
                     {% endif %}
                 </div>
             </div>

@@ -230,11 +230,12 @@ textarea[name="terms"] {
                     {% endfor %}
                   </select>
 
-                  <h5>
+                  <h5 class="d-flex align-items-center flex-wrap gap-2">
                     Products
-                    <a href="{% url 'add_product' %}" class="btn btn-primary btn-sm ms-2">
-                      <i class="mdi mdi-plus"></i> Add Product
-                    </a>
+                    <button type="button" class="btn btn-primary btn-sm" id="add-product" title="Add product row">
+                      <i class="mdi mdi-plus"></i> Add row
+                    </button>
+                    <a href="{% url 'add_product' %}" class="btn btn-outline-secondary btn-sm">Add product to catalog</a>
                   </h5>
 
                   <div id="products-wrapper">
@@ -247,32 +248,32 @@ textarea[name="terms"] {
     <div class="col-md-2">Action</div>
   </div>
 
-  
-  {% for pid in existing_product_ids %}
+  {% for item in existing_items %}
     <div class="product-row row g-2 mb-2 align-items-center">
 
       <!-- Product Dropdown -->
       <div class="col-md-4">
         <select name="products" class="form-control product-select">
+          <option value="">Select Product</option>
           {% for p in data %}
-            <option value="{{ p.id }}" {% if p.id == pid %}selected{% endif %}>{{ p.name }}</option>
+            <option value="{{ p.id }}" {% if p.id == item.product_id %}selected{% endif %}>{{ p.name }}</option>
           {% endfor %}
         </select>
       </div>
 
       <!-- Quantity -->
       <div class="col-md-2">
-        <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="1">
+        <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="{{ item.quantity|default:1 }}">
       </div>
 
       <!-- Price -->
       <div class="col-md-2">
-        <input type="text" name="price" class="form-control price" placeholder="Price">
+        <input type="text" name="price" class="form-control price" placeholder="Price" value="{{ item.price|default:'' }}">
       </div>
 
       <!-- Total -->
       <div class="col-md-2">
-        <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly>
+        <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly value="{{ item.total|default:'' }}">
       </div>
 
       <!-- Remove Button -->
@@ -282,6 +283,29 @@ textarea[name="terms"] {
 
     </div>
   {% empty %}
+    <!-- At least one row so user can select product on new purchase -->
+    <div class="product-row row g-2 mb-2 align-items-center">
+      <div class="col-md-4">
+        <select name="products" class="form-control product-select">
+          <option value="">Select Product</option>
+          {% for p in data %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="1">
+      </div>
+      <div class="col-md-2">
+        <input type="text" name="price" class="form-control price" placeholder="Price">
+      </div>
+      <div class="col-md-2">
+        <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly>
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-danger btn-sm w-100 remove-row">Remove</button>
+      </div>
+    </div>
   {% endfor %}
 </div>
 
@@ -690,10 +714,19 @@ function createProductRow() {
 
 // Add new product row
 document.getElementById('add-product').addEventListener('click', function () {
+    const productOptions = document.getElementById('product-options');
+    if (!productOptions || !productOptions.options.length) return;
     const wrapper = document.getElementById('products-wrapper');
     const newRow = createProductRow();
     wrapper.appendChild(newRow);
     $(newRow).find('.product-select').select2({placeholder:'Select Product', width:'100%'});
+});
+
+// Init Select2 on existing product rows (e.g. first row on new purchase, or rows on edit)
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.product-select').select2({placeholder: 'Select Product', width: '100%'});
+    }
 });
 
 // Remove row

@@ -137,11 +137,23 @@
                         
                             <div class="mb-4">
                                 <label>Profile Image</label>
+                                {% if form.instance.profile_image %}
+                                    <div class="mb-2">
+                                        <span class="text-muted small">Current:</span>
+                                        <img src="{{ form.instance.profile_image.url }}" alt="Profile" class="image-preview d-block" style="max-width: 120px; object-fit: contain;">
+                                    </div>
+                                {% endif %}
                                 {{ form.profile_image }}
                             </div>
                         
                             <div class="mb-4">
                                 <label>Signature</label>
+                                {% if form.instance.signature %}
+                                    <div class="mb-2">
+                                        <span class="text-muted small">Current:</span>
+                                        <img src="{{ form.instance.signature.url }}" alt="Signature" class="image-preview d-block" style="max-width: 120px; object-fit: contain;">
+                                    </div>
+                                {% endif %}
                                 {{ form.signature }}
                             </div>
 

@@ -97,6 +97,46 @@
                 <div class="container">
                     <div class="row">
                         <div class="col-12">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <form method="get" action="" class="row g-3 align-items-end">
+                                        <div class="col-auto">
+                                            <label for="filter_status" class="form-label mb-0">Status</label>
+                                            <select name="status" id="filter_status" class="form-select form-select-sm">
+                                                <option value="">All</option>
+                                                <option value="not_accepted" {% if filter_status == 'not_accepted' %}selected{% endif %}>Not Accepted</option>
+                                                <option value="accepted" {% if filter_status == 'accepted' %}selected{% endif %}>Accepted</option>
+                                                <option value="ready_to_shipment" {% if filter_status == 'ready_to_shipment' %}selected{% endif %}>Ready to Shipment</option>
+                                                <option value="completed" {% if filter_status == 'completed' %}selected{% endif %}>Completed</option>
+                                                <option value="cancelled" {% if filter_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                                <option value="cancelled_by_vendor" {% if filter_status == 'cancelled_by_vendor' %}selected{% endif %}>Cancelled by Vendor</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label for="filter_paid" class="form-label mb-0">Paid / Unpaid</label>
+                                            <select name="paid" id="filter_paid" class="form-select form-select-sm">
+                                                <option value="">Default</option>
+                                                <option value="paid" {% if filter_paid == 'paid' %}selected{% endif %}>Paid</option>
+                                                <option value="unpaid" {% if filter_paid == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                                                <option value="all" {% if filter_paid == 'all' %}selected{% endif %}>All</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label for="filter_payment_mode" class="form-label mb-0">Payment Type</label>
+                                            <select name="payment_mode" id="filter_payment_mode" class="form-select form-select-sm">
+                                                <option value="">All</option>
+                                                <option value="cod" {% if filter_payment_mode == 'cod' %}selected{% endif %}>COD</option>
+                                                <option value="cash" {% if filter_payment_mode == 'cash' %}selected{% endif %}>Cash</option>
+                                                <option value="online" {% if filter_payment_mode == 'online' %}selected{% endif %}>Online</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+                                            <a href="{% url 'order_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
                             <div class="card">
                                 <div class="card-body">
                                     <div class="table-responsive">
@@ -108,10 +148,14 @@
                                                 <tr>
                                                     <th>#</th>
                                                     <th>Order Id</th>
-                                                    <th>User</th> 
-                                                    <th>Status</th> 
-                                                    <th>Product X Quantity </th>
-                                                    <th>total</th>
+                                                    <th>Date</th>
+                                                    <th>User</th>
+                                                    <th>Status</th>
+                                                    <th>Payment Type</th>
+                                                    <th>Paid / Unpaid</th>
+                                                    <th>Delivery Type</th>
+                                                    <th>Product × Qty</th>
+                                                    <th>Total</th>
                                                     <th>Action</th>
                                                 </tr>
                                             </thead>
@@ -121,37 +165,47 @@
                                                     <tr data-bs-toggle="collapse" data-bs-target="#orderItems{{ i.id }}" style="cursor: pointer;">
                                                         <td>{{ forloop.counter }}</td>
                                                         <td>{{ i.order_id }}</td>
+                                                        <td>{{ i.created_at|date:"d/m/Y H:i" }}</td>
                                                         <td>{{ i.user }}</td>
                                                         <td>
                                                             <span class="badge 
                                                                 {% if i.status == 'accepted' %} bg-success
-                                                                {% elif i.status == 'cancelled' %} bg-danger
+                                                                {% elif i.status == 'cancelled' or i.status == 'cancelled_by_vendor' %} bg-danger
                                                                 {% elif i.status == 'not_accepted' %} bg-warning
+                                                                {% elif i.status == 'completed' %} bg-info
                                                                 {% else %} bg-secondary
                                                                 {% endif %}">
-                                                                {{ i.status|capfirst }}
+                                                                {{ i.get_status_display|default:i.status }}
                                                             </span>
                                                         </td>
+                                                        <td>{{ i.payment_mode|default:"—" }}</td>
+                                                        <td>
+                                                            {% if i.is_paid %}
+                                                                <span class="badge bg-success">Paid</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Unpaid</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ i.get_delivery_type_display|default:i.delivery_type|default:"—" }}</td>
                                                         <td>Click to view items</td>
                                                         <td>₹{{ i.total_amount }}</td>
-                                                        <td>
+                                                        <td onclick="event.stopPropagation();">
                                                             <a href="{% url 'order_details' i.id %}">
                                                                 <i class="bi bi-pencil-square text-primary" title="Details"></i>
                                                             </a>
-                                                            {% comment %} <a href="{% url 'delete_order' i.id %}">
-                                                                <i class="bi bi-trash text-danger" title="Delete"></i>
-                                                            </a> {% endcomment %}
                                                         </td>
                                                     </tr>
 
                                                     <!-- Collapsible order items -->
                                                     <tr class="collapse" id="orderItems{{ i.id }}">
-                                                        <td colspan="7">
+                                                        <td colspan="11">
                                                             <strong>Items:</strong>
                                                             {% if i.items.all %}
                                                                 <ul class="mb-0">
                                                                     {% for item in i.items.all %}
-                                                                        <li>{{ item.product.name }} × {{ item.quantity }}</li>
+                                                                        {% if item.product.user_id == request.user.id %}
+                                                                            <li>{{ item.product.name }} × {{ item.quantity }}</li>
+                                                                        {% endif %}
                                                                     {% endfor %}
                                                                 </ul>
                                                             {% else %}
@@ -161,9 +215,9 @@
                                                     </tr>
                                                 {% endfor %}
                                             {% else %}
-                                                <tr><td colspan="7" class="text-center">No orders found.</td></tr>
+                                                <tr><td colspan="11" class="text-center">No orders found.</td></tr>
                                             {% endif %}
-                                        </tbody> 
+                                        </tbody>
                                     </table> 
 
                                     </div>

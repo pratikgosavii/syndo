@@ -1,0 +1,55 @@
+{% extends "partials/adminBase.html" %}
+{% load static %}
+
+{% block title %}Notifications{% endblock title %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+<style>
+    body { background-color: gainsboro; color: #775599; }
+    .card { background-color: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .card-header { background-color: #775599; color: #fff; border-radius: 8px 8px 0 0; padding: 16px; }
+    .notification-item { border-bottom: 1px solid #eee; padding: 12px; }
+    .notification-item:last-child { border-bottom: none; }
+    .notification-item.unread { background-color: #f8f9fa; }
+    .text-muted small { font-size: 0.8rem; }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">Notifications</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header"><h5 class="mb-0">All Notifications</h5></div>
+                            <div class="card-body p-0">
+                                {% if notifications %}
+                                    {% for n in notifications %}
+                                    <div class="notification-item {% if not n.is_read %}unread{% endif %}">
+                                        <h6 class="mb-1">{{ n.title }}</h6>
+                                        <p class="mb-0 text-muted">{{ n.body }}</p>
+                                        <small class="text-muted">{{ n.created_at|date:"d/m/Y H:i" }}{% if n.notification_type %} · {{ n.notification_type }}{% endif %}</small>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="p-4 mb-0 text-muted text-center">No notifications yet.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

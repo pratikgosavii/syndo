@@ -1431,6 +1431,7 @@ class InvoiceSettings(models.Model):
     show_due_date = models.BooleanField(default=False)
     show_dispatch_address = models.BooleanField(default=False)
     show_hsn_sac_summary = models.BooleanField(default=False)
+    terms_and_conditions = models.TextField(blank=True, null=True, help_text="Terms & conditions for invoices (rich text, one per vendor)")
 
 
 class BarcodeSettings(models.Model):
@@ -1755,3 +1756,25 @@ class OrderNotificationMessage(models.Model):
 
     def __str__(self):
         return f"Order notification for {self.user.username}"
+
+
+# -------------------------------
+# VendorNotification (in-app list for header / list page)
+# -------------------------------
+class VendorNotification(models.Model):
+    """Stores notifications for vendor (new order, cart add, etc.) for list and header dropdown."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="vendor_notifications")
+    title = models.CharField(max_length=255)
+    body = models.TextField(blank=True)
+    notification_type = models.CharField(max_length=50, blank=True)  # new_order, cart_add, etc.
+    data = models.JSONField(null=True, blank=True)  # optional payload (order_id, product_id, etc.)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Vendor Notification"
+        verbose_name_plural = "Vendor Notifications"
+
+    def __str__(self):
+        return f"{self.title} ({self.user_id})"

@@ -102,14 +102,6 @@
                         <small class="text-muted">Package date will be shown on barcode if enabled</small>
                         </div>
 
-                        <!-- MRP Label -->
-
-                           <div class="section">
-                        <label class="switch-label">MRP Label:</label>
-                        {{ form.mrp_label }}
-                        </div>
-
-
                         <!-- Show Discount -->
                         <div class="section">
                         <label class="form-check-label switch-label">Show Discount:</label>
@@ -163,24 +155,4 @@
 
 
 {% block extra_js %}
-
-<script>
-document.addEventListener("DOMContentLoaded", function(){
-  const checkbox = document.getElementById("id_show_note");
-  const noteBox = document.getElementById("note-box");
-
-  function toggleNote() {
-    if (checkbox.checked) {
-      noteBox.style.display = "block";
-    } else {
-      noteBox.style.display = "none";
-    }
-  }
-
-  checkbox.addEventListener("change", toggleNote);
-  toggleNote(); // run once on load
-});
-</script>
-
-
 {% endblock extra_js %}

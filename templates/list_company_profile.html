@@ -70,6 +70,13 @@
             font-weight: bold;
         }
 
+        .table-profile-img {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
         @media (max-width: 768px) {
             .table-responsive {
                 overflow-x: auto;
@@ -136,8 +143,8 @@
                                                     <td>{{ profile.gstin }}</td>
                                                     <td>{{ profile.pan }}</td>
                                                     <td>{{ profile.upi_id }}</td>
-                                                    <td> {% if profile.profile_image %}
-                                                            <img src="{{ profile.profile_image.url }}" class="product-img" alt="product image">
+                                                    <td>{% if profile.profile_image %}
+                                                            <img src="{{ profile.profile_image.url }}" class="table-profile-img" alt="profile">
                                                         {% else %}
                                                             N/A
                                                         {% endif %}</td>

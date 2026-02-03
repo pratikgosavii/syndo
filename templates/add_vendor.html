@@ -51,6 +51,16 @@
         .custom-button {
             width: 150px;
         }
+        .errorlist {
+            list-style: none;
+            padding: 0;
+            margin: 0.25rem 0 0 0;
+            color: #dc3545;
+            font-size: 0.875rem;
+        }
+        .form-error-alert {
+            margin-bottom: 1rem;
+        }
     </style>
 {% endblock extra_css %}
 
@@ -71,31 +81,39 @@
                 <div class="form-container">
                     <form method="POST"  enctype="multipart/form-data">
                         {% csrf_token %}
+                        {% if form.errors %}
+                        <div class="alert alert-danger form-error-alert" role="alert">
+                            <strong>Please correct the errors below.</strong>
+                            {% if form.non_field_errors %}
+                                <ul class="mb-0 mt-2">{{ form.non_field_errors }}</ul>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         <!-- Category Title Section -->
                                             <!-- Basic Details -->
                         <h5 style=""><strong>Basic Details</strong></h5>
-                        <div class="mb-4">{{ form.name.label_tag }} {{ form.name }}</div>
-                        <div class="mb-4">{{ form.contact.label_tag }} {{ form.contact }}</div>
-                        <div class="mb-4">{{ form.email.label_tag }} {{ form.email }}</div>
+                        <div class="mb-4">{{ form.name.label_tag }} {{ form.name }}{{ form.name.errors }}</div>
+                        <div class="mb-4">{{ form.contact.label_tag }} {{ form.contact }}{{ form.contact.errors }}</div>
+                        <div class="mb-4">{{ form.email.label_tag }} {{ form.email }}{{ form.email.errors }}</div>
 
                         <!-- Business Details -->
                         <h5 style=""><strong>Business Details</strong></h5>
-                        <div class="mb-4">{{ form.company_name.label_tag }} {{ form.company_name }}</div>
-                        <div class="mb-4">{{ form.gst.label_tag }} {{ form.gst }}</div>
-                        <div class="mb-4">{{ form.aadhar.label_tag }} {{ form.aadhar }}</div>
-                        <div class="mb-4">{{ form.pan.label_tag }} {{ form.pan }}</div>
+                        <div class="mb-4">{{ form.company_name.label_tag }} {{ form.company_name }}{{ form.company_name.errors }}</div>
+                        <div class="mb-4">{{ form.gst.label_tag }} {{ form.gst }}{{ form.gst.errors }}</div>
+                        <div class="mb-4">{{ form.aadhar.label_tag }} {{ form.aadhar }}{{ form.aadhar.errors }}</div>
+                        <div class="mb-4">{{ form.pan.label_tag }} {{ form.pan }}{{ form.pan.errors }}</div>
 
                         <!-- Address -->
                         <h5 style=""><strong>Address</strong></h5>
-                        <div class="mb-4">{{ form.address_line_1.label_tag }} {{ form.address_line_1 }}</div>
-                        <div class="mb-4">{{ form.address_line_2.label_tag }} {{ form.address_line_2 }}</div>
-                        <div class="mb-4">{{ form.pincode.label_tag }} {{ form.pincode }}</div>
-                        <div class="mb-4">{{ form.city.label_tag }} {{ form.city }}</div>
-                        <div class="mb-4">{{ form.state.label_tag }} {{ form.state }}</div>
-                        <div class="mb-4">{{ form.country.label_tag }} {{ form.country }}</div>
+                        <div class="mb-4">{{ form.address_line_1.label_tag }} {{ form.address_line_1 }}{{ form.address_line_1.errors }}</div>
+                        <div class="mb-4">{{ form.address_line_2.label_tag }} {{ form.address_line_2 }}{{ form.address_line_2.errors }}</div>
+                        <div class="mb-4">{{ form.pincode.label_tag }} {{ form.pincode }}{{ form.pincode.errors }}</div>
+                        <div class="mb-4">{{ form.city.label_tag }} {{ form.city }}{{ form.city.errors }}</div>
+                        <div class="mb-4">{{ form.state.label_tag }} {{ form.state }}{{ form.state.errors }}</div>
+                        <div class="mb-4">{{ form.country.label_tag }} {{ form.country }}{{ form.country.errors }}</div>
 
                         <!-- Balance and Submit -->
-                        <div class="mb-4">{{ form.opening_balance.label_tag }} {{ form.opening_balance }}</div>
+                        <div class="mb-4">{{ form.opening_balance.label_tag }} {{ form.opening_balance }}{{ form.opening_balance.errors }}</div>
 
 
                         
