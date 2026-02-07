@@ -90,11 +90,12 @@
                                     <div class="col">
                                         <h6 class="m-0">Notifications</h6>
                                     </div>
-                                    {% if header_notification_count %}
-                                    <div class="col-auto">
+                                    <div class="col-auto d-flex align-items-center gap-2">
+                                        {% if header_notification_count %}
                                         <span class="small text-muted">Unread ({{ header_notification_count }})</span>
+                                        {% endif %}
+                                        <a class="btn btn-sm btn-outline-primary py-0" href="{% url 'list_notifications' %}">View All</a>
                                     </div>
-                                    {% endif %}
                                 </div>
                             </div>
                             <div data-simplebar style="max-height: 230px;">
@@ -127,11 +128,6 @@
                         </div>
                     </div>
 
-                    <div class="dropdown d-inline-block">
-                        <button type="button" class="btn header-item right-bar-toggle me-2">
-                            <i data-feather="settings" class="icon-lg"></i>
-                        </button>
-                    </div>
 
                     <div class="dropdown d-inline-block">
                         <button type="button" class="btn header-item bg-soft-light border-start border-end" id="page-header-user-dropdown"
@@ -143,8 +139,7 @@
                         </button>
                         <div class="dropdown-menu dropdown-menu-end">
                             <!-- item-->
-                            <a class="dropdown-item" href=""><i class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profile</a>
-                            <a class="dropdown-item" href=""><i class="mdi mdi-lock font-size-16 align-middle me-1"></i> Lock screen</a>
+                            <a class="dropdown-item" href="{% url 'list_company_profile' %}"><i class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profile</a>
                             <div class="dropdown-divider"></div>
                             {% if user.is_authenticated %}
                             <a class="dropdown-item" href=""><i class="mdi mdi-cog font-size-16 align-middle me-1"></i> Settings</a>
