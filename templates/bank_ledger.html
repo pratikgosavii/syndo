@@ -14,7 +14,7 @@
 {% block content %}
 <div class="main-content">
     <div class="page-content container-fluid">
-        <h4 class="mb-4">Ledger for {{ bank.name }}</h4>
+        <h4 class="mb-4"><i class="bi bi-bank me-2" style="color: #775599;"></i>Ledger for {{ bank.name }}</h4>
         <p><strong>Opening Balance:</strong> ₹{{ opening|floatformat:2 }} &nbsp;|&nbsp; <strong>Current Balance:</strong> ₹{{ balance|floatformat:2 }}</p>
 
         <div class="card">

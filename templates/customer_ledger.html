@@ -4,7 +4,7 @@
 {% block content %}
 <div class="main-content">
     <div class="page-content container-fluid">
-        <h4 class="mb-4">Ledger for Customer #{{ customer_id }}</h4>
+        <h4 class="mb-4"><i class="bi bi-people me-2" style="color: #775599;"></i>Ledger for Customer #{{ customer_id }}</h4>
         <p><strong>Current Balance:</strong> ₹{{ balance|floatformat:2 }} &nbsp;|&nbsp; <strong>Total Sales:</strong> ₹{{ total_sales|floatformat:2 }}</p>
 
         <div class="card">

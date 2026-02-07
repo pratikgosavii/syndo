@@ -358,20 +358,26 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                             <li>
                                 <a href="{% url 'add_company_profile' %}" class="has-arrow">
-                                    <i data-feather="layers"></i>
+                                    <i data-feather="briefcase"></i>
                                     <span data-key="t-authentication">Company Profile</span>
                                 </a>
                             </li>
                             <li>
+                                <a href="{% url 'list_company_profile' %}">
+                                    <i data-feather="file-text"></i>
+                                    <span>Company Profile List</span>
+                                </a>
+                            </li>
+                            <li>
                                 <a href="{% url 'daybook_report' %}" class="has-arrow">
-                                    <i data-feather="layers"></i>
+                                    <i data-feather="book-open"></i>
                                     <span data-key="t-authentication">Day Book</span>
                                 </a>
                             </li>
                    
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
+                                <i data-feather="package"></i>
                                 <span data-key="t-authentication">Product</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
@@ -379,7 +385,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                
                                 <!-- Addon -->
                                 <li>
-                                    <a href="javascript: void(0);" class="has-arrow">Addon</a>
+                                    <a href="javascript: void(0);" class="has-arrow"><i data-feather="plus-circle" style="width:16px;height:16px;"></i> Addon</a>
                                     <ul class="sub-menu" aria-expanded="false">
                                         <li><a href="{% url 'add_addon' %}">Add Addon</a></li>
                                         <li><a href="{% url 'list_addon' %}">Addon List</a></li>
@@ -388,7 +394,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                                 <!-- Product -->
                                 <li>
-                                    <a href="javascript: void(0);" class="has-arrow">Product</a>
+                                    <a href="javascript: void(0);" class="has-arrow"><i data-feather="package" style="width:16px;height:16px;"></i> Product</a>
                                     <ul class="sub-menu" aria-expanded="false">
                                         <li><a href="{% url 'add_product' %}">Add Product</a></li>
                                         <li><a href="{% url 'list_product' %}">Product List</a></li>
@@ -421,7 +427,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
+                                <i data-feather="shopping-cart"></i>
                                 <span data-key="t-authentication">Purchase</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
@@ -459,7 +465,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
  
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
+                                <i data-feather="credit-card"></i>
                                 <span data-key="t-authentication">POS</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
@@ -486,14 +492,10 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                 
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
+                                <i data-feather="file-text"></i>
                                 <span data-key="t-authentication">Expense</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-
-                                <!-- Product Category -->
-
-                               
                                 <li><a href="{% url 'add_expense' %}">Add Expense</a></li>
                                 <li><a href="{% url 'list_expense' %}">Expense List</a></li>
                             </ul> 
@@ -505,7 +507,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                        
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
+                                <i data-feather="users"></i>
                                 <span data-key="t-authentication">Manage Customer</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
@@ -516,7 +518,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
+                                <i data-feather="dollar-sign"></i>
                                 <span data-key="t-authentication">Payments</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
@@ -529,17 +531,19 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                         <li class="menu-item-has-children">
                             <a href="javascript:void(0);"  class="has-arrow">
-                                <i data-feather="layers"></i>
+                                <i data-feather="shopping-bag"></i>
                                 <span data-key="t-authentication">Order Management</span>
                             </a>
                             <ul class="sub-menu">
                                 <li>
                                     <a href="{% url 'order_list' %}">
+                                        <i data-feather="list" style="width:16px;height:16px;"></i>
                                         <span>Orders List</span>
                                     </a>
                                 </li>
                                 <li>
                                     <a href="{% url 'order_exchange_list' %}">
+                                        <i data-feather="refresh-cw" style="width:16px;height:16px;"></i>
                                         <span>Return / Exchange Requests</span>
                                     </a>
                                 </li>

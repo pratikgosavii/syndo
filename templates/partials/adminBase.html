@@ -20,16 +20,23 @@
   />
 
   <style>
-
-    .dropdown-menu {
-        max-height: 300px; /* Set the maximum height of the dropdown */
-        overflow-y: auto; /* Enable vertical scrolling */
+    /* Vendor theme (purple #775599, cream #f0d28c) - pages can override .btn-primary in extra_css */
+    :root {
+        --vendor-primary: #775599;
+        --vendor-accent: #f0d28c;
+        --vendor-primary-dark: #5e4477;
     }
-
+    .dropdown-menu {
+        max-height: 300px;
+        overflow-y: auto;
+    }
     .btn-primary {
         background-color: #FCA311  !important;
         border-color: #FCA311  !important;
     }
+    /* Page title with icon - use: <h4 class="mb-sm-0 font-size-18"><i class="bi bi-icon-name me-2 text-primary"></i>Title</h4> */
+    .page-title-box .bi { opacity: 0.9; }
+    .btn .bi, .btn .mdi, .btn .bx { vertical-align: middle; }
 
     .table-filter-row th {
         background-color: rgba(0, 0, 0, 0.03);
