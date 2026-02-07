@@ -131,6 +131,16 @@
                                             </select>
                                         </div>
                                         <div class="col-auto">
+                                            <label for="filter_delivery_type" class="form-label mb-0">Type of Delivery</label>
+                                            <select name="delivery_type" id="filter_delivery_type" class="form-select form-select-sm">
+                                                <option value="">All</option>
+                                                <option value="instant_delivery" {% if filter_delivery_type == 'instant_delivery' %}selected{% endif %}>Instant Delivery</option>
+                                                <option value="general_delivery" {% if filter_delivery_type == 'general_delivery' %}selected{% endif %}>General Delivery</option>
+                                                <option value="self_pickup" {% if filter_delivery_type == 'self_pickup' %}selected{% endif %}>Self Pickup</option>
+                                                <option value="on_shop_order" {% if filter_delivery_type == 'on_shop_order' %}selected{% endif %}>On-shop Order</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
                                             <button type="submit" class="btn btn-sm btn-primary">Filter</button>
                                             <a href="{% url 'order_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
                                         </div>

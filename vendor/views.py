@@ -4184,6 +4184,7 @@ def order_list(request):
     status_filter = request.GET.get("status", "").strip()
     paid_filter = request.GET.get("paid", "")  # paid | unpaid | all
     payment_filter = request.GET.get("payment_mode", "").strip().lower()  # cod | cash | online | all
+    delivery_type_filter = request.GET.get("delivery_type", "").strip()
 
     if status_filter:
         qs = qs.filter(status=status_filter)
@@ -4199,12 +4200,15 @@ def order_list(request):
             qs = qs.exclude(payment_mode__iexact="cod").exclude(payment_mode__iexact="cash")
         else:
             qs = qs.filter(payment_mode__iexact=payment_filter)
+    if delivery_type_filter:
+        qs = qs.filter(delivery_type=delivery_type_filter)
 
     context = {
         "data": qs,
         "filter_status": status_filter,
         "filter_paid": paid_filter,
         "filter_payment_mode": payment_filter,
+        "filter_delivery_type": delivery_type_filter,
     }
     return render(request, "list_order.html", context)
 

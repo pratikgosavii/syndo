@@ -87,12 +87,9 @@
                             {{ form.category }}
                         </div>
 
-                        <div class="mb-4">
-                            <label class="form-label">Mark as Paid</label><br>
-                            {{ form.is_paid }}
-                        </div>
+                        <input type="hidden" name="is_paid" value="True">
 
-                        <div id="is_paid">
+                        <div id="payment_section">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Payment</label>
                                 <div class="btn-group" role="group" aria-label="Payment method">
@@ -267,29 +264,5 @@ function displaySelectedImages() {
 
 
     </script>
-
-
-    <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const checkbox = document.getElementById("id_is_paid"); // Django renders checkbox with "id_<fieldname>"
-    const paidDiv = document.getElementById("is_paid");
-
-    function togglePaidDiv() {
-        if (checkbox.checked) {
-            paidDiv.style.display = "block";
-        } else {
-            paidDiv.style.display = "none";
-        }
-    }
-
-    // Run once on load
-    togglePaidDiv();
-
-    // Run whenever checkbox changes
-    checkbox.addEventListener("change", togglePaidDiv);
-});
-</script>
-
-
 
 {% endblock extra_js %}

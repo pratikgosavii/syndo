@@ -506,33 +506,23 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="layers"></i>
+                                <span data-key="t-authentication">Manage Customer</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'add_customer' %}">Add Customer</a></li>
+                                <li><a href="{% url 'list_customer' %}">Customer List</a></li>
+                            </ul>
+                        </li>
+
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="layers"></i>
                                 <span data-key="t-authentication">Payments</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-
-                                <!-- Product Category -->
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <i data-feather="layers"></i>
-                                        <span data-key="t-authentication">Manage Customer</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_customer' %}">Add Customer</a></li>
-                                        <li><a href="{% url 'list_customer' %}">Customer List</a></li>
-                                    </ul>
-                                </li> 
-
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <i data-feather="layers"></i>
-                                        <span data-key="t-authentication">Payments</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_payment' %}">Add Payments</a></li>
-                                        <li><a href="{% url 'list_payment' %}">Payments List</a></li>
-                                    </ul>
-                                </li> 
-                            </ul> 
+                                <li><a href="{% url 'add_payment' %}">Add Payments</a></li>
+                                <li><a href="{% url 'list_payment' %}">Payments List</a></li>
+                            </ul>
                         </li> 
 
                          
