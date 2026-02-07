@@ -34,6 +34,16 @@
         border: none;
         padding: 16px 0;
     }
+    .invoice-template-img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        object-fit: contain;
+    }
+    .invoice-template-col {
+        margin-bottom: 1rem;
+    }
 </style>
 
 {% endblock extra_css %}
@@ -64,14 +74,16 @@
     </div>
 
     <div class="list-group mb-4">
-        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+        <div class="list-group-item d-flex justify-content-between align-items-center">
             <div>
                 <div class="fw-bold">Invoice Templates</div>
                 <small class="text-muted">Available invoice templates</small>
             </div>
-            <i class="bi bi-chevron-right"></i>
-        </a>
-
+        </div>
+        <div class="list-group-item">
+            <p class="small text-muted mb-2">Unregistered - Retail Invoice</p>
+            <img src="{% static 'images/Unregistered - Retail Invoice 1.png' %}" alt="Unregistered - Retail Invoice 1" class="invoice-template-img" style="max-height: 280px;">
+        </div>
     </div>
 
     <div class="mb-4">
