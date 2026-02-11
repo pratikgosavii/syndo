@@ -5,51 +5,307 @@
 
 {% block extra_css %}
 
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="{% static 'libs/select2/dist/css/select2.min.css'%}" rel="stylesheet" type="text/css" />
- <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
+    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
+        /* Font & base */
         body {
-            background-color: #f0d28c;
-            padding-bottom: 20px;
+            background-color: #f0f2f5;
+            padding-bottom: 24px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 15px;
+            color: #1a1d21;
+            -webkit-font-smoothing: antialiased;
         }
+        #pos-form,
+        #pos-form .form-control,
+        #pos-form .form-select,
+        #pos-form .form-label,
+        #pos-form .btn { font-family: inherit; }
+
+        /* Page header */
+        .pos-page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .pos-page-title {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -0.02em;
+            color: #1a1d21;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .pos-page-title .bi-bag { color: #1a1d21; font-size: 1.35rem; }
+        .pos-mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            color: #495057;
+        }
+
+        /* Container & layout */
         .form-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            padding: 0;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 6px 16px rgba(0,0,0,0.04);
+            overflow: hidden;
+            border: 1px solid #e8eaed;
         }
-        .form-heading {
-            text-align: left;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 2rem;
-            color: #ffdb8a;
+        .pos-main-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: stretch;
+            flex-wrap: wrap;
         }
-        .btn-primary {
-            background-color: #775599;
-            border-color: #775599;
+        .pos-left {
+            flex: 1;
+            min-width: 280px;
+            padding: 1.5rem 1.75rem;
         }
-        .custom-button {
-            width: 150px;
+        .pos-right {
+            width: 340px;
+            max-width: 100%;
+            padding: 1.5rem 1.75rem;
+            background: #f7f8fa;
+            border-left: 1px solid #e8eaed;
         }
+
+        /* Section cards */
+        .section-card {
+            border: 1px solid #e8eaed;
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .section-title {
+            font-weight: 600;
+            font-size: 0.9375rem;
+            letter-spacing: 0.01em;
+            color: #1a1d21;
+            margin-bottom: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .section-title .bi { opacity: 0.85; font-size: 1.05rem; }
+        .form-label {
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #374151;
+            margin-bottom: 0.35rem;
+        }
+
+        /* Inputs – finishing */
+        #pos-form .form-control,
+        #pos-form .form-select,
+        .billing-sidebar .form-control,
+        .billing-sidebar .form-select {
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9375rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        #pos-form .form-control:focus,
+        #pos-form .form-select:focus,
+        .billing-sidebar .form-control:focus,
+        .billing-sidebar .form-select:focus {
+            border-color: #f0a500;
+            box-shadow: 0 0 0 3px rgba(240,165,0,0.15);
+            outline: none;
+        }
+        .pos-product-row .form-control,
+        .pos-product-row .form-select { border-radius: 10px; }
+        .pos-product-row .amount {
+            background: #f7f8fa;
+            font-weight: 600;
+            color: #1a1d21;
+        }
+        .logistics-card .form-control { min-height: 38px; }
+
+        /* Buttons – finishing */
+        .btn-pos-add {
+            background-color: #f0a500;
+            border: none;
+            color: #fff;
+            padding: 0.5rem 1.25rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            transition: background-color 0.2s, transform 0.05s;
+        }
+        .btn-pos-add:hover { background-color: #d18d00; color: #fff; }
+        .btn-pos-add:active { transform: scale(0.98); }
+        .btn-pos-customer {
+            background-color: #f0a500;
+            border: none;
+            color: #fff;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 0;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        .btn-pos-customer:hover { background-color: #d18d00; color: #fff; }
+        .btn-process-sale {
+            background-color: #22c55e;
+            border: none;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            width: 100%;
+            transition: background-color 0.2s, transform 0.05s;
+        }
+        .btn-process-sale:hover { background-color: #16a34a; color: #fff; }
+        .btn-process-sale:active { transform: scale(0.99); }
+        .btn-discard {
+            background-color: #dc2626;
+            border: none;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            margin-top: 0.5rem;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        .btn-discard:hover { background-color: #b91c1c; color: #fff; }
+        .btn-payment {
+            background: #fff;
+            border: 1px solid #d1d5db;
+            color: #374151;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: border-color 0.2s, background 0.2s, color 0.2s;
+        }
+        .btn-payment.btn-payment-active {
+            background-color: #f0a500;
+            border-color: #f0a500;
+            color: #fff;
+        }
+        .btn-payment:not(.btn-payment-active):hover {
+            border-color: #9ca3af;
+            color: #1a1d21;
+            background: #f9fafb;
+        }
+        .btn-discount-type {
+            background: #fff;
+            border: 1px solid #d1d5db;
+            color: #374151;
+            border-radius: 10px;
+            padding: 7px 14px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: border-color 0.2s, background 0.2s, color 0.2s;
+        }
+        .btn-discount-type.active {
+            background-color: #f0a500;
+            border-color: #f0a500;
+            color: #fff;
+        }
+        .btn-discount-type:not(.active):hover {
+            border-color: #9ca3af;
+            background: #f9fafb;
+        }
+
+        /* Billing sidebar */
+        .billing-sidebar .section-title { margin-bottom: 1rem; }
+        .billing-summary-line {
+            margin-bottom: 0.4rem;
+            color: #374151;
+            font-size: 0.9375rem;
+            font-weight: 500;
+        }
+        .billing-sidebar hr {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 0.75rem 0;
+        }
+        .net-payable-box {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #1a1d21;
+            margin: 0.5rem 0 1.25rem;
+        }
+        .billing-sidebar .form-label { margin-bottom: 0.4rem; }
+        .billing-sidebar .mb-2 { margin-bottom: 1rem !important; }
+        .billing-sidebar .mb-3 { margin-bottom: 1.25rem !important; }
+
+        /* Item rows */
+        #items-container .item-row {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        #items-container .item-row:last-child { border-bottom: none; }
+        .remove-btn {
+            cursor: pointer;
+            color: #dc2626;
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1;
+            padding: 0.25rem;
+            transition: color 0.15s;
+        }
+        .remove-btn:hover { color: #b91c1c; }
+
+        /* Select2 overrides to match finishing */
+        .form-container .select2-container--default .select2-selection--single {
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            min-height: 38px;
+            padding: 0.25rem 0.5rem;
+        }
+        .form-container .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #f0a500;
+            box-shadow: 0 0 0 3px rgba(240,165,0,0.15);
+        }
+
+        /* Main content area */
+        .main-content .page-content .container-fluid { font-family: inherit; }
+        .pos-left .row.g-3 .form-label { display: block; }
+        textarea.form-control { min-height: 72px; border-radius: 10px; resize: vertical; }
     </style>
 
-     <style>
-    /* Custom Toggle Switch */
+    <style>
+    /* Custom Toggle Switch – finishing */
     .switch {
         position: relative;
         display: inline-block;
-        width: 46px;
-        height: 24px;
+        width: 48px;
+        height: 26px;
     }
-
     .switch input {
         opacity: 0;
         width: 0;
         height: 0;
     }
-
     .slider {
         position: absolute;
         cursor: pointer;
@@ -57,36 +313,29 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
+        background-color: #d1d5db;
+        transition: 0.25s ease;
         border-radius: 34px;
     }
-
     .slider:before {
         position: absolute;
         content: "";
-        height: 18px;
-        width: 18px;
+        height: 20px;
+        width: 20px;
         left: 3px;
         bottom: 3px;
-        background-color: white;
-        transition: .4s;
+        background-color: #fff;
+        transition: 0.25s ease;
         border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
     }
-
     input:checked + .slider {
-        background-color: orange;
+        background-color: #f0a500;
     }
-
     input:checked + .slider:before {
         transform: translateX(22px);
     }
-</style>
-
-
-<style>
-  .remove-btn { cursor: pointer; color: red; font-size: 1.2rem; }
-</style>
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -98,73 +347,76 @@
     <div class="container-fluid">
       <div class="row">
         <div class="col-12">
-            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                <h4 class="mb-sm-0 font-size-18"><i class="bi bi-credit-card-2-front me-2" style="color: #775599;"></i>Sales & POS</h4>
+            <div class="pos-page-header">
+                <h4 class="pos-page-title"><i class="bi bi-bag me-2"></i>Sales & POS</h4>
+                <div class="pos-mode-toggle">
+                    <span>Retail</span>
+                    <label class="switch mb-0">
+                        <input type="checkbox" name="wholesale_selector" id="wholesale_selector">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Wholesale</span>
+                </div>
             </div>
         </div>
       </div>
 
       <div class="container">
         <div class="form-container">
-          <form method="post" action="" id="pos-form" >
+          <form method="post" action="" id="pos-form">
             {% csrf_token %}
-            
-            <!-- Billing -->
-            <div class="row mb-3">
-             
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Customer</label>
-                <div class="d-flex gap-2 align-items-end">
-                  <div class="flex-grow-1">
-                    {{ form.customer }}
+            <div class="pos-main-row">
+              <!-- Left: Customer, Barcode, Product entry, Logistics -->
+              <div class="pos-left">
+                <!-- Customer & Barcode -->
+                <div class="row g-3 mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Customer</label>
+                    <div class="d-flex gap-2 align-items-center">
+                      <div class="flex-grow-1">
+                        {{ form.customer }}
+                      </div>
+                      <button type="button" class="btn btn-pos-customer" data-bs-toggle="modal" data-bs-target="#customerModal" title="Add Customer">+</button>
+                    </div>
                   </div>
-                  <div>
-                    <button type="button" class="btn btn-primary px-3" data-bs-toggle="modal" data-bs-target="#customerModal">
-                      <i class="mdi mdi-plus"></i>  Customer
-                    </button>
+                  <div class="col-md-6">
+                    <label class="form-label">Scan Barcode</label>
+                    <input type="text" id="barcode-input" class="form-control" placeholder="Scan Item..." autocomplete="off">
                   </div>
                 </div>
-              </div>
 
-                  
-            </div>
-          
+                <!-- Product entry row: Product Name, Qty, Price, Total, Add -->
+                <div class="section-card">
+                  <div class="section-title">Product</div>
+                  <div class="row g-2 align-items-end pos-product-row mb-2">
+                    <div class="col">
+                      <label class="form-label small mb-1">Product Name</label>
+                      <select name="product[]" class="form-select product-select" placeholder="Search Product">
+                        <option value="">Search Product</option>
+                        {% for p in products %}
+                          <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}">{{ p.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-auto" style="width: 90px;">
+                      <label class="form-label small mb-1">Qty</label>
+                      <input type="number" class="form-control qty-input" name="quantity[]" value="1" min="1">
+                    </div>
+                    <div class="col-auto" style="width: 100px;">
+                      <label class="form-label small mb-1">Price</label>
+                      <input type="number" class="form-control rate-input" name="price[]" value="0.00" step="0.01" min="0">
+                    </div>
+                    <div class="col-auto" style="width: 100px;">
+                      <label class="form-label small mb-1">Total</label>
+                      <input type="text" class="form-control amount" name="amount[]" value="0.00" readonly>
+                    </div>
+                    <div class="col-auto align-self-end">
+                      <button type="button" class="btn btn-pos-add" id="add-item"><i class="bi bi-plus-lg me-1"></i>Add</button>
+                    </div>
+                  </div>
+                </div>
 
-            <hr>
-
-            <!-- Barcode Scanner -->
-            <div class="mb-4">
-              <label class="form-label fw-semibold">Scan Barcode</label>
-              <input type="text" id="barcode-input" class="form-control form-control-lg" placeholder="Scan barcode here..." autocomplete="off">
-              <div class="form-text">Scan the barcode using a scanner or mobile device.</div>
-            </div>
-
-            <!-- Add Product Button -->
-
-            <div class="mb-3 d-flex justify-content-between align-items-center">
-              <div>
-                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#productSearchModal">
-                  <i class="mdi mdi-magnify"></i> Search &amp; Add Product
-                </button>
-
-                <a href="{% url 'add_product' %}"  <button type="button" class="btn btn-primary" >
-                  <i class="mdi mdi-plus-circle-outline"></i> Add Product
-                </button> </a>
-
-              </div>
-
-              <div>
-                <label class="switch mb-0">
-                  <input type="checkbox" name="wholesale_selector" id="wholesale_selector">
-                  <span class="slider round"></span>
-                </label>
-              <label class="" style="font-weight: bold;">Wholesale</label>
-
-              </div>
-            </div>
-
-
-            <!-- Items Table -->
+                <!-- Items list (existing rows + dynamic) -->
             <div id="items-container">
               {% for item in existing_items %}
               <div class="row g-2 align-items-center mb-2 item-row" data-item-id="{{ item.id }}">
@@ -174,7 +426,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" {% if p.id == item.product.id %}selected{% endif %}>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" {% if p.id == item.product.id %}selected{% endif %}>
                         {{ p.name }}
                       </option>
                     {% endfor %}
@@ -190,7 +442,7 @@
                   <input type="text" class="form-control amount" name="amount[]" value="{{ item.amount }}" readonly placeholder="Amount">
                 </div>
                 <div class="col-md-2 text-center">
-                  <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
+                  <span class="remove-btn">&times;</span>
                 </div>
               </div>
               {% endfor %}
@@ -202,7 +454,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}">{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}">{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -216,108 +468,121 @@
                   <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
                 </div>
                 <div class="col-md-2 text-center">
-                  <span class="remove-btn" style="cursor:pointer;color:red;font-weight:bold;">&times;</span>
+                  <span class="remove-btn">&times;</span>
                 </div>
               </div>
             </div>
 
-
-            <div class="text-end my-2">
-              <button type="button" class="btn btn-primary" id="add-item">
-                <i class="mdi mdi-plus-circle-outline"></i> Add Item
-              </button>
-            </div>
-
-            <hr>
-
-            <!-- Payment -->
-            <div class="mb-4">
-              <label class="form-label fw-semibold">Payment Mode</label>
-                <div class="btn-group" role="group" aria-label="Payment method">
-                  <button type="button" class="btn btn-warning" onclick="selectPayment('cash', this)">Cash</button>
-                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('upi', this)">UPI</button>
-                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('cheque', this)">Cheque</button>
-                  <button type="button" class="btn btn-outline-dark" onclick="selectPayment('credit', this)">Credit</button>
-                </div>
-
-                <input type="hidden" name="payment_method" id="payment_method" value="cash" required>
-            </div>
-
-
-
-            <!-- Discount & Credit Time -->
-              <div class="row mb-3">
-                <div class="col-md-4">
-                  <label class="form-label mt-2">Discount (₹)</label>
-                  {{ form.discount_amount }}
-
-                  <label class="form-label">Discount (%)</label>
-                                {{ form.discount_percentage }}
-
-                </div>
-                </div>
-              <div id="credit_time" style="display: none;">
-
-                <div class="mb-4"><label class="form-label mt-3">Advance Amount</label>
-                  {{ form.advance_payment_amount }}
-                  <label class="form-label fw-semibold">Advance Payment Mode</label>
-                  <div class="btn-group" role="group" aria-label="Advance Payment Method">
-                      <button type="button" class="btn btn-warning" onclick="selectAdvancePayment('cash', this)">Cash</button>
-                      <button type="button" class="btn btn-outline-dark" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                <!-- Logistics Details -->
+                <div class="section-card logistics-card">
+                  <div class="section-title"><i class="bi bi-truck"></i>Logistics Details</div>
+                  <div class="mb-2">
+                    <label class="form-label">Dispatch Address</label>
+                    {{ wholesale_forms.dispatch_address }}
                   </div>
-                  <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
-
-                  <!-- Bank dropdown (hidden by default) -->
-
-                  <!-- Advance Amount -->
-                  
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                      <label class="form-label">Transport Name</label>
+                      {{ wholesale_forms.transport_name }}
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Vehicle No.</label>
+                      {{ wholesale_forms.vehicle_number }}
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Packaging Charges (₹)</label>
+                      {{ wholesale_forms.packaging_charges }}
+                    </div>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <label class="form-label">LR Number</label>
+                      {{ wholesale_forms.lr_number }}
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">E-way Bill</label>
+                      {{ wholesale_forms.eway_bill_number }}
+                    </div>
+                  </div>
                 </div>
-
-
-                <div class="col-md-4" >
-                  <label class="form-label">Credit Time (days)</label>
-                  {{ form.due_date }}
-                </div>  
               </div>
 
+              <!-- Right: Billing Details sidebar -->
+              <div class="pos-right billing-sidebar">
+                <div class="section-title mb-3">Billing Details</div>
+                <p class="billing-summary-line">Total Products: <strong id="total-items">0</strong></p>
+                <p class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></p>
+                <p class="billing-summary-line">Total GST (18%): <strong>₹<span id="total-gst-amount">0.00</span></strong></p>
+                <p class="billing-summary-line">Additional Charges: <strong>₹<span id="additional-charges">0.00</span></strong></p>
+                <p class="billing-summary-line mb-2">Total Amount: <strong>₹<span id="total-amount-before-discount">0.00</span></strong></p>
+                <hr class="my-2">
+                <div class="mb-2">
+                  <label class="form-label">Discount</label>
+                  <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-discount-type active" id="discount-type-amount">₹ Amount</button>
+                    <button type="button" class="btn btn-discount-type" id="discount-type-percent">% Percent</button>
+                  </div>
+                  <div id="discount-amount-wrap">
+                    {{ form.discount_amount }}
+                  </div>
+                  <div id="discount-percent-wrap" style="display:none;">
+                    {{ form.discount_percentage }}
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Shipping / Delivery Charges</label>
+                  <input type="number" id="shipping-charges-input" class="form-control" step="0.01" value="0.00" min="0" placeholder="0.00">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Payment Mode</label>
+                  <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-payment btn-payment-active" onclick="selectPayment('cash', this)"><i class="bi bi-cash me-1"></i>Cash</button>
+                    <button type="button" class="btn btn-payment" onclick="selectPayment('upi', this)"><i class="bi bi-phone me-1"></i>UPI</button>
+                    <button type="button" class="btn btn-payment" onclick="selectPayment('cheque', this)"><i class="bi bi-bank me-1"></i>Cheque</button>
+                    <button type="button" class="btn btn-payment" onclick="selectPayment('credit', this)"><i class="bi bi-clock-history me-1"></i>Credit</button>
+                  </div>
+                  <input type="hidden" name="payment_method" id="payment_method" value="cash" required>
+                </div>
+                <div id="credit_time" style="display: none;">
+                <div class="row g-3 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Advance amount</label>
+                    {{ form.advance_payment_amount }}
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Advance payment mode</label>
+                    <div class="btn-group btn-group-sm" role="group">
+                      <button type="button" class="btn btn-payment btn-payment-active" onclick="selectAdvancePayment('cash', this)">Cash</button>
+                      <button type="button" class="btn btn-payment" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                    </div>
+                    <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Credit time (days)</label>
+                    {{ form.due_date }}
+                  </div>
+                </div>
+              </div>
               <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
+                <label class="form-label">Select Bank (If Cheque/Online)</label>
                 <select name="advance_bank" id="advance_bank" class="form-select" onchange="recalculateTotals()">
-                    <option value="">Select Bank</option>
-                    {% for bank in banks %}
-                        <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>
-                            {{ bank.name }}
-                        </option>
-                    {% endfor %}
+                  <option value="">Select Bank Account</option>
+                  {% for bank in banks %}
+                  <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
+                  {% endfor %}
                 </select>
               </div>
-
-
-            </div>
-
-
-            <!-- Summary -->
-            <div class="border rounded p-3 bg-white shadow-sm mb-4">
-              <h5 class="fw-bold mb-3">Summary</h5>
-              <p>Total Items: <span id="total-items">0</span></p>
-              <p>Total Amount before Discount: ₹<span id="total-amount-before-discount">0.00</span></p>
-              <p>Discount: ₹<span id="discount-amount">0.00</span></p>
-              <p>Total Amount: ₹<span id="total-amount">0.00</span></p>
-
-              <hr>
-
-              <div id="advance_summary" style="display:none">
-                <p>Advance Payment: ₹<span id="advance-amount">0.00</span></p>
-                <p>Advance Mode: <span id="advance-mode">Cash</span> 
-                    <span id="advance-bank-name" style="display:none;">(Bank Name)</span>
-                </p>
+                <div id="advance_summary" style="display:none" class="mt-2">
+                  <p class="billing-summary-line small">Advance: ₹<span id="advance-amount">0.00</span> (<span id="advance-mode">Cash</span> <span id="advance-bank-name" style="display:none;"></span>)</p>
+                </div>
+                <p class="form-label mt-3 mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.08em; color: #6b7280;">NET PAYABLE</p>
+                <p class="net-payable-box">₹<span id="net-payable">0.00</span></p>
+                <button type="submit" class="btn btn-process-sale">Process Sale →</button>
+                <button type="reset" class="btn btn-discard">Discard</button>
               </div>
-
-              <p><strong>Net Payable: ₹<span id="net-payable">0.00</span></strong></p>
-              
             </div>
 
-            
-          <hr>
+            <hr class="my-3">
 
             <div id="secondform" style="display:none;">
 
@@ -440,11 +705,6 @@
               </div>
             </div>
 
-
-            <div class="text-end">
-              <button type="submit" class="btn btn-success btn-lg">Checkout</button>
-              <button type="reset" class="btn btn-danger btn-lg">Discard</button>
-            </div>
 
           </form>
         </div>
@@ -609,76 +869,101 @@
     row.querySelector('.amount').value = (qty * price).toFixed(2);
   }
 
-  // Recalculate totals
-  // Recalculate totals
+  // Recalculate totals (subtotal, GST, discount, shipping, net payable)
 function recalculateTotals() {
     let totalItems = 0;
-    let totalAmount = 0;
+    let subtotal = 0;
+    let gstAmount = 0;
 
     document.querySelectorAll('.item-row').forEach(row => {
         const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
         const price = parseFloat(row.querySelector('.rate-input').value) || 0;
         const amount = qty * price;
+        const sel = row.querySelector('.product-select');
+        const gstRate = (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) ? (parseFloat(sel.options[sel.selectedIndex].getAttribute('data-gst')) || 18) : 18;
+        const rowGst = amount * (gstRate / 100);
 
-        row.querySelector('.amount').value = amount.toFixed(2);
+        if (row.querySelector('.amount')) row.querySelector('.amount').value = amount.toFixed(2);
         totalItems += qty;
-        totalAmount += amount;
+        subtotal += amount;
+        gstAmount += rowGst;
     });
 
+    const totalBeforeDiscount = subtotal + gstAmount;
     const discountPercentageField = document.getElementById('discount-percentage');
     const discountAmountField = document.getElementById('discount-amount-input');
     const advanceAmountField = document.getElementById('id_advance_payment_amount');
+    const shippingInput = document.getElementById('shipping-charges-input');
 
     let discountAmount = 0;
     let discountPercentage = 0;
-
-    // Two-way discount binding
-    if (document.activeElement === discountPercentageField) {
-        discountPercentage = parseFloat(discountPercentageField.value) || 0;
-        discountAmount = totalAmount * (discountPercentage / 100);
-        discountAmountField.value = discountAmount.toFixed(2);
-    } else if (document.activeElement === discountAmountField) {
-        discountAmount = parseFloat(discountAmountField.value) || 0;
-        discountPercentage = (totalAmount === 0) ? 0 : (discountAmount / totalAmount) * 100;
-        discountPercentageField.value = discountPercentage.toFixed(2);
-    } else {
-        discountPercentage = parseFloat(discountPercentageField.value) || 0;
-        discountAmount = totalAmount * (discountPercentage / 100);
-        discountAmountField.value = discountAmount.toFixed(2);
+    if (discountPercentageField && discountAmountField) {
+        if (document.activeElement === discountPercentageField) {
+            discountPercentage = parseFloat(discountPercentageField.value) || 0;
+            discountAmount = totalBeforeDiscount * (discountPercentage / 100);
+            discountAmountField.value = discountAmount.toFixed(2);
+        } else if (document.activeElement === discountAmountField) {
+            discountAmount = parseFloat(discountAmountField.value) || 0;
+            discountPercentage = (totalBeforeDiscount === 0) ? 0 : (discountAmount / totalBeforeDiscount) * 100;
+            discountPercentageField.value = discountPercentage.toFixed(2);
+        } else {
+            discountPercentage = parseFloat(discountPercentageField.value) || 0;
+            discountAmount = totalBeforeDiscount * (discountPercentage / 100);
+            discountAmountField.value = discountAmount.toFixed(2);
+        }
     }
 
-    const amountAfterDiscount = totalAmount - discountAmount;
-    const advanceAmount = parseFloat(advanceAmountField.value) || 0;
-    const netPayable = amountAfterDiscount - advanceAmount;
+    const amountAfterDiscount = totalBeforeDiscount - discountAmount;
+    const advanceAmount = advanceAmountField ? (parseFloat(advanceAmountField.value) || 0) : 0;
+    const shippingCharges = shippingInput ? (parseFloat(shippingInput.value) || 0) : 0;
+    const netPayable = amountAfterDiscount + shippingCharges - advanceAmount;
 
-    // Update summary
-    document.getElementById('total-items').innerText = totalItems;
-    document.getElementById('total-amount-before-discount').innerText = totalAmount.toFixed(2);
-    document.getElementById('discount-amount').innerText = discountAmount.toFixed(2);
-    document.getElementById('total-amount').innerText = amountAfterDiscount.toFixed(2);
-
-    // New: update advance and net payable
-    document.getElementById('advance-amount').innerText = advanceAmount.toFixed(2);
-
-    const mode = document.getElementById('advance_payment_method').value;
-    document.getElementById('advance-mode').innerText = mode.charAt(0).toUpperCase() + mode.slice(1);
-
+    const el = function(id) { const e = document.getElementById(id); return e ? e : null; };
+    if (el('total-items')) el('total-items').innerText = totalItems;
+    if (el('subtotal-amount')) el('subtotal-amount').innerText = subtotal.toFixed(2);
+    if (el('total-gst-amount')) el('total-gst-amount').innerText = gstAmount.toFixed(2);
+    if (el('additional-charges')) el('additional-charges').innerText = '0.00';
+    if (el('total-amount-before-discount')) el('total-amount-before-discount').innerText = totalBeforeDiscount.toFixed(2);
+    if (el('advance-amount')) el('advance-amount').innerText = advanceAmount.toFixed(2);
+    if (el('advance-mode')) el('advance-mode').innerText = (document.getElementById('advance_payment_method') && document.getElementById('advance_payment_method').value) ? document.getElementById('advance_payment_method').value.charAt(0).toUpperCase() + document.getElementById('advance_payment_method').value.slice(1) : 'Cash';
     const bankSelect = document.getElementById('advance_bank');
-    if (mode === 'bank' && bankSelect && bankSelect.value) {
-        document.getElementById('advance-bank-name').style.display = 'inline';
-        document.getElementById('advance-bank-name').innerText = `(${bankSelect.options[bankSelect.selectedIndex].text})`;
-    } else {
-        document.getElementById('advance-bank-name').style.display = 'none';
+    if (el('advance-bank-name')) {
+        if (bankSelect && bankSelect.value) {
+            el('advance-bank-name').style.display = 'inline';
+            el('advance-bank-name').innerText = '(' + (bankSelect.options[bankSelect.selectedIndex] ? bankSelect.options[bankSelect.selectedIndex].text : '') + ')';
+        } else {
+            el('advance-bank-name').style.display = 'none';
+        }
     }
-
-    document.getElementById('net-payable').innerText = netPayable.toFixed(2);
+    if (el('net-payable')) el('net-payable').innerText = Math.max(0, netPayable).toFixed(2);
 }
 
 
 
-  document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
-  document.getElementById('discount-amount-input').addEventListener('input', recalculateTotals);
-  document.getElementById('id_advance_payment_amount').addEventListener('input', recalculateTotals);
+  var discountPercentEl = document.getElementById('discount-percentage');
+  var discountAmountEl = document.getElementById('discount-amount-input');
+  if (discountPercentEl) discountPercentEl.addEventListener('input', recalculateTotals);
+  if (discountAmountEl) discountAmountEl.addEventListener('input', recalculateTotals);
+  var advanceEl = document.getElementById('id_advance_payment_amount');
+  if (advanceEl) advanceEl.addEventListener('input', recalculateTotals);
+  var shippingEl = document.getElementById('shipping-charges-input');
+  if (shippingEl) shippingEl.addEventListener('input', recalculateTotals);
+
+  // Discount type toggle: ₹ Amount / % Percent
+  document.getElementById('discount-type-amount').addEventListener('click', function() {
+    document.getElementById('discount-type-amount').classList.add('active');
+    document.getElementById('discount-type-percent').classList.remove('active');
+    document.getElementById('discount-amount-wrap').style.display = 'block';
+    document.getElementById('discount-percent-wrap').style.display = 'none';
+    recalculateTotals();
+  });
+  document.getElementById('discount-type-percent').addEventListener('click', function() {
+    document.getElementById('discount-type-percent').classList.add('active');
+    document.getElementById('discount-type-amount').classList.remove('active');
+    document.getElementById('discount-percent-wrap').style.display = 'block';
+    document.getElementById('discount-amount-wrap').style.display = 'none';
+    recalculateTotals();
+  });
   
   
   
@@ -870,37 +1155,61 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 document.getElementById('add-item').addEventListener('click', () => {
-  const orig = document.querySelector('.item-row');
-  
-  // Remove Select2 before cloning
+  const cardRow = document.getElementById('add-item').closest('.row');
+  const container = document.getElementById('items-container');
+  const orig = container.querySelector('.item-row');
+
+  const productVal = cardRow ? (cardRow.querySelector('.product-select') && cardRow.querySelector('.product-select').value) : '';
+  const qtyVal = cardRow ? (cardRow.querySelector('.qty-input') && cardRow.querySelector('.qty-input').value) : '1';
+  const priceVal = cardRow ? (cardRow.querySelector('.rate-input') && cardRow.querySelector('.rate-input').value) : '0.00';
+
+  if (!orig) return;
   const origSelect = orig.querySelector('.product-select');
   if ($(origSelect).hasClass("select2-hidden-accessible")) {
     $(origSelect).select2('destroy');
   }
 
-  // Clone the raw HTML
   const clone = orig.cloneNode(true);
 
-  // Reset values in inputs
-  clone.querySelectorAll('input').forEach(i => {
-    if (i.classList.contains('rate-input') || i.classList.contains('amount')) {
-      i.value = '0.00';
-    } else {
-      i.value = '';
-    }
-  });
+  if (productVal) {
+    const cloneSelect = clone.querySelector('.product-select');
+    const cloneQty = clone.querySelector('.qty-input');
+    const clonePrice = clone.querySelector('.rate-input');
+    const cloneAmount = clone.querySelector('.amount');
+    if (cloneSelect) cloneSelect.value = productVal;
+    if (cloneQty) cloneQty.value = qtyVal;
+    if (clonePrice) clonePrice.value = priceVal;
+    if (cloneAmount) cloneAmount.value = (parseFloat(qtyVal) * parseFloat(priceVal)).toFixed(2);
+  } else {
+    clone.querySelectorAll('input').forEach(i => {
+      if (i.classList.contains('rate-input') || i.classList.contains('amount')) i.value = '0.00';
+      else i.value = '';
+    });
+    const cloneSelect = clone.querySelector('.product-select');
+    if (cloneSelect) cloneSelect.value = '';
+  }
 
-  // Append new row
-  document.getElementById('items-container').appendChild(clone);
+  if (container.querySelector('.item-row') === orig) {
+    container.insertBefore(clone, orig.nextSibling);
+  } else {
+    container.appendChild(clone);
+  }
 
-  // Reinitialize Select2 on both original and clone
   initializeSelect2OnRow(orig);
   initializeSelect2OnRow(clone);
-
-  // Reattach other listeners if needed
   attachListeners(clone);
   attachRemoveListener(clone);
 
+  if (cardRow && productVal) {
+    if (cardRow.querySelector('.product-select')) cardRow.querySelector('.product-select').value = '';
+    if (cardRow.querySelector('.qty-input')) cardRow.querySelector('.qty-input').value = '1';
+    if (cardRow.querySelector('.rate-input')) cardRow.querySelector('.rate-input').value = '0.00';
+    if (cardRow.querySelector('.amount')) cardRow.querySelector('.amount').value = '0.00';
+    $(cardRow.querySelector('.product-select')).trigger('change');
+  }
+
+  recalculateTotals();
+  updateSelectOptions();
 });
 
 document.querySelectorAll(".item-row").forEach(row => {
@@ -956,14 +1265,10 @@ document.querySelectorAll(".item-row").forEach(row => {
   // Payment method selector
   // Payment method selector
 function selectPayment(method, btn) {
-  // set value
   document.getElementById('payment_method').value = method;
-
-  // reset button styles
-  document.querySelectorAll('.btn-group .btn').forEach(b => 
-    b.classList.replace('btn-warning', 'btn-outline-dark')
-  );
-  btn.classList.replace('btn-outline-dark', 'btn-warning');
+  var group = btn.closest('.btn-group');
+  if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
+  btn.classList.add('btn-payment-active');
 
   // toggle credit time section
   document.getElementById('credit_time').style.display = method === 'credit' ? 'block' : 'none';
@@ -1000,16 +1305,10 @@ function selectPayment(method, btn) {
   //advance choice
 
 function selectAdvancePayment(method, btn) {
-    // Update hidden field
     document.getElementById('advance_payment_method').value = method;
-
-    // Toggle active button styling
-    btn.closest('.btn-group').querySelectorAll('button').forEach(b => {
-        b.classList.remove('btn-warning');
-        b.classList.add('btn-outline-dark');
-    });
-    btn.classList.remove('btn-outline-dark');
-    btn.classList.add('btn-warning');
+    var group = btn.closest('.btn-group');
+    if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
+    btn.classList.add('btn-payment-active');
 
     // Show/hide bank dropdown
     if (method === 'bank') {

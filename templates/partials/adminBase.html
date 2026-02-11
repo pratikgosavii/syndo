@@ -137,8 +137,11 @@
 
                     headers.forEach((th, columnIndex) => {
                         const filterableAttr = th.dataset.filterable;
+                        const headerText = th.textContent.trim();
                         const isActionColumn =
-                            /action/i.test(th.textContent.trim()) ||
+                            /action/i.test(headerText) ||
+                            /^sr\s*no$/i.test(headerText) ||
+                            /^delete$/i.test(headerText) ||
                             filterableAttr === 'false';
                         const filterCell = document.createElement('th');
 

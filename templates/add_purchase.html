@@ -9,83 +9,30 @@
    <link href="{% static 'libs/select2/dist/css/select2.min.css'%}" rel="stylesheet" type="text/css" />
  <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        body {
-            background-color: #f0d28c;
-            padding-bottom: 20px;
-        }
+        body { background-color: #f8f9fa; padding-bottom: 20px; }
+        .form-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .section-card { border: 1px solid #eee; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; }
+        .section-title { font-weight: 600; color: #775599; margin-bottom: 1rem; font-size: 1rem; }
+        .section-title .bi { margin-right: 0.5rem; opacity: 0.9; }
+        .form-label { font-weight: 500; color: #333; }
+        /* Payment section: grey UI to match reference */
+        .payment-section-card { border: 1px solid #dee2e6; border-radius: 10px; margin-bottom: 1.5rem; background: #fff; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .payment-section-card .payment-section-header { background: #e9ecef; padding: 12px 1.25rem; font-weight: 700; color: #495057; font-size: 1rem; border-bottom: 1px solid #dee2e6; }
+        .payment-section-card .payment-section-header .bi { margin-right: 0.5rem; color: #6c757d; }
+        .payment-section-card .payment-section-body { padding: 1.25rem; background: #fafafa; }
+        .payment-section-card .payment-section-body .form-label { color: #495057; }
+        .payment-section-card .payment-section-body .form-control,
+        .payment-section-card .payment-section-body .form-select { border: 1px solid #ced4da; background: #fff; }
+        .btn-payment { background: #f8f9fa; border: 1px solid #ced4da; color: #6c757d; }
+        .btn-payment.btn-payment-active { background-color: #FFA500; border-color: #FFA500; color: #fff; }
+        .btn-payment:not(.btn-payment-active):hover { border-color: #adb5bd; color: #495057; background: #fff; }
+        .form-heading { font-weight: 600; color: #775599; margin-bottom: 1rem; }
 
-        .form-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-heading {
-            text-align: left;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 2rem;
-            color: #775599;;
-        }
-
-        .description-box {
-            height: 150px;
-            resize: none;
-        }
-
-        .image-preview {
-            max-height: 100px;
-            margin-top: 10px;
-        }
-
-        .btn-primary {
-            background-color: #775599;;
-            border-color: #775599;;
-        }
-
-        .custom-button {
-            width: 150px;
-        }
-
-
-        textarea[name="references"],
-textarea[name="notes"],
-textarea[name="terms"] {
-  min-height: 60px;
-  max-height: 60px;
-  width: 100%;
-}
-
-
-    </style>
-
-     <style>
-        body {
-            background-color: #f0d28c;
-            padding-bottom: 20px;
-        }
-        .form-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .form-heading {
-            text-align: left;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 2rem;
-            color: #ffdb8a;
-        }
-        .btn-primary {
-            background-color: #775599;
-            border-color: #775599;
-        }
-        .custom-button {
-            width: 150px;
-        }
+        textarea[name="references"], textarea[name="notes"], textarea[name="terms"] { min-height: 60px; max-height: 60px; width: 100%; }
+        .btn-primary { background-color: #775599; border-color: #775599; }
+        .btn-primary:hover { background-color: #5e4477; border-color: #5e4477; }
     </style>
 
      <style>
@@ -439,99 +386,66 @@ textarea[name="terms"] {
                 </div>
               </div>
 
-              <div class="border rounded p-3 mb-4">
-
-                <div class="mb-3">
-                  <label class="form-label fw-semibold">Payment</label>
-                  <div class="btn-group" role="group" aria-label="Payment method">
-                    <button type="button" class="btn {% if form.instance.payment_method == 'cash' %}btn-warning{% else %}btn-outline-dark{% endif %}"
-                            onclick="selectPayment('cash', this)">Cash</button>
-
-                            <button type="button" class="btn {% if form.instance.payment_method == 'upi' %}btn-warning{% else %}btn-outline-dark{% endif %}"
-                            onclick="selectPayment('upi', this)">UPI</button>
-
-                    <button type="button" class="btn {% if form.instance.payment_method == 'cheque' %}btn-warning{% else %}btn-outline-dark{% endif %}"
-                            onclick="selectPayment('cheque', this)">Cheque</button>
-
-
-                    <button type="button" class="btn {% if form.instance.payment_method == 'credit' %}btn-warning{% else %}btn-outline-dark{% endif %}"
-                            onclick="selectPayment('credit', this)">Credit</button>
+              <!-- Payment (image style: orange header bar + orange active button) -->
+              <div class="payment-section-card mb-4">
+                <div class="payment-section-header"><i class="bi bi-credit-card"></i>Payment</div>
+                <div class="payment-section-body">
+                  <div class="mb-3">
+                    <label class="form-label">Payment type</label>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Payment method">
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cash' %}btn-payment-active{% endif %}" onclick="selectPayment('cash', this)"><i class="bi bi-cash me-1"></i>Cash</button>
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'upi' %}btn-payment-active{% endif %}" onclick="selectPayment('upi', this)"><i class="bi bi-phone me-1"></i>UPI</button>
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cheque' %}btn-payment-active{% endif %}" onclick="selectPayment('cheque', this)"><i class="bi bi-bank me-1"></i>Cheque</button>
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'credit' %}btn-payment-active{% endif %}" onclick="selectPayment('credit', this)"><i class="bi bi-clock-history me-1"></i>Credit</button>
+                    </div>
+                    {% if form.payment_method.errors %}<div class="text-danger small mt-1">{{ form.payment_method.errors.0 }}</div>{% endif %}
+                    <input type="hidden" name="payment_method" id="payment_method" value="{{ form.instance.payment_method|default:'cash' }}" required>
                   </div>
-
-                  {% if form.payment_method.errors %}
-                    <div class="text-danger">{{ form.payment_method.errors.0 }}</div>
-                  {% endif %}
-
-                  <input type="hidden" name="payment_method" id="payment_method"
-                        value="{{ form.instance.payment_method|default:'cash' }}" required>
-                </div>
-
-                <!-- Discount -->
-                <div class="row mb-3">
-                <div class="col-md-4">
-                  <label class="form-label mt-2">Discount (₹)</label>
-                  {{ form.discount_amount }}
-
-                  <label class="form-label">Discount (%)</label>
-                                {{ form.discount_percentage }}
-
-                </div>
-                </div>
-                  {% if form.discount_percent.errors %}
-                    <div class="text-danger">{{ form.discount_percent.errors.0 }}</div>
-                  {% endif %}
-                  {% if form.discount_amount.errors %}
-                    <div class="text-danger">{{ form.discount_amount.errors.0 }}</div>
-                  {% endif %}
-                </div>
-
-                <!-- Advance -->
-              <div id="credit_time" style="display: none;">
-
-                <div class="mb-4"><label class="form-label mt-3">Advance Amount</label>
-                  {{ form.advance_payment_amount }}
-                  <label class="form-label fw-semibold">Advance Payment Mode</label>
-                  <div class="btn-group" role="group" aria-label="Advance Payment Method">
-                      <button type="button" class="btn btn-warning" onclick="selectAdvancePayment('cash', this)">Cash</button>
-                      <button type="button" class="btn btn-outline-dark" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                  <div id="advance-bank-dropdown" class="mb-3" style="display: none;">
+                    <label class="form-label">Select Bank (If Cheque/Online)</label>
+                    <select name="advance_bank" id="advance_bank" class="form-select">
+                      <option value="">Select Bank Account</option>
+                      {% for bank in banks %}
+                      <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
+                      {% endfor %}
+                    </select>
                   </div>
-                  <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
-
-                  <!-- Bank dropdown (hidden by default) -->
-
-                  <!-- Advance Amount -->
-                   {% if form.advance_amount.errors %}
-                    <div class="text-danger">{{ form.advance_amount.errors.0 }}</div>
-                  {% endif %}
-                  {% if form.advance_mode.errors %}
-                    <div class="text-danger">{{ form.advance_mode.errors.0 }}</div>
-                  {% endif %}
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Discount (₹)</label>
+                      {{ form.discount_amount }}
+                      {% if form.discount_amount.errors %}<div class="text-danger small">{{ form.discount_amount.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Discount (%)</label>
+                      {{ form.discount_percentage }}
+                      {% if form.discount_percent.errors %}<div class="text-danger small">{{ form.discount_percent.errors.0 }}</div>{% endif %}
+                    </div>
+                  </div>
+                  <div id="credit_time" style="display: none;">
+                    <div class="row g-3 mb-3">
+                      <div class="col-md-4">
+                        <label class="form-label">Advance amount</label>
+                        {{ form.advance_payment_amount }}
+                        {% if form.advance_amount.errors %}<div class="text-danger small">{{ form.advance_amount.errors.0 }}</div>{% endif %}
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Advance payment mode</label>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button type="button" class="btn btn-payment btn-payment-active" onclick="selectAdvancePayment('cash', this)">Cash</button>
+                          <button type="button" class="btn btn-payment" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                        </div>
+                        <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
+                      </div>
+                    </div>
+                    <div class="mb-3" id="due_date_wrapper" style="display: none;">
+                      <label class="form-label">Due date</label>
+                      <input type="date" class="form-control" name="due_date" id="due_date" value="{{ form.instance.due_date|date:'Y-m-d' }}">
+                      {% if form.due_date.errors %}<div class="text-danger small">{{ form.due_date.errors.0 }}</div>{% endif %}
+                    </div>
+                  </div>
                 </div>
-                 
-                
-               
-
-                <!-- Due Date -->
-                <div class="mb-3" id="due_date_wrapper" style="display: none;">
-                  <label class="form-label fw-semibold">Due Date</label>
-                  <input type="date" class="form-control" name="due_date" id="due_date" value="{{ form.instance.due_date|date:'Y-m-d' }}">
-                  {% if form.due_date.errors %}
-                    <div class="text-danger">{{ form.due_date.errors.0 }}</div>
-                  {% endif %}
-                </div>
-
               </div>
-
-               <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
-                  <select name="advance_bank" id="advance_bank" class="form-select" >
-                    <option value="">Select Bank</option>
-                    {% for bank in banks %}
-                        <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>
-                            {{ bank.name }}
-                        </option>
-                    {% endfor %}
-                  </select>
-                </div>
          
 
               {% comment %} <div class="border rounded p-3 bg-white shadow-sm mb-4">
@@ -787,11 +701,9 @@ document.addEventListener('input', function(e){
     console.log('ddfdfd')
     document.getElementById('payment_method').value = method;
 
-    // reset button styles
-    document.querySelectorAll('.btn-group .btn').forEach(b => 
-      b.classList.replace('btn-warning', 'btn-outline-dark')
-    );
-    btn.classList.replace('btn-outline-dark', 'btn-warning');
+    var group = btn.closest('.btn-group');
+    if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
+    btn.classList.add('btn-payment-active');
 
     document.getElementById('credit_time').style.display = method === 'credit' ? 'block' : 'none';
 
@@ -922,16 +834,11 @@ function recalculateTotals() {
 
 
 function selectAdvancePayment(method, btn) {
-    // Update hidden field
     document.getElementById('advance_payment_method').value = method;
-
-    // Toggle active button styling
-    btn.closest('.btn-group').querySelectorAll('button').forEach(b => {
-        b.classList.remove('btn-warning');
-        b.classList.add('btn-outline-dark');
+    btn.closest('.btn-group').querySelectorAll('.btn-payment').forEach(function(b) {
+        b.classList.remove('btn-payment-active');
     });
-    btn.classList.remove('btn-outline-dark');
-    btn.classList.add('btn-warning');
+    btn.classList.add('btn-payment-active');
 
     // Show/hide bank dropdown
     if (method === 'bank') {

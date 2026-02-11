@@ -14,6 +14,12 @@
         .tile { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; min-width: 150px; }
         .tile h6 { margin: 0; font-weight: 700; }
         .tile .value { font-size: 18px; }
+        .tile-sales { border-left: 5px solid #22c55e; }
+        .tile-purchase { border-left: 5px solid #3b82f6; }
+        .tile-stock { border-left: 5px solid #06b6d4; }
+        .tile-receipts { border-left: 5px solid #f59e0b; }
+        .tile-payments { border-left: 5px solid #ef4444; }
+        .tile-expenses { border-left: 5px solid #8b5cf6; }
         .table thead { background-color: gray; color: white; }
         .table tbody tr { background-color: white; color: black; }
         .table tbody tr:hover { background-color: #f0d28c; color: #775599; }
@@ -35,12 +41,12 @@
             </div>
 
             <div class="row mt-3 g-2">
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Sales</h6><div class="value">{{ tiles.sales.total|intcomma }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Purchase</h6><div class="value">{{ tiles.purchases.total|intcomma }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Stock</h6><div class="value">{{ tiles.stock.count|intcomma }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Receipts</h6><div class="value">{{ tiles.receipts.total|intcomma }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Payments</h6><div class="value">{{ tiles.payments.total|intcomma }}</div></div></div>
-                <div class="col-6 col-md-4 col-lg-2"><div class="tile"><h6>Expenses</h6><div class="value">{{ tiles.expenses.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile tile-sales"><h6>Sales</h6><div class="value">{{ tiles.sales.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile tile-purchase"><h6>Purchase</h6><div class="value">{{ tiles.purchases.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile tile-stock"><h6>Stock</h6><div class="value">{{ tiles.stock.count|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile tile-receipts"><h6>Receipts</h6><div class="value">{{ tiles.receipts.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile tile-payments"><h6>Payments</h6><div class="value">{{ tiles.payments.total|intcomma }}</div></div></div>
+                <div class="col-6 col-md-4 col-lg-2"><div class="tile tile-expenses"><h6>Expenses</h6><div class="value">{{ tiles.expenses.total|intcomma }}</div></div></div>
             </div>
 
             <div class="card mt-3">

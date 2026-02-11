@@ -1,277 +1,179 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Create Category{% endblock title %}
-
+{% block title %}{% if form.instance.pk %}Update{% else %}Add{% endif %} Coupon{% endblock title %}
 
 {% block extra_css %}
-    <!-- plugin css -->
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet"
-          type="text/css"/>
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        body {
-            background-color: #f0d28c;
-            padding-bottom: 20px;
-        }
-
-        .form-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-heading {
-            text-align: left;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 2rem;
-            color: #ffdb8a;
-        }
-
-        .description-box {
-            height: 150px;
-            resize: none;
-        }
-
-        .image-preview {
-            max-height: 100px;
-            margin-top: 10px;
-        }
-
-        .btn-primary {
-            background-color: #775599;;
-            border-color: #775599;;
-        }
-
-        .custom-button {
-            width: 150px;
-        }
+        body { background-color: #f8f9fa; padding-bottom: 20px; }
+        .form-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .section-card { border: 1px solid #eee; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; }
+        .section-title { font-weight: 600; color: #775599; margin-bottom: 1rem; font-size: 1rem; }
+        .section-title .bi { margin-right: 0.5rem; opacity: 0.9; }
+        .form-label { font-weight: 500; color: #333; }
+        .btn-primary { background-color: #775599; border-color: #775599; }
+        .btn-primary:hover { background-color: #5e4477; border-color: #5e4477; }
+        .form-control, .form-select { border-radius: 6px; }
     </style>
 {% endblock extra_css %}
 
 {% block content %}
-
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <!-- start page title -->
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
+                        <h4 class="mb-sm-0 font-size-18"><i class="bi bi-tag me-2" style="color: #775599;"></i>{% if form.instance.pk %}Update{% else %}Add{% endif %} Coupon</h4>
+                        <a href="{% url 'list_coupon' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
                     </div>
                 </div>
             </div>
             <div class="container">
                 <div class="form-container">
-                    <form method="POST"  enctype="multipart/form-data">
+                    <form method="POST" enctype="multipart/form-data">
                         {% csrf_token %}
-                        <!-- Category Title Section -->
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Coupon Code:</label>
-                            {{ form.code }}
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ form.non_field_errors }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endif %}
+
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-info-circle"></i>Basic information</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="id_code" class="form-label">Coupon code</label>
+                                    {{ form.code }}
+                                    {% if form.code.errors %}<div class="invalid-feedback d-block">{{ form.code.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_coupon_type" class="form-label">Coupon type</label>
+                                    {{ form.coupon_type }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_title" class="form-label">Title</label>
+                                    {{ form.title }}
+                                    {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_type" class="form-label">Type</label>
+                                    {{ form.type }}
+                                </div>
+                                <div class="col-12">
+                                    <label for="id_description" class="form-label">Description</label>
+                                    {{ form.description }}
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Coupon Type:</label>
-                            {{ form.coupon_type }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Title :</label>
-                            {{ form.title }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Type :</label>
-                            {{ form.type }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="discount_percentage" class="form-label">Discount Percentage:</label>
-                            {{ form.discount_percentage }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="discount_amount" class="form-label">Discount Amount:</label>
-                            {{ form.discount_amount }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="min_purchase" class="form-label">Minimum Purchase:</label>
-                            {{ form.min_purchase }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="max_discount" class="form-label">Maximum Discount:</label>
-                            {{ form.max_discount }}
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-percent"></i>Discount</div>
+                            <div class="row g-3">
+                                <div class="col-md-4" id="discount_percentage_wrapper">
+                                    <label for="id_discount_percentage" class="form-label">Discount percentage</label>
+                                    {{ form.discount_percentage }}
+                                    {% if form.discount_percentage.errors %}<div class="invalid-feedback d-block">{{ form.discount_percentage.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4" id="discount_amount_wrapper">
+                                    <label for="id_discount_amount" class="form-label">Discount amount</label>
+                                    {{ form.discount_amount }}
+                                    {% if form.discount_amount.errors %}<div class="invalid-feedback d-block">{{ form.discount_amount.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_min_purchase" class="form-label">Minimum purchase</label>
+                                    {{ form.min_purchase }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_max_discount" class="form-label">Maximum discount</label>
+                                    {{ form.max_discount }}
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="max_discount" class="form-label">Customer ID:</label>
-                            {{ form.customer_id }}
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-calendar-range"></i>Validity & customer</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="id_customer_id" class="form-label">Customer ID</label>
+                                    {{ form.customer_id }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_start_date" class="form-label">Start date</label>
+                                    {{ form.start_date }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_end_date" class="form-label">End date</label>
+                                    {{ form.end_date }}
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="code" class="form-label">Description:</label>
-                            {{ form.description }}
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-image"></i>Image</div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="id_image" class="form-label">Image</label>
+                                    {{ form.image }}
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="mb-4">
-                            <label for="start_date" class="form-label">Start Date:</label>
-                            {{ form.start_date }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="end_date" class="form-label">End Date:</label>
-                            {{ form.end_date }}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="is_active" class="form-label">Only Followers:</label>
-                            {{ form.only_followers }}
-                            <label for="is_active" class="form-label">Active:</label>
-                            {{ form.is_active }}
-                        </div>
-                        
-                        <div class="mb-5">
-                            <label for="image" class="form-label">Image:</label>
-                            {{ form.image }}
-                        </div>
-                        
 
-                        
-                                <!-- Submit Button -->
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary custom-button">Submit</button>
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-toggle-on"></i>Options</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.only_followers }}
+                                        <label for="id_only_followers" class="form-check-label form-label">Only followers</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        {{ form.is_active }}
+                                        <label for="id_is_active" class="form-check-label form-label">Active</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end pt-2">
+                            <a href="{% url 'list_coupon' %}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>{% if form.instance.pk %}Update{% else %}Save{% endif %}</button>
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
-        <!-- container-fluid -->
+    {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
 </div>
-    <!-- End Page-content -->
-
-    {% block footer %}
-        {% include 'partials/footer.html' %}
-    {% endblock footer %}
-</div>
-
 {% endblock content %}
 
-
 {% block extra_js %}
-    <!-- apexcharts -->
-    <script src="{% static 'libs/apexcharts/dist/apexcharts.min.js' %}"></script>
-    
-    
-    
-    <script>
-        function toggleDiscountFields() {
-
-            const typeSelect = document.getElementById("id_type");
-            const percentField = document.getElementById('id_discount_percentage').parentElement;
-            const amountField = document.getElementById('id_discount_amount').parentElement;
-    
-            if (typeSelect.value === "percent") {
-                percentField.style.display = "block";
-                amountField.style.display = "none";
-            } else if (typeSelect.value === "amount") {
-                percentField.style.display = "none";
-                amountField.style.display = "block";
-            }
-        }
-    
-        document.addEventListener("DOMContentLoaded", function () {
-            const typeSelect = document.getElementById("id_type");
-            if (typeSelect) {
-                toggleDiscountFields();
-                typeSelect.addEventListener("change", toggleDiscountFields);
-            }
-        });
-    </script>
-
-
-
-    <script>
-        // Image preview logic
-        document.getElementById("bannerImage").addEventListener("change", function () {
-            const file = this.files[0];
-            const preview = document.getElementById("preview");
-
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function (event) {
-                    preview.src = event.target.result;
-                    preview.hidden = false;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                preview.src = "";
-                preview.hidden = true;
-            }
-        });
-    </script>
-    <script>
-        // Auto-hide toast after 5 seconds
-        setTimeout(() => {
-            const toastElement = document.getElementById("toast");
-            if (toastElement) {
-                toastElement.classList.remove("show"); // Hide toast
-                setTimeout(() => {
-                    toastElement.remove(); // Remove from DOM
-                }, 500); // Wait for fade-out animation
-            }
-        }, 5000);
-    </script>
-
-    <!-- Plugins js-->
-   
-
-    <script>
-
-        
-function displaySelectedImages() {
-    const input = document.getElementById("images");
-    const selectedImagesContainer = document.getElementById("imagesPreview");
-    selectedImagesContainer.innerHTML = ""; // Clear previously displayed images
-
-    Array.from(input.files).forEach((file) => {
-      if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const imageDiv = document.createElement("div");
-          imageDiv.style.position = "relative";
-          const img = document.createElement("img");
-          img.src = event.target.result;
-          img.alt = file.name;
-          img.style.width = "100px";
-          img.style.height = "100px";
-          img.style.objectFit = "cover";
-          img.style.border = "1px solid #ddd";
-          img.style.borderRadius = "5px";
-          imageDiv.appendChild(img);
-          selectedImagesContainer.appendChild(imageDiv);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-
-
-    </script>
-
-    
-    
-
-
+<script>
+function toggleDiscountFields() {
+    var typeSelect = document.getElementById("id_type");
+    var percentWrapper = document.getElementById("discount_percentage_wrapper");
+    var amountWrapper = document.getElementById("discount_amount_wrapper");
+    if (!typeSelect || !percentWrapper || !amountWrapper) return;
+    if (typeSelect.value === "percent") {
+        percentWrapper.style.display = "block";
+        amountWrapper.style.display = "none";
+    } else if (typeSelect.value === "amount") {
+        percentWrapper.style.display = "none";
+        amountWrapper.style.display = "block";
+    }
+}
+document.addEventListener("DOMContentLoaded", function () {
+    var typeSelect = document.getElementById("id_type");
+    if (typeSelect) {
+        toggleDiscountFields();
+        typeSelect.addEventListener("change", toggleDiscountFields);
+    }
+});
+</script>
 {% endblock extra_js %}

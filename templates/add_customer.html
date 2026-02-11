@@ -1,184 +1,199 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Create Customer{% endblock title %}
+{% block title %}{% if form.instance.pk %}Update{% else %}Add{% endif %} Customer{% endblock title %}
 
 {% block extra_css %}
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        body {
-            background-color: #f0d28c;
-            padding-bottom: 20px;
-        }
-
-        .form-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-heading {
-            text-align: left;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 2rem;
-            color: #ffdb8a;
-        }
-
-        .btn-primary {
-            background-color: #775599;
-            border-color: #775599;
-        }
-
-        .custom-button {
-            width: 150px;
-        }
+        body { background-color: #f8f9fa; padding-bottom: 20px; }
+        .form-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .section-card { border: 1px solid #eee; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; }
+        .section-title { font-weight: 600; color: #775599; margin-bottom: 1rem; font-size: 1rem; }
+        .section-title .bi { margin-right: 0.5rem; opacity: 0.9; }
+        .form-label { font-weight: 500; color: #333; }
+        .btn-primary { background-color: #775599; border-color: #775599; }
+        .btn-primary:hover { background-color: #5e4477; border-color: #5e4477; }
+        .form-control, .form-select { border-radius: 6px; }
     </style>
 {% endblock extra_css %}
 
 {% block content %}
-
 <div class="main-content">
-  <div class="page-content">
-    <div class="container-fluid">
-      <div class="row mb-3">
-        <div class="col-12">
-          <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-            <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
-          </div>
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18"><i class="bi bi-person-plus me-2" style="color: #775599;"></i>{% if form.instance.pk %}Update{% else %}Add{% endif %} Customer</h4>
+                        <a href="{% url 'list_customer' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="form-container">
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ form.non_field_errors }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endif %}
+
+                        <!-- Basic information (profile-style: name, mobile, email) -->
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-person"></i>Basic information</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_name" class="form-label">Customer name</label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_contact" class="form-label">Mobile number</label>
+                                    {{ form.contact }}
+                                    {% if form.contact.errors %}<div class="invalid-feedback d-block">{{ form.contact.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_email" class="form-label">Email</label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Business details -->
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-briefcase"></i>Business details</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_company_name" class="form-label">Company name</label>
+                                    {{ form.company_name }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_gst_number" class="form-label">GST number</label>
+                                    {{ form.gst_number }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_pan_number" class="form-label">PAN number</label>
+                                    {{ form.pan_number }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_aadhar_number" class="form-label">Aadhar number</label>
+                                    {{ form.aadhar_number }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Billing address -->
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-geo-alt"></i>Billing address</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_billing_address_line1" class="form-label">Address line 1</label>
+                                    {{ form.billing_address_line1 }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_billing_address_line2" class="form-label">Address line 2</label>
+                                    {{ form.billing_address_line2 }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_billing_city" class="form-label">City</label>
+                                    {{ form.billing_city }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_billing_state" class="form-label">State</label>
+                                    {{ form.billing_state }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_billing_country" class="form-label">Country</label>
+                                    {{ form.billing_country }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_billing_pincode" class="form-label">Pincode</label>
+                                    {{ form.billing_pincode }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dispatch address -->
+                        <div class="section-card">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="section-title mb-0"><i class="bi bi-truck"></i>Dispatch address</div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="copyBilling" onclick="copyBillingToDispatch(this)">
+                                    <label class="form-check-label" for="copyBilling">Same as billing</label>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_dispatch_address_line1" class="form-label">Address line 1</label>
+                                    {{ form.dispatch_address_line1 }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_dispatch_address_line2" class="form-label">Address line 2</label>
+                                    {{ form.dispatch_address_line2 }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_dispatch_city" class="form-label">City</label>
+                                    {{ form.dispatch_city }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_dispatch_state" class="form-label">State</label>
+                                    {{ form.dispatch_state }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_dispatch_country" class="form-label">Country</label>
+                                    {{ form.dispatch_country }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_dispatch_pincode" class="form-label">Pincode</label>
+                                    {{ form.dispatch_pincode }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Transport & opening balance -->
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-currency-rupee"></i>Transport & balance</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="id_transport_name" class="form-label">Transport name</label>
+                                    {{ form.transport_name }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_state" class="form-label">State</label>
+                                    {{ form.state }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_opening_balance" class="form-label">Opening balance</label>
+                                    {{ form.opening_balance }}
+                                    {% if form.opening_balance.errors %}<div class="invalid-feedback d-block">{{ form.opening_balance.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end pt-2">
+                            <a href="{% url 'list_customer' %}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>{% if form.instance.pk %}Update{% else %}Save{% endif %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div class="container">
-        <div class="form-container">
-          <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
-            {% csrf_token %}
-
-            <h5 class="form-heading">Basic Details</h5>
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label">Customer Name</label>
-                {{ form.name }}
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">Mobile Number</label>
-                {{ form.contact }}
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">Email ID</label>
-                {{ form.email }}
-              </div>
-            </div>
-
-            <hr class="my-4">
-            <h5 class="form-heading">Business Details</h5>
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label">Company Name</label>
-                {{ form.company_name }}
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">GST</label>
-                {{ form.gst_number }}
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">PAN</label>
-                {{ form.pan_number }}
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Aadhar Number</label>
-                {{ form.aadhar_number }}
-              </div>
-            </div>
-
-            <hr class="my-4">
-            <div class="d-flex align-items-center gap-3">
-              <h5 class="form-heading mb-0">Billing Address</h5>
-            </div>
-            <div class="row g-3">
-              <div class="col-md-6">
-                {{ form.billing_address_line1 }}
-              </div>
-              <div class="col-md-6">
-                {{ form.billing_address_line2 }}
-              </div>
-              <div class="col-md-3">
-                {{ form.billing_city }}
-              </div>
-              <div class="col-md-3">
-                {{ form.billing_state }}
-              </div>
-              <div class="col-md-3">
-                {{ form.billing_country }}
-              </div>
-              <div class="col-md-3">
-                {{ form.billing_pincode }}
-              </div>
-            </div>
-
-            <hr class="my-4">
-            <div class="d-flex align-items-center gap-3">
-              <h5 class="form-heading mb-0">Dispatch Address</h5>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="copyBilling" onclick="copyBillingToDispatch(this)">
-                <label class="form-check-label" for="copyBilling">Same as Billing</label>
-              </div>
-            </div>
-            <div class="row g-3">
-              <div class="col-md-6">
-                {{ form.dispatch_address_line1 }}
-              </div>
-              <div class="col-md-6">
-                {{ form.dispatch_address_line2 }}
-              </div>
-              <div class="col-md-3">
-                {{ form.dispatch_city }}
-              </div>
-              <div class="col-md-3">
-                {{ form.dispatch_state }}
-              </div>
-              <div class="col-md-3">
-                {{ form.dispatch_country }}
-              </div>
-              <div class="col-md-3">
-                {{ form.dispatch_pincode }}
-              </div>
-            </div>
-
-            <hr class="my-4">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <h5 class="form-heading">Transport</h5>
-                {{ form.transport_name }}
-              </div>
-              <div class="col-md-6">
-                <h5 class="form-heading">Opening Balance</h5>
-                {{ form.opening_balance }}
-              </div>
-            </div>
-
-            <div class="text-center mt-4">
-              <button type="submit" class="btn btn-primary custom-button">Submit</button>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
-  </div>
-  {% block footer %}
-    {% include 'partials/footer.html' %}
-  {% endblock footer %}
+    {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
 </div>
-
 {% endblock content %}
 
 {% block extra_js %}
 <script>
 function copyBillingToDispatch(checkbox) {
     const fields = ["address_line1", "address_line2", "pincode", "city", "state", "country"];
-    fields.forEach(field => {
+    fields.forEach(function(field) {
         const billing = document.getElementById("id_billing_" + field);
         const dispatch = document.getElementById("id_dispatch_" + field);
         if (checkbox.checked && billing && dispatch) {

@@ -359,6 +359,7 @@ class vendor_customersForm(forms.ModelForm):
             'dispatch_country': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Country'}),
 
             'transport_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Transport Name'}),
+            'state': forms.Select(attrs={'class': 'form-control form-select'}),
         }
 
 
@@ -618,6 +619,8 @@ class SaleForm(forms.ModelForm):
         
         if user:
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
+            # Show "Name (Contact)" so POS search works by name or mobile
+            self.fields['customer'].label_from_instance = lambda obj: "{} ({})".format(obj.name, obj.contact or "")
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
             self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
 

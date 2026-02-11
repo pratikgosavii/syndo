@@ -951,7 +951,7 @@ def delete_customer(request, vendor_id):
 
     vendor_customers.objects.get(id=vendor_id).delete()
 
-    return HttpResponseRedirect(reverse('list_vendor'))
+    return HttpResponseRedirect(reverse('list_customer'))
 
 
 @login_required(login_url='login_admin')
@@ -1608,7 +1608,7 @@ def generate_barcode(request):
             sale_price = i.sales_price
             package_date = datetime.now().strftime("%d/%m/%Y")
             note = note_text if note_text else ""
-            barcode_value = str("svindo" + i.id)
+            barcode_value = str("svindo") + str(i.id)
 
           
             # Margin padding
@@ -3618,6 +3618,7 @@ def pos(request):
                 "saleitemform": SaleItemForm(),
                 "products": product.objects.filter(user=request.user, is_active=True),
                 "banks": vendor_bank.objects.filter(user=request.user),
+                "existing_items": [],
             }
             return render(request, "pos_form.html", context)
 
@@ -3672,6 +3673,7 @@ def pos(request):
                     "saleitemform": SaleItemForm(),
                     "products": product.objects.filter(user=request.user, is_active=True),
                     "banks": vendor_bank.objects.filter(user=request.user),
+                    "existing_items": [],
                     "error_message": str(e),
                 }
                 return render(request, "pos_form.html", context)
@@ -3683,6 +3685,7 @@ def pos(request):
         "wholesale_forms": wholesale_form,
         "saleitemform": SaleItemForm(),
         "products": product.objects.filter(user=request.user, is_active=True),
+        "existing_items": [],
     })
 
 
@@ -4115,11 +4118,11 @@ def pos_wholesaless(request, sale_id):
 
 
 def order_details(request, order_id):
-    # Load order with delivery_boy for delivery boy details section; restrict to vendor's orders
+    # Load order with delivery_boy, user (customer), and print job files; restrict to vendor's orders
     order = (
         Order.objects.filter(id=order_id, items__product__user=request.user)
-        .select_related('delivery_boy', 'address')
-        .prefetch_related('items__product')
+        .select_related('delivery_boy', 'address', 'user')
+        .prefetch_related('items__product', 'items__print_job__files')
         .distinct()
         .first()
     )
@@ -4127,9 +4130,30 @@ def order_details(request, order_id):
         raise Http404("Order not found")
     delivery_boy_data = DeliveryBoy.objects.filter(user=request.user)
 
+    # Customer details: from user or address (e.g. on-shop orders may have address only)
+    customer_name = None
+    customer_phone = None
+    customer_email = None
+    if order.user:
+        if hasattr(order.user, 'get_full_name') and order.user.get_full_name():
+            customer_name = order.user.get_full_name()
+        if not customer_name:
+            customer_name = getattr(order.user, 'username', None) or getattr(order.user, 'email', None) or getattr(order.user, 'mobile', None)
+        customer_phone = getattr(order.user, 'mobile', None)
+        customer_email = getattr(order.user, 'email', None)
+    if order.address:
+        if not customer_name:
+            customer_name = getattr(order.address, 'full_name', None)
+        if not customer_phone:
+            customer_phone = getattr(order.address, 'mobile_number', None)
+
     context = {
         "data": order,
         "delivery_boy_data": delivery_boy_data,
+        "customer_name": customer_name or "—",
+        "customer_phone": customer_phone or "—",
+        "customer_email": customer_email or "",
+        "title": f"Order Details – {order.order_id}",
     }
     return render(request, 'order_details.html', context)
 

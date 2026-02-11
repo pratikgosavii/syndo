@@ -126,9 +126,21 @@
             <div class="container my-4">
                 <div class="card p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4>Customer Name:- {{ data.customer_name }}</h4>
+                        <h4>Customer: {{ customer_name }}</h4>
                         <button class="btn btn-danger">Cancel</button>
                     </div>
+                    <div class="mb-3">
+                        <div class="section-title">Customer Details</div>
+                        <p class="mb-0">Name: <strong>{{ customer_name }}</strong></p>
+                        <p class="mb-0">Phone: <strong>{{ customer_phone }}</strong></p>
+                        {% if customer_email %}<p class="mb-0">Email: <strong>{{ customer_email }}</strong></p>{% endif %}
+                    </div>
+                    {% if data.instruction %}
+                    <div class="mb-3">
+                        <div class="section-title">Order Note / Instructions</div>
+                        <p class="mb-0">{{ data.instruction }}</p>
+                    </div>
+                    {% endif %}
                     <p class="order-status">{{ data.get_status_display  }}</p>
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -189,6 +201,23 @@
                 <span class="badge bg-light text-dark border">{{ item.get_status_display }}</span>
             {% endif %}
 
+            <!-- Print order details: download files and page notes -->
+            {% if item.print_job %}
+            <div class="mt-2 p-2 border rounded bg-light">
+                <div class="section-title">Print details</div>
+                {% for pf in item.print_job.files.all %}
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <a href="{{ pf.file.url }}" target="_blank" class="btn btn-sm btn-primary" download>Download file</a>
+                    {% if pf.instructions %}
+                    <span class="text-muted small"><strong>Page notes:</strong> {{ pf.instructions }}</span>
+                    {% endif %}
+                    {% if pf.page_count or pf.page_numbers %}
+                    <span class="text-muted small">Pages: {% if pf.page_numbers %}{{ pf.page_numbers }}{% else %}{{ pf.page_count }}{% endif %}{% if pf.number_of_copies %} · {{ pf.number_of_copies }} copy/copies{% endif %}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
 
         </div>
     </div>

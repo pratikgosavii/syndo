@@ -1,209 +1,346 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Categories List{% endblock title %}
-
+{% block title %}Vendor List{% endblock title %}
 
 {% block extra_css %}
-    <!-- plugin css -->
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet"
-          type="text/css"/>
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-    />
+    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <style>
         body {
-            background-color: gainsboro;
-            color: #775599;;
+            background-color: #f5f5f5;
+            color: #333;
         }
 
-        .card {
-            background-color: #ffffff;
-            border: none;
+        .vendor-list-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .vendor-list-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #333;
+            position: relative;
+        }
+
+        .vendor-list-title::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -8px;
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        .search-add-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            flex: 1;
+            max-width: 420px;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 160px;
+            position: relative;
+        }
+
+        .search-box .form-control {
+            padding: 0.3rem 0.5rem 0.3rem 1.75rem;
+            font-size: 0.8rem;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .search-box .bi-search {
+            position: absolute;
+            left: 8px;
+            font-size: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+
+        .btn-add-vendor {
+            background: #FCA311 !important;
+            border-color: #FCA311 !important;
+            color: #fff !important;
+            font-weight: 600;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.75rem;
+            border-radius: 6px;
+        }
+
+        .btn-add-vendor:hover {
+            background: #e5940f !important;
+            border-color: #e5940f !important;
+            color: #fff !important;
+        }
+
+        .vendor-card {
+            background: #fff;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+            padding: 0.6rem 0.9rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 0.6rem;
         }
 
-        .card-header {
-            background-color: #775599;;
-            color: #ffffff;
-            border-radius: 8px 8px 0 0;
-            padding: 20px;
+        .vendor-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            flex-shrink: 0;
         }
 
-        .card-title {
-            margin: 0;
+        .vendor-avatar.bg-blue { background: #dbeafe; color: #1d4ed8; }
+        .vendor-avatar.bg-orange { background: #ffedd5; color: #c2410c; }
+        .vendor-avatar.bg-green { background: #dcfce7; color: #15803d; }
+        .vendor-avatar.bg-purple { background: #f3e8ff; color: #7c3aed; }
+
+        .vendor-info {
+            flex: 1;
+            min-width: 140px;
         }
 
-        .card-body {
-            padding: 20px;
+        .vendor-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #111;
+            margin-bottom: 0.05rem;
         }
 
-        .table thead {
-            background-color: gray;
-            color: white;
+        .vendor-company {
+            font-size: 0.78rem;
+            color: #6b7280;
+            margin-bottom: 0.2rem;
         }
 
-        .table tbody tr {
-            background-color: white;
-            color: black;
+        .vendor-contact {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            font-size: 0.75rem;
+            color: #4b5563;
         }
 
-        .table tbody tr:hover {
-            background-color: #f0d28c;
-            color: #775599;;
+        .vendor-contact span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
         }
 
-        .status-approved {
-            color: rgb(80, 244, 80);
-            font-weight: bold;
+        .vendor-contact .bi { font-size: 0.7rem; }
+
+        .vendor-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.9rem;
+            margin-top: 0.4rem;
         }
 
-        .status-pending {
-            color: blue;
-            font-weight: bold;
+        .vendor-detail-item {
+            font-size: 0.65rem;
         }
 
-        .status-not-approved {
-            color: red;
-            font-weight: bold;
+        .vendor-detail-label {
+            color: #9ca3af;
+            font-weight: 500;
+            margin-bottom: 0.1rem;
         }
 
-        @media (max-width: 768px) {
-            .table-responsive {
-                overflow-x: auto;
-            }
+        .vendor-detail-value {
+            color: #374151;
+            font-size: 0.75rem;
         }
+
+        .tax-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+
+        .tax-tag {
+            background: #f3f4f6;
+            color: #4b5563;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            font-size: 0.68rem;
+        }
+
+        .balance-positive {
+            font-weight: 700;
+            color: #22c55e !important;
+        }
+
+        .balance-negative {
+            font-weight: 700;
+            color: #ef4444 !important;
+        }
+
+        .vendor-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        .btn-view-ledger {
+            background: #dbeafe !important;
+            color: #1d4ed8 !important;
+            border: none !important;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .btn-view-ledger:hover {
+            background: #bfdbfe !important;
+            color: #1d4ed8 !important;
+        }
+
+        .action-btn {
+            width: 26px;
+            height: 26px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+
+        .action-btn:hover {
+            background: #f9fafb;
+            color: #111;
+        }
+
+        .action-btn.edit:hover { color: #FCA311; }
+        .action-btn.delete:hover { color: #ef4444; }
     </style>
 {% endblock extra_css %}
 
 {% block content %}
-
-    <!-- ============================================================== -->
-    <!-- Start right Content here -->
-    <!-- ============================================================== -->
     <div class="main-content">
         <div class="page-content">
             <div class="container-fluid">
-                <!-- start page title -->
                 <div class="row">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 class="mb-sm-0 font-size-18"><i class="bi bi-building me-2" style="color: #775599;"></i>List Vendor</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="container">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table
-                                                id="datatable"
-                                                class="table table-bordered table-striped"
-                                        >
-                                            <thead>
-    <tr>
-        <th>#</th>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Contact</th>
-        <th>Company</th>
-        <th>GST</th>
-        <th>Aadhar</th>
-        <th>PAN</th>
-        <th>Address Line 1</th>
-        <th>Address Line 2</th>
-        <th>Pincode</th>
-        <th>City</th>
-        <th>State</th>
-        <th>Country</th>
-        <th>Balance</th>
-        <th>Action</th>
-    </tr>
-</thead>
-<tbody id="tableBody">
-    {% if data %}
-        {% for i in data %}
-        <tr>
-            <td>{{ forloop.counter }}</td>
-            <td>{{ i.name }}</td>
-            <td>{{ i.email }}</td>
-            <td>{{ i.contact }}</td>
-            <td>{{ i.company_name }}</td>
-            <td>{{ i.gst }}</td>
-            <td>{{ i.aadhar }}</td>
-            <td>{{ i.pan }}</td>
-            <td>{{ i.address_line1 }}</td>
-            <td>{{ i.address_line2 }}</td>
-            <td>{{ i.pincode }}</td>
-            <td>{{ i.city }}</td>
-            <td>{{ i.state }}</td>
-            <td>{{ i.country }}</td>
-            <td>₹ {{ i.balance|floatformat:2 }}</td>
-            <td>
-
-                <a href="{% url 'vendor-ledger' i.id %}">
-                    <i class="bi bi-journal-text text-primary" title="ledger"></i>
-                </a>
-
-                <a href="{% url 'update_vendor' i.id %}">
-                    <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
-                </a>
-                <a href="{% url 'delete_vendor' i.id %}">
-                    <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
-                </a>
-            </td>
-        </tr>
-        {% endfor %}
-    {% else %}
-        <tr>
-            <td colspan="16" class="text-center text-muted">No vendors found.</td>
-        </tr>
-    {% endif %}
-</tbody>
-
-                                        </table>
-                                    </div>
+                        <div class="vendor-list-header">
+                            <h4 class="vendor-list-title">Vendor List</h4>
+                            <div class="search-add-row">
+                                <div class="search-box">
+                                    <i class="bi bi-search"></i>
+                                    <input type="text" id="vendorSearch" class="form-control" placeholder="Search by Name, Company, or GST..." aria-label="Search vendors">
                                 </div>
+                                <a href="{% url 'add_vendor' %}" class="btn btn-add-vendor"><i class="bi bi-plus-lg me-1"></i>Add Vendor</a>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <!-- container-fluid -->
-        </div>
-        <!-- End Page-content -->
 
+                <div class="row">
+                    <div class="col-12">
+                        <div id="vendorList">
+                            {% if data %}
+                                {% for i in data %}
+                                    {% with initials=i.name|slice:":2"|upper %}
+                                    <div class="vendor-card vendor-item" data-name="{{ i.name|lower }}" data-company="{{ i.company_name|default:''|lower }}" data-gst="{{ i.gst|default:''|lower }}">
+                                        <div class="vendor-avatar bg-{% cycle 'blue' 'orange' 'green' 'purple' %}">{{ initials }}</div>
+                                        <div class="vendor-info">
+                                            <div class="vendor-name">{{ i.name }}</div>
+                                            <div class="vendor-company">{{ i.company_name|default:"—" }}</div>
+                                            <div class="vendor-contact">
+                                                {% if i.contact %}<span><i class="bi bi-telephone"></i> {{ i.contact }}</span>{% endif %}
+                                                {% if i.email %}<span><i class="bi bi-envelope"></i> {{ i.email }}</span>{% endif %}
+                                            </div>
+                                            <div class="vendor-details">
+                                                <div class="vendor-detail-item">
+                                                    <div class="vendor-detail-label">LOCATION</div>
+                                                    <div class="vendor-detail-value">
+                                                        {% if i.city or i.state %}
+                                                            {{ i.city|default:'' }}{% if i.state %}{% if i.city %}, {% endif %}{{ i.state.name }}{% endif %}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="vendor-detail-item">
+                                                    <div class="vendor-detail-label">TAX INFO</div>
+                                                    <div class="tax-tags">
+                                                        {% if i.gst %}<span class="tax-tag">GST: {{ i.gst|truncatechars:15 }}</span>{% endif %}
+                                                        {% if i.pan %}<span class="tax-tag">PAN: {{ i.pan|truncatechars:12 }}</span>{% endif %}
+                                                        {% if not i.gst and not i.pan %}<span class="tax-tag">—</span>{% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="vendor-detail-item">
+                                                    <div class="vendor-detail-label">CURRENT BALANCE</div>
+                                                    <div class="vendor-detail-value {% if i.balance|default:0 >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                                        {% with bal=i.balance|default:0 %}{% if bal >= 0 %}₹ {{ bal|floatformat:2 }}{% else %}- ₹ {{ bal|floatformat:2|slice:"1:" }}{% endif %}{% endwith %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="vendor-actions">
+                                            <a href="{% url 'vendor-ledger' i.id %}" class="btn btn-view-ledger"><i class="bi bi-journal-text me-1"></i>View Ledger</a>
+                                            <div class="d-flex gap-1">
+                                                <a href="{% url 'update_vendor' i.id %}" class="action-btn edit" title="Edit"><i class="bi bi-pencil"></i></a>
+                                                <a href="{% url 'delete_vendor' i.id %}" class="action-btn delete" title="Delete"><i class="bi bi-trash"></i></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endwith %}
+                                {% endfor %}
+                            {% else %}
+                                <div class="vendor-card text-center py-4 text-muted" style="font-size: 0.85rem;">
+                                    No vendors found. <a href="{% url 'add_vendor' %}">Add your first vendor</a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% block footer %}
             {% include 'partials/footer.html' %}
         {% endblock footer %}
     </div>
-    <!-- end main content-->
 {% endblock content %}
 
 {% block extra_js %}
     <script>
-        // Auto-hide toast after 5 seconds
-        setTimeout(() => {
-            const toastElement = document.getElementById("toast");
-            if (toastElement) {
-                toastElement.classList.remove("show"); // Hide toast
-                setTimeout(() => {
-                    toastElement.remove(); // Remove from DOM
-                }, 500); // Wait for fade-out animation
-            }
+        document.getElementById('vendorSearch')?.addEventListener('input', function() {
+            const q = this.value.toLowerCase().trim();
+            document.querySelectorAll('.vendor-item').forEach(function(card) {
+                const name = card.dataset.name || '';
+                const company = card.dataset.company || '';
+                const gst = card.dataset.gst || '';
+                const match = !q || name.includes(q) || company.includes(q) || gst.includes(q);
+                card.style.display = match ? '' : 'none';
+            });
+        });
+        setTimeout(function() {
+            var t = document.getElementById('toast');
+            if (t) { t.classList.remove('show'); setTimeout(function() { t.remove(); }, 500); }
         }, 5000);
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Plugins js-->
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.min.js' %}"></script>
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/maps/jquery-jvectormap-world-mill-en.js' %}"></script>
-    <script src="{% static 'js/pages/allchart.js' %}"></script>
-    <!-- dashboard init -->
-    <script src="{% static 'js/pages/dashboard.init.js' %}"></script>
-
 {% endblock extra_js %}
