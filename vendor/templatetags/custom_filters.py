@@ -34,6 +34,17 @@ def ledger_credit(amount):
 
 
 @register.filter
+def abs_amount(value):
+    """Return absolute value for display (e.g. negative balance as positive with minus prefix)."""
+    if value is None:
+        return 0
+    try:
+        return abs(float(value))
+    except (TypeError, ValueError):
+        return 0
+
+
+@register.filter
 def ledger_type_pill_class(transaction_type):
     """Return Bootstrap-style pill class for transaction type (Transactions UI)."""
     if not transaction_type:

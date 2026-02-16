@@ -619,6 +619,7 @@ class SaleForm(forms.ModelForm):
         
         if user:
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
+            self.fields['customer'].empty_label = "Select Customer"
             # Show "Name (Contact)" so POS search works by name or mobile
             self.fields['customer'].label_from_instance = lambda obj: "{} ({})".format(obj.name, obj.contact or "")
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
@@ -656,7 +657,7 @@ class pos_wholesaleForm(forms.ModelForm):
             'invoice_number': forms.TextInput(attrs={'class': 'form-control'}),
             'delivery_city': forms.TextInput(attrs={'class': 'form-control', 'delivery_city' : 'delivery_city'}),
 
-            'dispatch_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'dispatch_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Full Address...'}),
             'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),

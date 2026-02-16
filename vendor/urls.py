@@ -224,6 +224,7 @@ urlpatterns = [
     path('kyc/verify-bank/', VerifyBankAPIView.as_view(), name='verify_bank'),
     path('kyc/verify-fssai/', VerifyFSSAIAPIView.as_view(), name='verify_fssai'),
     path('accept-order/<order_id>', accept_order, name='accept_order'),
+    path('cancel-order/<order_id>', cancel_order, name='cancel_order'),
     path('assign-delivery-boy/<order_id>', assign_delivery_boy, name='assign_delivery_boy'),
     
     path('delivery-management/', delivery_management, name='delivery_management'),

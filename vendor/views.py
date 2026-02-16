@@ -1058,6 +1058,7 @@ def customer_ledger(request, customer_id):
     from .models import vendor_customers
 
     ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
+    customer = None
     try:
         customer = vendor_customers.objects.get(id=customer_id)
         balance = customer.balance or 0
@@ -1068,6 +1069,7 @@ def customer_ledger(request, customer_id):
 
     return render(request, "customer_ledger.html", {
         "customer_id": customer_id,
+        "customer": customer,
         "balance": balance,
         "total_sales": total_sales,
         "ledger": ledger_entries,
@@ -1079,10 +1081,13 @@ def vendor_ledger(request, vendor_id):
     vendor = get_object_or_404(vendor_vendors, pk=vendor_id)
     ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id).order_by("created_at")
     balance = vendor.balance or ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
+    total_purchases = Purchase.objects.filter(vendor_id=vendor_id).aggregate(total=Sum("total_amount"))["total"] or 0
 
     return render(request, "vendor_ledger.html", {
         "vendor_id": vendor_id,
+        "vendor": vendor,
         "balance": balance,
+        "total_purchases": total_purchases,
         "ledger": ledger_entries,
     })
 
@@ -3584,7 +3589,7 @@ def pos(request):
 
     sale_form = SaleForm(user=request.user)
     customer_form = vendor_customersForm()
-    wholesale_form = pos_wholesaleForm()
+    wholesale_form = pos_wholesaleForm(initial={'packaging_charges': 100})
 
     # Pre-fill default company_profile for GET (and as initial on form)
     try:
@@ -4602,7 +4607,39 @@ def assign_delivery_boy(request, order_id):
     return redirect('order_details', order_id=order_id)
 
 
-
+@login_required(login_url='login_admin')
+def cancel_order(request, order_id):
+    """Vendor cancels the order from order-details page (same logic as OrderViewSet.cancel_by_vendor)."""
+    order = (
+        Order.objects.filter(id=order_id, items__product__user=request.user)
+        .prefetch_related('items__product')
+        .distinct()
+        .first()
+    )
+    if not order:
+        raise Http404("Order not found")
+    if request.method != 'POST':
+        return redirect('order_details', order_id=order_id)
+    if order.status in ("completed", "cancelled", "cancelled_by_vendor"):
+        return redirect('order_details', order_id=order_id)
+    previous_status = order.status
+    for item in order.items.all():
+        if item.status != "cancelled":
+            item.status = "cancelled"
+            item.save(update_fields=["status"])
+    order.status = "cancelled_by_vendor"
+    order.save(update_fields=["status"])
+    try:
+        from customer.serializers import send_order_status_notification
+        send_order_status_notification(order, "cancelled_by_vendor", previous_status)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("Error sending cancel notification: %s", e)
+    try:
+        notify_delivery_event(order, "cancelled")
+    except Exception:
+        pass
+    return redirect('order_details', order_id=order_id)
 
 
 from django.shortcuts import render, redirect
