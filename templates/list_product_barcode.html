@@ -1,223 +1,352 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Product List{% endblock title %}
+{% block title %}Generate Barcode{% endblock title %}
 
 {% block extra_css %}
-<link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
-<style>
-    body {
-        background-color: gainsboro;
-        color: #775599;
-    }
-
-    .card {
-        background-color: #ffffff;
-        border: none;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .card-header {
-        background-color: #775599;
-        color: #ffffff;
-        border-radius: 8px 8px 0 0;
-        padding: 20px;
-    }
-
-    .table thead {
-        background-color: gray;
-        color: white;
-    }
-
-    .table tbody tr {
-        background-color: white;
-        color: black;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f0d28c;
-        color: #775599;
-    }
-
-    .product-img {
-        height: 60px;
-        width: 60px;
-        object-fit: cover;
-        border-radius: 5px;
-    }
-
-    .action-icons {
-        font-size: 18px;
-        margin-right: 10px;
-        cursor: pointer;
-    }
-
-    @media (max-width: 768px) {
-        .table-responsive {
-            overflow-x: auto;
+    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            background-color: #f3f6f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #1a1d21;
         }
-    }
-</style>
+        /* Prevent main page scroll – only product list scrolls; use more height so list shows more products in one view */
+        .main-content:has(.barcode-page) {
+            overflow: hidden;
+            height: calc(100vh - 48px + 50px);
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .page-content:has(.barcode-page) {
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .container-fluid.barcode-page {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .barcode-page .barcode-page-container {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding-top: 0.5rem;
+            min-height: calc(100vh - 100px);
+        }
+        .barcode-page .card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0.75rem 1.25rem !important;
+            height: calc(100vh - 65px) !important;
+            min-height: calc(100vh - 65px) !important;
+        }
+        .barcode-page .card #barcode-form {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .barcode-page .card .barcode-card-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .barcode-page .card .barcode-card-body > .mb-4,
+        .barcode-page .card .barcode-card-body > .barcode-search-row {
+            flex-shrink: 0;
+        }
+        .barcode-page-title {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #1a1d21;
+            margin-bottom: 0.35rem;
+        }
+        .barcode-page .card .barcode-card-body > .mb-4 {
+            margin-bottom: 0.5rem !important;
+        }
+        .label-note-label {
+            font-weight: 600;
+            font-size: 0.9375rem;
+            color: #374151;
+            margin-bottom: 0.35rem;
+        }
+        .label-note-help {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.2rem;
+        }
+        .barcode-search-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .barcode-search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+            overflow: hidden;
+        }
+        .barcode-search-wrap .bi-search {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            font-size: 1rem;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .barcode-search-input {
+            flex: 1;
+            min-width: 200px;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+            box-sizing: border-box;
+        }
+        .barcode-select-all {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9375rem;
+            color: #374151;
+            flex-shrink: 0;
+        }
+        #product-list {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: auto;
+            margin-bottom: 0;
+            /* Large viewport so more products visible in one scroll */
+            min-height: calc(75vh + 50px);
+        }
+        .product-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            background: #fff;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .product-row.selected {
+            background: #eff6ff;
+            border-color: #3b82f6;
+        }
+        .product-row .form-check-input:checked { background-color: #2563eb; border-color: #2563eb; }
+        .product-thumb {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #f3f4f6;
+            flex-shrink: 0;
+        }
+        .product-thumb-placeholder {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+        }
+        .product-info { flex: 1; min-width: 0; }
+        .product-name { font-weight: 600; font-size: 0.9375rem; color: #1a1d21; margin-bottom: 0.15rem; }
+        .product-meta {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+        .product-meta .dot { color: #9ca3af; margin: 0 0.25rem; }
+        .product-price-stock {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: #1a1d21;
+        }
+        .product-copies-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .product-copies-wrap label { font-size: 0.8125rem; color: #6b7280; margin: 0; white-space: nowrap; }
+        .product-copies-wrap input {
+            width: 70px;
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.9375rem;
+        }
+        .barcode-footer {
+            position: fixed;
+            bottom: 0;
+            left: 250px;
+            right: 0;
+            flex-shrink: 0;
+            width: auto;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 14px 24px;
+            background: #fff !important;
+            color: #000 !important;
+            border-top: 1px solid #e5e7eb;
+            z-index: 1020;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+        }
+        @media (max-width: 992px) {
+            .barcode-footer { left: 0; }
+        }
+        .barcode-footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1219px;
+            margin: 0 auto;
+        }
+        .barcode-page .card #barcode-form .barcode-card-body {
+            padding-bottom: 70px;
+        }
+        .barcode-summary {
+            font-size: 0.9375rem;
+            color: #000 !important;
+        }
+        .barcode-summary strong {
+            color: #000 !important;
+            font-weight: 700;
+        }
+        .btn-print-barcodes {
+            background: #FFC107 !important;
+            font-weight: 600 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-print-barcodes:hover { background: #e6ac00 !important; color: white !important; }
+        .btn-print-barcodes:disabled {
+            opacity: 0.6 !important;
+            cursor: not-allowed;
+        }
+    </style>
 {% endblock extra_css %}
 
 {% block content %}
 <div class="main-content">
     <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">Product List</h4>
-                    </div>
-                </div>
-            </div>
+        <div class="container-fluid barcode-page">
+            <div class="container barcode-page-container">
+                <h1 class="barcode-page-title">Generate Barcode</h1>
 
-            <div class="container">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <form method="post" action="">
-                                    {% csrf_token %}
-                                    <div class="mb-3">
-                                        <label for="id_note" class="form-label">Note (optional)</label>
-                                        <input type="text" class="form-control" name="note" id="id_note" maxlength="200" placeholder="Enter note to print on barcode">
-                                        <small class="text-muted">If entered, this note will be printed on the generated barcode label.</small>
+                <div class="card p-4">
+                    <form method="post" action="{% url 'generate_barcode' %}" id="barcode-form">
+                        {% csrf_token %}
+                        <div class="barcode-card-body">
+                        <div class="">
+                            <label class="label-note-label" for="id_note">Label Note (Optional)</label>
+                            <textarea class="form-control" name="note" id="id_note" rows="1" maxlength="500" placeholder="Ex: Summer Sale 2026 - Flat 50% Off"></textarea>
+                            <p class="label-note-help">This text will be printed at the bottom of every selected barcode label.</p>
+                        </div>
+
+                        <div class="barcode-search-row">
+                            <div class="barcode-search-wrap">
+                                <i class="bi bi-search"></i>
+                                <input type="text" class="form-control barcode-search-input" id="product-search" placeholder="Search products to print..." autocomplete="off">
+                            </div>
+                            <label class="barcode-select-all">
+                                <input type="checkbox" class="form-check-input" id="select-all">
+                                Select All
+                            </label>
+                        </div>
+
+                        <div id="product-list">
+                            {% if data %}
+                                {% for i in data %}
+                                <div class="product-row" data-name="{{ i.name|lower }}" data-brand="{{ i.brand_name|default:''|lower }}" data-sku="{{ i.assign_barcode|default:'' }}">
+                                    <div class="form-check">
+                                        <input class="form-check-input row-check" type="checkbox" name="selected_products" value="{{ i.id }}" id="cb_{{ i.id }}">
                                     </div>
-                                    <div class="table-responsive">
-                                        <p> Select product to generate barcode </p>
-                                        <table id="datatable" class="table table-bordered table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th><input type="checkbox" id="select-all"></th> 
-                                                    <th>#</th>
-                                                    <th>Image</th>
-                                                    <th>Name</th>
-                                                    <th>Category</th>
-                                                    <th>Sub Category</th>
-                                                    <th>Brand</th>
-                                                    <th>Color</th>
-                                                    <th>Size</th>
-                                                    <th>Unit</th>
-                                                    <th>HSN</th>
-                                                    <th>Stock</th>
-                                                    <th>GST (%)</th>
-                                                    <th>Wholesale Price</th>
-                                                    <th>Purchase Price</th>
-                                                    <th>Sales Price</th>
-                                                    <th>MRP</th>
-                                                    <th>Opening Stock</th>
-                                                    <th>Low Stock Alert</th>
-                                                    <th>Low Stock Qty</th>
-                                                    <th>Batch No.</th>
-                                                    <th>Expiry Date</th>
-                                                    <th>Track Serial No.</th>
-                                                    <th>Instant Delivery</th>
-                                                    <th>Self Pickup</th>
-                                                    <th>General Delivery</th>
-                                                    <th>Return Policy</th>
-                                                    <th>COD</th>
-                                                    <th>Replacement</th>
-                                                    <th>Shop Exchange</th>
-                                                    <th>Shop Warranty</th>
-                                                    <th>Brand Warranty</th>
-                                                    <th>Is Popular</th>
-                                                    <th>Is Featured</th>
-                                                    <th>Is Active</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% if data %}
-                                                    {% for i in data %}
-                                                    <tr>
-                                                        <td>
-                                                            <input type="checkbox" name="selected_products" value="{{ i.id }}">
-                                                        </td>
-                                                        <td>{{ forloop.counter }}</td>
-                                                        <td>
-                                                            {% if i.image %}
-                                                                <img src="{{ i.image.url }}" class="product-img" alt="product image">
-                                                            {% else %}
-                                                                N/A
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>{{ i.name }}</td>
-                                                        <td>{{ i.category }}</td>
-                                                        <td>{{ i.sub_category }}</td>
-                                                        <td>{{ i.brand_name }}</td>
-                                                        <td>{{ i.color }}</td>
-                                                        <td>{{ i.size }}</td>
-                                                        <td>{{ i.unit }}</td>
-                                                        <td>{{ i.hsn }}</td>
-                                                        <td>{{ i.current_stock }}</td>
-                                                        <td>{{ i.gst }}</td>
-                                                        <td>₹{{ i.wholesale_price }}</td>
-                                                        <td>₹{{ i.purchase_price }}</td>
-                                                        <td>₹{{ i.sales_price }}</td>
-                                                        <td>₹{{ i.mrp }}</td>
-                                                        <td>{{ i.opening_stock }}</td>
-                                                        <td>{{ i.low_stock_alert }}</td>
-                                                        <td>{{ i.low_stock_quantity }}</td>
-                                                        <td>{{ i.batch_number }}</td>
-                                                        <td>{{ i.expiry_date }}</td>
-                                                        <td>{{ i.track_serial_numbers }}</td>
-                                                        <td>{{ i.instant_delivery }}</td>
-                                                        <td>{{ i.self_pickup }}</td>
-                                                        <td>{{ i.general_delivery }}</td>
-                                                        <td>{{ i.return_policy }}</td>
-                                                        <td>{{ i.cod }}</td>
-                                                        <td>{{ i.replacement }}</td>
-                                                        <td>{{ i.shop_exchange }}</td>
-                                                        <td>{{ i.shop_warranty }}</td>
-                                                        <td>{{ i.brand_warranty }}</td>
-                                                        <td>{{ i.is_popular }}</td>
-                                                        <td>{{ i.is_featured }}</td>
-                                                        <td>
-                                                            {% if i.is_active %}
-                                                                ✅
-                                                            {% else %}
-                                                                ❌
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>
-                                                        <a href="{% url 'add_to_super_catalogue' i.id %}" class="text-decoration-none" title="Add to Catalogue">
-                                                                <i class="bi bi-box-arrow-in-down text-success action-icons"></i>
-                                                            </a>
-                                                            <a href="{% url 'update_product' i.id %}">
-                                                                <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
-                                                            </a>
-                                                            <a href="{% url 'delete_product' i.id %}">
-                                                                <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <tr>
-                                                        <td colspan="34" class="text-center">No products available.</td>
-                                                    </tr>
-                                                {% endif %}
-                                            </tbody>
-                                        </table>
-                                        
+                                    {% if i.image %}
+                                    <img src="{{ i.image.url }}" alt="{{ i.name }}" class="product-thumb">
+                                    {% else %}
+                                    <div class="product-thumb-placeholder">Product</div>
+                                    {% endif %}
+                                    <div class="product-info">
+                                        <div class="product-name">{{ i.name }}</div>
+                                        <div class="product-meta">
+                                            {{ i.brand_name|default:"—" }}
+                                            {% if i.color %}<span class="dot">•</span><span>{{ i.color }}</span>{% endif %}
+                                            {% if i.size %}<span class="dot">•</span><span>Size: {{ i.size }}</span>{% endif %}
+                                            <span class="dot">•</span><span>SKU: {{ i.assign_barcode|default:"—" }}</span>
+                                        </div>
+                                        <div class="product-price-stock mt-1">
+                                            <span>PRICE ₹{{ i.sales_price|default:i.wholesale_price|floatformat:0 }}</span>
+                                            <span>STOCK {{ i.current_stock|default:0 }}</span>
+                                        </div>
                                     </div>
+                                    <div class="product-copies-wrap">
+                                        <label for="copies_{{ i.id }}">Copies</label>
+                                        <input type="number" name="copies_{{ i.id }}" id="copies_{{ i.id }}" value="1" min="1" class="copies-input">
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted mb-0">No products available.</p>
+                            {% endif %}
+                        </div>
+                        </div>
 
-                                    <button type="submit" class="btn btn-danger mt-3">Submit Selected</button>
-
-                                </form>
+                        <div class="barcode-footer">
+                            <div class="barcode-footer-inner">
+                                <span class="barcode-summary">Selected: <strong id="selected-count">0</strong> Product<span id="selected-plural">s</span> | Total Labels: <strong id="total-labels">0</strong></span>
+                                <button type="submit" style="color:black !important" class="btn btn-print-barcodes" id="btn-print" disabled>
+                                    <i class="bi bi-printer" style="color:black !important"></i> Print Barcodes
+                                </button>
                             </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
-
-        {% block footer %}
-            {% include 'partials/footer.html' %}
-        {% endblock footer %}
     </div>
 </div>
 {% endblock content %}
@@ -225,21 +354,92 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    setTimeout(() => {
-        const toastElement = document.getElementById("toast");
-        if (toastElement) {
-            toastElement.classList.remove("show");
-            setTimeout(() => {
-                toastElement.remove();
-            }, 500);
-        }
-    }, 5000);
+(function() {
+    var productSearch = document.getElementById('product-search');
+    var selectAll = document.getElementById('select-all');
+    var rowChecks = document.querySelectorAll('.row-check');
+    var copiesInputs = document.querySelectorAll('.copies-input');
+    var selectedCountEl = document.getElementById('selected-count');
+    var totalLabelsEl = document.getElementById('total-labels');
+    var selectedPluralEl = document.getElementById('selected-plural');
+    var btnPrint = document.getElementById('btn-print');
 
-     document.getElementById("select-all").addEventListener("click", function(e) {
-        let checkboxes = document.querySelectorAll("input[name='selected_products']");
-        checkboxes.forEach(cb => cb.checked = e.target.checked);
+    function updateSummary() {
+        var selected = 0;
+        var total = 0;
+        document.querySelectorAll('.product-row').forEach(function(row) {
+            if (row.style.display === 'none') return;
+            var cb = row.querySelector('.row-check');
+            var copiesInput = row.querySelector('.copies-input');
+            if (cb && cb.checked) {
+                selected++;
+                total += parseInt(copiesInput && copiesInput.value ? copiesInput.value : 1, 10) || 1;
+            }
+        });
+        selectedCountEl.textContent = selected;
+        totalLabelsEl.textContent = total;
+        selectedPluralEl.textContent = selected === 1 ? '' : 's';
+        btnPrint.disabled = selected === 0;
+    }
+
+    function toggleRowSelected(row) {
+        var cb = row.querySelector('.row-check');
+        if (cb) row.classList.toggle('selected', cb.checked);
+    }
+
+    if (productSearch) {
+        productSearch.addEventListener('input', function() {
+            var q = this.value.toLowerCase().trim();
+            document.querySelectorAll('.product-row').forEach(function(row) {
+                var name = (row.getAttribute('data-name') || '');
+                var brand = (row.getAttribute('data-brand') || '');
+                var sku = (row.getAttribute('data-sku') || '');
+                var show = !q || name.indexOf(q) !== -1 || brand.indexOf(q) !== -1 || sku.indexOf(q) !== -1;
+                row.style.display = show ? '' : 'none';
+            });
+        });
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.product-row').forEach(function(row) {
+                if (row.style.display === 'none') return;
+                var cb = row.querySelector('.row-check');
+                if (cb) {
+                    cb.checked = selectAll.checked;
+                    row.classList.toggle('selected', selectAll.checked);
+                }
+            });
+            updateSummary();
+        });
+    }
+
+    rowChecks.forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var row = this.closest('.product-row');
+            if (row) toggleRowSelected(row);
+            updateSummary();
+        });
     });
 
+    copiesInputs.forEach(function(input) {
+        input.addEventListener('input', updateSummary);
+        input.addEventListener('change', updateSummary);
+    });
 
+    document.querySelectorAll('.product-row').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            if (e.target.type === 'checkbox' || e.target.tagName === 'INPUT') return;
+            var cb = row.querySelector('.row-check');
+            if (cb) {
+                cb.checked = !cb.checked;
+                toggleRowSelected(row);
+                updateSummary();
+            }
+        });
+    });
+
+    updateSummary();
+})();
 </script>
 {% endblock extra_js %}

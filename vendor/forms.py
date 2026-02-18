@@ -655,10 +655,10 @@ class pos_wholesaleForm(forms.ModelForm):
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'invoice_type': forms.Select(attrs={'class': 'form-select'}),
             'invoice_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'delivery_city': forms.TextInput(attrs={'class': 'form-control', 'delivery_city' : 'delivery_city'}),
+            'delivery_city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
 
-            'dispatch_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Full Address...'}),
-            'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'dispatch_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Full Destination Address...'}),
+            'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'PO Number, Order Ref, etc.'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
 

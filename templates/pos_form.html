@@ -5,421 +5,505 @@
 
 {% block extra_css %}
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="{% static 'libs/select2/dist/css/select2.min.css'%}" rel="stylesheet" type="text/css" />
     <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        /* Font & base – image: very light grey background */
-        body {
-            background-color: #F3F6F9;
-            padding-bottom: 24px;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 15px;
-            color: #1a1d21;
-            -webkit-font-smoothing: antialiased;
-        }
-        #pos-form,
-        #pos-form .form-control,
-        #pos-form .form-select,
-        #pos-form .form-label,
-        #pos-form .btn { font-family: inherit; }
+        /* --- Sample-inspired POS: base & layout (IDs/names unchanged) --- */
+        * { box-sizing: border-box; }
+        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased; }
+        .main-content { overflow: visible !important; }
+        #pos-form, #pos-form .form-control, #pos-form .form-select, #pos-form .form-label, #pos-form .btn { font-family: inherit; }
 
-        /* Page header – image: Sales & POS with light blue/purple bag icon */
-        .pos-page-header {
+        /* Workspace: grid left | right (sample structure) */
+        .form-container {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+        .pos-main-row {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            height: calc(100vh - 160px);
+            min-height: 400px;
+        }
+        @media (max-width: 991px) {
+            .pos-main-row { grid-template-columns: 1fr; height: auto; min-height: 0; }
+        }
+
+        /* Left panel – only this side scrolls */
+        .pos-left {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            padding: 24px;
+            gap: 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background-color: #f8fafc;
+            min-height: 0;
+        }
+
+        /* Header card – Sales & POS + Retail/Wholesale */
+        .pos-page-header {
+            background: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            display: flex;
             justify-content: space-between;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
+            align-items: center;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
         .pos-page-title {
-            font-weight: 700;
-            font-size: 1.5rem;
-            letter-spacing: -0.02em;
-            color: #1a1d21;
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
             margin: 0;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
-        /* Image: blue and yellow branding for Sales & POS */
-        .pos-page-title .bi-bag { color: #2563eb; font-size: 1.35rem; }
+        .pos-page-title .bi-bag { color: #0ea5e9; font-size: 1.25rem; }
+        /* Retail / Wholesale – second image: labels outside, yellow pill + white circle handle */
         .pos-mode-toggle {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 0;
             font-weight: 600;
-            font-size: 0.9375rem;
-            color: #495057;
+            font-size: 14px;
         }
-        /* Retail / Wholesale toggle buttons – image: Retail selected = yellow */
-        .pos-mode-toggle .btn-mode {
-            background: #f8f9fa;
-            border: 1px solid #ced4da;
-            color: #6c757d;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 0.9375rem;
-            font-weight: 600;
+        .pos-mode-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
             cursor: pointer;
-            transition: background 0.2s, border-color 0.2s, color 0.2s;
+            user-select: none;
         }
-        .pos-mode-toggle .btn-mode:first-child { border-radius: 6px 0 0 6px; border-right: none; }
-        .pos-mode-toggle .btn-mode:last-child { border-radius: 0 6px 6px 0; }
-        .pos-mode-toggle .btn-mode.btn-mode-active {
-            background-color: #FFC107;
-            border-color: #FFC107;
-            color: #1a1d21;
-        }
-        .pos-mode-toggle .btn-mode:not(.btn-mode-active):hover {
-            background: #fff;
-            border-color: #adb5bd;
-            color: #495057;
-        }
-
-        /* Container & layout – image: white cards, 8–12px radius, subtle shadow */
-        .form-container {
-            background-color: #fff;
-            padding: 0;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
-            overflow: hidden;
-            border: 1px solid #e5e7eb;
-        }
-        .pos-main-row {
-            display: flex;
-            gap: 1.5rem;
-            align-items: stretch;
-            flex-wrap: wrap;
-        }
-        .pos-left {
-            flex: 1;
-            min-width: 280px;
-            padding: 1.5rem 1.75rem;
-        }
-        .pos-right {
-            width: 340px;
-            max-width: 100%;
-            padding: 1.5rem 1.75rem;
-            background: #fff;
-            border-left: 1px solid #e5e7eb;
-        }
-
-        /* Section cards – image: white, rounded, light shadow */
-        .section-card {
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1.25rem;
-            background: #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        /* Product entry area – image: indented, light grey dotted border */
-        .section-card.product-entry-card {
-            border: 2px dashed #ced4da;
-            background: #fafbfc;
-        }
-        .section-title {
+        .pos-mode-label {
+            font-size: 14px;
             font-weight: 600;
-            font-size: 0.9375rem;
-            letter-spacing: 0.01em;
-            color: #1a1d21;
-            margin-bottom: 0.875rem;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
+            flex-shrink: 0;
+            transition: color 0.2s;
         }
-        .section-title .bi { opacity: 0.85; font-size: 1.05rem; }
-        .form-label {
-            font-weight: 500;
-            font-size: 0.875rem;
-            color: #374151;
-            margin-bottom: 0.35rem;
+        .pos-mode-label-retail {
+            color: #64748b;
+        }
+        .pos-mode-label-wholesale {
+            color: #78716c;
+        }
+        .pos-mode-switch:has(.pos-mode-checkbox:checked) .pos-mode-label-retail {
+            color: #64748b;
+        }
+        .pos-mode-switch:has(.pos-mode-checkbox:checked) .pos-mode-label-wholesale {
+            color: #b45309;
+        }
+        .pos-mode-track {
+            width: 52px;
+            height: 28px;
+            border-radius: 999px;
+            background: #cbd5e0;
+            position: relative;
+            flex-shrink: 0;
+            transition: background 0.25s ease;
+        }
+        .pos-mode-switch:has(.pos-mode-checkbox:checked) .pos-mode-track {
+            background: #FFC107;
+        }
+        .pos-mode-handle {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.25s ease;
+        }
+        .pos-mode-switch:has(.pos-mode-checkbox:checked) .pos-mode-handle {
+            transform: translateX(24px);
         }
 
-        /* Inputs – image: light grey border #CED4DA, white bg, 4–6px radius */
-        #pos-form .form-control,
-        #pos-form .form-select,
-        .billing-sidebar .form-control,
-        .billing-sidebar .form-select {
-            border-radius: 6px;
-            border: 1px solid #ced4da;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.9375rem;
+        /* Controls area – Customer + Scan Barcode + Search */
+        .pos-left .section-card.mb-3 {
             background: #fff;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 0;
+            flex-shrink: 0;
         }
-        #pos-form .form-control:focus,
-        #pos-form .form-select:focus,
-        .billing-sidebar .form-control:focus,
-        .billing-sidebar .form-select:focus {
-            border-color: #FFC107;
-            box-shadow: 0 0 0 3px rgba(255,193,7,0.2);
+        .pos-left .section-card.mb-3 .row { display: grid; grid-template-columns: minmax(340px, 2.5fr) minmax(300px, 1.5fr); gap: 24px; align-items: start; }
+        @media (max-width: 767px) { .pos-left .section-card.mb-3 .row { grid-template-columns: 1fr; } }
+        .pos-left .section-card.mb-3 .form-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .form-label { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block; }
+        #pos-form .form-control, #pos-form .form-select,
+        .billing-sidebar .form-control, .billing-sidebar .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            transition: 0.2s;
+        }
+        #pos-form .form-control:focus, #pos-form .form-select:focus,
+        .billing-sidebar .form-control:focus, .billing-sidebar .form-select:focus {
+            border-color: #0056b3;
+            box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
             outline: none;
         }
-        .pos-product-row .form-control,
-        .pos-product-row .form-select { border-radius: 6px; }
-        .pos-product-row .amount {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #1a1d21;
-        }
-        .logistics-card .form-control { min-height: 38px; border-radius: 6px; }
-
-        /* Buttons – image: yellow/orange #FFC107–#FFA000 for Add, + */
-        .btn-pos-add {
-            background-color: #FFC107;
-            border: none;
-            color: #fff;
-            padding: 0.5rem 1.25rem;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.9375rem;
-            transition: background-color 0.2s, transform 0.05s;
-        }
-        .btn-pos-add:hover { background-color: #FFA000; color: #fff; }
-        .btn-pos-add:active { transform: scale(0.98); }
         .btn-pos-customer {
-            background-color: #FFC107;
+            background: #ffc107;
             border: none;
-            color: #fff;
             width: 42px;
             height: 42px;
-            border-radius: 50%;
-            font-size: 1.25rem;
-            font-weight: 600;
-            padding: 0;
-            line-height: 1;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            flex-shrink: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.2s;
+            color: #000;
         }
-        .btn-pos-customer:hover { background-color: #FFA000; color: #fff; }
-        .pos-process-actions {
+        .btn-pos-customer:hover { background: #f59e0b; color: #000; }
+        .pos-actions-bar { display: flex; gap: 12px; align-items: center; margin-top: 10px; }
+        .btn-search-catalog {
+            background: #FFC107;
+            font-weight: 600;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-search-catalog:hover { background: #e6ac00; color: white; }
+        /* Customer dropdown: force full width so "Select Customer" is visible */
+        .pos-left .section-card.mb-3 .d-flex { min-width: 0; gap: 10px; align-items: stretch; }
+        .pos-left .section-card.mb-3 .flex-grow-1 { flex: 1 1 0; min-width: 280px; }
+        .pos-left .section-card.mb-3 .flex-grow-1 .select2-container,
+        .pos-left .section-card.mb-3 .flex-grow-1 select { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
+        .pos-left .section-card.mb-3 #id_customer { width: 100% !important; min-height: 40px; }
+        .pos-left .section-card.mb-3 .select2-container--default .select2-selection--single .select2-selection__rendered { white-space: normal; }
+
+        /* Product entry row – reference: manual-row (dashed, grid 3fr 1fr 1.2fr 1.2fr auto) */
+        .section-card.product-entry-card {
+            border: 1px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f8fafc;
+            margin-bottom: 0;
+            flex-shrink: 0;
+            margin-top: 8px;
+        }
+        .section-card.product-entry-card .section-title { font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 10px; }
+        .pos-product-row .form-label.small { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+        .pos-product-row {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1.2fr 1.2fr auto;
+            gap: 10px;
+            align-items: end;
+        }
+        .pos-product-row > * { min-width: 0; }
+        .pos-product-row .form-control,
+        .pos-product-row .form-select,
+        .pos-product-row .select2-container { width: 100% !important; max-width: 100%; min-width: 0; min-height: 39px; }
+        .pos-product-row .amount { background: #f1f5f9; font-weight: 700; color: #1e293b; }
+        .btn-pos-add {
+            background: #FFC107;
+            color: #000;
+            font-weight: 700;
+            border: none;
+            padding: 0 20px;
+            height: 39px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-pos-add:hover { background: #f59e0b; color: #000; }
+        .btn-pos-add .bi { color: inherit; }
+        @media (max-width: 991px) { .pos-product-row { grid-template-columns: minmax(200px, 2fr) 1fr 1.2fr 1.2fr auto; } }
+
+        /* Product list table – proper column widths and labels */
+        .pos-items-list-wrap {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            flex-shrink: 0;
+            min-height: 0;
         }
-        .btn-process-sale {
-            background-color: #28A745;
-            border: none;
-            color: #fff;
-            padding: 12px 20px;
-            border-radius: 8px;
+        .pos-items-header {
+            background: #f1f5f9;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: grid;
+            grid-template-columns: 4fr 1fr 1.5fr 1.5fr auto;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
             font-weight: 700;
-            font-size: 1rem;
-            width: 100%;
-            display: block;
-            text-align: center;
-            transition: background-color 0.2s, transform 0.05s;
+            color: #64748b;
+            text-transform: uppercase;
         }
-        .btn-process-sale:hover { background-color: #218838; color: #fff; }
-        .btn-process-sale:active { transform: scale(0.99); }
-        /* Discard – red text only, no background */
-        .pos-process-actions .btn-discard {
-            margin-top: 0;
+        .pos-items-header span:first-child { padding-right: 8px; }
+        .pos-items-header span:nth-child(2) { text-align: center; }
+        .pos-items-header span:nth-child(3),
+        .pos-items-header span:nth-child(4) { text-align: right; }
+        #items-container {
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 0;
+            margin: 0;
+            border-top: none;
         }
-        .btn-discard {
-            background: transparent;
-            border: none;
-            color: #DC3545;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.9375rem;
-            width: 100%;
-            display: block;
-            text-align: center;
-            transition: color 0.2s;
-        }
-        .btn-discard:hover { color: #b91c1c; background: transparent; }
-        /* Payment – image: Cash selected = light yellow/orange bg, dark text */
-        .btn-payment {
-            background: #f8f9fa;
-            border: 1px solid #ced4da;
-            color: #6c757d;
-            border-radius: 6px;
-            padding: 8px 14px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: border-color 0.2s, background 0.2s, color 0.2s;
-        }
-        .btn-payment.btn-payment-active {
-            background-color: #FFF3E0;
-            border-color: #FFC107;
-            color: #1a1d21;
-        }
-        .btn-payment:not(.btn-payment-active):hover {
-            border-color: #adb5bd;
-            color: #495057;
-            background: #fff;
-        }
-        /* Discount – image: ₹ Amount selected = light grey bg, grey border */
-        .btn-discount-type {
-            background: #f8f9fa;
-            border: 1px solid #ced4da;
-            color: #6c757d;
-            border-radius: 6px;
-            padding: 7px 14px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: border-color 0.2s, background 0.2s, color 0.2s;
-        }
-        .btn-discount-type.active {
-            background-color: #e9ecef;
-            border-color: #ced4da;
-            color: #495057;
-        }
-        .btn-discount-type:not(.active):hover {
-            border-color: #adb5bd;
-            background: #fff;
-        }
-
-        /* Billing sidebar – image: Total Amount bolder; NET PAYABLE vibrant blue */
-        .billing-sidebar .section-title { margin-bottom: 1rem; }
-        .billing-summary-line {
-            margin-bottom: 0.4rem;
-            color: #374151;
-            font-size: 0.9375rem;
-            font-weight: 500;
-        }
-        .billing-sidebar .total-amount-line {
-            font-weight: 700;
-            font-size: 1rem;
-            color: #1a1d21;
-            margin: 0.25rem 0 0.5rem;
-        }
-        .billing-sidebar hr {
-            border: none;
-            border-top: 1px solid #e5e7eb;
-            margin: 0.75rem 0;
-        }
-        .net-payable-box {
-            font-size: 2rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            color: #007BFF;
-            margin: 0.5rem 0 1.25rem;
-        }
-        .billing-sidebar .form-label { margin-bottom: 0.4rem; }
-        .billing-sidebar .mb-2 { margin-bottom: 1rem !important; }
-        .billing-sidebar .mb-3 { margin-bottom: 1.25rem !important; }
-
-        /* Logistics – image: distinct pale yellow/orange background */
-        .logistics-card {
-            background: #FFF9E9 !important;
-            border-color: #FFE082 !important;
-        }
-        .logistics-card .section-title .bi { color: #FFA000; }
-
-        /* Items list – grey divider as in reference */
-        .pos-items-list {
-            border-top: 1px solid #e5e7eb;
-            margin-top: 0.5rem;
-            padding-top: 0.75rem;
-        }
-        /* Item rows */
         #items-container .item-row {
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #f3f4f6;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            display: grid;
+            grid-template-columns: 0 4fr 1fr 1.5fr 1.5fr auto;
+            gap: 10px;
+            align-items: center;
+            font-size: 14px;
+            margin: 0;
         }
-        #items-container .item-row:last-child { border-bottom: none; }
+        #items-container .item-row input[type="hidden"] { grid-column: 1; }
+        #items-container .item-row > .item-col-product { grid-column: 2; min-width: 0; }
+        #items-container .item-row > .item-col-qty { grid-column: 3; text-align: center; }
+        #items-container .item-row > .item-col-price { grid-column: 4; text-align: right; }
+        #items-container .item-row > .item-col-amount { grid-column: 5; text-align: right; }
+        #items-container .item-row > .item-col-remove { grid-column: 6; }
+        #items-container .item-row .product-select,
+        #items-container .item-row .select2-container {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+        }
+        #items-container .item-row .form-control,
+        #items-container .item-row .form-select { min-height: 38px; font-size: 14px; padding: 8px 10px; }
+        #items-container .item-row .amount { font-weight: 700; color: #334155; }
+        @media (max-width: 991px) {
+            .pos-items-header { grid-template-columns: 2fr 1fr 1.2fr 1.2fr auto; }
+            #items-container .item-row { grid-template-columns: 0 2fr 1fr 1.2fr 1.2fr auto; }
+        }
         .remove-btn {
             cursor: pointer;
-            color: #dc2626;
-            font-size: 1.35rem;
-            font-weight: 700;
-            line-height: 1;
-            padding: 0.25rem;
-            transition: color 0.15s;
+            color: #ef4444;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 4px;
         }
         .remove-btn:hover { color: #b91c1c; }
 
-        /* Select2 – match input borders */
-        .form-container .select2-container--default .select2-selection--single {
-            border-radius: 6px;
-            border: 1px solid #ced4da;
-            min-height: 38px;
-            padding: 0.25rem 0.5rem;
+        /* Logistics panel – amber, wholesale only */
+        #logistics-details-left .logistics-card {
+            background: #fffbeb !important;
+            border: 1px solid #fcd34d !important;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        #logistics-details-left .section-title .bi { color: #b45309; }
+        #logistics-details-left .section-title { color: #b45309; font-weight: 700; }
+        .logistics-card .form-control { min-height: 38px; border-radius: 8px; border-color: #fcd34d; }
+
+        /* Right panel – Bill Summary: sticky in its grid position, only left column scrolls */
+        .pos-right.billing-sidebar {
+            width: 100%;
             background: #fff;
+            border-left: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: calc(100vh - 160px);
+            box-shadow: -5px 0 15px rgba(0,0,0,0.03);
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        @media (min-width: 992px) {
+            .pos-right.billing-sidebar {
+                position: sticky;
+                top: 20px;
+                align-self: flex-start;
+                min-height: auto;
+                height: auto;
+                max-height: calc(100vh - 40px);
+            }
+        }
+        .bill-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 18px;
+            font-weight: 800;
+            color: #1e293b;
+            flex-shrink: 0;
+        }
+        .bill-content {
+            flex: 1 1 auto;
+            padding: 10px 20px;
+            overflow-y: visible;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .bill-footer {
+            padding: 10px 20px;
+            border-top: 2px dashed #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .billing-summary-line { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; margin-bottom: 4px; }
+        .billing-summary-line strong { color: #334155; font-weight: 700; }
+        .billing-sidebar .total-amount-line { font-size: 15px; margin: 8px 0 4px; }
+        .billing-sidebar hr { border: none; border-top: 1px solid #e2e8f0; margin: 10px 0; }
+        .pay-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .btn-payment {
+            padding: 4px 2px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #fff;
+            transition: 0.2s;
+            line-height: 1.2;
+            min-height: 24px;
+        }
+        .btn-payment .bi { font-size: 10px; }
+        .btn-payment.btn-payment-active {
+            background: #FEF3C7;
+            border-color: #F59E0B;
+            color: #92400e;
+        }
+        .btn-payment:not(.btn-payment-active):hover { border-color: #cbd5e0; background: #f8fafc; }
+        .btn-discount-type {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-discount-type.active { background: #e2e8f0; border-color: #cbd5e0; color: #475569; }
+        .btn-discount-type:not(.active):hover { background: #fff; border-color: #cbd5e0; }
+        /* Net Payable & actions – match reference image */
+        .bill-footer .net-payable-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .total-block { display: flex; flex-direction: column; align-items: flex-start; margin-top: 0; margin-bottom: 12px; }
+        .total-block .total-lbl { display: none; }
+        .net-payable-box { font-size: 26px; font-weight: 800; color: #2563eb; letter-spacing: -0.02em; }
+        .billing-sidebar .btn-process-sale.btn,
+        #pos-form .btn-process-sale.btn,
+        .btn-process-sale.btn {
+            background: #10b981 !important;
+            color: white !important;
+            border: none !important;
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+        }
+        .billing-sidebar .btn-process-sale:hover,
+        #pos-form .btn-process-sale:hover,
+        .btn-process-sale:hover { background: #0d9668 !important; color: white !important; }
+        .btn-discard {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            width: 100%;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .btn-discard:hover { background: #fee2e2; color: #b91c1c; }
+        .billing-sidebar .form-label { margin-bottom: 6px; }
+        .billing-sidebar .mb-2, .billing-sidebar .mb-3 { margin-bottom: 12px !important; }
+
+        @media (min-width: 992px) {
+            .form-container { max-height: none; overflow: visible; }
+        }
+
+        /* Select2 */
+        .form-container .select2-container--default .select2-selection--single {
+            border-radius: 8px; border: 1px solid #cbd5e0; min-height: 40px; padding: 6px 12px; background: #fff;
         }
         .form-container .select2-container--default.select2-container--focus .select2-selection--single {
-            border-color: #FFC107;
-            box-shadow: 0 0 0 3px rgba(255,193,7,0.2);
+            border-color: #0056b3; box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
         }
-
         .main-content .page-content .container-fluid { font-family: inherit; }
-        .pos-left .row.g-3 .form-label { display: block; }
-        textarea.form-control { min-height: 72px; border-radius: 6px; resize: vertical; }
+        textarea.form-control { min-height: 72px; border-radius: 8px; resize: vertical; }
 
-        /* Wholesale-only section – clear card, consistent with POS */
-        #secondform {
-            margin-top: 1rem;
-            padding: 1.5rem 1.75rem;
-            background: #fafbfc;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        /* Wholesale left block (invoice details + Dispatch & Document Details) */
+        #wholesale-left-block {
+            margin-top: 0;
         }
-        #secondform .wholesale-section-title {
-            font-weight: 600;
-            font-size: 1rem;
-            color: #1a1d21;
-            margin-bottom: 1.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        #secondform .wholesale-section-title .bi { color: #FFA000; }
-        /* Document type tabs – selected = yellow like Payment Mode */
-        #secondform .btn-doc-type {
-            background: #f8f9fa;
-            border: 1px solid #ced4da;
-            color: #6c757d;
-            border-radius: 6px;
+        #wholesale-left-block .wholesale-section-title { font-weight: 700; font-size: 1rem; color: #1e293b; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+        #wholesale-left-block .wholesale-section-title .bi { color: #b45309; }
+        #wholesale-left-block .wholesale-invoice-row { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 0; }
+        #wholesale-left-block .btn-doc-type {
+            background: #fff;
+            border: 1px solid #f59e0b;
+            color: #d97706;
+            border-radius: 999px;
             padding: 8px 14px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: background 0.2s, border-color 0.2s, color 0.2s;
-        }
-        #secondform .btn-doc-type.btn-doc-type-active {
-            background-color: #FFC107;
-            border-color: #FFC107;
-            color: #1a1d21;
-        }
-        #secondform .btn-doc-type:not(.btn-doc-type-active):hover {
-            background: #fff;
-            border-color: #adb5bd;
-            color: #495057;
-        }
-        #secondform .wholesale-invoice-row {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1.25rem;
-        }
-        #secondform .optional-group-title {
+            font-size: 12px;
             font-weight: 600;
-            font-size: 0.9375rem;
-            color: #374151;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.35rem;
-            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
         }
-        #secondform .optional-card {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1.25rem;
+        #wholesale-left-block .btn-doc-type.btn-doc-type-active { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+        #wholesale-left-block .btn-doc-type:not(.btn-doc-type-active):hover { background: #fffbeb; }
+        #wholesale-left-block textarea.form-control { min-height: 64px; }
+        /* Dispatch & Document Details card – reference: light yellow/amber, orange border, truck icon */
+        .dispatch-document-card.logistics-card {
+            background: #fefce8 !important;
+            border: 1px solid #f59e0b !important;
+            border-radius: 12px;
+            padding: 20px;
         }
-        #secondform .optional-card .form-label { margin-bottom: 0.35rem; }
-        #secondform textarea.form-control { min-height: 64px; }
+        .dispatch-document-card .section-title .bi { color: #b45309; }
+        .dispatch-document-card .form-control { background: #fff; border-color: #e2e8f0; }
+        .dispatch-document-card .form-check-input:checked { background-color: #f59e0b; border-color: #f59e0b; }
     </style>
 
     <style>
@@ -464,6 +548,27 @@
     input:checked + .slider:before {
         transform: translateX(22px);
     }
+
+    .billing-sidebar .btn-discard.btn,
+    #pos-form .btn-discard.btn,
+    .btn-discard.btn {
+      background: #fff !important;
+      color: #ef4444 !important;
+      border: 1px solid #fecaca !important;
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .billing-sidebar .btn-discard:hover,
+    #pos-form .btn-discard:hover,
+    .btn-discard:hover {
+      background: #fef2f2 !important;
+      color: #b91c1c !important;
+      border-color: #fecaca !important;
+    }
     </style>
 {% endblock %}
 
@@ -474,27 +579,29 @@
 <div class="main-content">
   <div class="page-content">
     <div class="container-fluid">
-      <div class="row">
-        <div class="col-12">
-            <div class="pos-page-header">
-                <h4 class="pos-page-title"><i class="bi bi-bag me-2"></i>Sales & POS</h4>
-                <div class="pos-mode-toggle" role="group">
-                    <input type="checkbox" name="wholesale_selector" id="wholesale_selector" class="d-none" aria-hidden="true">
-                    <button type="button" class="btn-mode btn-mode-active" id="pos-mode-retail" aria-pressed="true">Retail</button>
-                    <button type="button" class="btn-mode" id="pos-mode-wholesale" aria-pressed="false">Wholesale</button>
-                </div>
-            </div>
-        </div>
-      </div>
-
       <div class="container">
         <div class="form-container">
           <form method="post" action="" id="pos-form">
             {% csrf_token %}
             <div class="pos-main-row">
-              <!-- Left: Customer, Barcode, Product entry, Logistics -->
+              <!-- Left panel -->
               <div class="pos-left">
-                <!-- Customer & Barcode – image: one white card, horizontal -->
+                <!-- Header card: Sales & POS + Retail/Wholesale toggle (as in image) -->
+                <div class="pos-page-header">
+                  <h4 class="pos-page-title"><i class="bi bi-bag me-2"></i>Sales & POS</h4>
+                  <div class="pos-mode-toggle" role="group" aria-label="Sale mode">
+                    <label class="pos-mode-switch" for="wholesale_selector">
+                      <input type="checkbox" name="wholesale_selector" id="wholesale_selector" class="pos-mode-checkbox d-none" aria-hidden="true">
+                      <span class="pos-mode-label pos-mode-label-retail">Retail</span>
+                      <span class="pos-mode-track">
+                        <span class="pos-mode-handle"></span>
+                      </span>
+                      <span class="pos-mode-label pos-mode-label-wholesale">Wholesale</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Controls: Customer, Barcode + Search Catalog -->
                 <div class="section-card mb-3">
                   <div class="row g-3">
                     <div class="col-md-6">
@@ -511,6 +618,9 @@
                       <input type="text" id="barcode-input" class="form-control" placeholder="Scan Item..." autocomplete="off">
                     </div>
                   </div>
+                  <div class="pos-actions-bar">
+                    <button type="button" class="btn-search-catalog" data-bs-toggle="modal" data-bs-target="#productSearchModal"><i class="bi bi-search me-1"></i>Search Catalog</button>
+                  </div>
                 </div>
 
                 <!-- Product entry row: Product Name, Qty, Price, Total, Add -->
@@ -526,59 +636,67 @@
                         {% endfor %}
                       </select>
                     </div>
-                    <div class="col-auto" style="width: 90px;">
+                    <div class="col-auto" style="width: 100px;">
                       <label class="form-label small mb-1">Qty</label>
                       <input type="number" class="form-control qty-input" name="quantity[]" value="1" min="1">
                     </div>
-                    <div class="col-auto" style="width: 100px;">
+                    <div class="col-auto" style="width: 120px;">
                       <label class="form-label small mb-1">Price</label>
                       <input type="number" class="form-control rate-input" name="price[]" value="0.00" step="0.01" min="0">
                     </div>
-                    <div class="col-auto" style="width: 100px;">
+                    <div class="col-auto" style="width: 120px;">
                       <label class="form-label small mb-1">Total</label>
                       <input type="text" class="form-control amount" name="amount[]" value="0.00" readonly>
                     </div>
-                    <div class="col-auto align-self-end">
-                      <button type="button" class="btn btn-pos-add" id="add-item"><i class="bi bi-plus-lg me-1"></i>Add</button>
+                    <div class="col-auto align-self-end" style="background: #FFC107;
+    font-weight: 600;
+    color: white;">
+                      <button type="button" class="btn btn-pos-add" style="background: #FFC107;
+                      font-weight: 600;
+                      color: white;" id="add-item"><i class="bi bi-plus-lg me-1"></i>Add</button>
                     </div>
                   </div>
                 </div>
 
-                <!-- Items list (existing rows + dynamic) – grey line above as in reference -->
+                <!-- Product list table -->
+                <div class="pos-items-list-wrap">
+                  <div class="pos-items-header">
+                    <span>Product</span>
+                    <span style="text-align: center;">Qty</span>
+                    <span style="text-align: right;">Price</span>
+                    <span style="text-align: right;">Total</span>
+                    <span></span>
+                  </div>
             <div id="items-container" class="pos-items-list">
               {% for item in existing_items %}
-              <div class="row g-2 align-items-center mb-2 item-row" data-item-id="{{ item.id }}">
+              <div class="row g-2 align-items-center mb-0 item-row" data-item-id="{{ item.id }}">
                 <input type="hidden" name="existing_item_ids[]" value="{{ item.id }}">
-                
-                <div class="col-md-4">
+                <div class="item-col-product">
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" {% if p.id == item.product.id %}selected{% endif %}>
-                        {{ p.name }}
-                      </option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" {% if p.id == item.product.id %}selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
-                <div class="col-md-2">
+                <div class="item-col-qty">
                   <input type="number" class="form-control qty-input" name="quantity[]" value="{{ item.quantity }}" placeholder="Qty" min="1">
                 </div>
-                <div class="col-md-2">
+                <div class="item-col-price">
                   <input type="number" class="form-control rate-input" name="price[]" value="{{ item.price }}" placeholder="Price" step="0.01" min="0">
                 </div>
-                <div class="col-md-2">
+                <div class="item-col-amount">
                   <input type="text" class="form-control amount" name="amount[]" value="{{ item.amount }}" readonly placeholder="Amount">
                 </div>
-                <div class="col-md-2 text-center">
+                <div class="item-col-remove">
                   <span class="remove-btn">&times;</span>
                 </div>
               </div>
               {% endfor %}
 
-
-              <!-- Optionally, one empty blank row for adding new item -->
-              <div class="row g-2 align-items-center mb-2 item-row">
-                <div class="col-md-4">
+              <!-- Empty row for adding new item -->
+              <div class="row g-2 align-items-center mb-0 item-row">
+                <div class="item-col-product">
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
@@ -586,237 +704,194 @@
                     {% endfor %}
                   </select>
                 </div>
-                <div class="col-md-2">
+                <div class="item-col-qty">
                   <input type="number" class="form-control qty-input" name="quantity[]" placeholder="Qty" min="1">
                 </div>
-                <div class="col-md-2">
+                <div class="item-col-price">
                   <input type="number" class="form-control rate-input" name="price[]" placeholder="Price" step="0.01" min="0">
                 </div>
-                <div class="col-md-2">
+                <div class="item-col-amount">
                   <input type="text" class="form-control amount" name="amount[]" readonly placeholder="Amount">
                 </div>
-                <div class="col-md-2 text-center">
+                <div class="item-col-remove">
                   <span class="remove-btn">&times;</span>
                 </div>
               </div>
             </div>
+                </div>
 
-                <!-- Logistics Details -->
-                <div class="section-card logistics-card">
-                  <div class="section-title"><i class="bi bi-truck"></i>Logistics Details</div>
-                  <div class="mb-2">
-                    <label class="form-label">Dispatch Address</label>
-                    {{ wholesale_forms.dispatch_address }}
-                  </div>
-                  <div class="row g-2 mb-2">
-                    <div class="col-md-4">
-                      <label class="form-label">Transport Name</label>
-                      {{ wholesale_forms.transport_name }}
+                <!-- Wholesale: invoice details + Dispatch & Document Details (only when Wholesale is on) -->
+                <div id="wholesale-left-block" class="wholesale-left-block" style="display: none;">
+                  <div class="wholesale-section-title"><i class="bi bi-receipt-cutoff"></i> Wholesale invoice details</div>
+                  <div class="wholesale-invoice-row d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                      <span class="text-muted small">Document number</span>
+                      <div class="fw-semibold" id="purchase_code_display"></div>
+                      <input type="hidden" name="invoice_number" id="invoice_number" value="{{ wholesale_forms.invoice_number.value|default:'' }}">
                     </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Vehicle No.</label>
-                      {{ wholesale_forms.vehicle_number }}
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Packaging Charges (₹)</label>
-                      {{ wholesale_forms.packaging_charges }}
+                    <div>
+                      <label class="form-label small text-muted mb-0">Date</label>
+                      <div>{{ wholesale_forms.date }}</div>
                     </div>
                   </div>
-                  <div class="row g-2">
-                    <div class="col-md-6">
-                      <label class="form-label">LR Number</label>
-                      {{ wholesale_forms.lr_number }}
+
+                  <!-- Dispatch & Document Details card (reference style) -->
+                  <div class="section-card logistics-card dispatch-document-card">
+                    <div class="section-title mb-2"><i class="bi bi-truck"></i> Dispatch & Document Details</div>
+                    <input type="hidden" name="invoice_type" id="invoice_type_input" value="{{ wholesale_forms.invoice_type.value|default:'invoice' }}">
+                    <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Document Type">
+                      <button type="button" class="btn btn-doc-type btn-doc-type-active" data-type="invoice">Invoice</button>
+                      <button type="button" class="btn btn-doc-type" data-type="proforma">Pro Forma Invoice</button>
+                      <button type="button" class="btn btn-doc-type" data-type="quotation">Quotation</button>
+                      <button type="button" class="btn btn-doc-type" data-type="delivery_challan">Delivery Challan</button>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">E-way Bill</label>
-                      {{ wholesale_forms.eway_bill_number }}
+                    <div class="row g-3 mb-2">
+                      <div class="col-12">
+                        <label class="form-label">Dispatch Address</label>
+                        {{ wholesale_forms.dispatch_address }}
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Delivery City</label>
+                        {{ wholesale_forms.delivery_city }}
+                      </div>
+                    </div>
+                    <div class="row g-3 mb-2">
+                      <div class="col-md-4">
+                        <label class="form-label">Transport Name</label>
+                        {{ wholesale_forms.transport_name }}
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Vehicle No.</label>
+                        {{ wholesale_forms.vehicle_number }}
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">LR Number</label>
+                        {{ wholesale_forms.lr_number }}
+                      </div>
+                    </div>
+                    <div class="row g-3 mb-2">
+                      <div class="col-md-4">
+                        <label class="form-label">E-way Bill No.</label>
+                        {{ wholesale_forms.eway_bill_number }}
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">No. of Parcels</label>
+                        {{ wholesale_forms.number_of_parcels }}
+                      </div>
+                      <div class="col-md-4 d-flex align-items-end pb-2">
+                        <label class="form-label me-2 mb-0">Reverse Charge</label>
+                        {{ wholesale_forms.reverse_charges }}
+                      </div>
+                    </div>
+                    <div class="row g-3 mb-2">
+                      <div class="col-12">
+                        <label class="form-label">Add References</label>
+                        {{ wholesale_forms.references }}
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Terms & Conditions</label>
+                        {{ wholesale_forms.terms }}
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Internal Notes</label>
+                        {{ wholesale_forms.notes }}
+                      </div>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label">Shipping Charges (₹)</label>
+                        {{ wholesale_forms.delivery_charges }}
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Packaging Charges (₹)</label>
+                        {{ wholesale_forms.packaging_charges }}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Right: Billing Details sidebar -->
+              <!-- Right: Bill Summary sidebar -->
               <div class="pos-right billing-sidebar">
-                <div class="section-title mb-3">Billing Details</div>
-                <p class="billing-summary-line">Total Products: <strong id="total-items">0</strong></p>
-                <p class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></p>
-                <p class="billing-summary-line">Total GST (18%): <strong>₹<span id="total-gst-amount">0.00</span></strong></p>
-                <p class="billing-summary-line">Additional Charges: <strong>₹<span id="additional-charges">0.00</span></strong></p>
-                <p class="billing-summary-line total-amount-line mb-2">Total Amount: <strong>₹<span id="total-amount-before-discount">0.00</span></strong></p>
-                <hr class="my-2">
-                <div class="mb-2">
-                  <label class="form-label">Discount</label>
-                  <div class="d-flex gap-2 mb-2">
-                    <button type="button" class="btn btn-discount-type active" id="discount-type-amount">₹ Amount</button>
-                    <button type="button" class="btn btn-discount-type" id="discount-type-percent">% Percent</button>
+                <div class="bill-header">Bill Summary</div>
+                <div class="bill-content">
+                  <div class="billing-summary-box">
+                    <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
+                    <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
+                    <div class="billing-summary-line">Total GST (18%): <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
+                    <div class="billing-summary-line">Shipping / Delivery Charges: <strong>₹<span id="additional-charges">0.00</span></strong></div>
+                    <div class="billing-summary-line total-amount-line">Total Amount: <strong>₹<span id="total-amount-before-discount">0.00</span></strong></div>
                   </div>
-                  <div id="discount-amount-wrap">
-                    {{ form.discount_amount }}
-                  </div>
-                  <div id="discount-percent-wrap" style="display:none;">
-                    {{ form.discount_percentage }}
-                  </div>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label">Shipping / Delivery Charges</label>
-                  <input type="number" id="shipping-charges-input" class="form-control" step="0.01" value="0.00" min="0" placeholder="0.00">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Payment Mode</label>
-                  <div class="d-flex flex-wrap gap-2 btn-group-payment" role="group">
-                    <button type="button" class="btn btn-payment btn-payment-active" onclick="selectPayment('cash', this)"><i class="bi bi-cash me-1"></i>Cash</button>
-                    <button type="button" class="btn btn-payment" onclick="selectPayment('upi', this)"><i class="bi bi-phone me-1"></i>UPI</button>
-                    <button type="button" class="btn btn-payment" onclick="selectPayment('cheque', this)"><i class="bi bi-bank me-1"></i>Cheque</button>
-                    <button type="button" class="btn btn-payment" onclick="selectPayment('credit', this)"><i class="bi bi-clock-history me-1"></i>Credit</button>
-                  </div>
-                  <input type="hidden" name="payment_method" id="payment_method" value="cash" required>
-                </div>
-                <div id="credit_time" style="display: none;">
-                <div class="row g-3 mb-3">
-                  <div class="col-md-4">
-                    <label class="form-label">Advance amount</label>
-                    {{ form.advance_payment_amount }}
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Advance payment mode</label>
-                    <div class="btn-group btn-group-sm" role="group">
-                      <button type="button" class="btn btn-payment btn-payment-active" onclick="selectAdvancePayment('cash', this)">Cash</button>
-                      <button type="button" class="btn btn-payment" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                  <hr class="my-2">
+                  <div class="mb-2">
+                    <label class="form-label">Discount</label>
+                    <div class="d-flex gap-2 mb-2">
+                      <button type="button" class="btn btn-discount-type active" id="discount-type-amount">₹ Amount</button>
+                      <button type="button" class="btn btn-discount-type" id="discount-type-percent">% Percent</button>
                     </div>
-                    <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
+                    <div id="discount-amount-wrap">
+                      {{ form.discount_amount }}
+                    </div>
+                    <div id="discount-percent-wrap" style="display:none;">
+                      {{ form.discount_percentage }}
+                    </div>
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Credit time (days)</label>
-                    {{ form.due_date }}
+                  <div class="mb-3">
+                    <label class="form-label">Payment Mode</label>
+                    <div class="pay-grid btn-group-payment" role="group">
+                      <button type="button" class="btn btn-payment btn-payment-active" onclick="selectPayment('cash', this)"><i class="bi bi-cash me-1"></i>Cash</button>
+                      <button type="button" class="btn btn-payment" onclick="selectPayment('upi', this)"><i class="bi bi-phone me-1"></i>UPI</button>
+                      <button type="button" class="btn btn-payment" onclick="selectPayment('cheque', this)"><i class="bi bi-bank me-1"></i>Cheque</button>
+                      <button type="button" class="btn btn-payment" onclick="selectPayment('credit', this)"><i class="bi bi-clock-history me-1"></i>Credit</button>
+                    </div>
+                    <input type="hidden" name="payment_method" id="payment_method" value="cash" required>
                   </div>
-                </div>
-              </div>
-              <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
-                <label class="form-label">Select Bank (If Cheque/Online)</label>
-                <select name="advance_bank" id="advance_bank" class="form-select" onchange="recalculateTotals()">
-                  <option value="">Select Bank Account</option>
-                  {% for bank in banks %}
-                  <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-                <div id="advance_summary" style="display:none" class="mt-2">
-                  <p class="billing-summary-line small">Advance: ₹<span id="advance-amount">0.00</span> (<span id="advance-mode">Cash</span> <span id="advance-bank-name" style="display:none;"></span>)</p>
-                </div>
-                <p class="form-label mt-3 mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.08em; color: #6b7280;">NET PAYABLE</p>
-                <p class="net-payable-box">₹<span id="net-payable">0.00</span></p>
-                <div class="pos-process-actions mt-3">
-                  <button type="submit" class="btn btn-process-sale">Process Sale →</button>
-                  <button type="reset" class="btn btn-discard">Discard</button>
-                </div>
-              </div>
-            </div>
-
-            <hr class="my-3">
-
-            <div id="secondform" style="display:none;">
-              <div class="wholesale-section-title"><i class="bi bi-receipt-cutoff"></i> Wholesale invoice details</div>
-
-              <!-- Document Type Selection -->
-              <div class="mb-3">
-                <input type="hidden" name="invoice_type" id="invoice_type_input" value="{{ form.invoice_type.value|default:'invoice' }}">
-                <div class="d-flex flex-wrap gap-2" role="group" aria-label="Document Type">
-                  <button type="button" class="btn btn-doc-type btn-doc-type-active" data-type="invoice">Invoice</button>
-                  <button type="button" class="btn btn-doc-type" data-type="proforma">Pro Forma Invoice</button>
-                  <button type="button" class="btn btn-doc-type" data-type="quotation">Quotation</button>
-                  <button type="button" class="btn btn-doc-type" data-type="delivery_challan">Delivery Challan</button>
-                </div>
-              </div>
-
-              <!-- Invoice Number and Date -->
-              <div class="wholesale-invoice-row d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <div>
-                  <span class="text-muted small">Document number</span>
-                  <div class="fw-semibold" id="purchase_code_display"></div>
-                  <input type="hidden" name="invoice_number" id="invoice_number">
-                  <input type="text" name="purchase_code" id="purchase_code_input" value="{{ wholesale_forms.purchase_code.value }}" class="form-control form-control-sm d-none" style="width: 150px;" />
-                  {% if wholesale_forms.purchase_code.errors %}
-                  <div class="text-danger mt-1 small">{{ wholesale_forms.purchase_code.errors.0 }}</div>
-                  {% endif %}
-                </div>
-                <div>
-                  <label class="form-label small text-muted mb-0">Date</label>
-                  <div>{{ wholesale_forms.purchase_date }}</div>
-                </div>
-              </div>
-
-              <!-- Optional – grouped and grid layout -->
-              <div class="optional-card">
-                <div class="optional-group-title">Optional</div>
-                <div class="row g-3">
-                  <div class="col-12">
-                    <label class="form-label"><i class="bi bi-truck me-1"></i>Dispatch Address</label>
-                    {{ wholesale_forms.dispatch_address }}
+                  <div id="credit_time" style="display: none;">
+                    <div class="row g-3 mb-3">
+                      <div class="col-md-4">
+                        <label class="form-label">Advance amount</label>
+                        {{ form.advance_payment_amount }}
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Advance payment mode</label>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button type="button" class="btn btn-payment btn-payment-active" onclick="selectAdvancePayment('cash', this)">Cash</button>
+                          <button type="button" class="btn btn-payment" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                        </div>
+                        <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Credit time (days)</label>
+                        {{ form.due_date }}
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label"><i class="bi bi-archive me-1"></i>Add References</label>
-                    {{ wholesale_forms.references }}
+                  <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
+                    <label class="form-label">Select Bank (If Cheque/Online)</label>
+                    <select name="advance_bank" id="advance_bank" class="form-select" onchange="recalculateTotals()">
+                      <option value="">Select Bank Account</option>
+                      {% for bank in banks %}
+                      <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
+                      {% endfor %}
+                    </select>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label"><i class="bi bi-chat-dots me-1"></i>Add Notes</label>
-                    {{ wholesale_forms.notes }}
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label"><i class="bi bi-clipboard-text me-1"></i>Add Terms</label>
-                    {{ wholesale_forms.terms }}
+                  <div id="advance_summary" style="display:none" class="mt-2">
+                    <p class="billing-summary-line small">Advance: ₹<span id="advance-amount">0.00</span> (<span id="advance-mode">Cash</span> <span id="advance-bank-name" style="display:none;"></span>)</p>
                   </div>
                 </div>
-              </div>
-
-              <div class="optional-card">
-                <div class="optional-group-title">Charges & delivery</div>
-                <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label"><i class="bi bi-truck-flatbed me-1"></i>Delivery/Shipping Charges</label>
-                    {{ wholesale_forms.delivery_charges }}
+                <div class="bill-footer">
+                  <div class="total-block">
+                    <span class="net-payable-label">Net Payable</span>
+                    <span class="total-lbl" aria-hidden="true">Net Payable</span>
+                    <span class="net-payable-box">₹<span id="net-payable">0.00</span></span>
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label"><i class="bi bi-box-seam me-1"></i>Packaging Charges</label>
-                    {{ wholesale_forms.packaging_charges }}
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Delivery City</label>
-                    {{ wholesale_forms.delivery_city }}
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label"><i class="bi bi-arrow-left-right me-1"></i>Reverse Charge</label>
-                    {{ wholesale_forms.reverse_charges }}
-                  </div>
-                </div>
-              </div>
-
-              <div class="optional-card">
-                <div class="optional-group-title">Transport & documents</div>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label"><i class="bi bi-file-earmark-bar-graph me-1"></i>E-way Bill Number</label>
-                    {{ wholesale_forms.eway_bill_number }}
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label"><i class="bi bi-card-list me-1"></i>LR Number</label>
-                    {{ wholesale_forms.lr_number }}
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label"><i class="bi bi-truck-front me-1"></i>Vehicle Number</label>
-                    <input id="vehicle_number" name="vehicle_number" type="text" class="form-control" placeholder="Vehicle No.">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label"><i class="bi bi-building me-1"></i>Transport Name</label>
-                    {{ wholesale_forms.transport_name }}
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label"><i class="bi bi-boxes me-1"></i>No. of Parcels</label>
-                    <input id="number_of_parcels" name="number_of_parcels" type="text" class="form-control" placeholder="No. of parcels">
+                  <div class="pos-process-actions">
+                    <button type="submit" class="btn btn-process-sale">Process Sale →</button>
+                    <button type="reset" class="btn btn-discard">Discard</button>
                   </div>
                 </div>
               </div>
             </div>
-
 
           </form>
         </div>
@@ -1005,7 +1080,9 @@ function recalculateTotals() {
     const discountPercentageField = document.getElementById('discount-percentage');
     const discountAmountField = document.getElementById('discount-amount-input');
     const advanceAmountField = document.getElementById('id_advance_payment_amount');
-    const shippingInput = document.getElementById('shipping-charges-input');
+    const deliveryChargesEl = document.getElementById('id_delivery_charges');
+    const packagingChargesEl = document.getElementById('id_packaging_charges');
+    const shippingCharges = (deliveryChargesEl ? (parseFloat(deliveryChargesEl.value) || 0) : 0) + (packagingChargesEl ? (parseFloat(packagingChargesEl.value) || 0) : 0);
 
     let discountAmount = 0;
     let discountPercentage = 0;
@@ -1027,14 +1104,13 @@ function recalculateTotals() {
 
     const amountAfterDiscount = totalBeforeDiscount - discountAmount;
     const advanceAmount = advanceAmountField ? (parseFloat(advanceAmountField.value) || 0) : 0;
-    const shippingCharges = shippingInput ? (parseFloat(shippingInput.value) || 0) : 0;
     const netPayable = amountAfterDiscount + shippingCharges - advanceAmount;
 
     const el = function(id) { const e = document.getElementById(id); return e ? e : null; };
     if (el('total-items')) el('total-items').innerText = totalItems;
     if (el('subtotal-amount')) el('subtotal-amount').innerText = subtotal.toFixed(2);
     if (el('total-gst-amount')) el('total-gst-amount').innerText = gstAmount.toFixed(2);
-    if (el('additional-charges')) el('additional-charges').innerText = '0.00';
+    if (el('additional-charges')) el('additional-charges').innerText = shippingCharges.toFixed(2);
     if (el('total-amount-before-discount')) el('total-amount-before-discount').innerText = totalBeforeDiscount.toFixed(2);
     if (el('advance-amount')) el('advance-amount').innerText = advanceAmount.toFixed(2);
     if (el('advance-mode')) el('advance-mode').innerText = (document.getElementById('advance_payment_method') && document.getElementById('advance_payment_method').value) ? document.getElementById('advance_payment_method').value.charAt(0).toUpperCase() + document.getElementById('advance_payment_method').value.slice(1) : 'Cash';
@@ -1058,8 +1134,10 @@ function recalculateTotals() {
   if (discountAmountEl) discountAmountEl.addEventListener('input', recalculateTotals);
   var advanceEl = document.getElementById('id_advance_payment_amount');
   if (advanceEl) advanceEl.addEventListener('input', recalculateTotals);
-  var shippingEl = document.getElementById('shipping-charges-input');
-  if (shippingEl) shippingEl.addEventListener('input', recalculateTotals);
+  var deliveryChargesInput = document.getElementById('id_delivery_charges');
+  var packagingChargesInput = document.getElementById('id_packaging_charges');
+  if (deliveryChargesInput) deliveryChargesInput.addEventListener('input', recalculateTotals);
+  if (packagingChargesInput) packagingChargesInput.addEventListener('input', recalculateTotals);
 
   // Discount type toggle: ₹ Amount / % Percent
   document.getElementById('discount-type-amount').addEventListener('click', function() {
@@ -1240,27 +1318,7 @@ function recalculateTotals() {
   document.addEventListener('DOMContentLoaded', applyWholesaleToAllRows);
   document.getElementById('wholesale_selector').addEventListener('change', applyWholesaleToAllRows);
 
-  // Retail / Wholesale toggle buttons – sync with hidden checkbox
-  function updatePosModeButtons() {
-    var isWholesale = document.getElementById('wholesale_selector').checked;
-    document.getElementById('pos-mode-retail').classList.toggle('btn-mode-active', !isWholesale);
-    document.getElementById('pos-mode-retail').setAttribute('aria-pressed', !isWholesale);
-    document.getElementById('pos-mode-wholesale').classList.toggle('btn-mode-active', isWholesale);
-    document.getElementById('pos-mode-wholesale').setAttribute('aria-pressed', isWholesale);
-  }
-  document.getElementById('pos-mode-retail').addEventListener('click', function() {
-    document.getElementById('wholesale_selector').checked = false;
-    updatePosModeButtons();
-    document.getElementById('wholesale_selector').dispatchEvent(new Event('change'));
-  });
-  document.getElementById('pos-mode-wholesale').addEventListener('click', function() {
-    document.getElementById('wholesale_selector').checked = true;
-    updatePosModeButtons();
-    document.getElementById('wholesale_selector').dispatchEvent(new Event('change'));
-  });
-  document.addEventListener('DOMContentLoaded', updatePosModeButtons);
-
-
+  // Retail/Wholesale is now a toggle switch; checkbox change is handled by label for="wholesale_selector"
 
   // Add item row
   function initializeSelect2OnRow(row) {
@@ -1329,6 +1387,7 @@ document.getElementById('add-item').addEventListener('click', () => {
 
   initializeSelect2OnRow(orig);
   initializeSelect2OnRow(clone);
+  if (typeof posForceSelect2Width === 'function') setTimeout(posForceSelect2Width, 0);
   attachListeners(clone);
   attachRemoveListener(clone);
 
@@ -1756,37 +1815,31 @@ document.addEventListener('DOMContentLoaded', function () {
   
 document.addEventListener('DOMContentLoaded', function () {
   const igstToggle = document.getElementById('wholesale_selector');
-  const wholesaleSection = document.getElementById('secondform');
-  const wholesaleFields = wholesaleSection.querySelectorAll('input, select, textarea');
+  const wholesaleBlock = document.getElementById('wholesale-left-block');
+  if (!wholesaleBlock) return;
+  const wholesaleFields = wholesaleBlock.querySelectorAll('input, select, textarea');
 
-  // Store original required state on load
   wholesaleFields.forEach(field => {
     field.dataset.originalRequired = field.hasAttribute('required') ? "true" : "false";
   });
 
   function toggleWholesale() {
     if (igstToggle.checked) {
-      wholesaleSection.style.display = 'block';
-      // Restore original required fields
+      wholesaleBlock.style.display = 'block';
       wholesaleFields.forEach(field => {
         if (field.dataset.originalRequired === "true") {
           field.setAttribute('required', 'required');
         }
       });
     } else {
-      // Remove required to prevent validation errors
+      wholesaleBlock.style.display = 'none';
       wholesaleFields.forEach(field => {
-        console.log(field)
         field.removeAttribute('required');
       });
-      wholesaleSection.style.display = 'none';
     }
   }
 
-  // Run once on page load
   toggleWholesale();
-
-  // Watch for changes
   igstToggle.addEventListener('change', toggleWholesale);
 });
 
@@ -1803,6 +1856,18 @@ document.addEventListener('DOMContentLoaded', function () {
     <script src="{% static 'js/pages/ecommerce-select2.init.js'%}"></script>
 
 <script>
+  // Force all Select2 dropdowns in POS to use full width of their cell (override inline width)
+  function posForceSelect2Width() {
+    $('#pos-form .select2-container').css('width', '100%');
+  }
+  $(document).ready(function() {
+    posForceSelect2Width();
+    setTimeout(posForceSelect2Width, 50);
+    setTimeout(posForceSelect2Width, 300);
+  });
+</script>
+
+<script>
 
 
   function fetchInvoiceNumber(invoiceType) {
@@ -1816,8 +1881,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 document.addEventListener("DOMContentLoaded", function () {
   const hiddenInput = document.getElementById("invoice_type_input");
-  const buttons = document.querySelectorAll('[data-type]');
-  
+  const buttons = document.querySelectorAll('#wholesale-left-block [data-type]');
+  if (!hiddenInput || !buttons.length) return;
+
   // Initial fetch based on hidden input's default
   fetchInvoiceNumber(hiddenInput.value);
 

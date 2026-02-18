@@ -1482,11 +1482,16 @@ def list_product(request):
 
     if request.user.is_superuser:
         data = product.objects.all()
-    
     else:
         data = product.objects.filter(user=request.user, is_active=True)
+
+    categories = list(data.values_list('category__name', flat=True).distinct().order_by('category__name'))
+    brands = list(data.exclude(brand_name__isnull=True).exclude(brand_name='').values_list('brand_name', flat=True).distinct().order_by('brand_name'))
+
     context = {
-        'data': data
+        'data': data,
+        'categories': [c for c in categories if c],
+        'brands': brands,
     }
     return render(request, 'list_product.html', context)
 
@@ -1560,11 +1565,25 @@ def generate_barcode(request):
     if request.method == "POST":
 
         ids = request.POST.getlist("selected_products")
-        products = product.objects.filter(id__in=ids, is_active=True)
         note_text = (request.POST.get("note") or "").strip()
 
-        if not products.exists(): 
-            return HttpResponse("No products selected", status=400) 
+        if not ids:
+            return HttpResponse("No products selected", status=400)
+
+        # Build list of (product, copies) for each selected product
+        product_copies_list = []
+        for pid in ids:
+            try:
+                copies = max(1, int(request.POST.get("copies_%s" % pid, 1) or 1))
+            except (ValueError, TypeError):
+                copies = 1
+            prod = product.objects.filter(id=pid, user=request.user, is_active=True).first()
+            if prod:
+                product_copies_list.append((prod, copies))
+        if not product_copies_list:
+            return HttpResponse("No valid products selected", status=400)
+        products = [p for p, _ in product_copies_list]
+        copies_per_product = {p.id: c for p, c in product_copies_list} 
         try: 
             user_settings = BarcodeSettings.objects.get(user=request.user) 
         except BarcodeSettings.DoesNotExist: user_settings = None
@@ -1607,99 +1626,92 @@ def generate_barcode(request):
         p = canvas.Canvas(buffer, pagesize=(PAGE_WIDTH, PAGE_HEIGHT))
 
         for i in products:
-            item_name = i.name
-            mrp = i.mrp
-            discount = i.wholesale_price
-            sale_price = i.sales_price
-            package_date = datetime.now().strftime("%d/%m/%Y")
-            note = note_text if note_text else ""
-            barcode_value = str("svindo") + str(i.id)
+            copies = copies_per_product.get(i.id, 1)
+            for _ in range(copies):
+                item_name = i.name
+                mrp = i.mrp if i.mrp is not None else 0
+                discount = i.wholesale_price
+                sale_price = i.sales_price if i.sales_price is not None else (i.wholesale_price or 0)
+                package_date = datetime.now().strftime("%d/%m/%Y")
+                note = note_text if note_text else ""
+                barcode_value = str("svindo") + str(i.id)
 
-          
-            # Margin padding
-            x_margin = 2 * mm
-            y_margin = 2 * mm
+                # Margin padding
+                x_margin = 2 * mm
+                y_margin = 2 * mm
 
-            # Draw rounded border
-            p.setStrokeColor(colors.black)
-            p.roundRect(x_margin, y_margin, PAGE_WIDTH - 2 * x_margin, PAGE_HEIGHT - 2 * y_margin, 3 * mm, stroke=1, fill=0)
+                # Draw rounded border
+                p.setStrokeColor(colors.black)
+                p.roundRect(x_margin, y_margin, PAGE_WIDTH - 2 * x_margin, PAGE_HEIGHT - 2 * y_margin, 3 * mm, stroke=1, fill=0)
 
-            # Starting coordinates
-            x_left = x_margin + 5
-            y_top = PAGE_HEIGHT - y_margin - 8
+                # Starting coordinates
+                x_left = x_margin + 5
+                y_top = PAGE_HEIGHT - y_margin - 8
 
-           # === Company Name (Top Center) ===
-            p.setFont("Helvetica-Bold", font_title + 2)
-            p.drawCentredString(PAGE_WIDTH / 2, y_top - 4, company_name)
+                # === Company Name (Top Center) ===
+                p.setFont("Helvetica-Bold", font_title + 2)
+                p.drawCentredString(PAGE_WIDTH / 2, y_top - 4, company_name)
 
-            # Add extra vertical gap below company name
-            company_name_gap = 10  # ⬅️ increase this for more distance
-            content_start_y = y_top - 4 - company_name_gap
+                # Add extra vertical gap below company name
+                company_name_gap = 10
+                content_start_y = y_top - 4 - company_name_gap
 
-            # === Left Side (Item / MRP / Discount) ===
-            p.setFont("Helvetica-Bold", font_text)
-            line_gap = 12  # spacing between each text line
-            start_y = content_start_y - 10  # ⬅️ start content a bit below the heading
+                # === Left Side (Item / MRP / Discount) ===
+                p.setFont("Helvetica-Bold", font_text)
+                line_gap = 12
+                start_y = content_start_y - 10
 
-            # Item
-            p.drawString(x_left, start_y, "Item:")
-            p.setFont("Helvetica", font_text)
-            p.drawString(x_left + 28, start_y, str(item_name))
+                # Item
+                p.drawString(x_left, start_y, "Item:")
+                p.setFont("Helvetica", font_text)
+                p.drawString(x_left + 28, start_y, str(item_name))
 
-            # MRP
-            p.setFont("Helvetica-Bold", font_text)
-            p.drawString(x_left, start_y - line_gap, "MRP:")
-            p.setFont("Helvetica", font_text)
-            p.drawString(x_left + 28, start_y - line_gap, f"{mrp:.2f}")
+                # MRP
+                p.setFont("Helvetica-Bold", font_text)
+                p.drawString(x_left, start_y - line_gap, "MRP:")
+                p.setFont("Helvetica", font_text)
+                p.drawString(x_left + 28, start_y - line_gap, f"{mrp:.2f}")
 
-            # Discount
-            p.setFont("Helvetica-Bold", font_text)
-            p.drawString(x_left, start_y - 2 * line_gap, "Discount:")
-            p.setFont("Helvetica", font_text)
-            p.drawString(x_left + 45, start_y - 2 * line_gap, str(discount if discount else "None"))
+                # Discount
+                p.setFont("Helvetica-Bold", font_text)
+                p.drawString(x_left, start_y - 2 * line_gap, "Discount:")
+                p.setFont("Helvetica", font_text)
+                p.drawString(x_left + 45, start_y - 2 * line_gap, str(discount if discount else "None"))
 
-            # === NOTE BOX (Anchored near bottom left) ===
-            note_box_height = 12 * mm
-            note_box_y = y_margin + 8 * mm  # padding from bottom
-            p.setFont("Helvetica-Bold", font_text)
-            p.drawString(x_left, note_box_y + 14 * mm, "Note:")
-            p.rect(x_left, note_box_y-2, 45 * mm, 12 * mm)
-            p.setFont("Helvetica", font_text - 1)
-            # Print user-entered note if any; otherwise leave note area blank
-            display_note = (note[:50] + "...") if len(note) > 50 else note
-            p.drawString(x_left + 5, note_box_y + note_box_height / 2 - 3, display_note)
+                # === NOTE BOX (Anchored near bottom left) ===
+                note_box_height = 12 * mm
+                note_box_y = y_margin + 8 * mm
+                p.setFont("Helvetica-Bold", font_text)
+                p.drawString(x_left, note_box_y + 14 * mm, "Note:")
+                p.rect(x_left, note_box_y-2, 45 * mm, 12 * mm)
+                p.setFont("Helvetica", font_text - 1)
+                display_note = (note[:50] + "...") if len(note) > 50 else note
+                p.drawString(x_left + 5, note_box_y + note_box_height / 2 - 3, display_note)
 
-            # === RIGHT SIDE (Package Date / Barcode / Sale Price / In Word) ===
-            right_start_x = PAGE_WIDTH - (x_margin + 45 * mm)
+                # === RIGHT SIDE (Package Date / Barcode / Sale Price / In Word) ===
+                right_start_x = PAGE_WIDTH - (x_margin + 45 * mm)
+                right_section_offset = 25
+                right_top_y = y_top - right_section_offset
 
-            # Add this vertical offset to push everything down
-            right_section_offset = 25  # ⬅️ increase this for more gap from the top
-            right_top_y = y_top - right_section_offset
+                p.setFont("Helvetica", font_text)
+                p.drawString(right_start_x, right_top_y, f"Package Date - {package_date}")
 
-            # Package Date
-            p.setFont("Helvetica", font_text)
-            p.drawString(right_start_x, right_top_y, f"Package Date - {package_date}")
+                barcode_top_gap = 5 * mm
+                barcode = code128.Code128(barcode_value, barHeight=barcode_height, barWidth=0.6)
+                barcode_x = PAGE_WIDTH - x_margin - 40 * mm
+                barcode_y = right_top_y - barcode_top_gap - barcode_height
+                barcode.drawOn(p, barcode_x, barcode_y)
 
-            # Barcode (centered nicely below package date)
-            barcode_top_gap = 5 * mm  # vertical gap between date and barcode
-            barcode = code128.Code128(barcode_value, barHeight=barcode_height, barWidth=0.6)
+                price_gap = 10
+                p.setFont("Helvetica-Bold", font_price)
+                p.drawString(right_start_x, barcode_y - price_gap, f"Sale Price: {sale_price:.2f}")
 
-            barcode_x = PAGE_WIDTH - x_margin - 40 * mm
-            barcode_y = right_top_y - barcode_top_gap - barcode_height
-            barcode.drawOn(p, barcode_x, barcode_y)
-
-            # Sale Price (pushed below barcode)
-            price_gap = 10  # distance between barcode and Sale Price
-            p.setFont("Helvetica-Bold", font_price)
-            p.drawString(right_start_x, barcode_y - price_gap, f"Sale Price: {sale_price:.2f}")
-
-            # In Word — right-aligned with the note box bottom
-            p.setFont("Helvetica", font_text - 1)
-            inword_text = f"In Word: {num2words(sale_price)}"
-            text_width = p.stringWidth(inword_text, "Helvetica", font_text - 1)
-            p.drawString(PAGE_WIDTH - x_margin - text_width - 5, note_box_y - 12, inword_text)
-            # Finish up
-            p.showPage()
+                p.setFont("Helvetica", font_text - 1)
+                inword_text = f"In Word: {num2words(sale_price)}"
+                text_width = p.stringWidth(inword_text, "Helvetica", font_text - 1)
+                p.drawString(PAGE_WIDTH - x_margin - text_width - 5, note_box_y - 12, inword_text)
+                # Finish up
+                p.showPage()
         p.save()
 
         buffer.seek(0)

@@ -26,6 +26,16 @@
         --vendor-accent: #f0d28c;
         --vendor-primary-dark: #5e4477;
     }
+    /* Container / page horizontal spacing – half of default (applies to all pages) */
+    .page-content {
+        padding-left: 3px !important;
+        padding-right: 3px !important;
+    }
+    .main-content .page-content .container,
+    .main-content .page-content .container-fluid {
+        padding-left: 3px !important;
+        padding-right: 3px !important;
+    }
     .dropdown-menu {
         max-height: 300px;
         overflow-y: auto;
@@ -55,6 +65,15 @@
         outline: none;
         border-color: #FCA311;
         box-shadow: 0 0 0 1px rgba(252, 163, 17, 0.3);
+    }
+    /* Container max-width: 1219px (no breakpoint – applies at all widths) */
+    .container,
+    .container-lg,
+    .container-md,
+    .container-sm,
+    .container-xl,
+    .container-xxl {
+        max-width: 1219px !important;
     }
 </style>
 

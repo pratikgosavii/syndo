@@ -6,58 +6,232 @@
 {% block extra_css %}
 <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
 <style>
-    body {
-        background-color: gainsboro;
-        color: #775599;
-    }
+    body { background-color: #f3f6f9; color: #1a1d21; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-    .card {
-        background-color: #ffffff;
+    .product-list-page .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.75rem;
+    }
+    .product-list-page .page-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: #1a1d21;
+        margin: 0;
+    }
+    .product-list-page .search-wrap {
+        position: relative;
+        flex: 1;
+        min-width: 160px;
+        max-width: 320px;
+    }
+    .product-list-page .search-wrap .bi-search {
+        position: absolute;
+        left: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+    .product-list-page .search-wrap input {
+        width: 100%;
+        padding: 0.4rem 0.5rem 0.4rem 1.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+    }
+    .product-list-page .filter-select {
+        padding: 0.4rem 1.5rem 0.4rem 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        color: #374151;
+        background-color: #fff;
+        min-width: 100px;
+    }
+    .product-list-page .btn-add-product {
+        background-color: #FFC107 !important;
+        color: #000 !important;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 6px;
         border: none;
+    }
+    .product-list-page .btn-add-product:hover { background-color: #e6ac00 !important; color: #000 !important; }
+
+    .product-list-page .product-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
         border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.6rem;
     }
-
-    .card-header {
-        background-color: #775599;
-        color: #ffffff;
-        border-radius: 8px 8px 0 0;
-        padding: 20px;
+    .product-list-page .product-card-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 1rem;
     }
+    .product-list-page .product-section { flex: 1; min-width: 0; }
+    .product-list-page .product-section-ident { min-width: 220px; }
+    .product-list-page .product-section-pricing { min-width: 100px; }
+    .product-list-page .product-section-stock { min-width: 100px; }
+    .product-list-page .product-section-actions { min-width: 200px; }
 
-    .table thead {
-        background-color: gray;
-        color: white;
-    }
-
-    .table tbody tr {
-        background-color: white;
-        color: black;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f0d28c;
-        color: #775599;
-    }
-
-    .product-img {
-        height: 60px;
-        width: 60px;
+    .product-list-page .product-thumb {
+        width: 52px;
+        height: 52px;
         object-fit: cover;
-        border-radius: 5px;
+        border-radius: 6px;
+        background: #f3f4f6;
+    }
+    .product-list-page .product-thumb-placeholder {
+        width: 52px;
+        height: 52px;
+        border-radius: 6px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        font-size: 0.65rem;
+    }
+    .product-list-page .product-name {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #1a1d21;
+        margin: 0.2rem 0 0.15rem 0;
+    }
+    .product-list-page .category-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-bottom: 0.2rem;
+    }
+    .product-list-page .category-pill {
+        display: inline-block;
+        padding: 0.15rem 0.35rem;
+        border-radius: 9999px;
+        background: #f3f4f6;
+        color: #6b7280;
+        font-size: 0.6875rem;
+    }
+    .product-list-page .product-meta {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-bottom: 0.1rem;
+    }
+    .product-list-page .product-variant {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    .product-list-page .product-variant .color-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        vertical-align: middle;
+        margin-right: 0.2rem;
+    }
+    .product-list-page .product-ident {
+        font-size: 0.6875rem;
+        color: #9ca3af;
     }
 
-    .action-icons {
-        font-size: 18px;
-        margin-right: 10px;
-        cursor: pointer;
+    .product-list-page .label-muted {
+        font-size: 0.625rem;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        margin-bottom: 0.15rem;
     }
+    .product-list-page .price-value {
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: #2563eb;
+    }
+    .product-list-page .mrp-value { font-size: 0.8125rem; color: #1a1d21; }
+    .product-list-page .stock-ok { font-weight: 600; font-size: 0.8125rem; color: #059669; }
+    .product-list-page .stock-low { font-weight: 600; font-size: 0.8125rem; color: #d97706; }
+    .product-list-page .low-alert { font-size: 0.6875rem; color: #dc2626; }
+
+    .product-list-page .service-pills, .product-list-page .policy-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-bottom: 0.35rem;
+    }
+    .product-list-page .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.15rem 0.35rem;
+        border-radius: 9999px;
+        font-size: 0.6875rem;
+    }
+    .product-list-page .pill-service {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+    .product-list-page .pill-policy-cod { background: #d1fae5; color: #047857; }
+    .product-list-page .pill-policy { background: #dbeafe; color: #1d4ed8; }
+
+    .product-list-page .card-actions-top {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.35rem;
+        margin-bottom: 0.35rem;
+    }
+    .product-list-page .action-icons {
+        font-size: 1rem;
+        cursor: pointer;
+        opacity: 0.85;
+    }
+    .product-list-page .action-icons:hover { opacity: 1; }
+    .product-list-page .btn-add-variant {
+        background: #2563eb;
+        color: #fff !important;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        text-decoration: none;
+    }
+    .product-list-page .btn-add-variant:hover { background: #1d4ed8; color: #fff !important; }
+
+    .product-list-page .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 0.35rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    .product-list-page .status-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .product-list-page .status-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+    }
+    .product-list-page .status-dot.on { background: #059669; }
+    .product-list-page .status-dot.off { background: #d1d5db; }
 
     @media (max-width: 768px) {
-        .table-responsive {
-            overflow-x: auto;
-        }
+        .product-list-page .product-card-inner { flex-direction: column; }
+        .product-list-page .product-section { min-width: 100%; }
     }
 </style>
 {% endblock extra_css %}
@@ -65,148 +239,137 @@
 {% block content %}
 <div class="main-content">
     <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18"><i class="bi bi-box-seam me-2" style="color: #775599;"></i>Product List</h4>
-                    </div>
-                </div>
-            </div>
-
+        <div class="container-fluid product-list-page">
             <div class="container">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table id="datatable" class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Parent product ID</th>
-                                                <th>Image</th>
-                                                <th>Name</th>
-                                                <th>Category</th>
-                                                <th>Sub Category</th>
-                                                <th>Brand</th>
-                                                <th>Color</th>
-                                                <th>Size</th>
-                                                <th>Unit</th>
-                                                <th>HSN</th>
-                                                <th>Stock</th>
-                                                <th>Stock (cached)</th>
-                                                <th>GST (%)</th>
-                                                <th>Wholesale Price</th>
-                                                <th>Purchase Price</th>
-                                                <th>Sales Price</th>
-                                                <th>MRP</th>
-                                                <th>Opening Stock</th>
-                                                <th>Low Stock Alert</th>
-                                                <th>Low Stock Qty</th>
-                                                <th>Batch No.</th>
-                                                <th>Expiry Date</th>
-                                                <th>Track Serial No.</th>
-                                                <th>Instant Delivery</th>
-                                                <th>Self Pickup</th>
-                                                <th>General Delivery</th>
-                                                <th>Return Policy</th>
-                                                <th>COD</th>
-                                                <th>Replacement</th>
-                                                <th>Shop Exchange</th>
-                                                <th>Shop Warranty</th>
-                                                <th>Brand Warranty</th>
-                                                <th>Is Popular</th>
-                                                <th>Is Featured</th>
-                                                <th>Is Active</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% if data %}
-                                                {% for i in data %}
-                                                <tr>
-                                                    <td>{{ forloop.counter }}</td>
-                                                    <td>{{ i.parents }}</td>
-                                                    <td>
-                                                        {% if i.image %}
-                                                            <img src="{{ i.image.url }}" class="product-img" alt="product image">
-                                                        {% else %}
-                                                            N/A
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>{{ i.name }}</td>
-                                                    <td>{{ i.category }}</td>
-                                                    <td>{{ i.sub_category }}</td>
-                                                    <td>{{ i.brand_name }}</td>
-                                                    <td>{{ i.color }}</td>
-                                                    <td>{{ i.size }}</td>
-                                                    <td>{{ i.unit }}</td>
-                                                    <td>{{ i.hsn }}</td>
-                                                    <td>{{ i.current_stock }}</td>
-                                                    <td>{{ i.stock_cached|default:"0" }}</td>
-                                                    <td>{{ i.gst }}</td>
-                                                    <td>₹{{ i.wholesale_price }}</td>
-                                                    <td>₹{{ i.purchase_price }}</td>
-                                                    <td>₹{{ i.sales_price }}</td>
-                                                    <td>₹{{ i.mrp }}</td>
-                                                    <td>{{ i.opening_stock }}</td>
-                                                    <td>{{ i.low_stock_alert }}</td>
-                                                    <td>{{ i.low_stock_quantity }}</td>
-                                                    <td>{{ i.batch_number }}</td>
-                                                    <td>{{ i.expiry_date }}</td>
-                                                    <td>{{ i.track_serial_numbers }}</td>
-                                                    <td>{{ i.instant_delivery }}</td>
-                                                    <td>{{ i.self_pickup }}</td>
-                                                    <td>{{ i.general_delivery }}</td>
-                                                    <td>{{ i.return_policy }}</td>
-                                                    <td>{{ i.cod }}</td>
-                                                    <td>{{ i.replacement }}</td>
-                                                    <td>{{ i.shop_exchange }}</td>
-                                                    <td>{{ i.shop_warranty }}</td>
-                                                    <td>{{ i.brand_warranty }}</td>
-                                                    <td>{{ i.is_popular }}</td>
-                                                    <td>{{ i.is_featured }}</td>
-                                                    <td>
-                                                        {% if i.is_active %}
-                                                            ✅
-                                                        {% else %}
-                                                            ❌
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>
-                                                        {% if request.user.is_superuser %}
-                                                       <a href="{% url 'add_to_super_catalogue' i.id %}" class="text-decoration-none" title="Add to Catalogue">
-                                                            <i class="bi bi-box-arrow-in-down text-success action-icons"></i>
-                                                        </a>
-                                                        {% endif %}
-                                                        <a href="{% url 'update_product' i.id %}">
-                                                            <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
-                                                        </a>
-                                                        <a href="{% url 'delete_product' i.id %}">
-                                                            <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
-                                                        </a>
+                <div class="page-header">
+                    <h1 class="page-title">Product List</h1>
+                    <div class="search-wrap">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="product-search" class="form-control" placeholder="Search by Name, SKU, or Brand..." autocomplete="off">
+                    </div>
+                    <select class="filter-select" id="filter-category" aria-label="Category">
+                        <option value="">Category: All</option>
+                        {% for c in categories %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="filter-select" id="filter-brand" aria-label="Brand">
+                        <option value="">Brand: All</option>
+                        {% for b in brands %}
+                        <option value="{{ b }}">{{ b }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="filter-select" id="filter-status" aria-label="Status">
+                        <option value="">Status: Active</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                    <select class="filter-select" id="filter-stock" aria-label="Stock">
+                        <option value="">Stock: Any</option>
+                        <option value="in">In stock</option>
+                        <option value="low">Low stock</option>
+                        <option value="out">Out of stock</option>
+                    </select>
+                    <a href="{% url 'add_product' %}" class="btn btn-add-product">
+                        <i class="bi bi-plus-lg"></i> Add Product
+                    </a>
+                </div>
 
-                                                        <a href="{% url 'add_variant' i.id %}" class="text-decoration-none ms-2" title="Add Variant">
-                                                            <i class="bi bi-plus-square text-primary action-icons"></i>
-                                                        </a>
-
-
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            {% else %}
-                                                <tr>
-                                                    <td colspan="34" class="text-center">No products available.</td>
-                                                </tr>
-                                            {% endif %}
-                                        </tbody>
-                                    </table>
-                                    
+                <div id="product-list">
+                    {% if data %}
+                        {% for i in data %}
+                        <div class="product-card product-row" data-name="{{ i.name|lower }}" data-brand="{{ i.brand_name|default:''|lower }}" data-sku="{{ i.assign_barcode|default:'' }}" data-category="{% if i.category %}{{ i.category }}{% endif %}">
+                            <div class="product-card-inner">
+                                <div class="product-section product-section-ident">
+                                    <div class="d-flex align-items-start gap-3">
+                                        {% if i.image %}
+                                            <img src="{{ i.image.url }}" alt="{{ i.name }}" class="product-thumb">
+                                        {% else %}
+                                            <div class="product-thumb-placeholder">Product</div>
+                                        {% endif %}
+                                        <div>
+                                            <div class="product-name">{{ i.name }}</div>
+                                            <div class="category-pills">
+                                                {% if i.category %}<span class="category-pill">{{ i.category }}</span>{% endif %}
+                                                {% if i.sub_category %}<span class="category-pill">{{ i.sub_category }}</span>{% endif %}
+                                            </div>
+                                            <div class="product-meta">Brand: {{ i.brand_name|default:"—" }}</div>
+                                            <div class="product-variant">
+                                                {% if i.color %}
+                                                <span class="color-dot" style="background-color: {{ i.color_hex|default:'#9ca3af' }};"></span>
+                                                {% endif %}
+                                                Size: {{ i.size|default:"—" }} {% if i.unit %}(Unit: {{ i.unit }}){% endif %}
+                                            </div>
+                                            <div class="product-ident">
+                                                HSN: {{ i.hsn|default:"None" }} | Batch: {{ i.batch_number|default:"None" }} | Exp: {{ i.expiry_date|default:"None" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="product-section product-section-pricing">
+                                    <div class="label-muted">Sales Price</div>
+                                    <div class="price-value">{% if i.sales_price %}₹{{ i.sales_price|floatformat:2 }}{% else %}₹{{ i.wholesale_price|floatformat:2 }}{% endif %}</div>
+                                    <div class="label-muted mt-2">MRP</div>
+                                    <div class="mrp-value">{% if i.mrp %}₹{{ i.mrp|floatformat:2 }}{% else %}—{% endif %}</div>
+                                </div>
+                                <div class="product-section product-section-stock">
+                                    <div class="label-muted">Wholesale</div>
+                                    <div class="price-value">₹{{ i.wholesale_price|floatformat:2 }}</div>
+                                    <div class="label-muted mt-2">Stock</div>
+                                    {% with stock=i.current_stock|default:0 %}
+                                    <div class="{% if stock > 0 %}{% if i.low_stock_alert and i.low_stock_quantity and stock <= i.low_stock_quantity %}stock-low{% else %}stock-ok{% endif %}{% else %}stock-low{% endif %}">
+                                        {{ stock }} Available
+                                    </div>
+                                    {% endwith %}
+                                    {% if i.low_stock_alert and i.low_stock_quantity %}
+                                    <div class="low-alert">Low Alert: {{ i.low_stock_quantity }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="product-section product-section-actions">
+                                    <div class="card-actions-top">
+                                        {% if request.user.is_superuser %}
+                                        <a href="{% url 'add_to_super_catalogue' i.id %}" class="text-decoration-none" title="Add to Catalogue">
+                                            <i class="bi bi-box-arrow-in-down text-success action-icons"></i>
+                                        </a>
+                                        {% endif %}
+                                        <a href="{% url 'update_product' i.id %}" title="Edit">
+                                            <i class="bi bi-pencil text-warning action-icons"></i>
+                                        </a>
+                                        <a href="{% url 'delete_product' i.id %}" title="Delete">
+                                            <i class="bi bi-trash text-danger action-icons"></i>
+                                        </a>
+                                    </div>
+                                    <div class="label-muted">Active Services</div>
+                                    <div class="service-pills">
+                                        {% if i.instant_delivery %}<span class="pill pill-service">⚡ Instant</span>{% endif %}
+                                        {% if i.self_pickup %}<span class="pill pill-service">📦 Pickup</span>{% endif %}
+                                        {% if i.general_delivery %}<span class="pill pill-service">🚚 General</span>{% endif %}
+                                        {% if not i.instant_delivery and not i.self_pickup and not i.general_delivery %}<span class="pill pill-service text-muted">—</span>{% endif %}
+                                    </div>
+                                    <div class="label-muted">Policies</div>
+                                    <div class="policy-pills">
+                                        {% if i.cod %}<span class="pill pill-policy-cod">✅ COD</span>{% endif %}
+                                        {% if i.return_policy %}<span class="pill pill-policy">↩ Return</span>{% else %}<span class="pill pill-policy">↩ Return (No)</span>{% endif %}
+                                        {% if i.shop_warranty or i.brand_warranty %}<span class="pill pill-policy">🛡️ Warranty</span>{% endif %}
+                                        {% if not i.cod and not i.return_policy and not i.shop_warranty and not i.brand_warranty %}<span class="pill pill-policy text-muted">—</span>{% endif %}
+                                    </div>
+                                    <a href="{% url 'add_variant' i.id %}" class="btn btn-add-variant">
+                                        <i class="bi bi-plus"></i> Add Variant
+                                    </a>
+                                    <div class="status-row">
+                                        <span class="status-item"><span class="status-dot {% if i.is_active %}on{% else %}off{% endif %}"></span> Active</span>
+                                        <span class="status-item"><span class="status-dot {% if i.is_popular %}on{% else %}off{% endif %}"></span> Popular</span>
+                                        <span class="status-item"><span class="status-dot {% if i.is_featured %}on{% else %}off{% endif %}"></span> Featured</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="product-card">
+                            <p class="text-muted mb-0">No products available.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -221,14 +384,50 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    setTimeout(() => {
-        const toastElement = document.getElementById("toast");
-        if (toastElement) {
-            toastElement.classList.remove("show");
-            setTimeout(() => {
-                toastElement.remove();
-            }, 500);
-        }
-    }, 5000);
+(function() {
+    var search = document.getElementById('product-search');
+    var filterCat = document.getElementById('filter-category');
+    var filterBrand = document.getElementById('filter-brand');
+    var filterStatus = document.getElementById('filter-status');
+    var filterStock = document.getElementById('filter-stock');
+    var rows = document.querySelectorAll('.product-list-page .product-row');
+
+    function filterRows() {
+        var q = (search && search.value) ? search.value.trim().toLowerCase() : '';
+        var cat = filterCat ? filterCat.value.toLowerCase() : '';
+        var brand = filterBrand ? filterBrand.value.toLowerCase() : '';
+        var status = filterStatus ? filterStatus.value : '';
+        var stock = filterStock ? filterStock.value : '';
+
+        rows.forEach(function(row) {
+            var name = (row.getAttribute('data-name') || '');
+            var brandVal = (row.getAttribute('data-brand') || '');
+            var sku = (row.getAttribute('data-sku') || '');
+            var matchSearch = !q || name.indexOf(q) >= 0 || brandVal.indexOf(q) >= 0 || sku.indexOf(q) >= 0;
+            var catVal = (row.getAttribute('data-category') || '').toLowerCase();
+            var matchCat = !cat || catVal.indexOf(cat) >= 0;
+            var matchBrand = !brand || brandVal.indexOf(brand) >= 0;
+            var firstStatus = row.querySelector('.status-row .status-item');
+            var isActive = firstStatus && firstStatus.querySelector('.status-dot.on');
+            var matchStatus = !status || (status === 'active' && isActive) || (status === 'inactive' && !isActive);
+            var stockText = row.querySelector('.stock-ok, .stock-low');
+            var stockNum = stockText ? parseInt((stockText.textContent || '0').replace(/\D/g, ''), 10) : 0;
+            var matchStock = !stock || (stock === 'in' && stockNum > 0) || (stock === 'low' && stockNum > 0 && row.querySelector('.low-alert')) || (stock === 'out' && stockNum === 0);
+            row.style.display = (matchSearch && matchCat && matchBrand && matchStatus && matchStock) ? '' : 'none';
+        });
+    }
+    if (search) search.addEventListener('input', filterRows);
+    if (filterCat) filterCat.addEventListener('change', filterRows);
+    if (filterBrand) filterBrand.addEventListener('change', filterRows);
+    if (filterStatus) filterStatus.addEventListener('change', filterRows);
+    if (filterStock) filterStock.addEventListener('change', filterRows);
+})();
+setTimeout(function() {
+    var toastElement = document.getElementById('toast');
+    if (toastElement) {
+        toastElement.classList.remove('show');
+        setTimeout(function() { toastElement.remove(); }, 500);
+    }
+}, 5000);
 </script>
 {% endblock extra_js %}
