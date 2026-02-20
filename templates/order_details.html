@@ -36,31 +36,37 @@
             font-size: 0.875rem;
             color: #6b7280;
         }
-        .order-header-actions {
+        /* Order Summary card: header buttons (inside card, below title) */
+        .order-summary-header-btns {
             display: flex;
+            flex-wrap: wrap;
             gap: 0.5rem;
-            flex-shrink: 0;
+            align-items: center;
         }
-        .btn-cancel-order {
-            background-color: #DC3545;
-            color: #fff;
-            border: none;
+        .btn-cancel-order-outline {
+            background: transparent;
+            color: #dc3545;
+            border: 1px solid #dc3545;
             border-radius: 8px;
             padding: 8px 16px;
             font-weight: 600;
             font-size: 0.9375rem;
         }
-        .btn-cancel-order:hover { color: #fff; background-color: #c82333; }
-        .btn-download-bill {
-            background-color: #FFC107;
-            color: #1a1d21;
-            border: none;
+        .btn-cancel-order-outline:hover { background: #FEF3C7 !important;
+            border: 1px solid #F59E0B !important;
+            color: #92400e !important; border-color: #c82333 !important; }
+        .btn-download-bill-solid {
+            background: #FEF3C7 !important;
+            border: 1px solid #F59E0B !important;
+            color: #92400e !important;
             border-radius: 8px;
             padding: 8px 16px;
             font-weight: 600;
             font-size: 0.9375rem;
+            text-decoration: none;
+            display: inline-block;
         }
-        .btn-download-bill:hover { color: #1a1d21; background-color: #e0a800; }
+        .btn-download-bill-solid:hover { background: #FDE68A; border-color: #D97706; color: #92400e; }
         .order-details-grid {
             display: grid;
             grid-template-columns: 1fr 340px;
@@ -138,13 +144,13 @@
         .order-summary-tag {
             font-size: 0.75rem;
             font-weight: 600;
-            padding: 0.35rem 0.65rem;
+            padding: 0.4rem 0.75rem;
             border-radius: 6px;
         }
-        .order-summary-tag-status-not { background: #DC3545; color: #fff; }
-        .order-summary-tag-status-accepted { background: #28a745; color: #fff; }
-        .order-summary-tag-delivery { background: #0d6efd; color: #fff; }
-        .order-summary-tag-payment { background: #6c757d; color: #fff; }
+        .order-summary-tag-status-not { background: #fecaca; color: #b91c1c; }
+        .order-summary-tag-status-accepted { background: #bbf7d0; color: #166534; }
+        .order-summary-tag-delivery { background: #bfdbfe; color: #1d4ed8; }
+        .order-summary-tag-payment { background: #e5e7eb; color: #374151; }
         .order-summary-block {
             margin-bottom: 1.25rem;
         }
@@ -165,11 +171,25 @@
             margin-bottom: 0.35rem;
             font-size: 0.9375rem;
         }
+        .order-summary-total-block {
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .order-summary-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .order-summary-total-row .order-summary-block-title { margin-bottom: 0; }
         .order-total-amount {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #0d6efd;
-            margin: 0.5rem 0 1rem;
+            color: #2563eb;
+            margin: 0;
         }
         .btn-accept-order {
             background-color: #FFC107;
@@ -208,20 +228,11 @@
     <div class="page-content">
         <div class="container-fluid order-details-page">
             <div class="container my-4">
-                <!-- Top header: Order #, meta, Cancel + Download Bill -->
+                <!-- Top header: Order #, meta only; Cancel + Download Bill moved into Order Summary card -->
                 <div class="order-details-header">
                     <div>
                         <h1 class="order-id-title">Order #{{ data.order_id }}</h1>
                         <p class="order-meta">{{ data.created_at|date:"M d, Y, g:i a" }} • Created by Customer</p>
-                    </div>
-                    <div class="order-header-actions">
-                        {% if data.status != 'completed' and data.status != 'cancelled' and data.status != 'cancelled_by_vendor' %}
-                        <form method="post" action="{% url 'cancel_order' data.id %}" class="d-inline" onsubmit="return confirm('Cancel this order?');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-cancel-order">Cancel Order</button>
-                        </form>
-                        {% endif %}
-                        <a href="{% url 'order_invoice_pdf' data.id %}" target="_blank" class="btn btn-download-bill">Download Bill</a>
                     </div>
                 </div>
 
@@ -275,9 +286,18 @@
                         {% endfor %}
                     </div>
 
-                    <!-- Right: Order Summary -->
+                    <!-- Right: Order Summary (match required UI) -->
                     <div class="card order-summary-card p-4">
-                        <h2 class="card-title">Order Summary</h2>
+                        <h2 class="card-title mb-3">Order Summary</h2>
+                        <div class="order-summary-header-btns mb-3">
+                            {% if data.status != 'completed' and data.status != 'cancelled' and data.status != 'cancelled_by_vendor' %}
+                            <form method="post" action="{% url 'cancel_order' data.id %}" class="d-inline" onsubmit="return confirm('Cancel this order?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-download-bill-solid">Cancel Order</button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'order_invoice_pdf' data.id %}" target="_blank" class="btn btn-download-bill-solid">Download Bill</a>
+                        </div>
                         <div class="order-summary-tags">
                             <span class="order-summary-tag order-summary-tag-status-{% if data.status == 'not_accepted' %}not{% else %}accepted{% endif %}">{{ data.get_status_display }}</span>
                             <span class="order-summary-tag order-summary-tag-delivery">{{ data.get_delivery_type_display }}</span>
@@ -288,7 +308,7 @@
                             <div class="order-summary-block-title">Customer details</div>
                             <div class="order-summary-block-content">
                                 <strong>{{ customer_name }}</strong><br>
-                                <strong>{{ customer_phone }}</strong>
+                                <span class="customer-phone-plain">{{ customer_phone }}</span>
                             </div>
                         </div>
 
@@ -306,9 +326,11 @@
                             <div class="order-summary-line"><span>Coupon</span><span>- ₹ {{ data.coupon }}</span></div>
                         </div>
 
-                        <div class="order-summary-block">
-                            <div class="order-summary-block-title">Total Amount</div>
-                            <div class="order-total-amount">₹ {{ data.total_amount }}</div>
+                        <div class="order-summary-block order-summary-total-block">
+                            <div class="order-summary-total-row">
+                                <span class="order-summary-block-title mb-0">Total Amount</span>
+                                <span class="order-total-amount">₹ {{ data.total_amount }}</span>
+                            </div>
                         </div>
 
                         {% if data.status != "accepted" %}

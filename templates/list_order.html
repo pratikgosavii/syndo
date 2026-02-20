@@ -1,217 +1,249 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Categories List{% endblock title %}
-
+{% block title %}Order List{% endblock title %}
 
 {% block extra_css %}
-    <!-- plugin css -->
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet"
-          type="text/css"/>
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        body {
-            background-color: gainsboro;
-            color: #775599;;
-        }
-
-        .card {
-            background-color: #ffffff;
+        body { background-color: #f1f5f9; color: #334155; }
+        .order-list-page .card {
+            background: #fff;
             border: none;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
-
-        .card-header {
-            background-color: #775599;;
-            color: #ffffff;
-            border-radius: 8px 8px 0 0;
-            padding: 20px;
+        .order-list-page .page-title { font-weight: 700; color: #1e293b; font-size: 1.25rem; }
+        /* Filter card */
+        .order-list-page .filter-card .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 6px;
         }
-
-        .card-title {
-            margin: 0;
+        .order-list-page .filter-card .form-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            min-width: 140px;
         }
-
-        .card-body {
-            padding: 20px;
+        .order-list-page .btn-apply-filter {
+            background-color: #FFC107;
+            color: #000;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 16px;
         }
-
-        .table thead {
-            background-color: gray;
-            color: white;
+        .order-list-page .btn-apply-filter:hover { background-color: #e6ac00; color: #000; }
+        .order-list-page .btn-clear-filter {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            border-radius: 6px;
+            padding: 6px 16px;
         }
-
-        .table tbody tr {
-            background-color: white;
-            color: black;
+        .order-list-page .btn-clear-filter:hover { background: #f8fafc; color: #475569; }
+        /* Table - white background */
+        .order-list-page .order-table { margin-bottom: 0; background: #fff; }
+        .order-list-page .order-table thead th {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #334155;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 10px;
         }
-
-        .table tbody tr:hover {
-            background-color: #f0d28c;
-            color: #775599;;
+        .order-list-page .order-table tbody td {
+            padding: 12px 10px;
+            vertical-align: middle;
+            color: #334155;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
         }
-
-        .status-approved {
-            color: rgb(80, 244, 80);
-            font-weight: bold;
+        .order-list-page .order-table tbody tr:hover td { background: #f8fafc; }
+        .order-list-page .order-id { color: #64748b; font-size: 13px; }
+        .order-list-page .customer-name { font-weight: 600; color: #1e293b; display: block; }
+        .order-list-page .customer-phone { font-size: 12px; color: #64748b; }
+        .order-list-page .date-line { font-weight: 500; color: #334155; }
+        .order-list-page .time-line { font-size: 12px; color: #64748b; }
+        .order-list-page .payment-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #f1f5f9;
+            color: #1e293b;
         }
-
-        .status-pending {
-            color: blue;
-            font-weight: bold;
+        .order-list-page .payment-badge .unpaid { color: #dc2626; }
+        .order-list-page .payment-badge .paid { color: #16a34a; }
+        .order-list-page .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #166534;
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
         }
-
-        .status-not-approved {
-            color: red;
-            font-weight: bold;
+        .order-list-page .status-badge.status-cancelled { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        .order-list-page .status-badge.status-pending { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+        .order-list-page .status-badge.status-completed { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+        .order-list-page .status-badge.status-other { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+        .order-list-page .btn-view-order {
+            display: inline-block;
+            background: #fff;
+            color: #2563eb !important;
+            border: 1px solid #2563eb;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none !important;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s, color 0.2s;
         }
-
-        @media (max-width: 768px) {
-            .table-responsive {
-                overflow-x: auto;
-            }
+        .order-list-page .btn-view-order:hover {
+            background: #eff6ff !important;
+            color: #1d4ed8 !important;
+            border-color: #1d4ed8;
         }
+        .order-list-page .total-amount { font-weight: 600; color: #1e293b; }
+        @media (max-width: 768px) { .table-responsive { overflow-x: auto; } }
     </style>
 {% endblock extra_css %}
 
 {% block content %}
-
-    <!-- ============================================================== -->
-    <!-- Start right Content here -->
-    <!-- ============================================================== -->
-    <div class="main-content">
-        <div class="page-content">
-            <div class="container-fluid">
-                <!-- start page title -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 class="mb-sm-0 font-size-18"><i class="bi bi-bag-check me-2" style="color: #775599;"></i>List Order</h4>
-                        </div>
+<div class="main-content order-list-page">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 page-title">Order List</h4>
                     </div>
                 </div>
-                <div class="container">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card mb-3">
-                                <div class="card-body">
-                                    <form method="get" action="" class="row g-3 align-items-end">
-                                        <div class="col-auto">
-                                            <label for="filter_status" class="form-label mb-0">Status</label>
-                                            <select name="status" id="filter_status" class="form-select form-select-sm">
-                                                <option value="">All</option>
-                                                <option value="not_accepted" {% if filter_status == 'not_accepted' %}selected{% endif %}>Not Accepted</option>
-                                                <option value="accepted" {% if filter_status == 'accepted' %}selected{% endif %}>Accepted</option>
-                                                <option value="ready_to_shipment" {% if filter_status == 'ready_to_shipment' %}selected{% endif %}>Ready to Shipment</option>
-                                                <option value="completed" {% if filter_status == 'completed' %}selected{% endif %}>Completed</option>
-                                                <option value="cancelled" {% if filter_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
-                                                <option value="cancelled_by_vendor" {% if filter_status == 'cancelled_by_vendor' %}selected{% endif %}>Cancelled by Vendor</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-auto">
-                                            <label for="filter_paid" class="form-label mb-0">Paid / Unpaid</label>
-                                            <select name="paid" id="filter_paid" class="form-select form-select-sm">
-                                                <option value="">Default</option>
-                                                <option value="paid" {% if filter_paid == 'paid' %}selected{% endif %}>Paid</option>
-                                                <option value="unpaid" {% if filter_paid == 'unpaid' %}selected{% endif %}>Unpaid</option>
-                                                <option value="all" {% if filter_paid == 'all' %}selected{% endif %}>All</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-auto">
-                                            <label for="filter_payment_mode" class="form-label mb-0">Payment Type</label>
-                                            <select name="payment_mode" id="filter_payment_mode" class="form-select form-select-sm">
-                                                <option value="">All</option>
-                                                <option value="cod" {% if filter_payment_mode == 'cod' %}selected{% endif %}>COD</option>
-                                                <option value="cash" {% if filter_payment_mode == 'cash' %}selected{% endif %}>Cash</option>
-                                                <option value="online" {% if filter_payment_mode == 'online' %}selected{% endif %}>Online</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-auto">
-                                            <label for="filter_delivery_type" class="form-label mb-0">Type of Delivery</label>
-                                            <select name="delivery_type" id="filter_delivery_type" class="form-select form-select-sm">
-                                                <option value="">All</option>
-                                                <option value="instant_delivery" {% if filter_delivery_type == 'instant_delivery' %}selected{% endif %}>Instant Delivery</option>
-                                                <option value="general_delivery" {% if filter_delivery_type == 'general_delivery' %}selected{% endif %}>General Delivery</option>
-                                                <option value="self_pickup" {% if filter_delivery_type == 'self_pickup' %}selected{% endif %}>Self Pickup</option>
-                                                <option value="on_shop_order" {% if filter_delivery_type == 'on_shop_order' %}selected{% endif %}>On-shop Order</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-auto">
-                                            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
-                                            <a href="{% url 'order_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Clear</a>
-                                        </div>
-                                    </form>
-                                </div>
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card mb-3 filter-card">
+                            <div class="card-body">
+                                <form method="get" action="" class="row g-3 align-items-end">
+                                    <div class="col-auto">
+                                        <label for="filter_status" class="form-label">Status</label>
+                                        <select name="status" id="filter_status" class="form-select form-select-sm">
+                                            <option value="">All Orders</option>
+                                            <option value="not_accepted" {% if filter_status == 'not_accepted' %}selected{% endif %}>Not Accepted</option>
+                                            <option value="accepted" {% if filter_status == 'accepted' %}selected{% endif %}>Accepted</option>
+                                            <option value="ready_to_shipment" {% if filter_status == 'ready_to_shipment' %}selected{% endif %}>Ready to Shipment</option>
+                                            <option value="completed" {% if filter_status == 'completed' %}selected{% endif %}>Completed</option>
+                                            <option value="cancelled" {% if filter_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                            <option value="cancelled_by_vendor" {% if filter_status == 'cancelled_by_vendor' %}selected{% endif %}>Cancelled by Vendor</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label for="filter_paid" class="form-label">Payment</label>
+                                        <select name="paid" id="filter_paid" class="form-select form-select-sm">
+                                            <option value="">All</option>
+                                            <option value="paid" {% if filter_paid == 'paid' %}selected{% endif %}>Paid</option>
+                                            <option value="unpaid" {% if filter_paid == 'unpaid' %}selected{% endif %}>Unpaid</option>
+                                            <option value="all" {% if filter_paid == 'all' %}selected{% endif %}>All</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label for="filter_payment_mode" class="form-label">Payment Type</label>
+                                        <select name="payment_mode" id="filter_payment_mode" class="form-select form-select-sm">
+                                            <option value="">All</option>
+                                            <option value="cod" {% if filter_payment_mode == 'cod' %}selected{% endif %}>COD</option>
+                                            <option value="cash" {% if filter_payment_mode == 'cash' %}selected{% endif %}>Cash</option>
+                                            <option value="online" {% if filter_payment_mode == 'online' %}selected{% endif %}>Online</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label for="filter_delivery_type" class="form-label">Delivery Type</label>
+                                        <select name="delivery_type" id="filter_delivery_type" class="form-select form-select-sm">
+                                            <option value="">All</option>
+                                            <option value="instant_delivery" {% if filter_delivery_type == 'instant_delivery' %}selected{% endif %}>Instant Delivery</option>
+                                            <option value="general_delivery" {% if filter_delivery_type == 'general_delivery' %}selected{% endif %}>General Delivery</option>
+                                            <option value="self_pickup" {% if filter_delivery_type == 'self_pickup' %}selected{% endif %}>Self Pickup</option>
+                                            <option value="on_shop_order" {% if filter_delivery_type == 'on_shop_order' %}selected{% endif %}>On-shop Order</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-apply-filter">Apply Filter</button>
+                                        <a href="{% url 'order_list' %}" class="btn btn-clear-filter">Clear</a>
+                                    </div>
+                                </form>
                             </div>
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table
-                                                id="datatable"
-                                                class="table table-bordered table-striped"
-                                        >
-                                            <thead>
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Order Id</th>
-                                                    <th>Date</th>
-                                                    <th>User</th>
-                                                    <th>Status</th>
-                                                    <th>Payment Type</th>
-                                                    <th>Paid / Unpaid</th>
-                                                    <th>Delivery Type</th>
-                                                    <th>Product × Qty</th>
-                                                    <th>Total</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="tableBody">
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table id="datatable" class="table order-table">
+                                        <thead>
+                                            <tr>
+                                                <th>ORDER ID</th>
+                                                <th>CUSTOMER</th>
+                                                <th>DATE / TIME</th>
+                                                <th>ITEMS</th>
+                                                <th>DELIVERY</th>
+                                                <th>PAYMENT</th>
+                                                <th>STATUS (CHANGE)</th>
+                                                <th>TOTAL</th>
+                                                <th>ACTION</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody">
                                             {% if data %}
                                                 {% for i in data %}
                                                     <tr data-bs-toggle="collapse" data-bs-target="#orderItems{{ i.id }}" style="cursor: pointer;">
-                                                        <td>{{ forloop.counter }}</td>
-                                                        <td>{{ i.order_id }}</td>
-                                                        <td>{{ i.created_at|date:"d/m/Y H:i" }}</td>
-                                                        <td>{{ i.user }}</td>
+                                                        <td class="order-id">#{{ i.order_id }}</td>
                                                         <td>
-                                                            <span class="badge 
-                                                                {% if i.status == 'accepted' %} bg-success
-                                                                {% elif i.status == 'cancelled' or i.status == 'cancelled_by_vendor' %} bg-danger
-                                                                {% elif i.status == 'not_accepted' %} bg-warning
-                                                                {% elif i.status == 'completed' %} bg-info
-                                                                {% else %} bg-secondary
-                                                                {% endif %}">
-                                                                {{ i.get_status_display|default:i.status }}
+                                                            <span class="customer-name">{% if i.user %}{{ i.user.get_full_name|default:i.user.username }}{% else %}{% if i.address %}{{ i.address.full_name }}{% else %}—{% endif %}{% endif %}</span>
+                                                            <span class="customer-phone">{% if i.address %}{{ i.address.mobile_number }}{% endif %}</span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="date-line">{{ i.created_at|date:"d M Y" }}</span><br>
+                                                            <span class="time-line">{{ i.created_at|time:"g:i A" }}</span>
+                                                        </td>
+                                                        <td>{{ i.items.all|length }} Item{% if i.items.all|length != 1 %}s{% endif %}</td>
+                                                        <td>{{ i.get_delivery_type_display|default:i.delivery_type|default:"—" }}</td>
+                                                        <td>
+                                                            <span class="payment-badge">
+                                                                {{ i.payment_mode|default:"COD"|upper }}
+                                                                <span class="mx-1">•</span>
+                                                                {% if i.is_paid %}<span class="paid">Paid</span>{% else %}<span class="unpaid">Unpaid</span>{% endif %}
                                                             </span>
                                                         </td>
-                                                        <td>{{ i.payment_mode|default:"—" }}</td>
                                                         <td>
-                                                            {% if i.is_paid %}
-                                                                <span class="badge bg-success">Paid</span>
-                                                            {% else %}
-                                                                <span class="badge bg-secondary">Unpaid</span>
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>{{ i.get_delivery_type_display|default:i.delivery_type|default:"—" }}</td>
-                                                        <td>Click to view items</td>
-                                                        <td>₹{{ i.total_amount }}</td>
-                                                        <td onclick="event.stopPropagation();">
-                                                            <a href="{% url 'order_details' i.id %}">
-                                                                <i class="bi bi-pencil-square text-primary" title="Details"></i>
+                                                            <a href="{% url 'order_details' i.id %}" class="text-decoration-none" onclick="event.stopPropagation();">
+                                                                <span class="status-badge {% if i.status == 'accepted' %}{% elif i.status == 'cancelled' or i.status == 'cancelled_by_vendor' %}status-cancelled{% elif i.status == 'not_accepted' %}status-pending{% elif i.status == 'completed' %}status-completed{% else %}status-other{% endif %}">
+                                                                    {{ i.get_status_display|default:i.status }}
+                                                                    <i class="bi bi-chevron-down small"></i>
+                                                                </span>
                                                             </a>
                                                         </td>
+                                                        <td class="total-amount">₹ {{ i.total_amount }}</td>
+                                                        <td class="order-list-action-cell">
+                                                            <a href="{% url 'order_details' i.id %}" class="btn-view-order" data-order-url="{% url 'order_details' i.id %}">View Order</a>
+                                                        </td>
                                                     </tr>
-
-                                                    <!-- Collapsible order items -->
                                                     <tr class="collapse" id="orderItems{{ i.id }}">
-                                                        <td colspan="11">
+                                                        <td colspan="9" class="bg-light">
                                                             <strong>Items:</strong>
                                                             {% if i.items.all %}
-                                                                <ul class="mb-0">
+                                                                <ul class="mb-0 mt-1">
                                                                     {% for item in i.items.all %}
                                                                         {% if item.product.user_id == request.user.id %}
                                                                             <li>{{ item.product.name }} × {{ item.quantity }}</li>
@@ -225,49 +257,49 @@
                                                     </tr>
                                                 {% endfor %}
                                             {% else %}
-                                                <tr><td colspan="11" class="text-center">No orders found.</td></tr>
+                                                <tr><td colspan="9" class="text-center py-4 text-muted">No orders found.</td></tr>
                                             {% endif %}
                                         </tbody>
-                                    </table> 
-
-                                    </div>
+                                    </table>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- container-fluid -->
         </div>
-        <!-- End Page-content -->
-
         {% block footer %}
             {% include 'partials/footer.html' %}
         {% endblock footer %}
     </div>
-    <!-- end main content-->
+</div>
 {% endblock content %}
 
 {% block extra_js %}
     <script>
-        // Auto-hide toast after 5 seconds
-        setTimeout(() => {
-            const toastElement = document.getElementById("toast");
+        (function() {
+            var tableBody = document.getElementById("tableBody");
+            if (tableBody) {
+                tableBody.addEventListener("click", function(e) {
+                    var actionCell = e.target.closest && e.target.closest(".order-list-action-cell");
+                    if (actionCell) {
+                        e.stopPropagation();
+                        var link = actionCell.querySelector("a.btn-view-order");
+                        if (link && (e.target === link || link.contains(e.target))) {
+                            e.preventDefault();
+                            window.location.href = link.getAttribute("href");
+                        }
+                    }
+                }, true);
+            }
+        })();
+        setTimeout(function() {
+            var toastElement = document.getElementById("toast");
             if (toastElement) {
-                toastElement.classList.remove("show"); // Hide toast
-                setTimeout(() => {
-                    toastElement.remove(); // Remove from DOM
-                }, 500); // Wait for fade-out animation
+                toastElement.classList.remove("show");
+                setTimeout(function() { toastElement.remove(); }, 500);
             }
         }, 5000);
     </script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Plugins js-->
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.min.js' %}"></script>
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/maps/jquery-jvectormap-world-mill-en.js' %}"></script>
-    <script src="{% static 'js/pages/allchart.js' %}"></script>
-    <!-- dashboard init -->
-    <script src="{% static 'js/pages/dashboard.init.js' %}"></script>
-
 {% endblock extra_js %}

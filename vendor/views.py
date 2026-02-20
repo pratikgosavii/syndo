@@ -4218,6 +4218,7 @@ def order_list(request):
     # Vendor sees orders that contain their products
     qs = (
         Order.objects.filter(items__product__user=request.user)
+        .select_related("user", "address")
         .distinct()
         .order_by("-created_at")
     )
