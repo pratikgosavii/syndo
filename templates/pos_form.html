@@ -368,7 +368,6 @@
             border-top: 2px dashed #e2e8f0;
             display: flex;
             flex-direction: column;
-            gap: 12px;
             flex-shrink: 0;
         }
         .billing-summary-line { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; margin-bottom: 4px; }
@@ -382,7 +381,7 @@
             margin-top: 4px;
         }
         .btn-payment {
-            padding: 4px 2px;
+            padding: 14px 21px;
             text-align: center;
             border: 1px solid #e2e8f0;
             border-radius: 5px;
@@ -391,16 +390,21 @@
             cursor: pointer;
             background: #fff;
             transition: 0.2s;
-            line-height: 1.2;
-            min-height: 24px;
+            line-height: 1.15;
+            min-height: 20px;
         }
-        .btn-payment .bi { font-size: 10px; }
+        .btn-payment .bi { font-size: 9px; }
         .btn-payment.btn-payment-active {
             background: #FEF3C7;
             border-color: #F59E0B;
             color: #92400e;
         }
         .btn-payment:not(.btn-payment-active):hover { border-color: #cbd5e0; background: #f8fafc; }
+        .input-group { margin-bottom: 0; }
+        .input-group .form-label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+        .pay-opt { cursor: pointer; user-select: none; }
+        .bank-select .form-label { font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+        .advance-section .form-control, .advance-section .form-select { font-size: 12px; }
         .btn-discount-type {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -836,40 +840,40 @@
                       {{ form.discount_percentage }}
                     </div>
                   </div>
-                  <div class="mb-3">
-                    <label class="form-label">Payment Mode</label>
+                  <div class="input-group mb-3">
+                    <label class="form-label d-block w-100">Payment Mode</label>
                     <div class="pay-grid btn-group-payment" role="group">
-                      <button type="button" class="btn btn-payment btn-payment-active" onclick="selectPayment('cash', this)"><i class="bi bi-cash me-1"></i>Cash</button>
-                      <button type="button" class="btn btn-payment" onclick="selectPayment('upi', this)"><i class="bi bi-phone me-1"></i>UPI</button>
-                      <button type="button" class="btn btn-payment" onclick="selectPayment('cheque', this)"><i class="bi bi-bank me-1"></i>Cheque</button>
-                      <button type="button" class="btn btn-payment" onclick="selectPayment('credit', this)"><i class="bi bi-clock-history me-1"></i>Credit</button>
+                      <div class="pay-opt btn-payment btn-payment-active" onclick="selectPayment('cash', this)">Cash</div>
+                      <div class="pay-opt btn-payment" onclick="selectPayment('upi', this)">UPI</div>
+                      <div class="pay-opt btn-payment" onclick="selectPayment('cheque', this)">Cheque</div>
+                      <div class="pay-opt btn-payment" onclick="selectPayment('credit', this)">Credit</div>
                     </div>
                     <input type="hidden" name="payment_method" id="payment_method" value="cash" required>
-                  </div>
-                  <div id="credit_time" style="display: none;">
-                    <div class="row g-3 mb-3">
-                      <div class="col-md-4">
-                        <label class="form-label">Advance amount</label>
-                        {{ form.advance_payment_amount }}
-                      </div>
-                      <div class="col-md-4">
-                        <label class="form-label">Advance payment mode</label>
-                        <div class="btn-group btn-group-sm" role="group">
-                          <button type="button" class="btn btn-payment btn-payment-active" onclick="selectAdvancePayment('cash', this)">Cash</button>
-                          <button type="button" class="btn btn-payment" onclick="selectAdvancePayment('bank', this)">Bank</button>
+
+                    <div id="credit_time" class="advance-section mt-2" style="display: none;">
+                      <div class="advance-header small fw-semibold text-secondary mb-2">Take Advance Payment?</div>
+                      <div class="row g-2 mb-2">
+                        <div class="col-6">
+                          <label class="form-label small d-block">Advance amount</label>
+                          {{ form.advance_payment_amount }}
                         </div>
-                        <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
+                        <div class="col-6">
+                          <label class="form-label small d-block">Credit time (days)</label>
+                          {{ form.due_date }}
+                        </div>
                       </div>
-                      <div class="col-md-4">
-                        <label class="form-label">Credit time (days)</label>
-                        {{ form.due_date }}
+                      <label class="form-label small d-block mb-1">Advance Payment Mode</label>
+                      <div class="pay-grid btn-group-payment" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="pay-opt btn-payment btn-payment-active" onclick="selectAdvancePayment('cash', this)">Cash</div>
+                        <div class="pay-opt btn-payment" onclick="selectAdvancePayment('bank', this)">Bank</div>
                       </div>
+                      <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
                     </div>
                   </div>
-                  <div id="advance-bank-dropdown" class="mt-2" style="display: none;">
-                    <label class="form-label">Select Bank (If Cheque/Online)</label>
-                    <select name="advance_bank" id="advance_bank" class="form-select" onchange="recalculateTotals()">
-                      <option value="">Select Bank Account</option>
+                  <div id="advance-bank-dropdown" class="bank-select mt-2" style="display: none;">
+                    <label class="form-label small">Select Bank (If Cheque/Online)</label>
+                    <select name="advance_bank" id="advance_bank" class="form-select form-select-sm" onchange="recalculateTotals()">
+                      <option value="">Select Bank Account...</option>
                       {% for bank in banks %}
                       <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
                       {% endfor %}
