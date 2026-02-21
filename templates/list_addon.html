@@ -123,9 +123,9 @@
                                                     <td>{{ forloop.counter }}</td>
                                                     <td>
                                                         {% if i.image %}
-                                                            <img src="{{ i.image.url }}" class="product-img" alt="product image" height="50">
+                                                            <img src="{{ i.image.url }}" class="product-img" alt="product image" height="50" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
                                                         {% else %}
-                                                            N/A
+                                                            <img src="{% static 'images/default product image.jpeg' %}" class="product-img" alt="product image" height="50">
                                                         {% endif %}
                                                     </td>
                                                     <td>{{ i.name }}</td>

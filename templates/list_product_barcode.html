@@ -306,9 +306,9 @@
                                         <input class="form-check-input row-check" type="checkbox" name="selected_products" value="{{ i.id }}" id="cb_{{ i.id }}">
                                     </div>
                                     {% if i.image %}
-                                    <img src="{{ i.image.url }}" alt="{{ i.name }}" class="product-thumb">
+                                    <img src="{{ i.image.url }}" alt="{{ i.name }}" class="product-thumb" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
                                     {% else %}
-                                    <div class="product-thumb-placeholder">Product</div>
+                                    <img src="{% static 'images/default product image.jpeg' %}" alt="{{ i.name }}" class="product-thumb">
                                     {% endif %}
                                     <div class="product-info">
                                         <div class="product-name">{{ i.name }}</div>

@@ -312,9 +312,9 @@
                         {% for item in data.items.all %}
                         <div class="order-item-row {% if data.status != 'accepted' %}item-status-disabled{% endif %}">
                             {% if item.product.image %}
-                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="order-item-img">
+                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="order-item-img" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
                             {% else %}
-                            <img src="{% static 'images/default-product.png' %}" alt="No Image" class="order-item-img">
+                            <img src="{% static 'images/default product image.jpeg' %}" alt="{{ item.product.name }}" class="order-item-img">
                             {% endif %}
                             <div class="order-item-body">
                                 <div class="order-item-name">{{ item.product.name }}</div>

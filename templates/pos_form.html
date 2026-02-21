@@ -25,10 +25,11 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.02);
             overflow: hidden;
         }
+        /* Header is 70px (app.css .navbar-header); leave room for top/bottom spacing */
         .pos-main-row {
             display: grid;
             grid-template-columns: 1fr 380px;
-            height: calc(100vh - 160px);
+            height: calc(100vh - 70px - 30px);
             min-height: 400px;
         }
         @media (max-width: 991px) {
@@ -164,21 +165,21 @@
             outline: none;
         }
         .btn-pos-customer {
-            background: #ffc107;
+            background: #FFC107 !important;
+            font-weight: 600 !important;
+            color: white !important;
             border: none;
             width: 42px;
             height: 42px;
             border-radius: 8px;
             font-size: 18px;
-            font-weight: bold;
             cursor: pointer;
             flex-shrink: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: #000;
         }
-        .btn-pos-customer:hover { background: #f59e0b; color: #000; }
+        .btn-pos-customer:hover { background: #e6ac00; color: white; }
         .pos-actions-bar { display: flex; gap: 12px; align-items: center; margin-top: 10px; }
         .btn-search-catalog {
             background: #FFC107;
@@ -324,15 +325,16 @@
         #logistics-details-left .section-title { color: #b45309; font-weight: 700; }
         .logistics-card .form-control { min-height: 38px; border-radius: 8px; border-color: #fcd34d; }
 
-        /* Right panel – Bill Summary: sticky in its grid position, only left column scrolls */
+        /* Right panel – Bill Summary: grid layout, height = viewport minus header (70px) and spacing */
         .pos-right.billing-sidebar {
             width: 100%;
             background: #fff;
             border-left: 1px solid #e2e8f0;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            min-height: calc(100vh - 160px);
+            display: grid;
+            grid-template-rows: 1fr auto;
+            height: calc(100vh - 70px - 30px);
+            min-height: 280px;
+            max-height: calc(100vh - 70px - 30px);
             box-shadow: -5px 0 15px rgba(0,0,0,0.03);
             flex-shrink: 0;
             overflow: hidden;
@@ -342,9 +344,9 @@
                 position: sticky;
                 top: 20px;
                 align-self: flex-start;
-                min-height: auto;
-                height: auto;
-                max-height: calc(100vh - 40px);
+                height: calc(100vh - 70px - 30px);
+                max-height: calc(100vh - 70px - 30px);
+                min-height: 320px;
             }
         }
         .bill-header {
@@ -355,20 +357,27 @@
             color: #1e293b;
             flex-shrink: 0;
         }
+        /* Scrollable area: Discount, Payment Mode, Advance, Summary */
         .bill-content {
-            flex: 1 1 auto;
-            padding: 10px 20px;
-            overflow-y: visible;
+            grid-row: 1;
+            min-height: 0;
+            overflow-y: auto;
             overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        .bill-footer {
             padding: 10px 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Footer with Net Payable + buttons – always at bottom of sidebar (grid row 2) */
+        .bill-footer {
+            grid-row: 2;
+            padding: 12px 20px 14px;
             border-top: 2px dashed #e2e8f0;
             display: flex;
             flex-direction: column;
-            flex-shrink: 0;
+            gap: 12px;
+            min-width: 0;
+            background: #fff;
+            width: 100%;
+            box-sizing: border-box;
         }
         .billing-summary-line { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; margin-bottom: 4px; }
         .billing-summary-line strong { color: #334155; font-weight: 700; }
@@ -418,6 +427,7 @@
         }
         .btn-discount-type.active { background: #e2e8f0; border-color: #cbd5e0; color: #475569; }
         .btn-discount-type:not(.active):hover { background: #fff; border-color: #cbd5e0; }
+        .billing-sidebar .discount-value-input { flex: 1; min-width: 80px; max-width: 140px; }
         /* Net Payable & actions – match reference image */
         .bill-footer .net-payable-label {
             font-size: 11px;
@@ -428,9 +438,12 @@
             margin-bottom: 4px;
             display: block;
         }
-        .total-block { display: flex; flex-direction: column; align-items: flex-start; margin-top: 0; margin-bottom: 12px; }
+        .total-block { display: flex; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: nowrap; margin-top: 0; margin-bottom: 12px; width: 100%; }
         .total-block .total-lbl { display: none; }
         .net-payable-box { font-size: 26px; font-weight: 800; color: #2563eb; letter-spacing: -0.02em; }
+        .pos-process-actions { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 12px; align-items: stretch; width: 100%; min-width: 0; }
+        .pos-process-actions .btn-process-sale,
+        .pos-process-actions .btn-discard { flex: 1 1 0; min-width: 0; width: auto; min-height: 48px; padding: 12px 16px; font-size: 15px; white-space: nowrap; }
         .billing-sidebar .btn-process-sale.btn,
         #pos-form .btn-process-sale.btn,
         .btn-process-sale.btn {
@@ -445,6 +458,12 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
         }
+
+        .page-content{
+          padding-bottom: 0px !important;
+        }
+
+        
         .billing-sidebar .btn-process-sale:hover,
         #pos-form .btn-process-sale:hover,
         .btn-process-sale:hover { background: #0d9668 !important; color: white !important; }
@@ -463,6 +482,27 @@
         .btn-discard:hover { background: #fee2e2; color: #b91c1c; }
         .billing-sidebar .form-label { margin-bottom: 6px; }
         .billing-sidebar .mb-2, .billing-sidebar .mb-3 { margin-bottom: 12px !important; }
+
+        /* Product Search Modal – equal-size cards */
+        #productSearchModal #product-list .col-lg-2,
+        #productSearchModal #product-list .col-md-3,
+        #productSearchModal #product-list .col-sm-4 { display: flex; }
+        #productSearchModal #product-list .product-card {
+            display: flex; flex-direction: column; width: 100%; min-height: 280px;
+        }
+        #productSearchModal #product-list .product-card .card-img-top {
+            height: 120px; object-fit: cover; flex-shrink: 0;
+        }
+        #productSearchModal #product-list .product-card .card-body {
+            display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 12px;
+        }
+        #productSearchModal #product-list .product-card .card-title {
+            font-size: 0.9rem; margin-bottom: 6px; min-height: 2.4em;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        #productSearchModal #product-list .product-card .card-body > p { margin-bottom: 8px; font-weight: 600; }
+        #productSearchModal #product-list .product-card .card-body .input-group { margin-bottom: 8px; }
+        #productSearchModal #product-list .product-card .card-body .btn-primary { margin-top: auto; }
 
         @media (min-width: 992px) {
             .form-container { max-height: none; overflow: visible; }
@@ -817,26 +857,20 @@
 
               <!-- Right: Bill Summary sidebar -->
               <div class="pos-right billing-sidebar">
-                <div class="bill-header">Bill Summary</div>
                 <div class="bill-content">
-                  <div class="billing-summary-box">
-                    <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
-                    <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
-                    <div class="billing-summary-line">Total GST (18%): <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
-                    <div class="billing-summary-line">Shipping / Delivery Charges: <strong>₹<span id="additional-charges">0.00</span></strong></div>
-                    <div class="billing-summary-line total-amount-line">Total Amount: <strong>₹<span id="total-amount-before-discount">0.00</span></strong></div>
-                  </div>
+                 
                   <hr class="my-2">
                   <div class="mb-2">
                     <label class="form-label">Discount</label>
-                    <div class="d-flex gap-2 mb-2">
+                    <div class="d-flex gap-2 align-items-center mb-2">
                       <button type="button" class="btn btn-discount-type active" id="discount-type-amount">₹ Amount</button>
                       <button type="button" class="btn btn-discount-type" id="discount-type-percent">% Percent</button>
+                      <input type="number" id="discount-value-input" class="form-control discount-value-input" placeholder="0" step="0.01" min="0" aria-label="Discount value">
                     </div>
-                    <div id="discount-amount-wrap">
+                    <div id="discount-amount-wrap" class="d-none">
                       {{ form.discount_amount }}
                     </div>
-                    <div id="discount-percent-wrap" style="display:none;">
+                    <div id="discount-percent-wrap" class="d-none">
                       {{ form.discount_percentage }}
                     </div>
                   </div>
@@ -879,8 +913,13 @@
                       {% endfor %}
                     </select>
                   </div>
-                  <div id="advance_summary" style="display:none" class="mt-2">
-                    <p class="billing-summary-line small">Advance: ₹<span id="advance-amount">0.00</span> (<span id="advance-mode">Cash</span> <span id="advance-bank-name" style="display:none;"></span>)</p>
+                   <div class="billing-summary-box">
+                    <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
+                    <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
+                    <div class="billing-summary-line">Total GST (18%): <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
+                    <div class="billing-summary-line">Shipping / Delivery Charges: <strong>₹<span id="additional-charges">0.00</span></strong></div>
+                    <div id="advance_summary" class="billing-summary-line" style="display:none;">Advance: <strong>₹<span id="advance-amount">0.00</span></strong> (<span id="advance-mode">Cash</span> <span id="advance-bank-name" style="display:none;"></span>)</div>
+                    <div class="billing-summary-line total-amount-line">Total Amount: <strong>₹<span id="total-amount-before-discount">0.00</span></strong></div>
                   </div>
                 </div>
                 <div class="bill-footer">
@@ -926,14 +965,14 @@
                   data-name="{{ product.name }}"
                   data-price="{{ product.sales_price }}"
                   data-image="{{ product.image.url }}">
-                <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
             {% else %}
               <div class="card h-100 shadow-sm product-card" 
                   data-id="{{ product.id }}"
                   data-name="{{ product.name }}"
                   data-price="{{ product.sales_price }}"
                   data-image="">
-                <img src="{% static 'images/default-product.png' %}" class="card-img-top" alt="No Image">
+                <img src="{% static 'images/default product image.jpeg' %}" class="card-img-top" alt="{{ product.name }}">
             {% endif %}
 
 
@@ -1134,8 +1173,6 @@ function recalculateTotals() {
 
   var discountPercentEl = document.getElementById('discount-percentage');
   var discountAmountEl = document.getElementById('discount-amount-input');
-  if (discountPercentEl) discountPercentEl.addEventListener('input', recalculateTotals);
-  if (discountAmountEl) discountAmountEl.addEventListener('input', recalculateTotals);
   var advanceEl = document.getElementById('id_advance_payment_amount');
   if (advanceEl) advanceEl.addEventListener('input', recalculateTotals);
   var deliveryChargesInput = document.getElementById('id_delivery_charges');
@@ -1143,21 +1180,44 @@ function recalculateTotals() {
   if (deliveryChargesInput) deliveryChargesInput.addEventListener('input', recalculateTotals);
   if (packagingChargesInput) packagingChargesInput.addEventListener('input', recalculateTotals);
 
-  // Discount type toggle: ₹ Amount / % Percent
+  // Discount: single input synced to amount or percent hidden field
+  var discountValueInput = document.getElementById('discount-value-input');
+  function syncDiscountFromVisible() {
+    var isAmount = document.getElementById('discount-type-amount').classList.contains('active');
+    var val = discountValueInput.value;
+    if (isAmount) {
+      discountAmountEl.value = val || '0';
+      discountPercentEl.value = '0';
+    } else {
+      discountPercentEl.value = val || '0';
+      discountAmountEl.value = '0';
+    }
+    recalculateTotals();
+  }
+  function setDiscountVisibleFromActive() {
+    var isAmount = document.getElementById('discount-type-amount').classList.contains('active');
+    discountValueInput.value = isAmount ? (discountAmountEl.value || '') : (discountPercentEl.value || '');
+  }
+  if (discountValueInput) {
+    discountValueInput.addEventListener('input', syncDiscountFromVisible);
+  }
   document.getElementById('discount-type-amount').addEventListener('click', function() {
     document.getElementById('discount-type-amount').classList.add('active');
     document.getElementById('discount-type-percent').classList.remove('active');
-    document.getElementById('discount-amount-wrap').style.display = 'block';
-    document.getElementById('discount-percent-wrap').style.display = 'none';
+    discountPercentEl.value = discountValueInput.value || '0';
+    discountValueInput.value = discountAmountEl.value || '';
+    discountAmountEl.value = discountValueInput.value || '0';
     recalculateTotals();
   });
   document.getElementById('discount-type-percent').addEventListener('click', function() {
     document.getElementById('discount-type-percent').classList.add('active');
     document.getElementById('discount-type-amount').classList.remove('active');
-    document.getElementById('discount-percent-wrap').style.display = 'block';
-    document.getElementById('discount-amount-wrap').style.display = 'none';
+    discountAmountEl.value = discountValueInput.value || '0';
+    discountValueInput.value = discountPercentEl.value || '';
+    discountPercentEl.value = discountValueInput.value || '0';
     recalculateTotals();
   });
+  setDiscountVisibleFromActive();
   
   
   
@@ -1510,8 +1570,6 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.item-row').forEach(attachListeners);
     document.getElementById('items-container').addEventListener('input', recalculateTotals);
-    document.getElementById('discount-percentage').addEventListener('input', recalculateTotals);
-    document.getElementById('discount-amount-input').addEventListener('input', recalculateTotals);
   });
 
 
@@ -1827,9 +1885,11 @@ document.addEventListener('DOMContentLoaded', function () {
     field.dataset.originalRequired = field.hasAttribute('required') ? "true" : "false";
   });
 
+  var shippingSummaryEl = document.getElementById('shipping-charges-summary');
   function toggleWholesale() {
     if (igstToggle.checked) {
       wholesaleBlock.style.display = 'block';
+      if (shippingSummaryEl) shippingSummaryEl.style.display = 'none';
       wholesaleFields.forEach(field => {
         if (field.dataset.originalRequired === "true") {
           field.setAttribute('required', 'required');
@@ -1837,6 +1897,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     } else {
       wholesaleBlock.style.display = 'none';
+      if (shippingSummaryEl) shippingSummaryEl.style.display = '';
       wholesaleFields.forEach(field => {
         field.removeAttribute('required');
       });

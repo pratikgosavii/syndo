@@ -183,7 +183,7 @@ body[data-layout-mode=dark] .layout-mode-light {
 
 .noti-icon i {
     font-size: 22px;
-    color: #555b6d;
+    color: black !important;
 }
 
 .noti-icon .badge {
@@ -461,7 +461,7 @@ body[data-layout-mode=dark][data-topbar=light] .header-profile-user {
 }
 
 body[data-layout-mode=dark][data-topbar=light] .noti-icon i {
-    color: #555b6d;
+    color: black;
 }
 
 body[data-layout-mode=dark][data-topbar=light] .notification-item .d-flex:hover {

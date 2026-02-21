@@ -124,7 +124,7 @@
                                                             <td>{{ i.description }}</td>
                                                             <td>{{ i.start_date }}%</td>
                                                             <td>{{ i.date_created }}</td>
-                                                            <td><img width="60" src="{{ i.image.url }}"></td>
+                                                            <td>{% if i.image %}<img width="60" src="{{ i.image.url }}" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">{% else %}<img width="60" src="{% static 'images/default product image.jpeg' %}" alt="">{% endif %}</td>
                                                            
                                                     <td>
                                                         <!-- remove Button -->

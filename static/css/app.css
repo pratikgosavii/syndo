@@ -254,7 +254,7 @@ body[data-topbar=dark] .navbar-header .waves-effect .waves-ripple {
 }
 
 body[data-topbar=dark] .header-item {
-    color: #e9ecef;
+    color: black;
 }
 
 body[data-topbar=dark] .header-item:hover {
@@ -275,7 +275,7 @@ body[data-topbar=dark] .header-profile-user {
 }
 
 body[data-topbar=dark] .noti-icon i {
-    color: #e9ecef;
+    color: black !important;
 }
 
 body[data-topbar=dark] .logo-dark {

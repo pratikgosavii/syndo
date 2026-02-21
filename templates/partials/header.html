@@ -1,86 +1,59 @@
 {% load static %}
 
 {% block extra_css %}
-
 <style>
-
-    body[data-topbar=dark] .header-item {
-    color: black !important;
-}
-
-
+    #page-topbar.app-header-dark,
+    #page-topbar.app-header-dark .navbar-header {
+        background-color: white !important;
+        border-color: #1e293b;
+    }
+    #page-topbar.app-header-dark .header-item,
+    #page-topbar.app-header-dark .header-logo-txt,
+    #page-topbar.app-header-dark .header-user-name { color: Black !important; }
+    #page-topbar.app-header-dark .header-user-role { color: #Black !important; font-size: 0.8rem; }
+    #page-topbar.app-header-dark .header-logo-box {
+        background-color: #FFC107;
+        color: #1e293b;
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+    #page-topbar.app-header-dark .header-profile-user {
+        border: 2px solid #475569;
+    }
+    #page-topbar.app-header-dark .noti-icon i { color: black !important; }
+    #page-topbar.app-header-dark .noti-icon .badge { top: 4px; right: 4px; }
+    /* Keep logo fully visible: remove negative margin that pulls logo left */
+    #page-topbar.app-header-dark #vertical-menu-btn { margin-left: 0 !important; margin-right: 0 !important; }
+    #page-topbar.app-header-dark .navbar-header { padding-left: 20px !important; padding-right: 20px; }
 </style>
-
 {% endblock extra_css %}
 
 {% block header %}
-        <header id="page-topbar" style="background-color: #ffdb8a;
-    border-color:#ffdb8a;">
-            <div class="navbar-header" style="background-color: #ffdb8a">
-                <div class="d-flex">
-                    <!-- LOGO -->
-                    <div style="background-color:#ffdb8a;">
-                        
-                        <a href="{% url 'dashboard' %}" class="logo logo-dark">
-                            <span class="logo-sm">
-                                <img src="{% static 'images/svindo_logo.png'%}" alt="" height="30">
-                            </span>
-                            <span class="logo-lg">
-                                <img src="{% static 'images/svindo_logo.png'%}" alt="" height="24"> <span class="logo-txt">AVENZA</span>
-                            </span>
-                        </a>
-
-                        <a href="{% url 'dashboard' %}" class="logo logo-light" >
-                            <span class="logo-lg">
-                                <img src="{% static 'images/svindo_logo.png'%}" alt="" height="55" width="87" style="margin-left: 100%;">
-                            </span>
-                        </a>
-                    </div>
-
-                    <button type="button" class="btn btn-sm px-3 font-size-16 header-item" id="vertical-menu-btn">
-                        <i class="fa fa-fw fa-bars"></i>
+        <header id="page-topbar" class="app-header-dark">
+            <div class="navbar-header d-flex justify-content-between align-items-center w-100">
+                <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-sm px-2 me-2 header-item border-0" id="vertical-menu-btn" aria-label="Menu">
+                        <i class="bi bi-list"></i>
                     </button>
-
-                    <!-- App Search-->
-                    {% comment %} <form class="app-search d-none d-lg-block">
-                        <div class="position-relative">
-                            <input type="text" class="form-control" placeholder="Search...">
-                            <button class="btn btn-primary" type="button"><i class="bx bx-search-alt align-middle"></i></button>
-                        </div>
-                    </form> {% endcomment %}
+                    <a href="{% url 'dashboard' %}" class="d-flex align-items-center text-decoration-none">
+                        <span class="header-logo-box me-2">SB</span>
+                        <span class="header-logo-txt fw-bold d-none d-sm-inline" style="font-size: 1.1rem;">Svindo Business</span>
+                    </a>
                 </div>
 
-                <div class="d-flex">
-
-                    <div class="dropdown d-inline-block d-lg-none ms-2">
-                        <button type="button" class="btn header-item" id="page-header-search-dropdown"
-                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i data-feather="search" class="icon-lg"></i>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
-                            aria-labelledby="page-header-search-dropdown">
-                
-                            <form class="p-3">
-                                <div class="form-group m-0">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Search ..." aria-label="Search Result">
-
-                                        <button class="btn btn-primary" type="submit"><i class="mdi mdi-magnify"></i></button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                  
-
-
+                <div class="d-flex align-items-center gap-2">
                     <div class="dropdown d-inline-block">
-                        <button type="button" class="btn header-item noti-icon position-relative" id="page-header-notifications-dropdown"
+                        <button type="button" class="btn header-item noti-icon position-relative border-0" id="page-header-notifications-dropdown"
                         data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i data-feather="bell" class="icon-lg"></i>
+                            <i class="bi bi-bell-fill"></i>
                             {% if header_notification_count %}
-                            <span class="badge bg-danger rounded-pill">{{ header_notification_count }}</span>
+                            <span class="badge bg-danger rounded-pill position-absolute" style="top: 2px; right: 2px; font-size: 0.65rem;">{{ header_notification_count }}</span>
                             {% endif %}
                         </button>
                         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
@@ -104,14 +77,14 @@
                                     <div class="d-flex p-3">
                                         <div class="flex-shrink-0 avatar-sm me-3">
                                             <span class="avatar-title bg-primary rounded-circle font-size-16">
-                                                <i class="bx bx-bell"></i>
+                                                <i class="bi bi-bell"></i>
                                             </span>
                                         </div>
                                         <div class="flex-grow-1">
                                             <h6 class="mb-1">{{ n.title }}</h6>
                                             <div class="font-size-13 text-muted">
                                                 <p class="mb-0">{{ n.body|truncatewords:15 }}</p>
-                                                <p class="mb-0 mt-1"><i class="mdi mdi-clock-outline"></i> <span>{{ n.created_at|timesince }} ago</span></p>
+                                                <p class="mb-0 mt-1"><i class="bi bi-clock"></i> <span>{{ n.created_at|timesince }} ago</span></p>
                                             </div>
                                         </div>
                                     </div>
@@ -122,33 +95,34 @@
                             </div>
                             <div class="p-2 border-top d-grid">
                                 <a class="btn btn-sm btn-link font-size-14 text-center" href="{% url 'list_notifications' %}">
-                                    <i class="mdi mdi-arrow-right-circle me-1"></i> <span>View More..</span>
+                                    <i class="bi bi-arrow-right-circle me-1"></i> <span>View More..</span>
                                 </a>
                             </div>
                         </div>
                     </div>
 
-
                     <div class="dropdown d-inline-block">
-                        <button type="button" class="btn header-item bg-soft-light border-start border-end" id="page-header-user-dropdown"
+                        <button type="button" class="btn header-item border-0 d-flex align-items-center gap-2 py-1 px-2" id="page-header-user-dropdown"
                         data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <div class="d-none d-md-block text-end">
+                                <div class="header-user-name lh-tight">{{ user.get_full_name|default:user.username }}</div>
+                                <div class="header-user-role">{% if user.is_superuser %}Administrator{% else %}User{% endif %}</div>
+                            </div>
                             {% if header_profile_image %}
-                            <img class="rounded-circle header-profile-user" src="{{ header_profile_image.url }}" alt="Profile">
+                            <img class="rounded-circle header-profile-user" src="{{ header_profile_image.url }}" alt="Profile" width="36" height="36" style="object-fit: cover;">
                             {% else %}
-                            <img class="rounded-circle header-profile-user" src="{% static 'images/users/avatar-1.jpg'%}" alt="Header Avatar">
+                            <img class="rounded-circle header-profile-user" src="{% static 'images/users/avatar-1.jpg'%}" alt="Header Avatar" width="36" height="36" style="object-fit: cover;">
                             {% endif %}
-                            <span class="d-none d-xl-inline-block ms-1 fw-medium">{{user.username}}</span>
-                            <i class="mdi mdi-chevron-down d-none d-xl-inline-block"></i>
+                            <i class="bi bi-chevron-down"></i>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end">
-                            <!-- item-->
-                            <a class="dropdown-item" href="{% url 'list_company_profile' %}"><i class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profile</a>
+                            <a class="dropdown-item" href="{% url 'list_company_profile' %}"><i class="bi bi-person font-size-16 align-middle me-1"></i> Profile</a>
                             <div class="dropdown-divider"></div>
                             {% if user.is_authenticated %}
-                            <a class="dropdown-item" href=""><i class="mdi mdi-cog font-size-16 align-middle me-1"></i> Settings</a>
+                            <a class="dropdown-item" href=""><i class="bi bi-gear font-size-16 align-middle me-1"></i> Settings</a>
                             <form method="POST" action="{% url 'logout' %}" class="dropdown-item py-0">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-primary border-0 w-100 text-start" style="background-color: #775599;"><i class="mdi mdi-logout font-size-16 align-middle me-1"></i> Logout</button>
+                                <button type="submit" class="btn btn-primary border-0 w-100 text-start" style="background-color: #775599;"><i class="bi bi-box-arrow-right font-size-16 align-middle me-1"></i> Logout</button>
                             </form>
                             {% endif %}
                         </div>

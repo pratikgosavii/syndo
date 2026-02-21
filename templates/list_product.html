@@ -85,15 +85,15 @@
     .product-list-page .product-section-actions { min-width: 200px; }
 
     .product-list-page .product-thumb {
-        width: 52px;
-        height: 52px;
+        width: 120px;
+        height: 120px;
         object-fit: cover;
         border-radius: 6px;
         background: #f3f4f6;
     }
     .product-list-page .product-thumb-placeholder {
-        width: 52px;
-        height: 52px;
+        width: 120px;
+        height: 120px;
         border-radius: 6px;
         background: #f3f4f6;
         display: flex;
@@ -283,9 +283,9 @@
                                 <div class="product-section product-section-ident">
                                     <div class="d-flex align-items-start gap-3">
                                         {% if i.image %}
-                                            <img src="{{ i.image.url }}" alt="{{ i.name }}" class="product-thumb">
+                                            <img src="{{ i.image.url }}" alt="{{ i.name }}" class="product-thumb" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
                                         {% else %}
-                                            <div class="product-thumb-placeholder">Product</div>
+                                            <img src="{% static 'images/default product image.jpeg' %}" alt="{{ i.name }}" class="product-thumb">
                                         {% endif %}
                                         <div>
                                             <div class="product-name">{{ i.name }}</div>
