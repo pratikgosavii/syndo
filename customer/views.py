@@ -1,9 +1,7 @@
-import logging
 from django.forms import ValidationError
 from django.shortcuts import render
 
 # Create your views here.
-logger = logging.getLogger("customer.views")
 
 
 from masters.models import MainCategory, product_category, product_subcategory
@@ -23,10 +21,28 @@ from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 from types import SimpleNamespace
 
 from rest_framework import viewsets, permissions
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class CustomerOrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def initial(self, request, *args, **kwargs):
+        """Log every customer order API request to requests.log."""
+        super().initial(request, *args, **kwargs)
+        action = getattr(self, "action", request.method.lower())
+        user = getattr(request, "user", None)
+        user_id = getattr(user, "id", None) if user else None
+        logger.info(
+            "[CUSTOMER_ORDER_API] %s %s action=%s user_id=%s",
+            request.method,
+            request.path,
+            action,
+            user_id,
+        )
 
     @action(detail=False, methods=["post"], url_path="check-delivery-availability")
     def check_delivery_availability(self, request):
@@ -446,7 +462,7 @@ class OnlineOrderInvoiceAPIView(APIView):
         if not order_id:
             return Response({"error": "order_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get order with related data
+        # Get order with related data (print_job add_ons for invoice taxable logic)
         try:
             order = (
                 Order.objects
@@ -495,26 +511,30 @@ class OnlineOrderInvoiceAPIView(APIView):
             same_state = vendor_state_name.strip().lower() == customer_state_name.strip().lower()
         store_gst = "cgst" if same_state else "igst"
 
-        # Use order-level fields (shipping, discount, coupon); item totals recalculated per item below
+        # Use invoice totals: per-item rule for print (total < sales_price → sales_value + addons; else total only)
+        from customer.order_totals import get_order_invoice_totals
+        invoice_totals = get_order_invoice_totals(order)
+        item_total = invoice_totals["item_total"]
+        tax_total = invoice_totals["tax_total"]
+        total_amount = invoice_totals["total_amount"]
         shipping_fee = Decimal(order.shipping_fee or 0)
         delivery_discount = Decimal(order.delivery_discount_amount or 0)
         coupon = Decimal(order.coupon or 0)
+        
+        # Round total
+        rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
+        round_off_value = float(Decimal(rounded_total) - total_amount)
 
-        # Process items: per-item total = max(item price total, sales_price total) + addon prices; then tax
+        # Process items for display (HSN summary and item details for table)
+        # Note: We only calculate display values here, totals come from order instance
         hsn_summary = {}
         total_quantity = 0
         total_sgst = Decimal(0)
         total_cgst = Decimal(0)
         total_igst = Decimal(0)
         items_with_tax = []
-        sum_taxable = Decimal(0)
 
-        # --- INVOICE DEBUG LOGS (remove after verification) ---
-        logger.info("=" * 60)
-        logger.info("[INVOICE] order_id=%s | shipping_fee=%s | delivery_discount=%s | coupon=%s", order_id, shipping_fee, delivery_discount, coupon)
-        logger.info("=" * 60)
-
-        for idx, item in enumerate(order.items.all(), 1):
+        for item in order.items.all():
             if not item.product:
                 continue
             
@@ -528,7 +548,6 @@ class OnlineOrderInvoiceAPIView(APIView):
             sales_price = getattr(item.product, "sales_price", None)
             sales_price_item = (Decimal(str(sales_price)) * quantity) if sales_price is not None else None
 
-            # Addon prices for this item (from print_job if present)
             addon_total = Decimal(0)
             try:
                 print_job = getattr(item, "print_job", None)
@@ -538,22 +557,11 @@ class OnlineOrderInvoiceAPIView(APIView):
             except Exception:
                 pass
 
-            # Item total: if item total < sales price total use sales price, else use item total; then add addons
+            # Print item total: if total < sales_price use sales_value + addons; else total only
             if sales_price_item is not None and item_price_total < sales_price_item:
                 taxable_val = sales_price_item + addon_total
-                _used = "SALES_PRICE (order total < sales price)"
             else:
-                taxable_val = item_price_total + addon_total
-                _used = "ORDER_TOTAL (kept as is)"
-            sum_taxable += taxable_val
-
-            # --- INVOICE DEBUG LOG: per item ---
-            product_name = (getattr(item.product, "name", None) or "N/A")[:40]
-            logger.info("[INVOICE] Item %d: %s", idx, product_name)
-            logger.info("  unit_price=%s | qty=%s | item_price_total=%s", unit_price, quantity, item_price_total)
-            logger.info("  product.sales_price(per unit)=%s | sales_price_item(line)=%s", sales_price, sales_price_item)
-            logger.info("  addon_total=%s | used=%s", addon_total, _used)
-            logger.info("  taxable_val=%s", taxable_val)
+                taxable_val = item_price_total
 
             # Build HSN summary for display
             if hsn not in hsn_summary:
@@ -597,40 +605,29 @@ class OnlineOrderInvoiceAPIView(APIView):
             data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
             data["igst_amount"] = data["total_tax"]
 
-        # Recompute order totals from per-item taxable values and tax
-        item_total = sum_taxable
-        tax_total = total_sgst + total_cgst + total_igst
+        # Convert to INR format: "Rupees [amount] Only"
+        try:
+            # Use num2words with INR currency
+            amount_words = num2words(rounded_total, lang='en_IN').title()
+            total_in_words = f"Rupees {amount_words} Only"
+        except Exception:
+            # Fallback if num2words fails
+            total_in_words = f"Rupees {rounded_total} Only"
 
         # Calculate shipping tax for display (assuming 18% GST on shipping)
         shipping_taxable = shipping_fee / Decimal("1.18") if shipping_fee > 0 else Decimal(0)
         shipping_cgst = Decimal(0)
         shipping_sgst = Decimal(0)
         shipping_igst = Decimal(0)
+        
         if shipping_fee > 0:
             if same_state:
+                # CGST + SGST (9% each)
                 shipping_cgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
                 shipping_sgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
             else:
+                # IGST (18%)
                 shipping_igst = (shipping_taxable * Decimal("18") / Decimal("100")).quantize(Decimal("0.01"))
-
-        total_amount = item_total + tax_total + shipping_fee + shipping_cgst + shipping_sgst + shipping_igst - delivery_discount - coupon
-        rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
-        round_off_value = float(Decimal(rounded_total) - total_amount)
-
-        # --- INVOICE DEBUG LOG: order totals ---
-        logger.info("-" * 60)
-        logger.info("[INVOICE] TOTALS: sum_taxable(item_total)=%s | tax_total=%s (sgst=%s cgst=%s igst=%s)", item_total, tax_total, total_sgst, total_cgst, total_igst)
-        logger.info("[INVOICE] shipping_fee=%s | shipping_cgst=%s shipping_sgst=%s shipping_igst=%s", shipping_fee, shipping_cgst, shipping_sgst, shipping_igst)
-        logger.info("[INVOICE] delivery_discount=%s | coupon=%s", delivery_discount, coupon)
-        logger.info("[INVOICE] total_amount=%s | rounded_total=%s | round_off_value=%s", total_amount, rounded_total, round_off_value)
-        logger.info("=" * 60)
-
-        # Convert to INR format: "Rupees [amount] Only"
-        try:
-            amount_words = num2words(rounded_total, lang='en_IN').title()
-            total_in_words = f"Rupees {amount_words} Only"
-        except Exception:
-            total_in_words = f"Rupees {rounded_total} Only"
 
         # Embed invoice logo as base64 so PDF service (html2pdf.app) doesn't need to fetch a URL
         # (external service cannot reach localhost/private hosts)
