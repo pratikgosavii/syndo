@@ -140,6 +140,18 @@
             border-radius: 4px;
             margin-top: 0.25rem;
         }
+        .order-item-tracking-block {
+            padding: 0.4rem 0;
+            border-top: 1px solid #f3f4f6;
+        }
+        .order-item-tracking-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+        .order-item-tracking-input { max-width: 320px; font-size: 0.85rem; }
         .order-summary-tags {
             display: flex;
             flex-wrap: wrap;
@@ -319,6 +331,19 @@
                                 </form>
                                 {% else %}
                                 <span class="order-item-status-tag">{{ item.get_status_display|upper }}</span>
+                                {% endif %}
+                                {% if data.status == 'accepted' %}
+                                <div class="order-item-tracking-block mt-2">
+                                    <label class="order-item-tracking-label">Delivery / Tracking link</label>
+                                    {% if item.tracking_link %}
+                                    <div class="small mb-1"><a href="{{ item.tracking_link }}" target="_blank" rel="noopener">{{ item.tracking_link|truncatechars:50 }}</a></div>
+                                    {% endif %}
+                                    <form action="{% url 'update_order_item_tracking_link' item.id %}" method="post" class="d-flex align-items-center gap-2 flex-wrap">
+                                        {% csrf_token %}
+                                        <input type="url" name="tracking_link" value="{{ item.tracking_link|default:'' }}" placeholder="Paste tracking URL" class="form-control form-control-sm order-item-tracking-input">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Update link</button>
+                                    </form>
+                                </div>
                                 {% endif %}
                                 {% if item.print_job %}
                                 <div class="print-details-wrapper mt-2">

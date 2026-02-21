@@ -207,6 +207,7 @@ urlpatterns = [
     path('order-list/', order_list, name='order_list'),
     path('list-notifications/', list_notifications, name='list_notifications'),
     path('update-order-item-status/<order_item_id>/', update_order_item_status, name='update_order_item_status'),
+    path('update-order-item-tracking/<int:order_item_id>/', update_order_item_tracking_link, name='update_order_item_tracking_link'),
     path('order-item-status/<order_item_id>/', UpdateOrderItemStatusAPIView.as_view(), name='order_item_status'),
     path('order-item-tracking/<order_item_id>/', UpdateOrderItemTrackingAPIView.as_view(), name='order_item_tracking'),
 

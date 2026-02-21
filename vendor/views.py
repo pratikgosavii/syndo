@@ -4265,6 +4265,22 @@ def list_notifications(request):
     return render(request, "list_notifications.html", context)
 
 
+@login_required(login_url='login_admin')
+def update_order_item_tracking_link(request, order_item_id):
+    """Update delivery/tracking link for an order item (form POST from order details page)."""
+    if request.method != "POST":
+        return redirect('order_list')
+    item = get_object_or_404(OrderItem, id=order_item_id)
+    if item.product.user_id != request.user.id:
+        messages.error(request, "You cannot update this order item.")
+        return redirect('order_details', order_id=item.order_id)
+    tracking_link = (request.POST.get("tracking_link") or "").strip()
+    item.tracking_link = tracking_link or None
+    item.save(update_fields=["tracking_link"])
+    messages.success(request, "Tracking link updated.")
+    return redirect('order_details', order_id=item.order_id)
+
+
 def update_order_item_status(request, order_item_id):
 
     if request.method == "POST":
