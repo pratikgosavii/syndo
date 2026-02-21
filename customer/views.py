@@ -21,28 +21,10 @@ from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 from types import SimpleNamespace
 
 from rest_framework import viewsets, permissions
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 class CustomerOrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def initial(self, request, *args, **kwargs):
-        """Log every customer order API request to requests.log."""
-        super().initial(request, *args, **kwargs)
-        action = getattr(self, "action", request.method.lower())
-        user = getattr(request, "user", None)
-        user_id = getattr(user, "id", None) if user else None
-        logger.info(
-            "[CUSTOMER_ORDER_API] %s %s action=%s user_id=%s",
-            request.method,
-            request.path,
-            action,
-            user_id,
-        )
 
     @action(detail=False, methods=["post"], url_path="check-delivery-availability")
     def check_delivery_availability(self, request):
@@ -447,14 +429,6 @@ class OnlineOrderInvoiceAPIView(APIView):
         """
         Return online order invoice PDF
         """
-        user = getattr(request, "user", None)
-        user_id = getattr(user, "id", None) if user and getattr(user, "is_authenticated", False) else None
-        logger.info(
-            "[CUSTOMER_ORDER_INVOICE_API] GET %s order_id=%s user_id=%s",
-            request.path,
-            order_id,
-            user_id,
-        )
         from django.http import HttpResponse
         from django.template.loader import get_template
         from django.conf import settings
@@ -470,7 +444,7 @@ class OnlineOrderInvoiceAPIView(APIView):
         if not order_id:
             return Response({"error": "order_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get order with related data (print_job add_ons for invoice taxable logic)
+        # Get order with related data (prefetch print_job and add_ons for print-item totals)
         try:
             order = (
                 Order.objects
@@ -519,22 +493,23 @@ class OnlineOrderInvoiceAPIView(APIView):
             same_state = vendor_state_name.strip().lower() == customer_state_name.strip().lower()
         store_gst = "cgst" if same_state else "igst"
 
-        # Use invoice totals: per-item rule for print (total < sales_price → sales_value + addons; else total only)
+        # Use get_order_invoice_totals for print online order: base value vs sales_price + addons
         from customer.order_totals import get_order_invoice_totals
         invoice_totals = get_order_invoice_totals(order)
         item_total = invoice_totals["item_total"]
         tax_total = invoice_totals["tax_total"]
         total_amount = invoice_totals["total_amount"]
+
         shipping_fee = Decimal(order.shipping_fee or 0)
         delivery_discount = Decimal(order.delivery_discount_amount or 0)
         coupon = Decimal(order.coupon or 0)
-        
+
         # Round total
         rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
         round_off_value = float(Decimal(rounded_total) - total_amount)
 
-        # Process items for display (HSN summary and item details for table)
-        # Note: We only calculate display values here, totals come from order instance
+        # Process items for display: per-item taxable value for print items
+        # If item total < sales_price → use sales_price + addons; if >= sales_price → keep total only
         hsn_summary = {}
         total_quantity = 0
         total_sgst = Decimal(0)
@@ -545,14 +520,10 @@ class OnlineOrderInvoiceAPIView(APIView):
         for item in order.items.all():
             if not item.product:
                 continue
-            
-            hsn = getattr(item.product, "hsn", None) or "N/A"
-            sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
-            cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
-            
+
             unit_price = Decimal(item.price or 0)
             quantity = int(item.quantity or 0)
-            item_price_total = unit_price * quantity
+            base_total = unit_price * quantity
             sales_price = getattr(item.product, "sales_price", None)
             sales_price_item = (Decimal(str(sales_price)) * quantity) if sales_price is not None else None
 
@@ -565,11 +536,14 @@ class OnlineOrderInvoiceAPIView(APIView):
             except Exception:
                 pass
 
-            # Print item total: if total < sales_price use sales_value + addons; else total only
-            if sales_price_item is not None and item_price_total < sales_price_item:
+            if sales_price_item is not None and base_total < sales_price_item:
                 taxable_val = sales_price_item + addon_total
             else:
-                taxable_val = item_price_total
+                taxable_val = base_total
+
+            hsn = getattr(item.product, "hsn", None) or "N/A"
+            sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
+            cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
 
             # Build HSN summary for display
             if hsn not in hsn_summary:
