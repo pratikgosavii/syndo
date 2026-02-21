@@ -447,6 +447,14 @@ class OnlineOrderInvoiceAPIView(APIView):
         """
         Return online order invoice PDF
         """
+        user = getattr(request, "user", None)
+        user_id = getattr(user, "id", None) if user and getattr(user, "is_authenticated", False) else None
+        logger.info(
+            "[CUSTOMER_ORDER_INVOICE_API] GET %s order_id=%s user_id=%s",
+            request.path,
+            order_id,
+            user_id,
+        )
         from django.http import HttpResponse
         from django.template.loader import get_template
         from django.conf import settings
