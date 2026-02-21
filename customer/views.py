@@ -500,6 +500,15 @@ class OnlineOrderInvoiceAPIView(APIView):
         delivery_discount = Decimal(order.delivery_discount_amount or 0)
         coupon = Decimal(order.coupon or 0)
         total_amount = Decimal(order.total_amount or 0)
+
+        # If order total is less than sales-price total, use sales-price total for invoice
+        sales_price_total = Decimal(0)
+        for item in order.items.all():
+            if item.product and getattr(item.product, "sales_price", None) is not None:
+                qty = int(item.quantity or 0)
+                sales_price_total += Decimal(str(item.product.sales_price)) * qty
+        if sales_price_total > 0 and total_amount < sales_price_total:
+            total_amount = sales_price_total
         
         # Round total
         rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
