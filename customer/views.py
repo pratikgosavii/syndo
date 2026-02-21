@@ -448,7 +448,7 @@ class OnlineOrderInvoiceAPIView(APIView):
         try:
             order = (
                 Order.objects
-                .prefetch_related('items__product')
+                .prefetch_related('items__product', 'items__print_job__add_ons')
                 .select_related('user', 'address')
                 .get(id=order_id)
             )
@@ -493,35 +493,19 @@ class OnlineOrderInvoiceAPIView(APIView):
             same_state = vendor_state_name.strip().lower() == customer_state_name.strip().lower()
         store_gst = "cgst" if same_state else "igst"
 
-        # Use existing order totals (no need to recalculate)
-        item_total = Decimal(order.item_total or 0)
-        tax_total = Decimal(order.tax_total or 0)
+        # Use order-level fields (shipping, discount, coupon); item totals recalculated per item below
         shipping_fee = Decimal(order.shipping_fee or 0)
         delivery_discount = Decimal(order.delivery_discount_amount or 0)
         coupon = Decimal(order.coupon or 0)
-        total_amount = Decimal(order.total_amount or 0)
 
-        # If order total is less than sales-price total, use sales-price total for invoice
-        sales_price_total = Decimal(0)
-        for item in order.items.all():
-            if item.product and getattr(item.product, "sales_price", None) is not None:
-                qty = int(item.quantity or 0)
-                sales_price_total += Decimal(str(item.product.sales_price)) * qty
-        if sales_price_total > 0 and total_amount < sales_price_total:
-            total_amount = sales_price_total
-        
-        # Round total
-        rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
-        round_off_value = float(Decimal(rounded_total) - total_amount)
-
-        # Process items for display (HSN summary and item details for table)
-        # Note: We only calculate display values here, totals come from order instance
+        # Process items: per-item total = max(item price total, sales_price total) + addon prices; then tax
         hsn_summary = {}
         total_quantity = 0
         total_sgst = Decimal(0)
         total_cgst = Decimal(0)
         total_igst = Decimal(0)
         items_with_tax = []
+        sum_taxable = Decimal(0)
 
         for item in order.items.all():
             if not item.product:
@@ -531,10 +515,28 @@ class OnlineOrderInvoiceAPIView(APIView):
             sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
             cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
             
-            # Use price and quantity from order item (already stored)
             unit_price = Decimal(item.price or 0)
             quantity = int(item.quantity or 0)
-            taxable_val = unit_price * quantity
+            item_price_total = unit_price * quantity
+            sales_price = getattr(item.product, "sales_price", None)
+            sales_price_item = (Decimal(str(sales_price)) * quantity) if sales_price is not None else None
+
+            # Addon prices for this item (from print_job if present)
+            addon_total = Decimal(0)
+            try:
+                print_job = getattr(item, "print_job", None)
+                if print_job and hasattr(print_job, "add_ons"):
+                    for addon in print_job.add_ons.all():
+                        addon_total += Decimal(str(getattr(addon, "price_per_unit", 0) or 0))
+            except Exception:
+                pass
+
+            # Item total: if item total < sales price total use sales price, else use item total; then add addons
+            if sales_price_item is not None and item_price_total < sales_price_item:
+                taxable_val = sales_price_item + addon_total
+            else:
+                taxable_val = item_price_total + addon_total
+            sum_taxable += taxable_val
 
             # Build HSN summary for display
             if hsn not in hsn_summary:
@@ -578,29 +580,32 @@ class OnlineOrderInvoiceAPIView(APIView):
             data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
             data["igst_amount"] = data["total_tax"]
 
-        # Convert to INR format: "Rupees [amount] Only"
-        try:
-            # Use num2words with INR currency
-            amount_words = num2words(rounded_total, lang='en_IN').title()
-            total_in_words = f"Rupees {amount_words} Only"
-        except Exception:
-            # Fallback if num2words fails
-            total_in_words = f"Rupees {rounded_total} Only"
+        # Recompute order totals from per-item taxable values and tax
+        item_total = sum_taxable
+        tax_total = total_sgst + total_cgst + total_igst
 
         # Calculate shipping tax for display (assuming 18% GST on shipping)
         shipping_taxable = shipping_fee / Decimal("1.18") if shipping_fee > 0 else Decimal(0)
         shipping_cgst = Decimal(0)
         shipping_sgst = Decimal(0)
         shipping_igst = Decimal(0)
-        
         if shipping_fee > 0:
             if same_state:
-                # CGST + SGST (9% each)
                 shipping_cgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
                 shipping_sgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
             else:
-                # IGST (18%)
                 shipping_igst = (shipping_taxable * Decimal("18") / Decimal("100")).quantize(Decimal("0.01"))
+
+        total_amount = item_total + tax_total + shipping_fee + shipping_cgst + shipping_sgst + shipping_igst - delivery_discount - coupon
+        rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
+        round_off_value = float(Decimal(rounded_total) - total_amount)
+
+        # Convert to INR format: "Rupees [amount] Only"
+        try:
+            amount_words = num2words(rounded_total, lang='en_IN').title()
+            total_in_words = f"Rupees {amount_words} Only"
+        except Exception:
+            total_in_words = f"Rupees {rounded_total} Only"
 
         # Embed invoice logo as base64 so PDF service (html2pdf.app) doesn't need to fetch a URL
         # (external service cannot reach localhost/private hosts)
@@ -1343,6 +1348,17 @@ def delivery_webhook(request):
             import traceback
             log_both("error", f"[UENGAGE_WEBHOOK] Traceback: {traceback.format_exc()}")
             raise
+
+        # COD: create online ledgers only when order is marked delivered/completed
+        if status_code == "DELIVERED" and order.status == "completed":
+            pm = str(getattr(order, "payment_mode", "") or "").strip().lower()
+            if pm in ("cod", "cash"):
+                try:
+                    from customer.serializers import on_order_delivered_cod
+                    on_order_delivered_cod(order)
+                    log_both("info", "[UENGAGE_WEBHOOK] on_order_delivered_cod executed (COD ledgers created)")
+                except Exception as e:
+                    log_both("warning", f"[UENGAGE_WEBHOOK] on_order_delivered_cod failed: {e}")
 
         # On first accept (ACCEPTED): create ledgers, reduce stock, assign serial/IMEI
         if status_code == "ACCEPTED" and previous_order_status != "accepted":

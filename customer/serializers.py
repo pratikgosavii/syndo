@@ -601,31 +601,40 @@ def send_order_status_notification(order, status, previous_status=None):
         return False
 
 
+def _is_cod_order(order):
+    """True if order is COD/cash (ledgers created on delivery, not on accept)."""
+    pm = str(getattr(order, "payment_mode", "") or "").strip().lower()
+    return pm in ("cod", "cash")
+
+
 def on_order_accepted(order):
     """
-    When vendor accepts an online order: create OnlineOrderLedger per item, reduce stock,
-    assign serial/IMEI where applicable. Call from accept_order, OrderViewSet.update, uEngage webhook.
+    When vendor accepts an online order: reduce stock, assign serial/IMEI.
+    For non-COD: also create OnlineOrderLedger. For COD: ledgers are created when order is delivered (on_order_delivered_cod).
     """
     from vendor.models import OnlineOrderLedger, serial_imei_no
     from vendor.signals import log_stock_transaction
     from django.db.models import F
 
+    create_ledger = not _is_cod_order(order)
+
     for oi in order.items.select_related("product", "product__user").all():
-        # Idempotent: if ledger exists, we already processed this item
-        if OnlineOrderLedger.objects.filter(order_item=oi).exists():
+        # Idempotent: if ledger exists, we already processed this item (for non-COD)
+        if create_ledger and OnlineOrderLedger.objects.filter(order_item=oi).exists():
             continue
-        # 1. OnlineOrderLedger
-        OnlineOrderLedger.objects.create(
-            user=oi.product.user,
-            order_item=oi,
-            product=oi.product,
-            order_id=order.id,
-            quantity=oi.quantity,
-            amount=order.total_amount,
-            status="recorded",
-            note="Online order recorded (accepted)",
-        )
-        logger.info(f"[ON_ORDER_ACCEPTED] OnlineOrderLedger created for OrderItem {oi.id}")
+        # 1. OnlineOrderLedger (skip for COD; created on delivery via on_order_delivered_cod)
+        if create_ledger:
+            OnlineOrderLedger.objects.create(
+                user=oi.product.user,
+                order_item=oi,
+                product=oi.product,
+                order_id=order.id,
+                quantity=oi.quantity,
+                amount=order.total_amount,
+                status="recorded",
+                note="Online order recorded (accepted)",
+            )
+            logger.info(f"[ON_ORDER_ACCEPTED] OnlineOrderLedger created for OrderItem {oi.id}")
         # 2. Stock
         product.objects.filter(id=oi.product.id).update(
             stock_cached=F("stock_cached") - oi.quantity
@@ -641,6 +650,32 @@ def on_order_accepted(order):
                 oi.save(update_fields=["serial_imei_number"])
                 serial_imei_no.objects.filter(id=s.id).update(is_sold=True)
                 logger.info(f"[ON_ORDER_ACCEPTED] Assigned serial/IMEI {s.id} to OrderItem {oi.id}")
+
+
+def on_order_delivered_cod(order):
+    """
+    Create OnlineOrderLedger for COD/cash orders when order is marked delivered/completed.
+    Idempotent: only creates ledger for order items that do not already have one.
+    Call from uEngage DELIVERED webhook and vendor OrderViewSet when status -> completed.
+    """
+    if not _is_cod_order(order):
+        return
+    from vendor.models import OnlineOrderLedger
+
+    for oi in order.items.select_related("product", "product__user").all():
+        if OnlineOrderLedger.objects.filter(order_item=oi).exists():
+            continue
+        OnlineOrderLedger.objects.create(
+            user=oi.product.user,
+            order_item=oi,
+            product=oi.product,
+            order_id=order.id,
+            quantity=oi.quantity,
+            amount=order.total_amount,
+            status="recorded",
+            note="Online order (COD) recorded on delivery",
+        )
+        logger.info(f"[ON_ORDER_DELIVERED_COD] OnlineOrderLedger created for OrderItem {oi.id}")
 
 
 class OrderSerializer(serializers.ModelSerializer):

@@ -756,6 +756,17 @@ class OrderViewSet(viewsets.ModelViewSet):
                 import logging
                 logging.getLogger(__name__).error(f"Error in on_order_accepted: {e}")
 
+        # When status is set to completed: for COD/cash, create online ledgers now (not at accept)
+        if data.get("status") == "completed" and previous_status != "completed":
+            pm = str(getattr(instance, "payment_mode", "") or "").strip().lower()
+            if pm in ("cod", "cash"):
+                try:
+                    from customer.serializers import on_order_delivered_cod
+                    on_order_delivered_cod(instance)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error in on_order_delivered_cod: {e}")
+
         # Send notification if order status changed
         # NOTE: Skip notification for 'ready_to_shipment' at order level since it's managed at OrderItem level
         # to avoid duplicate notifications
