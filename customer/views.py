@@ -507,7 +507,12 @@ class OnlineOrderInvoiceAPIView(APIView):
         items_with_tax = []
         sum_taxable = Decimal(0)
 
-        for item in order.items.all():
+        # --- INVOICE DEBUG LOGS (remove after verification) ---
+        print("\n" + "=" * 60)
+        print("[INVOICE] order_id=%s | shipping_fee=%s | delivery_discount=%s | coupon=%s" % (order_id, shipping_fee, delivery_discount, coupon))
+        print("=" * 60)
+
+        for idx, item in enumerate(order.items.all(), 1):
             if not item.product:
                 continue
             
@@ -534,9 +539,19 @@ class OnlineOrderInvoiceAPIView(APIView):
             # Item total: if item total < sales price total use sales price, else use item total; then add addons
             if sales_price_item is not None and item_price_total < sales_price_item:
                 taxable_val = sales_price_item + addon_total
+                _used = "SALES_PRICE (order total < sales price)"
             else:
                 taxable_val = item_price_total + addon_total
+                _used = "ORDER_TOTAL (kept as is)"
             sum_taxable += taxable_val
+
+            # --- INVOICE DEBUG LOG: per item ---
+            product_name = (getattr(item.product, "name", None) or "N/A")[:40]
+            print("[INVOICE] Item %d: %s" % (idx, product_name))
+            print("  unit_price=%s | qty=%s | item_price_total=%s" % (unit_price, quantity, item_price_total))
+            print("  product.sales_price(per unit)=%s | sales_price_item(line)=%s" % (sales_price, sales_price_item))
+            print("  addon_total=%s | used=%s" % (addon_total, _used))
+            print("  taxable_val=%s" % taxable_val)
 
             # Build HSN summary for display
             if hsn not in hsn_summary:
@@ -599,6 +614,14 @@ class OnlineOrderInvoiceAPIView(APIView):
         total_amount = item_total + tax_total + shipping_fee + shipping_cgst + shipping_sgst + shipping_igst - delivery_discount - coupon
         rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
         round_off_value = float(Decimal(rounded_total) - total_amount)
+
+        # --- INVOICE DEBUG LOG: order totals ---
+        print("-" * 60)
+        print("[INVOICE] TOTALS: sum_taxable(item_total)=%s | tax_total=%s (sgst=%s cgst=%s igst=%s)" % (item_total, tax_total, total_sgst, total_cgst, total_igst))
+        print("[INVOICE] shipping_fee=%s | shipping_cgst=%s shipping_sgst=%s shipping_igst=%s" % (shipping_fee, shipping_cgst, shipping_sgst, shipping_igst))
+        print("[INVOICE] delivery_discount=%s | coupon=%s" % (delivery_discount, coupon))
+        print("[INVOICE] total_amount=%s | rounded_total=%s | round_off_value=%s" % (total_amount, rounded_total, round_off_value))
+        print("=" * 60 + "\n")
 
         # Convert to INR format: "Rupees [amount] Only"
         try:
