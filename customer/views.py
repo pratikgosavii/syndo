@@ -1,3 +1,4 @@
+import logging
 from django.forms import ValidationError
 from django.shortcuts import render
 
@@ -538,8 +539,22 @@ class OnlineOrderInvoiceAPIView(APIView):
 
             if sales_price_item is not None and base_total < sales_price_item:
                 taxable_val = sales_price_item + addon_total
+                _msg = (
+                    f"[online_invoice] order_id={getattr(order, 'order_id', order.id)} item_id={item.id} "
+                    f"product={getattr(item.product, 'name', '')} base_total={base_total} < "
+                    f"sales_price_item={sales_price_item} → taxable_val=sales_price+addons={taxable_val} (addon_total={addon_total})"
+                )
+                print(_msg)
+                logging.getLogger("request").info(_msg)
             else:
                 taxable_val = base_total
+                _msg = (
+                    f"[online_invoice] order_id={getattr(order, 'order_id', order.id)} item_id={item.id} "
+                    f"product={getattr(item.product, 'name', '')} base_total={base_total} >= "
+                    f"sales_price_item={sales_price_item} → taxable_val=total_only={taxable_val}"
+                )
+                print(_msg)
+                logging.getLogger("request").info(_msg)
 
             hsn = getattr(item.product, "hsn", None) or "N/A"
             sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)

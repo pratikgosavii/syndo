@@ -5,6 +5,9 @@ Invoice-style order totals for print online order:
 Then item_total, tax_total, total_amount (incl. shipping tax) for consistency with invoice PDF.
 """
 from decimal import Decimal
+import logging
+
+logger = logging.getLogger("request")
 
 
 def get_order_invoice_totals(order):
@@ -67,9 +70,23 @@ def get_order_invoice_totals(order):
 
         if sales_price_item is not None and item_price_total < sales_price_item:
             taxable_val = sales_price_item + addon_total
+            msg = (
+                f"[order_totals] order_id={getattr(order, 'order_id', order.id)} item_id={item.id} "
+                f"product={getattr(item.product, 'name', '')} item_price_total={item_price_total} < "
+                f"sales_price_item={sales_price_item} → taxable_val=sales_price+addons={taxable_val} (addon_total={addon_total})"
+            )
+            print(msg)
+            logger.info(msg)
         else:
             # total >= sales price: keep total only (no addons)
             taxable_val = item_price_total
+            msg = (
+                f"[order_totals] order_id={getattr(order, 'order_id', order.id)} item_id={item.id} "
+                f"product={getattr(item.product, 'name', '')} item_price_total={item_price_total} >= "
+                f"sales_price_item={sales_price_item} → taxable_val=total_only={taxable_val}"
+            )
+            print(msg)
+            logger.info(msg)
         sum_taxable += taxable_val
 
         sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
