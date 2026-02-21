@@ -1,5 +1,6 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Order Details{% endblock title %}
 
@@ -210,14 +211,53 @@
             background-color: #e9ecef;
             color: #6c757d;
         }
-        .print-details-box {
-            margin-top: 0.4rem;
-            padding: 0.5rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            background: #fafbfc;
-            font-size: 0.8rem;
+        .print-details-wrapper { font-size: 0.85rem; }
+        .print-job-summary-block {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.5rem;
         }
+        .print-job-summary-title { font-weight: 700; color: #1e293b; margin-bottom: 0.35rem; font-size: 0.85rem; }
+        .print-job-summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #334155;
+        }
+        .print-files-section { margin-bottom: 0.5rem; }
+        .print-files-title { font-weight: 700; color: #1e293b; margin-bottom: 0.35rem; font-size: 0.85rem; }
+        .print-file-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.4rem;
+        }
+        .print-file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        .print-file-name { color: #334155; font-weight: 500; }
+        .print-file-download {
+            color: #F59E0B;
+            font-size: 1.1rem;
+            text-decoration: none;
+        }
+        .print-file-download:hover { color: #D97706; }
+        .print-file-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .print-file-notes { margin-top: 0.25rem; }
+        .print-addons-section { margin-top: 0.5rem; }
+        .print-addons-title { font-weight: 700; color: #1e293b; margin-bottom: 0.35rem; font-size: 0.85rem; }
+        .print-addons-list { padding-left: 1.25rem; color: #334155; font-size: 0.85rem; }
         .assign-delivery-box { margin-top: 0.5rem; }
         .order-details-page .form-select,
         .order-details-page .form-control { font-size: 0.85rem; }
@@ -281,17 +321,41 @@
                                 <span class="order-item-status-tag">{{ item.get_status_display|upper }}</span>
                                 {% endif %}
                                 {% if item.print_job %}
-                                <div class="print-details-box">
-                                    <div class="small fw-semibold mb-2">Print details</div>
-                                    {% for pf in item.print_job.files.all %}
-                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                                        <a href="{{ pf.file.url }}" target="_blank" class="btn btn-sm btn-primary" download>Download file</a>
-                                        {% if pf.instructions %}<span class="text-muted small"><strong>Page notes:</strong> {{ pf.instructions }}</span>{% endif %}
-                                        {% if pf.page_count or pf.page_numbers %}
-                                        <span class="text-muted small">Pages: {% if pf.page_numbers %}{{ pf.page_numbers }}{% else %}{{ pf.page_count }}{% endif %}{% if pf.number_of_copies %} · {{ pf.number_of_copies }} copy/copies{% endif %}</span>
-                                        {% endif %}
+                                <div class="print-details-wrapper mt-2">
+                                    <div class="print-job-summary-block">
+                                        <div class="print-job-summary-title">Print Job Summary</div>
+                                        <div class="print-job-summary-row">
+                                            <span>Print Type:</span>
+                                            <span class="fw-semibold">{{ item.print_job.get_print_type_display|default:"Single Side" }}</span>
+                                        </div>
                                     </div>
-                                    {% endfor %}
+                                    <div class="print-files-section">
+                                        <div class="print-files-title">Files ({{ item.print_job.files.all|length }})</div>
+                                        {% for pf in item.print_job.files.all %}
+                                        <div class="print-file-card">
+                                            <div class="print-file-header">
+                                                <span class="print-file-name">File: {{ pf.file.name|basename }}</span>
+                                                <a href="{{ pf.file.url }}" target="_blank" class="print-file-download" download title="Download"><i class="bi bi-download"></i></a>
+                                            </div>
+                                            <div class="print-file-details">
+                                                <span>Number of copies: {{ pf.number_of_copies|default:1 }}</span>
+                                                <span>Page numbers: {{ pf.page_numbers|default:"-" }}</span>
+                                                <span>Page count: {{ pf.page_count|default:0 }}</span>
+                                            </div>
+                                            {% if pf.instructions %}<div class="print-file-notes small text-muted">Page notes: {{ pf.instructions }}</div>{% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% if item.print_job.add_ons.all %}
+                                    <div class="print-addons-section">
+                                        <div class="print-addons-title">Add-ons</div>
+                                        <ul class="print-addons-list mb-0">
+                                            {% for addon in item.print_job.add_ons.all %}
+                                            <li>{{ addon.name }}{% if addon.price_per_unit %} · ₹ {{ addon.price_per_unit }}{% endif %}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
                                 </div>
                                 {% endif %}
                             </div>

@@ -1,7 +1,16 @@
 # vendor/templatetags/custom_filters.py
+import os
 from django import template
 
 register = template.Library()
+
+
+@register.filter
+def basename(value):
+    """Return the filename part of a file path (e.g. for FileField.name)."""
+    if not value:
+        return ""
+    return os.path.basename(str(value))
 
 @register.filter
 def get_item(dictionary, key):

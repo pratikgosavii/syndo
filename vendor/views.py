@@ -4139,7 +4139,7 @@ def order_details(request, order_id):
     order = (
         Order.objects.filter(id=order_id, items__product__user=request.user)
         .select_related('delivery_boy', 'address', 'user')
-        .prefetch_related('items__product', 'items__print_job__files')
+        .prefetch_related('items__product', 'items__print_job__files', 'items__print_job__add_ons')
         .distinct()
         .first()
     )
