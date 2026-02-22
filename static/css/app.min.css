@@ -457,7 +457,8 @@ body[data-layout-mode=dark][data-topbar=light] .notification-item .d-flex:hover 
 }
 
 .page-title-box {
-    padding-bottom: 24px
+    padding-bottom: 12px;
+    padding-top: 12px;
 }
 
 .page-title-box .breadcrumb {
