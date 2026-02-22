@@ -3631,9 +3631,9 @@ def pos(request):
         customer_form = vendor_customersForm(request.POST)  # if needed
         wholesale_form = pos_wholesaleForm(request.POST, request.FILES)
 
-        products = request.POST.getlist("product")
-        quantities = request.POST.getlist("quantity")
-        prices = request.POST.getlist("price")
+        products = request.POST.getlist("product[]")
+        quantities = request.POST.getlist("quantity[]")
+        prices = request.POST.getlist("price[]")
 
         if not sale_form.is_valid() or not wholesale_form.is_valid():
             # return immediately with form errors before saving anything

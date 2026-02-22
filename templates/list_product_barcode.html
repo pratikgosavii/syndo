@@ -142,6 +142,7 @@
             min-height: 0;
             overflow-y: auto;
             margin-bottom: 0;
+            padding-bottom: 240px;  /* Space so last products stay fully visible above fixed footer */
             /* Large viewport so more products visible in one scroll */
             min-height: calc(75vh + 50px);
         }
@@ -240,7 +241,7 @@
             margin: 0 auto;
         }
         .barcode-page .card #barcode-form .barcode-card-body {
-            padding-bottom: 70px;
+            padding-bottom: 95px;
         }
         .barcode-summary {
             font-size: 0.9375rem;
@@ -267,6 +268,50 @@
             opacity: 0.6 !important;
             cursor: not-allowed;
         }
+
+        .barcode-search-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+        
+        /* Search area */
+        .barcode-search-wrap {
+            position: relative;
+            flex: 1 1 auto;        /* grow + shrink */
+            min-width: 0;          /* ✅ CRITICAL: allows shrinking */
+        }
+        
+        /* Icon */
+        .barcode-search-wrap i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        /* Input */
+        .barcode-search-input {
+            padding-left: 32px !important;
+            height: 38px;
+        }
+        
+        /* Select All */
+        .barcode-select-all {
+            display: inline-flex !important;   /* ✅ override Bootstrap */
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            flex: 0 0 auto;                    /* ✅ prevents wrapping */
+            margin: 0;
+        }
+        
+
     </style>
 {% endblock extra_css %}
 

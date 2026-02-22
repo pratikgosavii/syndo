@@ -16,6 +16,7 @@
         align-items: center;
         gap: 0.6rem;
         margin-bottom: 0.75rem;
+        margin-top: 1rem;
     }
     .product-list-page .page-title {
         font-weight: 700;
@@ -181,6 +182,7 @@
     }
     .product-list-page .pill-policy-cod { background: #d1fae5; color: #047857; }
     .product-list-page .pill-policy { background: #dbeafe; color: #1d4ed8; }
+    .product-list-page .pill-policy-off { background: #f3f4f6; color: #9ca3af; }
 
     .product-list-page .card-actions-top {
         display: flex;
@@ -348,10 +350,12 @@
                                     </div>
                                     <div class="label-muted">Policies</div>
                                     <div class="policy-pills">
-                                        {% if i.cod %}<span class="pill pill-policy-cod">✅ COD</span>{% endif %}
-                                        {% if i.return_policy %}<span class="pill pill-policy">↩ Return</span>{% else %}<span class="pill pill-policy">↩ Return (No)</span>{% endif %}
-                                        {% if i.shop_warranty or i.brand_warranty %}<span class="pill pill-policy">🛡️ Warranty</span>{% endif %}
-                                        {% if not i.cod and not i.return_policy and not i.shop_warranty and not i.brand_warranty %}<span class="pill pill-policy text-muted">—</span>{% endif %}
+                                        {% if i.return_policy %}<span class="pill pill-policy">↩ Return</span>{% else %}<span class="pill pill-policy-off">Return</span>{% endif %}
+                                        {% if i.cod %}<span class="pill pill-policy-cod">💰 COD</span>{% else %}<span class="pill pill-policy-off">COD</span>{% endif %}
+                                        {% if i.replacement %}<span class="pill pill-policy">🔄 Replace</span>{% else %}<span class="pill pill-policy-off">Replace</span>{% endif %}
+                                        {% if i.shop_exchange %}<span class="pill pill-policy">📦 Exchange</span>{% else %}<span class="pill pill-policy-off">Exchange</span>{% endif %}
+                                        {% if i.shop_warranty %}<span class="pill pill-policy">🛡️ Shop Warranty</span>{% else %}<span class="pill pill-policy-off">Shop Warranty</span>{% endif %}
+                                        {% if i.brand_warranty %}<span class="pill pill-policy">🛡️ Brand Warranty</span>{% else %}<span class="pill pill-policy-off">Brand Warranty</span>{% endif %}
                                     </div>
                                     <a href="{% url 'add_variant' i.id %}" class="btn btn-add-variant">
                                         <i class="bi bi-plus"></i> Add Variant
