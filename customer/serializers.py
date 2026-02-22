@@ -842,6 +842,38 @@ class OrderSerializer(serializers.ModelSerializer):
                 # For regular products: use sales_price * quantity
                 unit_price = Decimal(str(product1.sales_price))
                 line_total = unit_price * quantity
+
+            # Print-type rule: if (unit_price * quantity) < (sales_price * quantity), use sales_price * quantity + addon total as item total; else no change
+            base_total = unit_price * quantity
+            sales_price_item = (Decimal(str(product1.sales_price)) * quantity) if getattr(product1, "sales_price", None) is not None else None
+            addon_total = Decimal("0")
+            if is_print_product and item_print_job:
+                addon_ids = item_print_job.get("add_ons") or []
+                if addon_ids:
+                    try:
+                        from vendor.models import addon as Addon
+                        for addon_obj in Addon.objects.filter(id__in=addon_ids).only("price_per_unit"):
+                            addon_total += Decimal(str(getattr(addon_obj, "price_per_unit", 0) or 0))
+                    except Exception:
+                        pass
+            if sales_price_item is not None and base_total < sales_price_item:
+                line_total = sales_price_item + addon_total
+                _req_log = logging.getLogger("request")
+                _msg = (
+                    f"[order_api create] product={getattr(product1, 'name', '')} base_total={base_total} < "
+                    f"sales_price_item={sales_price_item} → line_total=sales_price+addons={line_total} (addon_total={addon_total})"
+                )
+                print(_msg)
+                _req_log.info(_msg)
+            elif sales_price_item is not None and base_total >= sales_price_item and is_print_product:
+                # No change to line_total (print: keep unit_price * total_pages)
+                _req_log = logging.getLogger("request")
+                _msg = (
+                    f"[order_api create] product={getattr(product1, 'name', '')} base_total={base_total} >= "
+                    f"sales_price_item={sales_price_item} → line_total unchanged={line_total}"
+                )
+                print(_msg)
+                _req_log.info(_msg)
             
             item_total += line_total
 
@@ -1248,65 +1280,31 @@ class OrderSerializer(serializers.ModelSerializer):
                     page_count=f_data.get("page_count", 0),
                     page_numbers=f_data.get("page_numbers", ""),
                 )
-                # Do NOT reuse original path; create a fresh file so
-                # OrderPrintFile.upload_to("order_print_jobs/files/") is applied.
-                src = f.get("file")
-                if not src:
-                    continue
 
-                from django.core.files.base import ContentFile
-                from django.core.files.storage import default_storage
-                import os
-
-                # Read bytes from source file / FieldFile / UploadedFile
-                data = None
-                filename = "file"
-                
-                try:
-                    # Handle different file types
-                    if hasattr(src, "read"):
-                        # It's an UploadedFile or open file handle
-                        if hasattr(src, "seek"):
-                            src.seek(0)  # Reset to beginning
-                        data = src.read()
-                        filename = getattr(src, "name", "file")
-                        if hasattr(src, "close") and not hasattr(src, "closed"):
-                            try:
-                                src.close()
-                            except Exception:
-                                pass
-                    elif hasattr(src, "name"):
-                        # It's a FieldFile (Django model file field)
-                        # Check if file actually exists on disk
-                        if hasattr(src, "storage") and hasattr(src, "name"):
-                            if src.storage.exists(src.name):
-                                src.open("rb")
-                                data = src.read()
-                                src.close()
-                                filename = os.path.basename(src.name)
-                            else:
-                                logger.warning(f"[ORDER_SERIALIZER] File does not exist on disk: {src.name}")
-                                continue
-                        else:
-                            # Fallback: try to open it
-                            try:
-                                if hasattr(src, "open"):
-                                    src.open("rb")
-                                data = src.read()
-                                filename = getattr(src, "name", "file")
-                            finally:
-                                try:
-                                    if hasattr(src, "close"):
-                                        src.close()
-                                except Exception:
-                                    pass
-                    else:
-                        logger.warning(f"[ORDER_SERIALIZER] Unknown file type: {type(src)}")
-                        continue
-                        
-                except Exception as e:
-                    logger.error(f"[ORDER_SERIALIZER] Error reading file for order: {e}", exc_info=True)
-                    continue
+        # Recompute order totals using invoice rule: if item total < sales_price → use sales_price + addons; else use total only.
+        # This runs on the order API so stored item_total/tax_total/total_amount match the invoice PDF.
+        try:
+            from customer.order_totals import get_order_invoice_totals
+            order.refresh_from_db()
+            order_with_prefetch = Order.objects.prefetch_related(
+                "items__product", "items__print_job__add_ons"
+            ).select_related("address").get(pk=order.pk)
+            totals = get_order_invoice_totals(order_with_prefetch)
+            order.item_total = totals["item_total"]
+            order.tax_total = totals["tax_total"]
+            order.total_amount = totals["total_amount"]
+            order.save(update_fields=["item_total", "tax_total", "total_amount"])
+            request_logger = logging.getLogger("request")
+            msg = (
+                f"[order_api] order_id={order.order_id} recomputed totals: "
+                f"item_total={order.item_total} tax_total={order.tax_total} total_amount={order.total_amount}"
+            )
+            print(msg)
+            request_logger.info(msg)
+        except Exception as e:
+            logger.warning(f"[ORDER_SERIALIZER] Recompute invoice totals failed (using initial totals): {e}")
+            request_logger = logging.getLogger("request")
+            request_logger.warning(f"[order_api] order_id={order.order_id} recompute failed: {e}")
 
         # Clear cart only when order is confirmed: COD/cash immediately; online pay only after payment success (cleared in webhook).
         payment_mode = (getattr(order, "payment_mode", "") or "COD").strip().lower()

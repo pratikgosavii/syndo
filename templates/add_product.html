@@ -67,6 +67,9 @@
     .media-upload-zone .upload-icon { font-size: 2.25rem; color: #6c757d; margin-bottom: 0.5rem; }
     .media-upload-zone .upload-text { color: #6c757d; font-size: 0.9rem; }
     .media-upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    /* Submit section must always be visible for all product types (id + class so it works even when cached) */
+    #product-form-submit-section,
+    .product-form-submit-section { display: flex !important; visibility: visible !important; opacity: 1 !important; }
 </style>
 {% endblock extra_css %}
 
@@ -282,6 +285,21 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Submit row: always visible right after Media (before Delivery/Policies) -->
+                        <div id="product-form-submit-section" class="product-form-submit-section section-card d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center">
+                                <label class="switch mb-0 me-3">
+                                    {{ form.is_active }}
+                                    <span class="slider"></span>
+                                </label>
+                                <label class="form-label mb-0" for="id_is_active">Is Active</label>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'list_product' %}" class="btn btn-outline-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-submit-product custom-button"><i class="bi bi-check-lg me-1"></i>{% if instance %}Update Product{% else %}Submit Product{% endif %}</button>
+                            </div>
+                        </div>
                     
                         <!-- Delivery & Policies -->
                        
@@ -443,6 +461,7 @@
                                 <button type="button" class="btn btn-outline-primary btn-sm" id="add-addon"><i class="bi bi-plus-lg me-1"></i>Add Another Addon</button>
                             </div>
                         </div>
+                        </div>
 
                         <div id="hide_offline_div">
                         <!-- Delivery Details (match reference image 2: checkboxes in light grey boxes, "Use Default" link) -->
@@ -525,26 +544,6 @@
                         
                         
                         {% endif %}
-
-                        <!-- Bottom row: Is Active left, Submit right (match reference image 2) -->
-                        <div class="section-card d-flex flex-wrap align-items-center justify-content-between gap-3">
-                            <div class="d-flex align-items-center">
-                                <label class="switch mb-0 me-3">
-                                    {{ form.is_active }}
-                                    <span class="slider"></span>
-                                </label>
-                                <label class="form-label mb-0" for="id_is_active">Is Active</label>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="{% url 'list_product' %}" class="btn btn-outline-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-submit-product custom-button"><i class="bi bi-check-lg me-1"></i>{% if instance %}Update Product{% else %}Submit Product{% endif %}</button>
-                            </div>
-                        </div>
-                
-                        </div>
-
-                        
-                        
 
                     </form>
                 </div>
@@ -775,16 +774,18 @@
     }
 
 
-    // for hiding delivery option for offline product
+    // for hiding delivery option for offline product (submit section is never hidden)
     function handleSaleTypeChange() {
         const saleTypeValue = saleType.value;
-        const targetDiv = document.getElementById("hide_offline_div"); // 👈 replace with your div's ID
+        const targetDiv = document.getElementById("hide_offline_div");
 
         if (saleTypeValue === 'offline') {
             targetDiv.style.display = 'none';
         } else {
             targetDiv.style.display = 'block';
         }
+        const submitSection = document.getElementById('product-form-submit-section');
+        if (submitSection) submitSection.style.display = '';
     }
 
     function handleFoodToggleChange() {
@@ -989,7 +990,7 @@ changeMrpLabel("Selling Price");
             handleFoodToggleChange();
 
             // Hide all customize print stuff
-            customizePrintToggleWrapper.style.display = 'none';
+            customizePrintWrapper.style.display = 'none';
             standardPrintWrapper.style.display = 'none';
             customPrintWrapper.style.display = 'none';
 
@@ -998,11 +999,10 @@ changeMrpLabel("Selling Price");
                 el.disabled = true;
                 el.required = false;
             });
-
-
-
-
         }
+        // Always keep submit section visible for every product type (product, service, print)
+        const submitSection = document.getElementById('product-form-submit-section');
+        if (submitSection) submitSection.style.display = '';
     }
 
     // Add listener
@@ -1135,7 +1135,9 @@ function handleCustomPrintToggleChange() {
     colorPreview.style.background = colorPicker.value;
 
     handleProductTypeChange();
-
+    // Ensure submit section is always visible regardless of product type
+    const submitSection = document.getElementById('product-form-submit-section');
+    if (submitSection) submitSection.style.display = '';
   });
 
 

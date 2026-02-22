@@ -414,19 +414,7 @@
         .pay-opt { cursor: pointer; user-select: none; }
         .bank-select .form-label { font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px; }
         .advance-section .form-control, .advance-section .form-select { font-size: 12px; }
-        .btn-discount-type {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            color: #64748b;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn-discount-type.active { background: #e2e8f0; border-color: #cbd5e0; color: #475569; }
-        .btn-discount-type:not(.active):hover { background: #fff; border-color: #cbd5e0; }
+        .pay-grid.discount-type-grid { grid-template-columns: repeat(2, 1fr); }
         .billing-sidebar .discount-value-input { flex: 1; min-width: 80px; max-width: 140px; }
         /* Net Payable & actions – match reference image */
         .bill-footer .net-payable-label {
@@ -438,7 +426,7 @@
             margin-bottom: 4px;
             display: block;
         }
-        .total-block { display: flex; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: nowrap; margin-top: 0; margin-bottom: 12px; width: 100%; }
+        .total-block { display: flex; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: nowrap; margin-top: 0; margin-bottom: 0px; width: 100%; }
         .total-block .total-lbl { display: none; }
         .net-payable-box { font-size: 26px; font-weight: 800; color: #2563eb; letter-spacing: -0.02em; }
         .pos-process-actions { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 12px; align-items: stretch; width: 100%; min-width: 0; }
@@ -461,6 +449,7 @@
 
         .page-content{
           padding-bottom: 0px !important;
+          padding-top: 85px !important;
         }
 
         
@@ -860,11 +849,13 @@
                 <div class="bill-content">
                  
                   <hr class="my-2">
-                  <div class="mb-2">
+                    <div class="mb-2">
                     <label class="form-label">Discount</label>
-                    <div class="d-flex gap-2 align-items-center mb-2">
-                      <button type="button" class="btn btn-discount-type active" id="discount-type-amount">₹ Amount</button>
-                      <button type="button" class="btn btn-discount-type" id="discount-type-percent">% Percent</button>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <div class="pay-grid discount-type-grid btn-group-payment" role="group">
+                        <div class="pay-opt btn-payment btn-payment-active" id="discount-type-amount" role="button" tabindex="0">₹ Amount</div>
+                        <div class="pay-opt btn-payment" id="discount-type-percent" role="button" tabindex="0">% Percent</div>
+                      </div>
                       <input type="number" id="discount-value-input" class="form-control discount-value-input" placeholder="0" step="0.01" min="0" aria-label="Discount value">
                     </div>
                     <div id="discount-amount-wrap" class="d-none">
@@ -904,7 +895,7 @@
                       <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
                     </div>
                   </div>
-                  <div id="advance-bank-dropdown" class="bank-select mt-2" style="display: none;">
+                  <div id="advance-bank-dropdown" class="bank-select mt-2 mb-2" style="display: none;">
                     <label class="form-label small">Select Bank (If Cheque/Online)</label>
                     <select name="advance_bank" id="advance_bank" class="form-select form-select-sm" onchange="recalculateTotals()">
                       <option value="">Select Bank Account...</option>
@@ -1183,7 +1174,7 @@ function recalculateTotals() {
   // Discount: single input synced to amount or percent hidden field
   var discountValueInput = document.getElementById('discount-value-input');
   function syncDiscountFromVisible() {
-    var isAmount = document.getElementById('discount-type-amount').classList.contains('active');
+    var isAmount = document.getElementById('discount-type-amount').classList.contains('btn-payment-active');
     var val = discountValueInput.value;
     if (isAmount) {
       discountAmountEl.value = val || '0';
@@ -1195,28 +1186,29 @@ function recalculateTotals() {
     recalculateTotals();
   }
   function setDiscountVisibleFromActive() {
-    var isAmount = document.getElementById('discount-type-amount').classList.contains('active');
+    var isAmount = document.getElementById('discount-type-amount').classList.contains('btn-payment-active');
     discountValueInput.value = isAmount ? (discountAmountEl.value || '') : (discountPercentEl.value || '');
   }
   if (discountValueInput) {
     discountValueInput.addEventListener('input', syncDiscountFromVisible);
   }
-  document.getElementById('discount-type-amount').addEventListener('click', function() {
-    document.getElementById('discount-type-amount').classList.add('active');
-    document.getElementById('discount-type-percent').classList.remove('active');
-    discountPercentEl.value = discountValueInput.value || '0';
-    discountValueInput.value = discountAmountEl.value || '';
-    discountAmountEl.value = discountValueInput.value || '0';
+  function selectDiscountType(type, btn) {
+    var group = btn.closest('.btn-group-payment');
+    if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
+    btn.classList.add('btn-payment-active');
+    if (type === 'amount') {
+      discountPercentEl.value = discountValueInput.value || '0';
+      discountValueInput.value = discountAmountEl.value || '';
+      discountAmountEl.value = discountValueInput.value || '0';
+    } else {
+      discountAmountEl.value = discountValueInput.value || '0';
+      discountValueInput.value = discountPercentEl.value || '';
+      discountPercentEl.value = discountValueInput.value || '0';
+    }
     recalculateTotals();
-  });
-  document.getElementById('discount-type-percent').addEventListener('click', function() {
-    document.getElementById('discount-type-percent').classList.add('active');
-    document.getElementById('discount-type-amount').classList.remove('active');
-    discountAmountEl.value = discountValueInput.value || '0';
-    discountValueInput.value = discountPercentEl.value || '';
-    discountPercentEl.value = discountValueInput.value || '0';
-    recalculateTotals();
-  });
+  }
+  document.getElementById('discount-type-amount').addEventListener('click', function() { selectDiscountType('amount', this); });
+  document.getElementById('discount-type-percent').addEventListener('click', function() { selectDiscountType('percent', this); });
   setDiscountVisibleFromActive();
   
   
@@ -1348,17 +1340,44 @@ function recalculateTotals() {
 
 
   $(document).on('change', '.product-select', function () {
-    const row = $(this).closest('.item-row');
+    const row = $(this).closest('.row');
+    if (!row.length) return;
     const selected = this.options[this.selectedIndex];
-    const useWholesale = document.getElementById('wholesale_selector').checked;
+    const useWholesale = document.getElementById('wholesale_selector') && document.getElementById('wholesale_selector').checked;
     const sale = parseFloat(selected.getAttribute('data-sale')) || 0;
     const wholesale = parseFloat(selected.getAttribute('data-wholesale')) || 0;
     const price = useWholesale ? wholesale : sale;
     row.find('.rate-input').val(price.toFixed(2));
     const qty = parseFloat(row.find('.qty-input').val()) || 0;
     row.find('.amount').val((qty * price).toFixed(2));
-    $('#total-items').text(document.querySelectorAll('.item-row').length);
-    recalculateTotals();
+    if (row.hasClass('item-row')) {
+      $('#total-items').text(document.querySelectorAll('.item-row').length);
+      recalculateTotals();
+    }
+  });
+
+  // Product entry row (top row): recalc Total when qty or price changes
+  function updateEntryRowAmount(row) {
+    if (!row) return;
+    const qty = parseFloat(row.querySelector('.qty-input') && row.querySelector('.qty-input').value) || 0;
+    const rate = parseFloat(row.querySelector('.rate-input') && row.querySelector('.rate-input').value) || 0;
+    const amountEl = row.querySelector('.amount');
+    if (amountEl) amountEl.value = (qty * rate).toFixed(2);
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    const entryRow = document.getElementById('add-item') && document.getElementById('add-item').closest('.row');
+    if (entryRow) {
+      const qtyInput = entryRow.querySelector('.qty-input');
+      const rateInput = entryRow.querySelector('.rate-input');
+      if (qtyInput) {
+        qtyInput.addEventListener('input', function () { updateEntryRowAmount(entryRow); });
+        qtyInput.addEventListener('change', function () { updateEntryRowAmount(entryRow); });
+      }
+      if (rateInput) {
+        rateInput.addEventListener('input', function () { updateEntryRowAmount(entryRow); });
+        rateInput.addEventListener('change', function () { updateEntryRowAmount(entryRow); });
+      }
+    }
   });
 
   // Apply wholesale pricing across all rows when toggle changes or on load
@@ -1411,13 +1430,46 @@ document.addEventListener('DOMContentLoaded', function () {
 document.getElementById('add-item').addEventListener('click', () => {
   const cardRow = document.getElementById('add-item').closest('.row');
   const container = document.getElementById('items-container');
-  const orig = container.querySelector('.item-row');
-
+  const allRows = container.querySelectorAll('.item-row');
+  const firstRow = allRows[0];
   const productVal = cardRow ? (cardRow.querySelector('.product-select') && cardRow.querySelector('.product-select').value) : '';
   const qtyVal = cardRow ? (cardRow.querySelector('.qty-input') && cardRow.querySelector('.qty-input').value) : '1';
   const priceVal = cardRow ? (cardRow.querySelector('.rate-input') && cardRow.querySelector('.rate-input').value) : '0.00';
+  const amountVal = productVal ? (parseFloat(qtyVal) * parseFloat(priceVal)).toFixed(2) : '0.00';
 
-  if (!orig) return;
+  if (!firstRow) return;
+
+  // First time: only one row and it has no product selected → update that row instead of adding new
+  const firstRowProductVal = firstRow.querySelector('.product-select') && firstRow.querySelector('.product-select').value;
+  const firstRowIsEmpty = !firstRowProductVal || firstRowProductVal === '';
+  if (allRows.length === 1 && firstRowIsEmpty && productVal) {
+    const sel = firstRow.querySelector('.product-select');
+    const qtyInput = firstRow.querySelector('.qty-input');
+    const rateInput = firstRow.querySelector('.rate-input');
+    const amountInput = firstRow.querySelector('.amount');
+    if (sel) {
+      if ($(sel).hasClass("select2-hidden-accessible")) $(sel).select2('destroy');
+      sel.value = productVal;
+      initializeSelect2OnRow(firstRow);
+    }
+    if (qtyInput) qtyInput.value = qtyVal;
+    if (rateInput) rateInput.value = priceVal;
+    if (amountInput) amountInput.value = amountVal;
+    if (cardRow) {
+      if (cardRow.querySelector('.product-select')) cardRow.querySelector('.product-select').value = '';
+      if (cardRow.querySelector('.qty-input')) cardRow.querySelector('.qty-input').value = '1';
+      if (cardRow.querySelector('.rate-input')) cardRow.querySelector('.rate-input').value = '0.00';
+      if (cardRow.querySelector('.amount')) cardRow.querySelector('.amount').value = '0.00';
+      $(cardRow.querySelector('.product-select')).trigger('change');
+    }
+    recalculateTotals();
+    updateSelectOptions();
+    if (typeof posForceSelect2Width === 'function') setTimeout(posForceSelect2Width, 0);
+    return;
+  }
+
+  // Otherwise: add new row (clone first row, fill it, insert after first or append)
+  const orig = firstRow;
   const origSelect = orig.querySelector('.product-select');
   if ($(origSelect).hasClass("select2-hidden-accessible")) {
     $(origSelect).select2('destroy');
@@ -1433,7 +1485,7 @@ document.getElementById('add-item').addEventListener('click', () => {
     if (cloneSelect) cloneSelect.value = productVal;
     if (cloneQty) cloneQty.value = qtyVal;
     if (clonePrice) clonePrice.value = priceVal;
-    if (cloneAmount) cloneAmount.value = (parseFloat(qtyVal) * parseFloat(priceVal)).toFixed(2);
+    if (cloneAmount) cloneAmount.value = amountVal;
   } else {
     clone.querySelectorAll('input').forEach(i => {
       if (i.classList.contains('rate-input') || i.classList.contains('amount')) i.value = '0.00';
