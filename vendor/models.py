@@ -1456,17 +1456,22 @@ class Payment(models.Model):
 
 class TaxSettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tax_settings')
-    igst = models.BooleanField(default=False)
-    gst = models.BooleanField(default=False)
-    hsn_sac_code = models.BooleanField(default=False)
-    additional_cess = models.BooleanField(default=False)
-    reverse_charge = models.BooleanField(default=False)
-    city_of_supply = models.BooleanField(default=False)
-    eway_bill_no = models.BooleanField(default=False)
     composite_scheme = models.BooleanField(default=False)
 
-class InvoiceSettings(models.Model):
+class 
+InvoiceSettings(models.Model):
+    INVOICE_TEMPLATE_CHOICES = [
+        ('retail', 'Retail Invoice'),
+        ('wholesale', 'Wholesale Invoice (GST)'),
+        ('thermal', 'Thermal Bill'),
+    ]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='invoice_settings')
+    default_invoice_template = models.CharField(
+        max_length=20,
+        choices=INVOICE_TEMPLATE_CHOICES,
+        default='retail',
+        help_text="Default template to use when generating invoices"
+    )
     show_round_off = models.BooleanField(default=False)
     show_due_date = models.BooleanField(default=False)
     show_dispatch_address = models.BooleanField(default=False)

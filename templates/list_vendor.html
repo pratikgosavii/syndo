@@ -6,18 +6,10 @@
 {% block title %}Vendor List{% endblock title %}
 
 {% block extra_css %}
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
     <style>
-        body {
-            background-color: #F3F6F9;
-            color: #333;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* Title – reference: bold black, no green dot */
+        body { background-color: #f1f5f9; color: #333; }
         .vendor-list-header {
             display: flex;
             flex-wrap: wrap;
@@ -25,15 +17,15 @@
             justify-content: space-between;
             gap: 1rem;
             margin-bottom: 1.25rem;
+            margin-top: 0.75rem;
         }
-        .vendor-list-title {
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: #1a1d21;
-            margin: 0;
+        .vendor-list-title { font-size: 1.35rem; font-weight: 700; color: #1a1d21; margin: 0; }
+        .vendor-header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
-
-        /* Search + Add row – reference: more padding, softer border */
         .search-add-row {
             display: flex;
             gap: 0.75rem;
@@ -48,19 +40,10 @@
         }
         .search-box .form-control {
             padding: 0.5rem 0.75rem 0.5rem 2.25rem;
-            font-size: 0.9375rem;
+            font-size: 0.9rem;
             border-radius: 8px;
             border: 1px solid #e5e7eb;
             background: #fff;
-            color: #374151;
-        }
-        .search-box .form-control::placeholder {
-            color: #9ca3af;
-        }
-        .search-box .form-control:focus {
-            border-color: #93c5fd;
-            box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.2);
-            outline: none;
         }
         .search-box .bi-search {
             position: absolute;
@@ -70,242 +53,124 @@
             transform: translateY(-50%);
             color: #9ca3af;
         }
-        /* Add Vendor – reference: bright yellow, white text */
         .btn-add-vendor {
-            background: #FFC107 !important;
+            background: #FCA311 !important;
             border: none !important;
             color: #fff !important;
             font-weight: 600;
             font-size: 0.9rem;
             padding: 0.5rem 1rem;
             border-radius: 8px;
-            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .btn-add-vendor:hover {
-            background: #FFA000 !important;
-            color: #fff !important;
-            border: none !important;
+        .btn-add-vendor:hover { background: #e5940f !important; color: #fff !important; }
+        /* TOTAL PAYABLE card - red, top right */
+        .total-payable-card {
+            background: #151e31;
+            color: #fff;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            min-width: 180px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
         }
-
-        /* Vendor cards – reference: elevated shadow, more rounded, better spacing */
+        .total-payable-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; opacity: 0.95; }
+        .total-payable-amount { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+        .total-payable-card .bi-currency-rupee { font-size: 1.25rem; opacity: 0.9; }
+        /* Column headers */
+        .list-column-headers {
+            display: flex;
+            gap: 1rem;
+            padding: 0.6rem 1rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+        .list-column-headers .col-vendor { flex: 2; min-width: 200px; }
+        .list-column-headers .col-contact { flex: 1.5; min-width: 160px; }
+        .list-column-headers .col-tax { flex: 0.8; min-width: 100px; }
+        .list-column-headers .col-balance { flex: 0.6; min-width: 100px; }
+        .list-column-headers .col-action { flex: 0.4; min-width: 90px; text-align: right; }
+        /* Vendor cards */
         .vendor-card {
             background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
             display: flex;
-            flex-wrap: wrap;
             align-items: flex-start;
-            gap: 1.25rem;
+            gap: 1rem;
             border: 1px solid #f3f4f6;
         }
-        /* Avatar – reference: light blue or orange circle, white text */
         .vendor-avatar {
-            width: 48px;
-            height: 48px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 0.9rem;
-            flex-shrink: 0;
-            color: #fff !important;
-        }
-        .vendor-avatar.bg-blue { background: #60a5fa; }
-        .vendor-avatar.bg-orange { background: #f97316; }
-        .vendor-avatar.bg-green { background: #22c55e; }
-        .vendor-avatar.bg-purple { background: #a78bfa; }
-
-        .vendor-info {
-            flex: 1;
-            min-width: 180px;
-            display: flex;
-            flex-direction: column;
-        }
-        /* Name and address on same line */
-        .vendor-name-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 0.15rem;
-        }
-        .vendor-name {
-            font-weight: 700;
-            font-size: 1.05rem;
-            color: #1a1d21;
-            letter-spacing: -0.01em;
-        }
-        .vendor-address-inline {
-            font-size: 0.875rem;
-            color: #6b7280;
-            font-weight: 500;
+            font-size: 0.85rem;
             flex-shrink: 0;
         }
-        .vendor-company {
-            font-size: 0.875rem;
-            color: #6b7280;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-        .vendor-contact {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            font-size: 0.8125rem;
-            color: #4b5563;
-            margin-bottom: 0.6rem;
-        }
-        .vendor-contact span {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-        .vendor-contact .bi { font-size: 0.8rem; color: #9ca3af; }
-        /* LOCATION / TAX INFO – reference: distinct light grey box, text vertically centered */
-        .vendor-details-box {
-            background: #f1f3f5;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 1rem 1.25rem;
-            margin-top: 0.5rem;
-            align-self: center;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            justify-content: center;
-        }
-        .vendor-details {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            justify-content: center;
-            margin: 0;
-        }
-        .vendor-detail-item {
-            font-size: 0.8125rem;
-            min-width: 160px;
-            max-width: 200px;
-            min-height: 56px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .vendor-detail-label {
-            color: #9ca3af;
-            font-weight: 600;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.35rem;
-            text-align: center;
-        }
-        .vendor-detail-value {
-            color: #374151;
-            font-size: 0.8125rem;
-            text-align: center;
-            line-height: 1.4;
-            padding: 0.15rem 0;
-        }
-        .tax-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem;
-            justify-content: center;
-            min-height: 1.75rem;
-            align-items: center;
-        }
+        .vendor-avatar.bg-blue { background: #dbeafe; color: #1d4ed8; }
+        .vendor-avatar.bg-orange { background: #ffedd5; color: #c2410c; }
+        .vendor-avatar.bg-green { background: #dcfce7; color: #15803d; }
+        .vendor-avatar.bg-purple { background: #f3e8ff; color: #7c3aed; }
+        .vendor-col { flex: 2; min-width: 200px; }
+        .vendor-name { font-weight: 700; font-size: 0.95rem; color: #111; margin-bottom: 0.15rem; }
+        .vendor-company { font-size: 0.8rem; color: #6b7280; margin-bottom: 0.2rem; }
+        .vendor-email { font-size: 0.75rem; color: #9ca3af; }
+        .contact-col { flex: 1.5; min-width: 160px; font-size: 0.8rem; color: #4b5563; }
+        .contact-col span { display: inline-flex; align-items: center; gap: 0.3rem; margin-bottom: 0.25rem; }
+        .contact-col .bi { color: #ec4899; font-size: 0.75rem; }
+        .tax-col { flex: 0.8; min-width: 100px; }
         .tax-tag {
-            background: #e5e7eb;
-            color: #6b7280;
-            padding: 0.25rem 0.6rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
+            background: #f3f4f6;
+            color: #4b5563;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
         }
-        .tax-tag.empty-placeholder {
-            color: #9ca3af;
-            background: #e5e7eb;
-        }
-
-        /* Right section – balance + actions */
-        .vendor-right {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 0.75rem;
-            min-width: 140px;
-        }
-        .vendor-balance-wrap {
-            text-align: right;
-        }
-        .vendor-balance-label {
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            color: #9ca3af;
-            margin-bottom: 0.2rem;
-        }
-        .vendor-balance-amount {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-        .vendor-balance-amount.positive { color: #22c55e; }
-        .vendor-balance-amount.negative { color: #ef4444; }
-        /* View Ledger – reference: lighter blue, white text */
+        .balance-col { flex: 0.6; min-width: 100px; }
+        .balance-amount { font-weight: 700; font-size: 0.95rem; }
+        .balance-amount.due { color: #ef4444; }
+        .balance-amount.zero { color: #22c55e; }
+        .balance-due-label { font-size: 0.7rem; color: #6b7280; margin-top: 0.1rem; }
+        .action-col { flex: 0.4; min-width: 90px; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end; }
         .btn-view-ledger {
-            background: #60a5fa !important;
-            color: #fff !important;
-            border: 1px solid #3b82f6 !important;
-            font-size: 0.8125rem;
-            font-weight: 600;
-            padding: 0.4rem 0.75rem;
-            border-radius: 8px;
+            background: #fef3c7 !important;
+            color: #b45309 !important;
+            border: none !important;
+            font-size: 0.75rem;
+            padding: 0.3rem 0.5rem;
+            border-radius: 4px;
         }
-        .btn-view-ledger:hover {
-            background: #3b82f6 !important;
-            color: #fff !important;
-            border-color: #3b82f6 !important;
-        }
-        /* Edit/Delete – reference: light grey, less prominent */
-        .vendor-action-icons {
-            display: flex;
-            gap: 0.35rem;
-        }
+        .btn-view-ledger:hover { background: #fde68a !important; color: #b45309 !important; }
+        .action-btns { display: flex; gap: 0.35rem; }
         .action-btn {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
+            font-size: 0.8rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            border-radius: 4px;
             border: 1px solid #e5e7eb;
-            background: #f9fafb;
-            color: #9ca3af;
-            font-size: 0.9rem;
-            text-decoration: none;
-            transition: background 0.2s, color 0.2s, border-color 0.2s;
-        }
-        .action-btn:hover {
-            background: #f3f4f6;
+            background: #fff;
             color: #6b7280;
-            border-color: #e5e7eb;
         }
-        .action-btn.edit:hover { color: #f59e0b; }
+        .action-btn:hover { background: #f9fafb; color: #111; }
+        .action-btn.edit:hover { color: #FCA311; }
         .action-btn.delete:hover { color: #ef4444; }
-
-        /* Override any base text-align so LOCATION/TAX INFO stay centered */
-        .vendor-card .vendor-detail-item,
-        .vendor-card .vendor-detail-label,
-        .vendor-card .vendor-detail-value,
-        .vendor-card .tax-tags { text-align: center !important; }
-        .vendor-card .tax-tags { justify-content: center !important; }
-        .vendor-card .vendor-details-box .vendor-detail-item { justify-content: center !important; }
     </style>
 {% endblock extra_css %}
 
@@ -317,12 +182,21 @@
                     <div class="col-12">
                         <div class="vendor-list-header">
                             <h4 class="vendor-list-title">Vendor List</h4>
-                            <div class="search-add-row">
-                                <div class="search-box">
-                                    <i class="bi bi-search"></i>
-                                    <input type="text" id="vendorSearch" class="form-control" placeholder="Search by Name, Company, or GST..." aria-label="Search vendors">
+                            <div class="vendor-header-right">
+                                <div class="search-add-row">
+                                    <div class="search-box">
+                                        <i class="bi bi-search"></i>
+                                        <input type="text" id="vendorSearch" class="form-control" placeholder="Search by Name, Company, Phone or GST..." aria-label="Search vendors">
+                                    </div>
+                                    <a href="{% url 'add_vendor' %}" class="btn btn-add-vendor"><i class="bi bi-plus-lg me-1"></i>Add Vendor</a>
                                 </div>
-                                <a href="{% url 'add_vendor' %}" class="btn btn-add-vendor"><i class="bi bi-plus-lg me-1"></i>Add Vendor</a>
+                                <div class="total-payable-card">
+                                    <div>
+                                        <div class="total-payable-label">TOTAL PAYABLE</div>
+                                        <div class="total-payable-amount">₹ {{ total_payable|floatformat:2|intcomma }}</div>
+                                    </div>
+                                    <i class="bi bi-currency-rupee"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -330,56 +204,46 @@
 
                 <div class="row">
                     <div class="col-12">
+                        <div class="list-column-headers">
+                            <div class="col-vendor">VENDOR / COMPANY</div>
+                            <div class="col-contact">CONTACT DETAILS</div>
+                            <div class="col-tax">TAX INFO</div>
+                            <div class="col-balance">BALANCE</div>
+                            <div class="col-action">ACTION</div>
+                        </div>
                         <div id="vendorList">
                             {% if data %}
                                 {% for i in data %}
                                     {% with initials=i.name|slice:":2"|upper %}
-                                    <div class="vendor-card vendor-item" data-name="{{ i.name|lower }}" data-company="{{ i.company_name|default:''|lower }}" data-gst="{{ i.gst|default:''|lower }}">
-                                        <div class="vendor-avatar bg-{% cycle 'blue' 'orange' 'green' 'purple' %}">{{ initials }}</div>
-                                        <div class="vendor-info">
-                                            <div class="vendor-name-row">
-                                                <div class="vendor-name">{% if i.company_name %}{{ i.company_name }}{% else %}{{ i.name }}{% endif %}</div>
-                                                <div class="vendor-address-inline">{% if i.city or i.state %}{{ i.city|default:'' }}{% if i.state %}{% if i.city %}, {% endif %}{{ i.state }}{% endif %}{% else %}—{% endif %}</div>
-                                            </div>
-                                            <div class="vendor-company">{% if i.company_name %}{{ i.name }}{% endif %}</div>
-                                            <div class="vendor-contact">
-                                                {% if i.contact %}<span><i class="bi bi-telephone"></i> {{ i.contact }}</span>{% endif %}
-                                                {% if i.email %}<span><i class="bi bi-envelope"></i> {{ i.email }}</span>{% endif %}
-                                            </div>
-                                            <div class="vendor-details-box">
-                                                <div class="vendor-details">
-                                                    <div class="vendor-detail-item">
-                                                        <div class="vendor-detail-label">LOCATION</div>
-                                                        <div class="vendor-detail-value">
-                                                            {% if i.city or i.state %}
-                                                                {{ i.city|default:'' }}{% if i.state %}{% if i.city %}, {% endif %}{{ i.state }}{% endif %}
-                                                            {% else %}
-                                                                —
-                                                            {% endif %}
-                                                        </div>
-                                                    </div>
-                                                    <div class="vendor-detail-item">
-                                                        <div class="vendor-detail-label">TAX INFO</div>
-                                                        <div class="tax-tags">
-                                                            {% if i.gst %}<span class="tax-tag">GST: {{ i.gst|truncatechars:12 }}</span>{% endif %}
-                                                            {% if i.pan %}<span class="tax-tag">PAN: {{ i.pan|truncatechars:12 }}</span>{% endif %}
-                                                            {% if not i.gst and not i.pan %}<span class="tax-tag empty-placeholder">—</span>{% endif %}
-                                                        </div>
-                                                    </div>
+                                    <div class="vendor-card vendor-item" data-name="{{ i.name|lower }}" data-company="{{ i.company_name|default:''|lower }}" data-gst="{{ i.gst|default:''|lower }}" data-phone="{{ i.contact|default:''|lower }}">
+                                        <div class="vendor-col">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <div class="vendor-avatar bg-{% cycle 'blue' 'orange' 'green' 'purple' %}">{{ initials }}</div>
+                                                <div>
+                                                    <div class="vendor-name">{% if i.company_name %}{{ i.company_name }}{% else %}{{ i.name }}{% endif %}</div>
+                                                    <div class="vendor-company">{% if i.company_name %}{{ i.name }}{% endif %}</div>
+                                                    <div class="vendor-email">{{ i.email|default:"" }}</div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="vendor-right">
-                                            <div class="vendor-balance-wrap">
-                                                <div class="vendor-balance-label">CURRENT BALANCE</div>
-                                                {% with bal=i.balance|default:0 %}
-                                                <div class="vendor-balance-amount {% if bal >= 0 %}positive{% else %}negative{% endif %}">
-                                                    {% if bal >= 0 %}₹ {{ bal|floatformat:2|intcomma }}{% else %}- ₹ {{ bal|abs_amount|floatformat:2|intcomma }}{% endif %}
-                                                </div>
-                                                {% endwith %}
-                                            </div>
+                                        <div class="contact-col">
+                                            {% if i.contact %}<span><i class="bi bi-telephone"></i> {{ i.contact }}</span>{% endif %}
+                                            {% if i.address_line_1 or i.city %}
+                                            <span><i class="bi bi-geo-alt"></i> {{ i.address_line_1|default:"" }}{% if i.address_line_1 and i.city %}, {% endif %}{{ i.city|default:"" }}{% if i.state %}, {{ i.state }}{% endif %}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="tax-col">
+                                            {% if i.gst %}<span class="tax-tag">GST: {{ i.gst|truncatechars:12 }}</span>{% elif i.pan %}<span class="tax-tag">PAN: {{ i.pan|truncatechars:12 }}</span>{% else %}<span class="tax-tag">—</span>{% endif %}
+                                        </div>
+                                        <div class="balance-col">
+                                            {% with bal=i.balance|default:0 %}
+                                            <div class="balance-amount {% if bal > 0 %}due{% else %}zero{% endif %}">₹ {% if bal >= 0 %}{{ bal|floatformat:2|intcomma }}{% else %}- {{ bal|abs_amount|intcomma }}{% endif %}</div>
+                                            {% if bal > 0 %}<div class="balance-due-label">Payable</div>{% endif %}
+                                            {% endwith %}
+                                        </div>
+                                        <div class="action-col">
                                             <a href="{% url 'vendor-ledger' i.id %}" class="btn btn-view-ledger"><i class="bi bi-journal-text me-1"></i>View Ledger</a>
-                                            <div class="vendor-action-icons">
+                                            <div class="action-btns">
                                                 <a href="{% url 'update_vendor' i.id %}" class="action-btn edit" title="Edit"><i class="bi bi-pencil"></i></a>
                                                 <a href="{% url 'delete_vendor' i.id %}" class="action-btn delete" title="Delete"><i class="bi bi-trash"></i></a>
                                             </div>
@@ -411,17 +275,13 @@
                 var name = (card.dataset.name || '').toLowerCase();
                 var company = (card.dataset.company || '').toLowerCase();
                 var gst = (card.dataset.gst || '').toLowerCase();
-                var match = !q || name.indexOf(q) !== -1 || company.indexOf(q) !== -1 || gst.indexOf(q) !== -1;
+                var phone = (card.dataset.phone || '').toLowerCase();
+                var match = !q || name.indexOf(q) !== -1 || company.indexOf(q) !== -1 || gst.indexOf(q) !== -1 || phone.indexOf(q) !== -1;
                 card.style.display = match ? '' : 'none';
             });
         });
         setTimeout(function() {
             var t = document.getElementById('toast');
-            if (t) { t.classList.remove('show'); setTimeout(function() { t.remove(); }, 500); }
-        }, 5000);
-    </script>
-{% endblock extra_js %}
-
             if (t) { t.classList.remove('show'); setTimeout(function() { t.remove(); }, 500); }
         }, 5000);
     </script>

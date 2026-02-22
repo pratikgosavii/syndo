@@ -211,7 +211,7 @@
 </table>
 
 <p><strong>Notes:</strong> {{ wholesale.notes|default:"-" }}</p>
-<p><strong>Terms & Conditions:</strong><br>{{ wholesale.terms|default:"-" }}</p>
+<p><strong>Terms & Conditions:</strong><br>{{ display_terms|default:"-"|safe }}</p>
 
 <div class="signature">Authorized Signature</div>
 

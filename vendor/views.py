@@ -338,10 +338,14 @@ def delete_vendor(request, vendor_id):
 
 @login_required(login_url='login_admin')
 def list_vendor(request):
+    from django.db.models import Sum
 
-    data = vendor_vendors.objects.filter(user = request.user)
+    data = vendor_vendors.objects.filter(user=request.user)
+    total_payable = data.filter(balance__gt=0).aggregate(Sum('balance'))['balance__sum'] or 0
+
     context = {
-        'data': data
+        'data': data,
+        'total_payable': total_payable,
     }
     return render(request, 'list_vendor.html', context)
 
@@ -995,13 +999,14 @@ def delete_customer(request, vendor_id):
 
 @login_required(login_url='login_admin')
 def list_customer(request):
-    
-   
-    data = vendor_customers.objects.filter(user = request.user)
+    from django.db.models import Sum
 
+    data = vendor_customers.objects.filter(user=request.user)
+    total_credit_used = data.filter(balance__gt=0).aggregate(Sum('balance'))['balance__sum'] or 0
 
     context = {
-        'data': data
+        'data': data,
+        'total_credit_used': total_credit_used,
     }
     return render(request, 'list_customer.html', context)
 
@@ -2250,26 +2255,25 @@ def add_payment(request):
 
         print(request.POST)
 
-        forms = PaymentForm(request.POST, request.FILES)
+        forms = PaymentForm(request.POST, request.FILES, user=request.user)
 
         if forms.is_valid():
             forms = forms.save(commit=False)
-            forms.user = request.user  # assign user here
+            forms.user = request.user
             forms.save()
             return redirect('list_payment')
         else:
             print(forms.errors)
-            context = {
-                'form': forms
-            }
+            context = {'form': forms, 'payment_id': 'PAY-TBD', 'payment_date': None}
             return render(request, 'add_payment.html', context)
     
     else:
-
-        forms = PaymentForm()
-
+        forms = PaymentForm(user=request.user)
+        from datetime import date
         context = {
-            'form': forms
+            'form': forms,
+            'payment_id': 'PAY-' + str(date.today().year) + '-001',
+            'payment_date': date.today(),
         }
         return render(request, 'add_payment.html', context)
 
@@ -2286,19 +2290,21 @@ def update_payment(request, payment_id):
 
         if forms.is_valid():
             forms = forms.save(commit=False)
-            forms.user = request.user  # assign user here
+            forms.user = request.user
             forms.save()
             return redirect('list_payment')
         else:
             print(forms.errors)
-    
+            context = {'form': forms, 'payment_id': getattr(instance, 'payment_number', 'PAY-TBD'), 'payment_date': getattr(instance, 'payment_date', None)}
+            return render(request, 'add_payment.html', context)
+
     else:
-
         instance = Payment.objects.get(id=payment_id)
-        forms = PaymentForm(instance=instance)
-
+        forms = PaymentForm(instance=instance, user=request.user)
         context = {
-            'form': forms
+            'form': forms,
+            'payment_id': instance.payment_number or 'PAY-TBD',
+            'payment_date': instance.payment_date,
         }
         return render(request, 'add_payment.html', context)
 
@@ -2314,10 +2320,36 @@ def delete_payment(request, payment_id):
 
 @login_required(login_url='login_admin')
 def list_payment(request):
+    from django.db.models import Sum, Q
+    from decimal import Decimal
 
-    data = Payment.objects.filter(user = request.user)
+    qs = Payment.objects.select_related('customer', 'vendor', 'bank').filter(user=request.user)
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    search = request.GET.get('search', '').strip()
+    filter_type = request.GET.get('filter_type')
+    if date_from:
+        qs = qs.filter(payment_date__gte=date_from)
+    if date_to:
+        qs = qs.filter(payment_date__lte=date_to)
+    if filter_type:
+        qs = qs.filter(type=filter_type)
+    if search:
+        qs = qs.filter(
+            Q(payment_number__icontains=search) |
+            Q(customer__name__icontains=search) |
+            Q(vendor__name__icontains=search)
+        )
+    data = qs.order_by('-payment_date', '-id')
+
+    total_value = qs.aggregate(s=Sum('amount'))['s'] or Decimal('0')
     context = {
-        'data': data
+        'data': data,
+        'total_payment_value': total_value,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+        'search': search,
+        'filter_type': filter_type or '',
     }
     return render(request, 'list_payment.html', context)
 
@@ -3431,10 +3463,32 @@ def delete_purchase(request, purchase_id):
 
 @login_required(login_url='login_admin')
 def list_purchase(request):
+    from django.db.models import Sum, Q
+    from decimal import Decimal
 
-    data = Purchase.objects.filter(user = request.user).order_by('-id')
+    qs = Purchase.objects.select_related('vendor').filter(user=request.user)
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    search = request.GET.get('search', '').strip()
+    if date_from:
+        qs = qs.filter(purchase_date__gte=date_from)
+    if date_to:
+        qs = qs.filter(purchase_date__lte=date_to)
+    if search:
+        qs = qs.filter(
+            Q(purchase_code__icontains=search) |
+            Q(vendor__name__icontains=search) |
+            Q(serial_number__icontains=search)
+        )
+    data = qs.order_by('-purchase_date', '-id')
+
+    total_value = qs.aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
     context = {
-        'data': data
+        'data': data,
+        'total_purchase_value': total_value,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+        'search': search,
     }
     return render(request, 'list_purchase.html', context)
 
@@ -3580,10 +3634,40 @@ def delete_expense(request, expense_id):
 
 @login_required(login_url='login_admin')
 def list_expense(request):
+    from django.db.models import Sum, Q
+    from decimal import Decimal
+    from masters.models import expense_category
 
-    data = Expense.objects.filter(user = request.user).order_by('-id')
+    qs = Expense.objects.select_related('category', 'bank').filter(user=request.user)
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    search = request.GET.get('search', '').strip()
+    filter_type = request.GET.get('filter_type')
+    if date_from:
+        qs = qs.filter(expense_date__gte=date_from)
+    if date_to:
+        qs = qs.filter(expense_date__lte=date_to)
+    if filter_type:
+        qs = qs.filter(category_id=filter_type)
+    if search:
+        q = Q(category__name__icontains=search) | Q(description__icontains=search)
+        if search.isdigit():
+            q = q | Q(id=int(search))
+        qs = qs.filter(q)
+    data = qs.order_by('-expense_date', '-id')
+
+    total_value = qs.aggregate(s=Sum('amount'))['s'] or Decimal('0')
+    expense_categories = expense_category.objects.filter(
+        Q(user=request.user) | Q(user__isnull=True)
+    ).order_by('name')
     context = {
-        'data': data
+        'data': data,
+        'total_expense_value': total_value,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+        'search': search,
+        'filter_type': filter_type or '',
+        'expense_categories': expense_categories,
     }
     return render(request, 'list_expense.html', context)
 
@@ -4195,7 +4279,10 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
 
 
 def sale_bill_details(request, sale_id):
-    sale = get_object_or_404(Sale, id=sale_id)
+    sale = get_object_or_404(
+        Sale.objects.select_related('company_profile', 'customer'),
+        id=sale_id
+    )
     wholesale = pos_wholesale.objects.filter(sale=sale, user=request.user).first()
     # Recalculate totals if missing (e.g. old records before totals were saved)
     if sale.items.exists() and (sale.total_taxable_amount == 0 or sale.total_amount == 0):
@@ -4212,14 +4299,41 @@ def sale_bill_details(request, sale_id):
 from django.db.models import Prefetch
 
 def list_sale(request):
+    from django.db.models import Sum, Q
+    from decimal import Decimal
 
-    data = Sale.objects.prefetch_related(
+    qs = Sale.objects.select_related('customer').prefetch_related(
         'items__product',
         Prefetch('wholesales', queryset=pos_wholesale.objects.all())
-    ).filter(user = request.user).order_by('-id')
+    ).filter(user=request.user)
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    search = request.GET.get('search', '').strip()
+    filter_type = request.GET.get('filter_type')
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
+    if filter_type == 'wholesale':
+        qs = qs.filter(is_wholesale_rate=True)
+    elif filter_type == 'retail':
+        qs = qs.filter(is_wholesale_rate=False)
+    if search:
+        qs = qs.filter(
+            Q(invoice_number__icontains=search) |
+            Q(customer__name__icontains=search) |
+            Q(customer__contact__icontains=search)
+        )
+    data = qs.order_by('-created_at')
 
+    total_value = qs.aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
     context = {
-        'data': data
+        'data': data,
+        'total_sale_value': total_value,
+        'date_from': date_from or '',
+        'date_to': date_to or '',
+        'search': search,
+        'filter_type': filter_type or '',
     }
     return render(request, 'list_sale.html', context)
 
@@ -4387,9 +4501,19 @@ def sale_invoice(request, sale_id):
     paid_amount = float(sale.advance_amount or 0)
     balance_amount = round(rounded_total - paid_amount, 2)
 
+    # Terms: use wholesale.terms if present, else InvoiceSettings.terms_and_conditions
+    term_from_sale = getattr(wholesale, 'terms', None) or ''
+    if term_from_sale and str(term_from_sale).strip():
+        display_terms = term_from_sale
+    else:
+        user = sale.user or request.user
+        inv_settings = InvoiceSettings.objects.filter(user=user).first()
+        display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
+
     context = {
         'sale_instance': sale,
         'wholesale': wholesale,
+        'display_terms': display_terms,
         'total_amount': total_amount,
         'rounded_total': rounded_total,
         'round_off_value': round_off_value,
@@ -4856,14 +4980,31 @@ class UpdateOrderItemTrackingAPIView(APIView):
         )
 
 def order_exchange_list(request):
+    from django.db.models import Q
 
-    data = ReturnExchange.objects.filter(
+    qs = ReturnExchange.objects.filter(
         order_item__product__user=request.user
-    ).distinct().order_by('-created_at')
+    ).select_related('user', 'order_item', 'order_item__product').distinct().order_by('-created_at')
 
-    print(data)
+    status_filter = request.GET.get('status', '').strip().lower()
+    type_filter = request.GET.get('type', '').strip().lower()
+
+    if status_filter:
+        if status_filter == 'requested':
+            qs = qs.filter(Q(order_item__status__icontains='requested') | Q(order_item__status__icontains='returned/replaced_requested'))
+        elif status_filter == 'approved':
+            qs = qs.filter(Q(order_item__status__icontains='approved') | Q(order_item__status__icontains='replaced_approved'))
+        elif status_filter == 'rejected':
+            qs = qs.filter(Q(order_item__status__icontains='rejected') | Q(order_item__status__icontains='replaced_rejected'))
+        elif status_filter == 'completed':
+            qs = qs.filter(Q(order_item__status__icontains='completed') | Q(order_item__status__icontains='replacement_completed'))
+    if type_filter and type_filter in ('return', 'exchange'):
+        qs = qs.filter(type=type_filter)
+
     context = {
-        "data" : data
+        'data': qs,
+        'filter_status': status_filter,
+        'filter_type': type_filter,
     }
     return render(request, 'list_exchange.html', context)
 
@@ -5076,7 +5217,7 @@ from .models import CashBalance, vendor_bank, CashTransfer
 def cash_in_hand(request):
     balance_obj, _ = CashBalance.objects.get_or_create(user=request.user)
     bank_accounts = vendor_bank.objects.filter(user=request.user)
-    data = CashTransfer.objects.filter(user = request.user)
+    data = CashTransfer.objects.filter(user=request.user).select_related('bank_account').order_by('-created_at')
     return render(request, 'cash_in_hand.html', {
         'balance': balance_obj,
         'bank_accounts': bank_accounts,
@@ -5101,7 +5242,8 @@ def adjust_cash(request):
 
             # Create CashLedger entry using the helper function (like all other ledger entries)
             if delta != 0:
-                description = f"Manual cash adjust: {previous_balance} → {new_balance}"
+                note = (request.POST.get('note') or '').strip()
+                description = note or f"Manual cash adjust: {previous_balance} → {new_balance}"
                 create_ledger(
                     parent=None,
                     ledger_model=CashLedger,
@@ -7727,9 +7869,18 @@ class customer_sale_invoice(APIView):
         paid_amount = Decimal(sale.advance_amount or 0)
         balance_amount = (Decimal(rounded_total) - paid_amount).quantize(Decimal("0.01"))
 
+        # Terms: use wholesale.terms if present, else InvoiceSettings.terms_and_conditions
+        term_from_sale = getattr(wholesale, 'terms', None) or ''
+        if term_from_sale and str(term_from_sale).strip():
+            display_terms = term_from_sale
+        else:
+            inv_settings = InvoiceSettings.objects.filter(user=sale.user).first()
+            display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
+
         context = {
             "sale_instance": sale,
             "wholesale": wholesale,
+            "display_terms": display_terms,
             "total_amount": float(total_amount),
             "rounded_total": rounded_total,
             "round_off_value": float(round_off_value),

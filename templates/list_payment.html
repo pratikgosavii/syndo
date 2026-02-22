@@ -1,146 +1,199 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Payments List{% endblock title %}
+{% block title %}Payment Ledger{% endblock title %}
 
 {% block extra_css %}
-<link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
-<style>
-    body {
-        background-color: gainsboro;
-        color: #775599;
-    }
-
-    .card {
-        background-color: #ffffff;
-        border: none;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .card-header {
-        background-color: #775599;
-        color: #ffffff;
-        border-radius: 8px 8px 0 0;
-        padding: 20px;
-    }
-
-    .table thead {
-        background-color: gray;
-        color: white;
-    }
-
-    .table tbody tr {
-        background-color: white;
-        color: black;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f0d28c;
-        color: #775599;
-    }
-
-    .action-icons i {
-        cursor: pointer;
-        margin-right: 10px;
-    }
-</style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+    <style>
+        body { background-color: #f1f5f9; color: #334155; }
+        .ledger-page .page-title { font-weight: 700; color: #1e293b; font-size: 1.5rem; margin-bottom: 1rem; margin-top: 1rem;}
+        .ledger-page .summary-card {
+            background: #151e31;
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25);
+        }
+        .ledger-page .summary-card .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.9); letter-spacing: 0.05em; }
+        .ledger-page .summary-card .value { font-size: 1.75rem; font-weight: 700; color: #fff; }
+        .ledger-page .summary-card .icon-wrap {
+            width: 40px; height: 40px;
+            background: #fef3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #d97706;
+            font-weight: 700;
+        }
+        .ledger-page .filter-bar {
+            background: #fff;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+        .ledger-page .filter-bar .date-inputs { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .ledger-page .filter-bar .date-inputs input {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.9rem;
+        }
+        .ledger-page .btn-add {
+            background: #FFC107;
+            color: #1e293b;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            text-decoration: none;
+        }
+        .ledger-page .btn-add:hover { background: #e6ac00; color: #1e293b; }
+        .ledger-page .entry-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .ledger-page .entry-card .col-date { min-width: 100px; }
+        .ledger-page .entry-card .date-bold { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
+        .ledger-page .entry-card .id-badge {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        .ledger-page .entry-card .col-party { min-width: 140px; }
+        .ledger-page .entry-card .col-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #64748b; }
+        .ledger-page .entry-card .party-name { font-weight: 700; color: #1e293b; }
+        .ledger-page .entry-card .ref-text { font-size: 0.85rem; color: #64748b; }
+        .ledger-page .entry-card .col-amounts { text-align: right; }
+        .ledger-page .entry-card .amount-total { font-weight: 700; color: #1e293b; }
+        .ledger-page .entry-card .type-badge { font-size: 0.8rem; font-weight: 600; }
+        .ledger-page .entry-card .type-gave { color: #dc2626; }
+        .ledger-page .entry-card .type-received { color: #16a34a; }
+        .ledger-page .entry-card .col-payment { font-size: 0.85rem; color: #64748b; }
+        .ledger-page .entry-card .col-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+        .ledger-page .btn-view {
+            background: #FFC107;
+            color: #1e293b;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 0.4rem 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        .ledger-page .btn-view:hover { background: #e6ac00; color: #1e293b; }
+        .ledger-page .icon-actions { display: flex; gap: 0.35rem; }
+        .ledger-page .icon-actions a {
+            width: 32px; height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            color: #64748b;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+        .ledger-page .icon-actions a:hover { background: #f1f5f9; }
+        .ledger-page .icon-actions .edit:hover { color: #ea580c; }
+        .ledger-page .icon-actions .delete:hover { color: #dc2626; }
+    </style>
 {% endblock extra_css %}
 
 {% block content %}
-<div class="main-content">
+<div class="main-content ledger-page">
     <div class="page-content">
         <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 class="mb-sm-0 font-size-18"><i class="bi bi-wallet2 me-2" style="color: #775599;"></i>List Payments</h4>
-                    </div>
-                </div>
-            </div>
             <div class="container">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table id="datatable" class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Type</th>
-                                                <th>Customer</th>
-                                                <th>Vendor</th>
-                                                <th>Amount</th>
-                                                <th>Date</th>
-                                                <th>Payment Mode</th>
-                                                <th>Bank</th>
-                                                <th>Notes</th>
-                                                <th>Attachment</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% if data %}
-                                                {% for payment in data %}
-                                                    <tr>
-                                                        <td>{{ forloop.counter }}</td>
-                                                        <td>{{ payment.get_type_display }}</td>
-                                                        <td>{{ payment.customer|default:"-" }}</td>
-                                                        <td>{{ payment.vendor|default:"-" }}</td>
-                                                        <td>₹{{ payment.amount }}</td>
-                                                        <td>{{ payment.payment_date }}</td>
-                                                        <td>{{ payment.get_payment_type_display }}</td>
-                                                        <td>{{ payment.bank|default:"-" }}</td>
-                                                        <td>{{ payment.notes|default:"-" }}</td>
-                                                        <td>
-                                                            {% if payment.attachment %}
-                                                                <a href="{{ payment.attachment.url }}" target="_blank">View</a>
-                                                            {% else %}
-                                                                N/A
-                                                            {% endif %}
-                                                        </td>
-                                                        <td class="action-icons">
-                                                            <a href="{% url 'update_payment' payment.id %}">
-                                                                <i class="bi bi-pencil-square text-primary" title="Edit"></i>
-                                                            </a>
-                                                            <a href="{% url 'delete_payment' payment.id %}">
-                                                                <i class="bi bi-trash text-danger" title="Delete"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                {% endfor %}
-                                            {% else %}
-                                                <tr><td colspan="11" class="text-center">No payments found</td></tr>
-                                            {% endif %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                <h2 class="page-title">Payment Ledger</h2>
+
+                <div class="summary-card">
+                    <div>
+                        <div class="label">Total Payment Value</div>
+                        <div class="value">₹ {{ total_payment_value|default:0|floatformat:2 }}</div>
+                    </div>
+                    <div class="icon-wrap"><i class="bi bi-currency-rupee"></i></div>
+                </div>
+
+                <div class="filter-bar">
+                    <form method="get" action="" class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+                        <input type="date" name="date_from" value="{{ date_from }}" class="filter-input filter-date" placeholder="mm/dd/yyyy">
+                        <span class="filter-to">to</span>
+                        <input type="date" name="date_to" value="{{ date_to }}" class="filter-input filter-date" placeholder="mm/dd/yyyy" title="End date">
+                        <select name="filter_type" class="filter-input filter-select">
+                            <option value="">All Types</option>
+                            <option value="gave" {% if filter_type == 'gave' %}selected{% endif %}>You Gave</option>
+                            <option value="received" {% if filter_type == 'received' %}selected{% endif %}>You Received</option>
+                        </select>
+                        <input type="text" name="search" value="{{ search }}" class="filter-input filter-search" placeholder="Search Payment ID, Customer or Vendor Name...">
+                        <button type="submit" class="btn-search">Search</button>
+                    </form>
+                    <a href="{% url 'add_payment' %}" class="btn-add ms-auto"><i class="bi bi-plus-lg"></i> Add Payment</a>
+                </div>
+
+                {% for payment in data %}
+                <div class="entry-card">
+                    <div class="col-date">
+                        <div class="date-bold">{{ payment.payment_date|date:"M d, Y" }}</div>
+                        <span class="id-badge">#{{ payment.payment_number|default:payment.id }}</span>
+                    </div>
+                    <div class="col-party">
+                        <div class="col-label">{% if payment.type == 'received' %}Customer{% else %}Vendor{% endif %}</div>
+                        <div class="party-name">{% if payment.customer %}{{ payment.customer.name }}{% elif payment.vendor %}{{ payment.vendor.name }}{% else %}—{% endif %}</div>
+                        <div class="ref-text">Type: <span class="type-badge {% if payment.type == 'gave' %}type-gave{% else %}type-received{% endif %}">{{ payment.get_type_display }}</span></div>
+                    </div>
+                    <div class="col-amounts">
+                        <div class="col-label">Amount</div>
+                        <div class="amount-total {% if payment.type == 'gave' %}type-gave{% else %}type-received{% endif %}">₹ {{ payment.amount|default:0|floatformat:2 }}</div>
+                        <div class="col-label mt-1">Payment Mode</div>
+                        <div class="col-payment">{{ payment.get_payment_type_display|default:"—" }}{% if payment.bank %} ({{ payment.bank.name }}){% endif %}</div>
+                    </div>
+                    <div class="col-actions">
+                        <a href="{% url 'update_payment' payment.id %}" class="btn-view"><i class="bi bi-eye"></i> View</a>
+                        <div class="icon-actions">
+                            <a href="{% url 'update_payment' payment.id %}" class="edit" title="Edit"><i class="bi bi-pencil"></i></a>
+                            <a href="{% url 'delete_payment' payment.id %}" class="delete" title="Delete" onclick="return confirm('Delete this payment?');"><i class="bi bi-trash"></i></a>
                         </div>
                     </div>
                 </div>
+                {% empty %}
+                <div class="entry-card text-center text-muted py-4">No payments found.</div>
+                {% endfor %}
             </div>
         </div>
-
-        {% block footer %}
-            {% include 'partials/footer.html' %}
-        {% endblock footer %}
+        {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
     </div>
 </div>
 {% endblock content %}
 
 {% block extra_js %}
-<script>
-    setTimeout(() => {
-        const toastElement = document.getElementById("toast");
-        if (toastElement) {
-            toastElement.classList.remove("show");
-            setTimeout(() => {
-                toastElement.remove();
-            }, 500);
-        }
-    }, 5000);
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock extra_js %}

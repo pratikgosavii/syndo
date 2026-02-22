@@ -157,7 +157,7 @@
 
             <div class="container">
                 <div class="form-container">
-                    <form method="POST" enctype="multipart/form-data" id="product-form">
+                    <form method="POST" enctype="multipart/form-data" id="product-form" novalidate>
                         {% csrf_token %}
 
                         <!-- Basic information -->
@@ -687,12 +687,14 @@
 {% endblock content %}
 
 {% block extra_js %}
-<script src="{% static 'libs/tinymce/tinymce.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof tinymce !== 'undefined') {
             tinymce.init({
                 selector: '#id_description',
+                base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6.8.2',
+                suffix: '.min',
                 height: 220,
                 menubar: false,
                 plugins: 'lists link code',
@@ -799,6 +801,7 @@
         var sizeList = document.getElementById('size-list');
         var sizeDropdown = document.getElementById('size-dropdown');
         var sizeSelect = document.getElementById('id_size');
+        var useUnitCheck = document.getElementById('use-unit-check') || null;
 
         if (!categoryTrigger || !subcategoryTrigger) return;
 
@@ -1180,10 +1183,11 @@
     };
 
     function clearSaleTypeOptions() {
-        saleType.innerHTML = '';
+        if (saleType) saleType.innerHTML = '';
     }
 
     function addSaleTypeOption(value, text) {
+        if (!saleType) return;
         const option = document.createElement('option');
         option.value = value;
         option.text = text;
@@ -1192,6 +1196,7 @@
     }
 
     function setSaleTypeOptionsForPrint() {
+    if (!saleType) return;
     // Clear old options
     saleType.innerHTML = '';
 
@@ -1220,12 +1225,13 @@
 
 
 
-    function setSaleTypeOptionsDefault(productType) {
+    function setSaleTypeOptionsDefault(productTypeVal) {
         clearSaleTypeOptions();
+        if (!saleType) return;
 
         Object.entries(allSaleOptions).forEach(([value, text]) => {
             // 👇 if not print, exclude "online"
-            if (productType !== 'print' && value === 'online') return;
+            if (productTypeVal !== 'print' && value === 'online') return;
             addSaleTypeOption(value, text);
         });
 
@@ -1420,12 +1426,14 @@
 
 
 
-    document.getElementById('productType').addEventListener('change', updateFieldLogic);
-    document.getElementById('saleType').addEventListener('change', updateFieldLogic);
+    const productTypeEl = document.getElementById('productType') || document.getElementById('id_product_type');
+    const saleTypeEl = document.getElementById('saleType') || document.getElementById('id_sale_type');
+    if (productTypeEl) productTypeEl.addEventListener('change', updateFieldLogic);
+    if (saleTypeEl) saleTypeEl.addEventListener('change', updateFieldLogic);
 
     function updateFieldLogic() {
-        const productType = document.getElementById('productType').value;
-        const saleType = document.getElementById('saleType').value;
+        const productType = (document.getElementById('productType') || document.getElementById('id_product_type'))?.value;
+        const saleType = (document.getElementById('saleType') || document.getElementById('id_sale_type'))?.value;
         if (saleType === 'offline') {
             applyProductSettingsForOffline(productSettings);
         } else {
@@ -1433,7 +1441,7 @@
         }
     }
 
-    saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product
+    if (saleType) saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product
     document.addEventListener('DOMContentLoaded', function() {
         handleSaleTypeChange();
         updateFieldLogic();   // set image/gallery visibility on load
@@ -1453,8 +1461,10 @@
 
 
 
-    // Attach the handler to the checkbox (or however the toggle is triggered)
-    customPrintToggle.addEventListener('change', handleCustomPrintToggleChange);
+    // Attach the handler to the checkbox (only if element exists)
+    if (customPrintToggle) {
+        customPrintToggle.addEventListener('change', handleCustomPrintToggleChange);
+    }
 
     // Optional: run once on load to ensure state is correct
 
@@ -1486,6 +1496,9 @@ changeMrpLabel("Selling Price");
             changeMrpLabel("Base MRP");
             
             addon_section.style.display = 'block';
+            addon_section.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = false;
+            });
 
             standardPrintWrapper.style.display = 'block';
 
@@ -1497,11 +1510,15 @@ changeMrpLabel("Selling Price");
             if (customizePrintToggleWrapper) customizePrintToggleWrapper.style.display = 'block';
             handleCustomPrintToggleChange(); // Initial state
         } else {
-            setSaleTypeOptionsDefault();
+            setSaleTypeOptionsDefault(selectedType);
             toggleVariantFormSection(false);  // Hide variant sections when not print
             toggleProductOnlyFields(selectedType === 'product');
             
             addon_section.style.display = 'none';
+            addon_section.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = true;
+                el.required = false;
+            });
 
             changeMrpLabel("MRP");
 
@@ -1550,10 +1567,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const gstInput = document.getElementById("tax_div");
 
     function toggleGSTInput() {
-      gstInput.style.display = checkbox.checked ? "none" : "block";
+      if (gstInput) gstInput.style.display = checkbox && checkbox.checked ? "none" : "block";
     }
 
-    checkbox.addEventListener("change", toggleGSTInput);
+    if (checkbox) checkbox.addEventListener("change", toggleGSTInput);
 
     // Initialize on page load
     toggleGSTInput();
@@ -1604,34 +1621,41 @@ document.addEventListener("DOMContentLoaded", function () {
   
 function handleCustomPrintToggleChange() {
     const isCustom = document.getElementById('customPrintToggle')?.checked;
+    const productTypeEl = document.getElementById('productType') || document.getElementById('id_product_type');
+    const selectedType = productTypeEl?.value;
+    const stdWrapper = document.getElementById('standardPrintWrapper');
+    const custWrapper = document.getElementById('customPrintWrapper');
+    const select = stdWrapper?.querySelector('select');
 
     if (isCustom) {
-        standardPrintWrapper.style.display = 'none';
-        customPrintWrapper.style.display = 'block';
-
-       customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-            el.disabled = false;
-            el.required = false;
-        });
-
-        standardPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-            el.removeAttribute('required');
-        });
-
-    } else {
-
-        customPrintWrapper.style.display = 'none';
-        if (selectedType === 'print') {
-            standardPrintWrapper.style.display = 'block';
+        if (stdWrapper) {
+            stdWrapper.style.display = 'none';
+            stdWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = true;
+                el.removeAttribute('required');
+            });
         }
-
-        
-
-         customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-            el.disabled = true;
-            el.required = true;
-        });
-
+        if (custWrapper) {
+            custWrapper.style.display = 'block';
+            custWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = false;
+                el.required = false;
+            });
+        }
+    } else {
+        if (custWrapper) {
+            custWrapper.style.display = 'none';
+            custWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = true;
+                el.required = false;
+            });
+        }
+        if (selectedType === 'print' && stdWrapper) {
+            stdWrapper.style.display = 'block';
+            stdWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = false;
+            });
+        }
         if (select) {
             select.setAttribute('required', 'required');
         }
@@ -1686,24 +1710,25 @@ function handleCustomPrintToggleChange() {
       if (prev) prev.remove();
     }
 
-    // On submit: prevent default if invalid and show messages for all invalid fields
+    // On submit: only block if there are *visible* invalid fields (hidden fields are excluded)
     form.addEventListener('submit', function (e) {
       // Clear old messages
       form.querySelectorAll('.validation-error').forEach(n => n.remove());
 
-      if (!form.checkValidity()) {
+      // Find invalid elements that are visible and not disabled
+      const invalidEls = form.querySelectorAll(':invalid');
+      const visibleInvalid = Array.from(invalidEls).filter(el => {
+        if (el.disabled) return false;
+        // offsetParent is null when element or ancestor has display:none
+        if (el.offsetParent === null) return false;
+        return true;
+      });
+
+      if (visibleInvalid.length > 0) {
         e.preventDefault();
         e.stopPropagation();
-        const invalidEls = form.querySelectorAll(':invalid');
-        let first;
-        invalidEls.forEach(el => {
-          // skip hidden/disabled
-          if (el.disabled) return;
-          if (el.offsetParent === null) return;
-          showError(el);
-          if (!first) first = el;
-        });
-        first?.focus?.();
+        visibleInvalid.forEach(el => showError(el));
+        visibleInvalid[0]?.focus?.();
       }
     }, true);
 

@@ -131,8 +131,8 @@
     <!-- bootstrap datepicker -->
     <script src="{% static 'libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js'%}"></script>
 
-    <!--tinymce js-->
-    <script src="{% static 'libs/tinymce/tinymce.min.js'%}"></script>
+    <!-- TinyMCE 6 from CDN (fixes unload permissions policy violation) -->
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
 
     <!-- form repeater js -->
     <script src="{% static 'libs/jquery.repeater/jquery.repeater.min.js'%}"></script>

@@ -1,244 +1,257 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Create Customer{% endblock title %}
+{% block title %}Invoice #{% if wholesale %}{{ wholesale.invoice_number }}{% else %}{{ sale.invoice_number|default:sale.id }}{% endif %}{% endblock title %}
 
 {% block extra_css %}
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
     <style>
-        body {
-            background-color: #f0d28c;
-            padding-bottom: 20px;
-        }
-
-        .form-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-heading {
-            text-align: left;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 2rem;
-            color: #ffdb8a;
-        }
-
-        .btn-primary {
-            background-color: #775599;
-            border-color: #775599;
-        }
-
-        .custom-button {
-            width: 150px;
-        }
+        body { background-color: #f1f5f9; padding-bottom: 20px; }
+        .invoice-page { max-width: 900px; margin: 0 auto; }
+        .invoice-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+        .invoice-title { font-size: 1.75rem; font-weight: 700; color: #1e293b; }
+        .invoice-badge { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-left: 0.5rem; }
+        .invoice-badge.retail { background: #22c55e; color: #fff; }
+        .invoice-badge.wholesale { background: #775599; color: #fff; }
+        .invoice-date { color: #64748b; font-size: 0.9rem; margin-top: 0.25rem; }
+        .invoice-date i { margin-right: 0.35rem; }
+        .invoice-due { color: #f97316; font-size: 0.9rem; }
+        .invoice-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .btn-download { background: #e2e8f0; color: #334155; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; }
+        .btn-download:hover { background: #cbd5e1; color: #334155; }
+        .btn-edit { background: #f97316; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; }
+        .btn-edit:hover { background: #ea580c; color: #fff; }
+        .info-card { background: #fff; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .info-card-title { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+        .info-card-content { font-size: 0.9rem; color: #1e293b; line-height: 1.5; }
+        .info-card-content .name { font-weight: 700; }
+        .product-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .product-table thead th { background: #f8fafc !important; color: #334155; padding: 0.6rem 0.75rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; text-align: left; }
+        .product-table thead th:last-child { text-align: right; }
+        .product-table tbody td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+        .product-table tbody tr:last-child td { border-bottom: none; }
+        .product-table .text-end { text-align: right; }
+        .product-table .item-desc-secondary { font-size: 0.8rem; color: #64748b; }
+        .remarks-box { background: #fef3c7; border-radius: 8px; padding: 1rem; font-size: 0.875rem; color: #78350f; }
+        .bill-summary { background: #fff; border-radius: 10px; padding: 1rem 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .bill-summary-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.9rem; }
+        .bill-summary-row.grand { border-top: 2px solid #e2e8f0; margin-top: 0.5rem; padding-top: 0.75rem; font-weight: 700; font-size: 1rem; }
+        .bill-summary-row.orange { color: #f97316; }
+        .logistics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.875rem; }
+        .logistics-item strong { display: block; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.2rem; }
     </style>
 {% endblock extra_css %}
 
 {% block content %}
-
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="container">
-                <div class="form-container">
-                    <div class="container my-4">
-                        <div class="card-body px-3 py-4">
-                            <div class="text-center mb-3">
-                                <h5 class="fw-bold">Bill Details</h5>
-                            </div>
-                            <strong>Company - </strong>
-                            <span style="color: green; font-weight: bold;">{{ sale.company_profile.company_name }}</span> 
+            <div class="container invoice-page">
+                <div class="info-card p-4">
+                    <div class="invoice-header">
+                        <div>
+                            <span class="invoice-title">Invoice #{% if wholesale %}{{ wholesale.invoice_number }}{% else %}{{ sale.invoice_number|default:sale.id }}{% endif %}</span>
                             {% if sale.is_wholesale_rate %}
-                                <span class="float-end text-warning fw-bold">Wholesale</span>
+                                <span class="invoice-badge wholesale">Wholesale</span>
+                            {% else %}
+                                <span class="invoice-badge retail">Retail</span>
                             {% endif %}
-
-                            <div class="mb-2">
-                               <strong>Customer Details</strong><br>
-                                <small>{{ sale.customer.name }} | {{ sale.customer.phone }}</small>
-
+                            <div class="invoice-date">
+                                <i class="bi bi-calendar3"></i>{% if sale.is_wholesale_rate %}Created: {% endif %}{{ sale.created_at|date:"d M Y" }}, {{ sale.created_at|time:"g:i A" }}
+                                {% if sale.is_wholesale_rate and sale.due_date %}
+                                    <span class="mx-2">|</span>
+                                    <span class="invoice-due"><i class="bi bi-hourglass-split"></i>Due: {{ sale.due_date|date:"d M Y" }}</span>
+                                {% endif %}
                             </div>
+                        </div>
+                        <div class="invoice-actions">
+                            <a href="{% url 'sale_invoice' sale.id %}" class="btn-download"><i class="bi bi-download"></i> Download PDF</a>
+                            <a href="{% url 'bill_details_view' sale.id %}" class="btn-edit"><i class="bi bi-pencil"></i> Edit Invoice</a>
+                        </div>
+                    </div>
 
-                            <!-- Product Table -->
-                            <div class="table-responsive mt-3">
-                                <table class="table table-bordered table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th style="background-color: #008BE1; color: white;">S.No.</th>
-                                            <th style="background-color: #008BE1; color: white;">Item</th>
-                                            <th style="background-color: #008BE1; color: white;">Quantity</th>
-                                            <th style="background-color: #008BE1; color: white;">Price</th>
-                                            <th style="background-color: #008BE1; color: white;">Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for item in sale.items.all %}
-                                        <tr>
-                                            <td>{{ forloop.counter }}</td>
-                                            <td>{{ item.product.name }}</td>
-                                            <td class="text-center">{{ item.quantity }}</td>
-                                            <td>{{ item.price }}</td>
-                                            <td>{{ item.amount }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-
-
-                            </div>
-
-                            <!-- Invoice Section -->
-                            <div class="mt-3 mb-2 d-flex justify-content-between border p-2 rounded">
-                                <div><strong>Invoice</strong></div>
-                                <div class="text-end">
-                                    <span class="fw-bold">{{ sale.id }}</span><br>
-                                    <small>{{ sale.created_at|date:"d-m-Y" }}</small>
+                    {% if sale.is_wholesale_rate and wholesale %}
+                    <!-- Wholesale: 3 cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="info-card h-100">
+                                <div class="info-card-title">Billed By (Seller)</div>
+                                <div class="info-card-content">
+                                    <span class="name">{% if sale.company_profile %}{{ sale.company_profile.company_name }}{% else %}—{% endif %}</span><br>
+                                    {% if sale.company_profile %}{{ sale.company_profile.address_line_1|default:"" }}{% if sale.company_profile.city %}, {{ sale.company_profile.city }}{% if sale.company_profile.state %}, {{ sale.company_profile.state }}{% endif %}{% endif %}<br>
+                                    {% if sale.company_profile.contact %}Ph: {{ sale.company_profile.contact }}{% endif %}{% endif %}
                                 </div>
                             </div>
-
-
-
-
-                            <!-- Dispatch Details -->
-                            <div class="mt-3">
-                                <div class="border rounded p-2 mb-2">
-                           
-                                    {% if wholesale %}
-                                    
-                                    <div class="row mb-2">
-                                        <div class="col-6">📦 <strong>Dispatch Address</strong><br>{{ wholesale.dispatch_address }}</div>
-                                    </div>
-                                    <div class="row mb-2">
-                                        <div class="col-6">💳 <strong>Payment</strong><br>{{ sale.get_payment_method_display }}</div>
-                                        <div class="col-6 text-end">📅 {{ sale.credit_time_days|date:"d/m/Y" }}</div>
-                                    </div>
-                                    {% comment %} <div class="row mb-2">
-                                        <div class="col-6">✍️ <strong>Signature</strong><br>
-                                            {% if wholesale.signature %}
-                                                <img src="{{ wholesale.signature.url }}" width="80" />
-                                            {% endif %}
-                                        </div>
-                                        <div class="col-6">🔁 <strong>References</strong><br>{{ wholesale.references }}</div>
-                                    </div> {% endcomment %}
-                                    <div class="row mb-2">
-                                        <div class="col-6">📝 <strong>Notes</strong><br>{{ wholesale.notes }}</div>
-                                        <div class="col-6">📋 <strong>Terms</strong><br>{{ wholesale.terms }}</div>
-                                    </div>
-                                    <div class="row mb-2">
-                                        <div class="col-6">🚚 <strong>Delivery Charges</strong><br>{{ wholesale.delivery_charges }}</div>
-                                        <div class="col-6">📦 <strong>Packaging Charges</strong><br>{{ wholesale.packaging_charges }}</div>
-                                    </div>
-                                    <div class="row mb-2">
-                                        <div class="col-6">📄 <strong>E-way Bill Number</strong><br>{{ wholesale.eway_bill_number }}</div>
-                                        <div class="col-6">🧾 <strong>LR Number</strong><br>{{ wholesale.lr_number }}</div>
-                                    </div>
-                                    <div class="row mb-2">
-                                        <div class="col-6">🚛 <strong>Vehicle Number</strong><br>{{ wholesale.vehicle_number }}</div>
-                                        <div class="col-6">🛳️ <strong>Transport Name</strong><br>{{ wholesale.transport_name }}</div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-12">📦 <strong>No. of Parcels</strong><br>{{ wholesale.number_of_parcels }}</div>
-                                    </div>
-
-
-                                    {% else %}
-
-                                        <div class="row mb-2">
-                                            <div class="col-6">💳 <strong>Payment</strong><br>{{ sale.get_payment_method_display }}</div>
-                                            <div class="col-6 text-end">📅 {{ sale.credit_time_days|date:"d/m/Y" }}</div>
-                                        </div>
-
-                                    {% endif %}
-
-
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-card h-100">
+                                <div class="info-card-title">Billed To (Customer)</div>
+                                <div class="info-card-content">
+                                    <span class="name">{% if sale.customer %}{{ sale.customer.name }}{% else %}—{% endif %}</span><br>
+                                    {% if sale.customer %}{% if sale.customer.company_name %}{{ sale.customer.company_name }}<br>{% endif %}
+                                    {% if sale.customer.gst_number %}GSTIN: {{ sale.customer.gst_number }}<br>{% endif %}
+                                    Ph: {{ sale.customer.contact|default:"—" }}{% else %}Ph: —{% endif %}
                                 </div>
                             </div>
-
-
-
-                            <!-- Total Section -->
-                            <div class="border rounded p-3 mb-3">
-                                <div class="d-flex justify-content-between">
-                                    <span>Total</span>
-                                    <strong>Rs {{ sale.total_amount_before_discount|default:0|floatformat:2 }}</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-card h-100">
+                                <div class="info-card-title">Dispatch Details</div>
+                                <div class="info-card-content">
+                                    <strong>Ship To:</strong><br>
+                                    <span class="name">{{ wholesale.dispatch_address|default:"—"|linebreaksbr }}</span>
                                 </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Discount</span>
-                                    <strong>Rs {{ sale.discount_amount|default:0|floatformat:2 }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Tax</span>
-                                    <strong>Rs {{ sale.total_gst_amount|default:0|floatformat:2 }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Net Total</span>
-                                    <strong>Rs {{ sale.total_amount|default:0|floatformat:2 }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Advance Paid</span>
-                                    <strong>Rs {{ sale.advance_amount|default:0|floatformat:2 }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Balance</span>
-                                    <strong class="text-danger">Rs {{ sale.balance_amount|default:0|floatformat:2 }}</strong>
-                                </div>
-                            </div>
-
-
-
-                            <!-- Copies to Print -->
-                            <div class="mb-3">
-                                <strong>Bill copies to print</strong><br>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="customer" checked>
-                                    <label class="form-check-label" for="customer">Customer</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="supplier">
-                                    <label class="form-check-label" for="supplier">Supplier</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="transport">
-                                    <label class="form-check-label" for="transport">Transport</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" id="delivery">
-                                    <label class="form-check-label" for="delivery">Delivery</label>
-                                </div>
-                            </div>
-
-                            <!-- Action Buttons -->
-                            <div class="text-center">
-                                <button class="btn btn-primary me-2">View PDF</button>
-                            <a href="{% url 'sale_invoice' sale.id %}">  <button class="btn btn-success me-2">Print</button> </a>
-                                <button class="btn btn-outline-success"><i class="bi bi-whatsapp"></i></button>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Wholesale table: #, ITEM DESCRIPTION, HSN, QTY, PRICE, DISC, TOTAL -->
+                    <table class="product-table mb-4" data-enable-filters="false">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Item Description</th>
+                                <th>HSN</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end">Disc</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sale.items.all %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <strong>{{ item.product.name }}</strong>
+                                    {% if item.product.batch_number or item.product.size %}
+                                    <div class="item-desc-secondary">{% if item.product.batch_number %}Batch: {{ item.product.batch_number }}{% endif %}{% if item.product.batch_number and item.product.size %} | {% endif %}{% if item.product.size %}Size: {{ item.product.size.name }}{% endif %}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.product.hsn|default:"—" }}</td>
+                                <td class="text-end">{{ item.quantity }}</td>
+                                <td class="text-end">{{ item.price|floatformat:2 }}</td>
+                                <td class="text-end">{{ sale.discount_percentage|default:0 }}%</td>
+                                <td class="text-end">{{ item.amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <div class="info-card-title">Logistics & Transport Details</div>
+                                <div class="logistics-grid">
+                                    <div><strong>Transport Name</strong>{{ wholesale.transport_name|default:"—" }}</div>
+                                    <div><strong>LR Number</strong>{{ wholesale.lr_number|default:"—" }}</div>
+                                    <div><strong>Vehicle Number</strong>{{ wholesale.vehicle_number|default:"—" }}</div>
+                                    <div><strong>E-Way Bill No.</strong>{{ wholesale.eway_bill_number|default:"—" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bill-summary">
+                                <div class="info-card-title">Bill Summary</div>
+                                <div class="bill-summary-row">Item Total<span>{{ sale.total_taxable_amount|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row orange">Delivery Charges<span>{{ wholesale.delivery_charges|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row orange">Packaging Charges<span>{{ wholesale.packaging_charges|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row grand">Grand Total<span>₹ {{ sale.total_amount|default:0|floatformat:2 }}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% else %}
+                    <!-- Retail: 2 cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <div class="info-card-title">Billed By (Seller)</div>
+                                <div class="info-card-content">
+                                    <span class="name">{% if sale.company_profile %}{{ sale.company_profile.company_name }}{% else %}—{% endif %}</span><br>
+                                    {% if sale.company_profile %}{{ sale.company_profile.address_line_1|default:"" }}{% if sale.company_profile.city %}, {{ sale.company_profile.city }}{% endif %}<br>
+                                    {% if sale.company_profile.contact %}Ph: {{ sale.company_profile.contact }}{% endif %}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <div class="info-card-title">Billed To (Customer)</div>
+                                <div class="info-card-content">
+                                    <span class="name">{% if sale.customer %}{{ sale.customer.name }}{% else %}Walk-in Customer{% endif %}</span><br>
+                                    {% if sale.customer %}{{ sale.customer.company_name|default:"Walk-in Customer" }}{% else %}Walk-in Customer{% endif %}<br>
+                                    Ph: {% if sale.customer %}{{ sale.customer.contact|default:"—" }}{% else %}—{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Retail table: #, ITEM DESCRIPTION, QTY, PRICE, TOTAL -->
+                    <table class="product-table mb-4" data-enable-filters="false">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Item Description</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sale.items.all %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <strong>{{ item.product.name }}</strong>
+                                    {% if item.product.size %}
+                                    <div class="item-desc-secondary">Size: {{ item.product.size.name }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ item.quantity }}</td>
+                                <td class="text-end">{{ item.price|floatformat:2 }}</td>
+                                <td class="text-end">{{ item.amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-card">
+                                <div class="info-card-title">Remarks</div>
+                                <div class="remarks-box">{% if wholesale and wholesale.notes %}{{ wholesale.notes }}{% else %}Items purchased in good condition. No return / exchange on discounted items.{% endif %}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bill-summary">
+                                <div class="info-card-title">Bill Summary</div>
+                                <div class="bill-summary-row">Item Total<span>{{ sale.total_amount_before_discount|default:sale.total_taxable_amount|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row">Discount<span>{{ sale.discount_amount|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row">Tax (Included)<span>{{ sale.total_gst_amount|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row grand">Grand Total<span>₹ {{ sale.total_amount|default:0|floatformat:2 }}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Payment Information (optional) -->
+                    <div class="info-card mt-3">
+                        <div class="info-card-title">Payment Information</div>
+                        <div class="info-card-content">
+                            <div class="bill-summary-row">Payment Method<span>{{ sale.get_payment_method_display|default:"—" }}</span></div>
+                            <div class="bill-summary-row">Advance Paid<span>₹ {{ sale.advance_amount|default:0|floatformat:2 }}</span></div>
+                            <div class="bill-summary-row">Balance Due<span class="text-danger">₹ {{ sale.balance_amount|default:0|floatformat:2 }}</span></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+        {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
     </div>
-    {% block footer %}
-        {% include 'partials/footer.html' %}
-    {% endblock footer %}
 </div>
-
 {% endblock content %}
 
 {% block extra_js %}
-<script>
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock extra_js %}

@@ -330,6 +330,17 @@ class vendor_vendorsForm(forms.ModelForm):
 
 
 class vendor_customersForm(forms.ModelForm):
+    billing_state = forms.ChoiceField(
+        choices=[('', 'Select State')] + list(STATE_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control form-select', 'placeholder': 'State'})
+    )
+    dispatch_state = forms.ChoiceField(
+        choices=[('', 'Select State')] + list(STATE_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control form-select', 'placeholder': 'State'})
+    )
+
     class Meta:
         model = vendor_customers
         exclude = ['user']
@@ -348,14 +359,12 @@ class vendor_customersForm(forms.ModelForm):
             'billing_address_line2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address Line 2'}),
             'billing_pincode': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pincode'}),
             'billing_city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
-            'billing_state': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'State'}),
             'billing_country': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Country'}),
 
             'dispatch_address_line1': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address Line 1'}),
             'dispatch_address_line2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Address Line 2'}),
             'dispatch_pincode': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pincode'}),
             'dispatch_city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
-            'dispatch_state': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'State'}),
             'dispatch_country': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Country'}),
 
             'transport_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Transport Name'}),
@@ -525,15 +534,15 @@ class ExpenseForm(forms.ModelForm):
         model = Expense
         fields = '__all__'
         widgets = {
-            'amount': forms.NumberInput(attrs={'class': 'form-control'}),
-            'expense_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00'}),
+            'expense_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'mm/dd/yyyy'}),
             'category': forms.Select(attrs={'class': 'form-control form-select expense-category-select'}),
             'is_paid': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'payment_type': forms.Select(attrs={'class': 'form-control'}),
             'bank': forms.Select(attrs={'class': 'form-control'}),
-            'payment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'payment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'mm/dd/yyyy'}),
             'bank': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Enter expense details here...', 'rows': 4}),
             'attachment': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
     
@@ -550,7 +559,7 @@ class ExpenseForm(forms.ModelForm):
                 self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
             if 'category' in self.fields:
                 self.fields['category'].queryset = expense_category.objects.filter(user=user).order_by('name')
-                self.fields['category'].empty_label = 'Search or select category...'
+                self.fields['category'].empty_label = 'Select Category'
 
 
 
@@ -773,7 +782,7 @@ class PaymentForm(forms.ModelForm):
         
         if user:
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
-            self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
+            self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
             self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
 
 
@@ -782,7 +791,7 @@ class TaxSettingsForm(forms.ModelForm):
     class Meta:
         model = TaxSettings
         exclude = ['user']
-        widgets = {field: forms.CheckboxInput(attrs={'class': 'form-check-input'}) for field in model._meta.get_fields() if field.name != 'user'}
+        widgets = {'composite_scheme': forms.CheckboxInput(attrs={'class': 'form-check-input'})}
 
 class BarcodeSettingsForm(forms.ModelForm):
     class Meta:

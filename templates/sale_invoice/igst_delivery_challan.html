@@ -12,7 +12,7 @@
     }
 
     .container {
-      border: 2px solid #007bff; /* Blue border */
+      border: 2px solid #151e31; /* Blue border */
       margin: 10px;
       padding: 10px;
     }
@@ -51,7 +51,7 @@
 
     .quotation h3 {
       margin: 0;
-      color: #007bff;
+      color: #151e31;
     }
 
     .details, .items, .summary, .tax-summary {
@@ -254,7 +254,7 @@
     <div class="footer">
       <strong>Notes:</strong> {{ wholesale.notes|default:"-" }}
       <strong>Terms & Conditions:</strong>
-      {{ wholesale.terms|default:"-" }}
+      {{ display_terms|default:"-"|safe }}
     </div>
 
     <div class="signature">Authorized Signature</div>

@@ -422,7 +422,7 @@
       <div class="footer">
         <strong>Notes:</strong> {{ wholesale.notes|default:"-" }}
         <strong>Terms & Conditions:</strong>
-        {{ wholesale.terms|default:"-" }}
+        {{ display_terms|default:"-"|safe }}
       </div>
 
       <div class="signature">Authorized Signature</div>

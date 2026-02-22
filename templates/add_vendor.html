@@ -1,214 +1,145 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Create Category{% endblock title %}
-
+{% block title %}{% if form.instance.pk %}Update{% else %}Add{% endif %} Vendor{% endblock title %}
 
 {% block extra_css %}
-    <!-- plugin css -->
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet"
-          type="text/css"/>
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-    />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        body {
-            background-color: #f0d28c;
-            padding-bottom: 20px;
-        }
-
-        .form-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-heading {
-            text-align: left;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 2rem;
-            color: #ffdb8a;
-        }
-
-        .description-box {
-            height: 150px;
-            resize: none;
-        }
-
-        .image-preview {
-            max-height: 100px;
-            margin-top: 10px;
-        }
-
-        .btn-primary {
-            background-color: #775599;;
-            border-color: #775599;;
-        }
-
-        .custom-button {
-            width: 150px;
-        }
-        .errorlist {
-            list-style: none;
-            padding: 0;
-            margin: 0.25rem 0 0 0;
-            color: #dc3545;
-            font-size: 0.875rem;
-        }
-        .form-error-alert {
-            margin-bottom: 1rem;
-        }
+        body { background-color: #f8f9fa; padding-bottom: 20px; }
+        .form-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .section-card { border: 1px solid #eee; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; }
+        .section-title { font-weight: 600; color: black; margin-bottom: 1rem; font-size: 1rem; }
+        .section-title .bi { margin-right: 0.5rem; opacity: 0.9; }
+        .form-label { font-weight: 500; color: #333; }
+        .btn-primary { background-color: black; border-color: black; }
+        .btn-primary:hover { background-color: black; border-color: black; }
+        .form-control, .form-select { border-radius: 6px; }
     </style>
 {% endblock extra_css %}
 
 {% block content %}
-
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <!-- start page title -->
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">{{ title }}</h4>
+                        <h4 class="mb-sm-0 font-size-18"><i class="bi bi-building me-2" style="color: black;"></i>{% if form.instance.pk %}Update{% else %}Add{% endif %} Vendor</h4>
+                        <a href="{% url 'list_vendor' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
                     </div>
                 </div>
             </div>
             <div class="container">
                 <div class="form-container">
-                    <form method="POST"  enctype="multipart/form-data">
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                         {% csrf_token %}
-                        {% if form.errors %}
-                        <div class="alert alert-danger form-error-alert" role="alert">
-                            <strong>Please correct the errors below.</strong>
-                            {% if form.non_field_errors %}
-                                <ul class="mb-0 mt-2">{{ form.non_field_errors }}</ul>
-                            {% endif %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            {{ form.non_field_errors }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                         {% endif %}
-                        <!-- Category Title Section -->
-                                            <!-- Basic Details -->
-                        <h5 style=""><strong>Basic Details</strong></h5>
-                        <div class="mb-4">{{ form.name.label_tag }} {{ form.name }}{{ form.name.errors }}</div>
-                        <div class="mb-4">{{ form.contact.label_tag }} {{ form.contact }}{{ form.contact.errors }}</div>
-                        <div class="mb-4">{{ form.email.label_tag }} {{ form.email }}{{ form.email.errors }}</div>
 
-                        <!-- Business Details -->
-                        <h5 style=""><strong>Business Details</strong></h5>
-                        <div class="mb-4">{{ form.company_name.label_tag }} {{ form.company_name }}{{ form.company_name.errors }}</div>
-                        <div class="mb-4">{{ form.gst.label_tag }} {{ form.gst }}{{ form.gst.errors }}</div>
-                        <div class="mb-4">{{ form.aadhar.label_tag }} {{ form.aadhar }}{{ form.aadhar.errors }}</div>
-                        <div class="mb-4">{{ form.pan.label_tag }} {{ form.pan }}{{ form.pan.errors }}</div>
+                        <!-- Basic information -->
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-person"></i>Basic information</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_name" class="form-label">Vendor name</label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_contact" class="form-label">Mobile number</label>
+                                    {{ form.contact }}
+                                    {% if form.contact.errors %}<div class="invalid-feedback d-block">{{ form.contact.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_email" class="form-label">Email</label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Business details -->
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-briefcase"></i>Business details</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_company_name" class="form-label">Company name</label>
+                                    {{ form.company_name }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_gst" class="form-label">GST number</label>
+                                    {{ form.gst }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_pan" class="form-label">PAN number</label>
+                                    {{ form.pan }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_aadhar" class="form-label">Aadhar number</label>
+                                    {{ form.aadhar }}
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Address -->
-                        <h5 style=""><strong>Address</strong></h5>
-                        <div class="mb-4">{{ form.address_line_1.label_tag }} {{ form.address_line_1 }}{{ form.address_line_1.errors }}</div>
-                        <div class="mb-4">{{ form.address_line_2.label_tag }} {{ form.address_line_2 }}{{ form.address_line_2.errors }}</div>
-                        <div class="mb-4">{{ form.pincode.label_tag }} {{ form.pincode }}{{ form.pincode.errors }}</div>
-                        <div class="mb-4">{{ form.city.label_tag }} {{ form.city }}{{ form.city.errors }}</div>
-                        <div class="mb-4">{{ form.state.label_tag }} {{ form.state }}{{ form.state.errors }}</div>
-                        <div class="mb-4">{{ form.country.label_tag }} {{ form.country }}{{ form.country.errors }}</div>
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-geo-alt"></i>Address</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_address_line_1" class="form-label">Address line 1</label>
+                                    {{ form.address_line_1 }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_address_line_2" class="form-label">Address line 2</label>
+                                    {{ form.address_line_2 }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_city" class="form-label">City</label>
+                                    {{ form.city }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_state" class="form-label">State</label>
+                                    {{ form.state }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_country" class="form-label">Country</label>
+                                    {{ form.country }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="id_pincode" class="form-label">Pincode</label>
+                                    {{ form.pincode }}
+                                </div>
+                            </div>
+                        </div>
 
-                        <!-- Balance and Submit -->
-                        <div class="mb-4">{{ form.opening_balance.label_tag }} {{ form.opening_balance }}{{ form.opening_balance.errors }}</div>
+                        <!-- Opening balance -->
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-currency-rupee"></i>Opening balance</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="id_opening_balance" class="form-label">Opening balance</label>
+                                    {{ form.opening_balance }}
+                                    {% if form.opening_balance.errors %}<div class="invalid-feedback d-block">{{ form.opening_balance.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
 
-
-                        
-                                <!-- Submit Button -->
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary custom-button">Submit</button>
+                        <div class="d-flex gap-2 justify-content-end pt-2">
+                            <a href="{% url 'list_vendor' %}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>{% if form.instance.pk %}Update{% else %}Save{% endif %}</button>
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
-        <!-- container-fluid -->
+    {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
 </div>
-    <!-- End Page-content -->
-
-    {% block footer %}
-        {% include 'partials/footer.html' %}
-    {% endblock footer %}
-</div>
-
 {% endblock content %}
-
-
-{% block extra_js %}
-    <!-- apexcharts -->
-    <script src="{% static 'libs/apexcharts/dist/apexcharts.min.js' %}"></script>
-    <script>
-        // Image preview logic
-        document.getElementById("bannerImage").addEventListener("change", function () {
-            const file = this.files[0];
-            const preview = document.getElementById("preview");
-
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function (event) {
-                    preview.src = event.target.result;
-                    preview.hidden = false;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                preview.src = "";
-                preview.hidden = true;
-            }
-        });
-    </script>
-    <script>
-        // Auto-hide toast after 5 seconds
-        setTimeout(() => {
-            const toastElement = document.getElementById("toast");
-            if (toastElement) {
-                toastElement.classList.remove("show"); // Hide toast
-                setTimeout(() => {
-                    toastElement.remove(); // Remove from DOM
-                }, 500); // Wait for fade-out animation
-            }
-        }, 5000);
-    </script>
-
-    <!-- Plugins js-->
-   
-
-    <script>
-
-        
-function displaySelectedImages() {
-    const input = document.getElementById("images");
-    const selectedImagesContainer = document.getElementById("imagesPreview");
-    selectedImagesContainer.innerHTML = ""; // Clear previously displayed images
-
-    Array.from(input.files).forEach((file) => {
-      if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const imageDiv = document.createElement("div");
-          imageDiv.style.position = "relative";
-          const img = document.createElement("img");
-          img.src = event.target.result;
-          img.alt = file.name;
-          img.style.width = "100px";
-          img.style.height = "100px";
-          img.style.objectFit = "cover";
-          img.style.border = "1px solid #ddd";
-          img.style.borderRadius = "5px";
-          imageDiv.appendChild(img);
-          selectedImagesContainer.appendChild(imageDiv);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-
-
-    </script>
-
-{% endblock extra_js %}

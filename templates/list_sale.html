@@ -1,157 +1,231 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Sales List{% endblock title %}
+{% block title %}Sale Ledger{% endblock title %}
 
 {% block extra_css %}
-<style>
-    .sale-card {
-        margin-bottom: 2rem;
-        background: white;
-        padding: 1rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
-    }
-    .sale-header {
-        background-color: #ffdb8a;
-        color: black;
-        padding: 10px 15px;
-        border-radius: 8px 8px 0 0;
-        font-weight: bold;
-    }
-    .sale-items table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .sale-items th, .sale-items td {
-        border: 1px solid #ccc;
-        padding: 8px;
-        text-align: left;
-    }
-    .sale-items th {
-        background-color: gray;
-        color: white;
-    }
-</style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+    <style>
+        body { background-color: #f1f5f9; color: #334155; }
+        .ledger-page .page-title { font-weight: 700; color: #1e293b; font-size: 1.5rem; margin-bottom: 1rem; margin-top: 1rem;}
+        .ledger-page .summary-card {
+            background: #151e31;
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25);
+        }
+        .ledger-page .summary-card .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.9); letter-spacing: 0.05em; }
+        .ledger-page .summary-card .value { font-size: 1.75rem; font-weight: 700; color: #fff; }
+        .ledger-page .summary-card .icon-wrap {
+            width: 40px; height: 40px;
+            background: #fef3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #d97706;
+            font-weight: 700;
+        }
+        .ledger-page .filter-bar {
+            background: #e8eaed;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .ledger-page .filter-bar .filter-input {
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.875rem;
+            color: #3c4043;
+        }
+        .ledger-page .filter-bar .filter-input::placeholder { color: #9aa0a6; }
+        .ledger-page .filter-bar .filter-date { min-width: 130px; }
+        .ledger-page .filter-bar .filter-to { color: #5f6368; font-size: 0.875rem; padding: 0 0.25rem; }
+        .ledger-page .filter-bar .filter-select {
+            min-width: 120px;
+            background: #fff;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.875rem;
+            color: #3c4043;
+            appearance: auto;
+        }
+        .ledger-page .filter-bar .filter-search {
+            flex: 1;
+            min-width: 200px;
+            max-width: 320px;
+        }
+        .ledger-page .filter-bar .btn-search {
+            background: #1e293b;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 0.45rem 1rem;
+            font-size: 0.875rem;
+        }
+        .ledger-page .filter-bar .btn-search:hover { background: #334155; color: #fff; }
+        .ledger-page .btn-add {
+            background: #FFC107;
+            color: #1e293b;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            text-decoration: none;
+        }
+        .ledger-page .btn-add:hover { background: #e6ac00; color: #1e293b; }
+        .ledger-page .entry-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .ledger-page .entry-card .col-date { min-width: 100px; }
+        .ledger-page .entry-card .date-bold { font-weight: 700; color: #1e293b; font-size: 0.95rem; }
+        .ledger-page .entry-card .id-badge {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        .ledger-page .entry-card .col-customer { min-width: 140px; }
+        .ledger-page .entry-card .col-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #64748b; }
+        .ledger-page .entry-card .customer-name { font-weight: 700; color: #1e293b; }
+        .ledger-page .entry-card .ref-text { font-size: 0.85rem; color: #64748b; }
+        .ledger-page .entry-card .col-amounts { text-align: right; }
+        .ledger-page .entry-card .amount-total { font-weight: 700; color: #1e293b; }
+        .ledger-page .entry-card .amount-paid { font-weight: 600; color: #16a34a; }
+        .ledger-page .entry-card .amount-due { font-weight: 600; }
+        .ledger-page .entry-card .amount-due.has-due { color: #dc2626; }
+        .ledger-page .entry-card .amount-due.zero { color: #64748b; }
+        .ledger-page .entry-card .col-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+        .ledger-page .btn-view {
+            background: #FFC107;
+            color: #1e293b;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 0.4rem 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        .ledger-page .btn-view:hover { background: #e6ac00; color: #1e293b; }
+        .ledger-page .icon-actions { display: flex; gap: 0.35rem; }
+        .ledger-page .icon-actions a {
+            width: 32px; height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            color: #64748b;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+        }
+        .ledger-page .icon-actions a:hover { background: #f1f5f9; }
+        .ledger-page .icon-actions .edit:hover { color: #ea580c; }
+        .ledger-page .icon-actions .delete:hover { color: #dc2626; }
+    </style>
 {% endblock extra_css %}
 
 {% block content %}
-
-
-
-<div class="main-content">
+<div class="main-content ledger-page">
     <div class="page-content">
         <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18"><i class="bi bi-cart-check me-2" style="color: #775599;"></i>Sales List</h4>
+            <div class="container">
+                <h2 class="page-title">Sale Ledger</h2>
+
+                <div class="summary-card">
+                    <div>
+                        <div class="label">Total Sale Value</div>
+                        <div class="value">₹ {{ total_sale_value|default:0|floatformat:2 }}</div>
+                    </div>
+                    <div class="icon-wrap"><i class="bi bi-currency-rupee"></i></div>
+                </div>
+
+                <div class="filter-bar">
+                    <form method="get" action="" class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+                        <input type="date" name="date_from" value="{{ date_from }}" class="filter-input filter-date" placeholder="mm/dd/yyyy">
+                        <span class="filter-to">to</span>
+                        <input type="date" name="date_to" value="{{ date_to }}" class="filter-input filter-date" placeholder="mm/dd/yyyy" title="End date">
+                        <select name="filter_type" class="filter-input filter-select">
+                            <option value="">All Types</option>
+                            <option value="wholesale" {% if filter_type == 'wholesale' %}selected{% endif %}>Wholesale</option>
+                            <option value="retail" {% if filter_type == 'retail' %}selected{% endif %}>Retail</option>
+                        </select>
+                        <input type="text" name="search" value="{{ search }}" class="filter-input filter-search" placeholder="Search Invoice ID, Customer Name or Phone...">
+                        <button type="submit" class="btn-search">Search</button>
+                    </form>
+                    <a href="{% url 'create-sale' %}" class="btn-add ms-auto"><i class="bi bi-plus-lg"></i> Add Sale</a>
+                </div>
+
+                {% for sale in data %}
+                <div class="entry-card">
+                    <div class="col-date">
+                        <div class="date-bold">{{ sale.created_at|date:"M d, Y" }}</div>
+                        <span class="id-badge">#{{ sale.invoice_number|default:sale.id }}</span>
+                    </div>
+                    <div class="col-customer">
+                        <div class="col-label">Customer</div>
+                        <div class="customer-name">{{ sale.customer.name|default:"Walk-in" }}</div>
+                        <div class="ref-text">Ref: {{ sale.invoice_number|default:"—" }}</div>
+                    </div>
+                    <div class="col-amounts">
+                        <div class="col-label">Total Amount</div>
+                        <div class="amount-total">₹ {{ sale.total_amount|default:0|floatformat:2 }}</div>
+                        <div class="col-label mt-1">Paid Amount</div>
+                        <div class="amount-paid">₹ {{ sale.advance_amount|default:0|floatformat:2 }}</div>
+                        <div class="col-label mt-1">Balance Due</div>
+                        <div class="amount-due {% if sale.balance_amount and sale.balance_amount > 0 %}has-due{% else %}zero{% endif %}">
+                            ₹ {{ sale.balance_amount|default:0|floatformat:2 }}
+                        </div>
+                    </div>
+                    <div class="col-actions">
+                        <a href="{% url 'sale_bill_details' sale.id %}" class="btn-view"><i class="bi bi-eye"></i> View</a>
+                        <div class="icon-actions">
+                            <a href="{% url 'bill_details_view' sale.id %}" class="edit" title="Edit"><i class="bi bi-pencil"></i></a>
+                            <a href="{% url 'delete_sale' sale.id %}" class="delete" title="Delete" onclick="return confirm('Delete this sale?');"><i class="bi bi-trash"></i></a>
+                        </div>
                     </div>
                 </div>
+                {% empty %}
+                <div class="entry-card text-center text-muted py-4">No sales found.</div>
+                {% endfor %}
             </div>
-
-
-
-<div class="container">
-
-    {% if data %}
-        {% for sale in data %}
-   <div class="sale-card">
-    <div class="sale-header d-flex justify-content-between align-items-center">
-    <div>
-        Sale #{{ sale.id }} - {{ sale.party.name }} - Created at: {{ sale.created_at|date:"M d, Y H:i" }}
-    </div>
-    <div>
-        <a href="{% url 'bill_details_view' sale.id %}" class="btn btn-sm btn-primary me-1">Edit</a>
-        <a href="{% url 'delete_sale' sale.id %}" class="btn btn-sm btn-danger"
-           onclick="return confirm('Are you sure you want to delete this sale?');">
-           Delete
-        </a>
+        </div>
+        {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
     </div>
 </div>
-
-
-    <div class="sale-summary mt-2">
-        <div>
-            Total Items: {{ sale.total_items }}<br>
-            Total Amount: ₹{{ sale.total_amount }}<br>
-            Tax ({{ sale.tax_percentage }}%): ₹{{ sale.total_tax }}<br>
-            Discount({{ sale.discount_percentage }}%): {{ sale.discount_amount|default:0 }}<br>
-            <strong>Final Amount: ₹{{ sale.total_amount }}</strong>
-        </div>
-        <div>
-            <strong> Wholesale Bill?: {{ sale.is_wholesale_rate|yesno:"Yes,No" }}</strong>
-
-        </div>
-    </div>
-
-    <!-- 🔻 This is the toggle button -->
-    <div class="text-end mt-2">
-
-         <a href="{% url 'sale_bill_details' sale.id %}"> <button class="btn btn-sm btn-outline-secondary toggle-pos" style="color:black;">
-                View Bill
-            </button> </a>
-            
-        <a href={% url 'sale_invoice' sale.id %}  >  <button class="btn btn-sm btn-outline-secondary toggle-pos" style="color:black;">Download Invoice</button> </a>
-
-        {% if sale.wholesales.all %}
-          
-            <button class="btn btn-sm btn-outline-secondary toggle-pos" style="color:black;" data-sale="{{ sale.id }}">
-                Show Wholesale Details
-            </button>
-        {% endif %}
-
-    </div>
-
-    <!-- 🔻 This part is hidden by default and shown only when clicked -->
-    <div id="pos-details-{{ sale.id }}" class="mt-2" style="display: none;">
-        {% for wholesale in sale.wholesales.all %}
-            <div class="card p-3 bg-light border">
-                <h6>POS Wholesale Invoice</h6>
-                <strong>Invoice No:</strong> {{ wholesale.invoice_number }}<br>
-                <strong>Type:</strong> {{ wholesale.get_invoice_type_display }}<br>
-                <strong>Date:</strong> {{ wholesale.date }}<br>
-                <strong>Dispatch Address:</strong> {{ wholesale.dispatch_address }}<br>
-                <strong>Vehicle Number:</strong> {{ wholesale.vehicle_number }}<br>
-                <strong>Number of Parcels:</strong> {{ wholesale.number_of_parcels }}<br>
-                <strong>Transport:</strong> {{ wholesale.transport_name }}<br>
-                <strong>Charges:</strong> ₹{{ wholesale.delivery_charges }} / ₹{{ wholesale.packaging_charges }}<br>
-            </div>
-        {% empty %}
-            <p class="text-muted">No POS invoice info available.</p>
-        {% endfor %}
-    </div>
-</div>
-
-       
-        {% endfor %}
-    {% else %}
-        <p>No sales found.</p>
-    {% endif %}
-</div>
-
- </div>
-        </div>
-        </div>
 {% endblock content %}
 
 {% block extra_js %}
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.toggle-pos').forEach(button => {
-            button.addEventListener('click', function () {
-                const saleId = button.getAttribute('data-sale');
-                const target = document.getElementById(`pos-details-${saleId}`);
-                const isVisible = target.style.display === 'block';
-
-                target.style.display = isVisible ? 'none' : 'block';
-                button.textContent = isVisible ? 'Show POS Details' : 'Hide POS Details';
-            });
-        });
-    });
-</script>
-
-
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 {% endblock extra_js %}

@@ -201,7 +201,7 @@
             </td>
         </tr>
         <tr>
-            <td colspan="2" class="terms"><b>Terms & Conditions</b><br>{{ wholesale.terms|default:"" }}</td>
+            <td colspan="2" class="terms"><b>Terms & Conditions</b><br>{{ display_terms|default:""|safe }}</td>
             <td style="text-align:right; vertical-align:bottom;">Signature</td>
         </tr>
     </table>

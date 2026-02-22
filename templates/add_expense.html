@@ -8,24 +8,100 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        body { background-color: #f8f9fa; padding-bottom: 20px; }
-        .form-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .section-card { border: 1px solid #eee; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; }
-        .section-title { font-weight: 600; color: #775599; margin-bottom: 1rem; font-size: 1rem; }
-        .section-title .bi { margin-right: 0.5rem; opacity: 0.9; }
-        .form-label { font-weight: 500; color: #333; }
-        .btn-primary { background-color: #775599; border-color: #775599; }
-        .btn-primary:hover { background-color: #5e4477; border-color: #5e4477; }
-        .form-control, .form-select { border-radius: 6px; }
-        /* Payment section: match purchase page */
-        .payment-section-card { border: 1px solid #e9ecef; border-radius: 10px; margin-bottom: 1.5rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; }
-        .payment-section-card .payment-section-body { padding: 1.25rem; background: #fff; }
-        .payment-section-card .payment-section-body .form-label { color: #495057; }
-        .payment-section-card .payment-section-body .form-control,
-        .payment-section-card .payment-section-body .form-select { border: 1px solid #CED4DA; background: #fff; border-radius: 5px; }
-        .btn-payment { background: #fff; border: 1px solid #CED4DA; color: #333; border-radius: 5px; }
-        .btn-payment.btn-payment-active { background-color: #E0F2F7; border-color: #E0F2F7; color: #007BFF; }
-        .btn-payment:not(.btn-payment-active):hover { border-color: #adb5bd; color: #495057; background: #fff; }
+        /* Match purchase UI - font sizes, textbox sizes */
+        body { background-color: #F5F7FA; padding-bottom: 20px; }
+        .expense-form-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid #e9ecef;
+            padding: 1.25rem;
+        }
+        .expense-form-title { font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 1rem; }
+        .expense-section-header {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        .expense-form-card .form-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        /* Inputs: match purchase - border, radius, Bootstrap default sizing */
+        .expense-form-card .form-control,
+        .expense-form-card .form-select {
+            border: 1px solid #CED4DA;
+            border-radius: 5px;
+            background: #fff;
+        }
+        .expense-form-card .form-control:focus,
+        .expense-form-card .form-select:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25);
+            outline: none;
+        }
+        .expense-form-card textarea.form-control { min-height: 80px; resize: vertical; border: 1px solid #CED4DA; border-radius: 5px; }
+        /* Select2 inside expense card - match input height */
+        .expense-form-card .select2-container .select2-selection--single {
+            border: 1px solid #CED4DA !important;
+            border-radius: 5px !important;
+            min-height: 38px;
+        }
+        .expense-form-card .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
+        }
+        .expense-form-card .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+        }
+        /* Payment Mode buttons - match purchase */
+        .btn-group-payment .btn-payment {
+            background: #fff;
+            border: 1px solid #CED4DA;
+            color: #333;
+            border-radius: 5px;
+        }
+        .btn-group-payment .btn-payment.btn-payment-active {
+            background: #FEF3C7;
+            border-color: #F59E0B;
+            color: #92400e;
+        }
+        .btn-group-payment .btn-payment:not(.btn-payment-active):hover {
+            border-color: #adb5bd;
+            color: #495057;
+            background: #fff;
+        }
+        .expense-file-upload {
+            border: 2px dashed #CED4DA;
+            border-radius: 5px;
+            padding: 1.25rem;
+            text-align: center;
+            background: #fff;
+            cursor: pointer;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .expense-file-upload:hover { border-color: #86b7fe; }
+        .expense-file-upload .bi-cloud-arrow-up { font-size: 1.75rem; color: #6c757d; }
+        .expense-file-upload input[type="file"] { display: none; }
+        .expense-file-upload.has-file { border-color: #28a745; background: #f0fdf4; }
+        .btn-discard {
+            background: #ef4444 !important;
+            border: 1px solid #ef4444 !important;
+            color: white !important;
+            font-weight: 600;
+        }
+        .btn-discard:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
+        .btn-save-expense {
+            background: #FFC107  !important;
+            border: none;
+            color: white !important;
+            font-weight: 600;
+        }
+        .btn-save-expense:hover { background: #e6ac00; color: #fff; }
     </style>
 {% endblock extra_css %}
 
@@ -41,8 +117,8 @@
                 </div>
             </div>
             <div class="container">
-                <div class="form-container">
-                    <form method="POST" enctype="multipart/form-data">
+                <div class="expense-form-card">
+                    <form method="POST" enctype="multipart/form-data" id="expense-form">
                         {% csrf_token %}
                         {% if form.non_field_errors %}
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -51,82 +127,82 @@
                         </div>
                         {% endif %}
 
-                        <!-- Basic information -->
-                        <div class="section-card">
-                            <div class="section-title"><i class="bi bi-info-circle"></i>Basic information</div>
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label for="id_amount" class="form-label">Amount</label>
-                                    {{ form.amount }}
-                                    {% if form.amount.errors %}<div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>{% endif %}
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="id_expense_date" class="form-label">Expense date</label>
-                                    {{ form.expense_date }}
-                                    {% if form.expense_date.errors %}<div class="invalid-feedback d-block">{{ form.expense_date.errors.0 }}</div>{% endif %}
-                                </div>
-                                <div class="col-md-4">
-                                    <label for="id_category" class="form-label">Category</label>
-                                    {{ form.category }}
-                                    {% if form.category.errors %}<div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>{% endif %}
-                                </div>
+                        <h5 class="expense-form-title">Add Expense</h5>
+
+                        <!-- 01. TRANSACTION DETAILS -->
+                        <div class="expense-section-header">01. TRANSACTION DETAILS</div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label for="id_amount" class="form-label">Total Amount (₹)</label>
+                                {{ form.amount }}
+                                {% if form.amount.errors %}<div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="id_expense_date" class="form-label">Expense Date</label>
+                                {{ form.expense_date }}
+                                {% if form.expense_date.errors %}<div class="invalid-feedback d-block">{{ form.expense_date.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="id_category" class="form-label">Category</label>
+                                {{ form.category }}
+                                {% if form.category.errors %}<div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>{% endif %}
                             </div>
                         </div>
 
-                        <!-- Payment (match purchase page) -->
-                        <div class="payment-section-card">
-                            <div class="payment-section-body" style="padding-top: 1.25rem;">
-                                <label class="form-label d-block mb-3">Payment Method</label>
-                                <div class="mb-3">
-                                    <div class="btn-group btn-group-sm d-flex btn-group-payment" role="group" aria-label="Payment method">
-                                        <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cash' or not form.instance.payment_method %}btn-payment-active{% endif %}" onclick="selectPayment('cash', this)">Cash</button>
-                                        <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'upi' %}btn-payment-active{% endif %}" onclick="selectPayment('upi', this)">UPI</button>
-                                        <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cheque' %}btn-payment-active{% endif %}" onclick="selectPayment('cheque', this)">Cheque</button>
-                                    </div>
-                                    {% if form.payment_method.errors %}<div class="text-danger small mt-1">{{ form.payment_method.errors.0 }}</div>{% endif %}
-                                    <input type="hidden" name="payment_method" id="payment_method" value="{{ form.instance.payment_method|default:'cash' }}" required>
+                        <!-- 02. PAYMENT INFORMATION -->
+                        <div class="expense-section-header">02. PAYMENT INFORMATION</div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label d-block">Payment Mode</label>
+                                <div class="btn-group btn-group-sm d-flex btn-group-payment" role="group" aria-label="Payment method">
+                                    <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cash' or not form.instance.payment_method %}btn-payment-active{% endif %}" onclick="selectPayment('cash', this)">Cash</button>
+                                    <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'upi' %}btn-payment-active{% endif %}" onclick="selectPayment('upi', this)">UPI</button>
+                                    <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cheque' %}btn-payment-active{% endif %}" onclick="selectPayment('cheque', this)">Cheque</button>
                                 </div>
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label for="id_payment_date" class="form-label">Payment date</label>
-                                        {{ form.payment_date }}
-                                        {% if form.payment_date.errors %}<div class="invalid-feedback d-block">{{ form.payment_date.errors.0 }}</div>{% endif %}
-                                    </div>
-                                    <div id="advance-bank-dropdown" class="col-md-6" style="display: none;">
-                                        <label for="advance_bank" class="form-label">Select Bank (If Cheque/Online)</label>
-                                        <select name="bank" id="advance_bank" class="form-select">
-                                            <option value="">Select Bank Account</option>
-                                            {% for bank in banks %}
-                                            <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </div>
+                                {% if form.payment_method.errors %}<div class="text-danger small mt-1">{{ form.payment_method.errors.0 }}</div>{% endif %}
+                                <input type="hidden" name="payment_method" id="payment_method" value="{{ form.instance.payment_method|default:'cash' }}" required>
+                            </div>
+                            <div class="col-md-6" id="advance-bank-dropdown" style="display: none;">
+                                <label for="advance_bank" class="form-label">Bank Account (If Online)</label>
+                                <select name="bank" id="advance_bank" class="form-select">
+                                    <option value="">Select Bank</option>
+                                    {% for bank in banks %}
+                                    <option value="{{ bank.id }}" {% if form.instance.bank and form.instance.bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="id_payment_date" class="form-label">Payment Date</label>
+                                {{ form.payment_date }}
+                                {% if form.payment_date.errors %}<div class="invalid-feedback d-block">{{ form.payment_date.errors.0 }}</div>{% endif %}
                             </div>
                         </div>
 
                         <input type="hidden" name="is_paid" value="True">
 
-                        <!-- Description & attachments -->
-                        <div class="section-card">
-                            <div class="section-title"><i class="bi bi-file-text"></i>Details</div>
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label for="id_description" class="form-label">Description</label>
-                                    {{ form.description }}
-                                    {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors.0 }}</div>{% endif %}
-                                </div>
-                                <div class="col-12">
-                                    <label for="id_attachment" class="form-label">Attachments</label>
+                        <!-- Description & Attachment - side by side -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="id_description" class="form-label">Description / Note</label>
+                                {{ form.description }}
+                                {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Attachment</label>
+                                <label class="expense-file-upload d-block" id="file-upload-label" for="id_attachment">
+                                    <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
+                                    <span id="file-upload-text">Click to upload Receipt</span>
                                     {{ form.attachment }}
-                                    {% if form.attachment.errors %}<div class="invalid-feedback d-block">{{ form.attachment.errors.0 }}</div>{% endif %}
-                                </div>
+                                </label>
+                                {% if form.attachment.errors %}<div class="invalid-feedback d-block">{{ form.attachment.errors.0 }}</div>{% endif %}
                             </div>
                         </div>
 
                         <div class="d-flex gap-2 justify-content-end pt-2">
-                            <a href="{% url 'list_expense' %}" class="btn btn-outline-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Submit</button>
+                            <a href="{% url 'list_expense' %}" class="btn btn-discard">Discard</a>
+                            <button type="submit" class="btn btn-save-expense">Save Expense</button>
                         </div>
                     </form>
                 </div>
@@ -143,23 +219,44 @@
 document.addEventListener('DOMContentLoaded', function() {
     var categorySelect = document.getElementById('id_category');
     if (categorySelect && typeof $ !== 'undefined' && $.fn.select2) {
-        $('#id_category').select2({ placeholder: 'Search category...', allowClear: true, width: '100%' });
+        $('#id_category').select2({ placeholder: 'Select Category', allowClear: true, width: '100%' });
     }
+
+    // File upload label
+    var fileInput = document.getElementById('id_attachment');
+    var fileLabel = document.getElementById('file-upload-label');
+    var fileText = document.getElementById('file-upload-text');
+    if (fileInput && fileLabel) {
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length) {
+                fileText.textContent = this.files[0].name;
+                fileLabel.classList.add('has-file');
+            } else {
+                fileText.textContent = 'Click to upload Receipt';
+                fileLabel.classList.remove('has-file');
+            }
+        });
+    }
+
+    // Show bank on load if UPI/Cheque
+    var pm = document.getElementById('payment_method').value;
+    var bankRow = document.getElementById('advance-bank-dropdown');
+    if (bankRow && (pm === 'upi' || pm === 'cheque')) bankRow.style.display = 'block';
 });
+
 function selectPayment(method, btn) {
     document.getElementById('payment_method').value = method;
-    document.querySelectorAll('.btn-payment').forEach(function(b) {
-        b.classList.remove('btn-payment-active');
-    });
+    var group = btn.closest('.btn-group-payment');
+    if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
     btn.classList.add('btn-payment-active');
 
     var bankDropdown = document.getElementById('advance-bank-dropdown');
     var bankSelect = document.getElementById('advance_bank');
     if (method !== 'cash') {
-        bankDropdown.style.display = 'block';
+        if (bankDropdown) bankDropdown.style.display = 'block';
         if (bankSelect) bankSelect.setAttribute('required', 'required');
     } else {
-        bankDropdown.style.display = 'none';
+        if (bankDropdown) bankDropdown.style.display = 'none';
         if (bankSelect) { bankSelect.removeAttribute('required'); bankSelect.value = ''; }
     }
 }

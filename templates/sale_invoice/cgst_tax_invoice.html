@@ -153,7 +153,7 @@
     <!-- Footer -->
     <div class="footer">
         <p><strong>Terms & Conditions:</strong><br>
-        {{ wholesale.terms|default:"" }}<br>
+        {{ display_terms|default:""|safe }}<br>
         <strong>This is a computer-generated invoice.</strong></p>
     </div>
 
