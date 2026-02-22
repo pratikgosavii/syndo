@@ -1,0 +1,56 @@
+{% extends "partials/adminBase.html" %}
+{% load static %}
+
+{% block title %}{{ policy_title }}{% endblock title %}
+
+{% block extra_css %}
+<style>
+    .policy-container {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        margin-top: 20px;
+        font-size: 14px;
+        color: #000;
+        line-height: 1.6;
+    }
+    .policy-container h2 {
+        font-weight: bold;
+        margin-top: 20px;
+        font-size: 16px;
+    }
+    .policy-container ul { padding-left: 20px; }
+    .policy-container li { margin-bottom: 6px; }
+    .highlight {
+        background: #fff8e7;
+        padding: 2px 5px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0 font-size-18">{{ policy_title }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="policy-container">
+                    <h2 class="highlight">Introduction</h2>
+                    <p>This page contains the {{ policy_title|lower }}. Please review the information below.</p>
+                    <h2 class="highlight">Details</h2>
+                    <p>Content for {{ policy_title }} will be added here. For any questions, please contact support.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
+</div>
+{% endblock content %}

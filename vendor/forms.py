@@ -803,6 +803,7 @@ class InvoiceSettingsForm(forms.ModelForm):
         model = InvoiceSettings
         exclude = ['user']
         widgets = {
+            'thermal_print': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'show_round_off': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'show_due_date': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'show_dispatch_address': forms.CheckboxInput(attrs={'class': 'form-check-input'}),

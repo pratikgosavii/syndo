@@ -1458,20 +1458,9 @@ class TaxSettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tax_settings')
     composite_scheme = models.BooleanField(default=False)
 
-class 
-InvoiceSettings(models.Model):
-    INVOICE_TEMPLATE_CHOICES = [
-        ('retail', 'Retail Invoice'),
-        ('wholesale', 'Wholesale Invoice (GST)'),
-        ('thermal', 'Thermal Bill'),
-    ]
+class InvoiceSettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='invoice_settings')
-    default_invoice_template = models.CharField(
-        max_length=20,
-        choices=INVOICE_TEMPLATE_CHOICES,
-        default='retail',
-        help_text="Default template to use when generating invoices"
-    )
+    thermal_print = models.BooleanField(default=False, help_text="Use thermal print format for invoices")
     show_round_off = models.BooleanField(default=False)
     show_due_date = models.BooleanField(default=False)
     show_dispatch_address = models.BooleanField(default=False)

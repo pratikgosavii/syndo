@@ -10,34 +10,9 @@
     width: 100%;
 }
 
-/* Quick actions row inside sidebar */
-.quick-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
-    margin: 0.75rem 0;
-    padding: 0 0.5rem;
-}
-.quick-actions a .qa-card {
-    width: 80px;
-    color: black;
-}
-
-/* When the sidebar is collapsed, hide quick actions to avoid overflow */
-body.vertical-collapsed .vertical-menu .quick-actions,
-body.vertical-collpsed .vertical-menu .quick-actions, /* fallback: older misspelled class */
-body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled overlay */
-    display: none !important;
-}
-
-/* Also hide on very narrow viewports where sidebar overlays */
-@media (max-width: 991.98px) {
-    .quick-actions { display: none; }
-}
-
 #sidebar-search {
     width: 100%;
-    padding-right: 30px; /* space for clear button */
+    padding-right: 30px;
 }
 
 .clear-btn {
@@ -49,7 +24,152 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
     border: none;
     font-size: 16px;
     cursor: pointer;
-    display: none; /* hidden until typing */
+    display: none;
+}
+
+/* ========== SIDEBAR UI - Exact match to reference (use !important) ========== */
+.vertical-menu {
+    background-color: #FFFFFF !important;
+}
+.vertical-menu .simplebar-content-wrapper,
+.vertical-menu [data-simplebar] {
+    background-color: #FFFFFF !important;
+}
+
+/* Section headers - uppercase, muted grey */
+#sidebar-menu .sidebar-section-header {
+    color: #6c757d !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 16px 24px 8px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    list-style: none !important;
+}
+
+/* Menu items - dark text, light grey icons */
+#sidebar-menu ul.metismenu li a,
+#sidebar-menu ul#side-menu li a {
+    color: #212529 !important;
+    font-weight: 600 !important;
+}
+#sidebar-menu ul li a i,
+#sidebar-menu ul li a svg,
+#sidebar-menu ul li a [data-feather] {
+    color: #adb5bd !important;
+    stroke: #adb5bd !important;
+}
+#sidebar-menu ul li a:hover i,
+#sidebar-menu ul li a:hover svg {
+    color: #6c757d !important;
+    stroke: #6c757d !important;
+}
+
+/* Active menu item - dark bar on left */
+#sidebar-menu ul li.mm-active > a,
+#sidebar-menu ul li.active > a {
+    border-left: 4px solid #343a40 !important;
+    background-color: #f8f9fa !important;
+}
+
+/* Soon badge */
+#sidebar-menu .badge-soon {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    font-size: 0.7rem !important;
+    font-weight: 500 !important;
+    padding: 2px 8px !important;
+}
+
+/* Quick Access - 2x2 grid with exact colors */
+.quick-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    margin: 12px 16px !important;
+    padding: 0 !important;
+}
+.quick-actions .qa-header {
+    grid-column: 1 / -1;
+    color: #6c757d !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-bottom: 4px !important;
+    padding: 0 !important;
+}
+.quick-actions a {
+    text-decoration: none !important;
+    color: #212529 !important;
+}
+.quick-actions a .qa-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 12px 8px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+    text-align: center !important;
+    border: none !important;
+}
+.quick-actions a .qa-card i,
+.quick-actions a .qa-card svg {
+    display: block !important;
+    margin: 0 auto 6px !important;
+    width: 24px !important;
+    height: 24px !important;
+}
+.quick-actions a .qa-card .small {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+}
+.qa-pos { background-color: #eaf9ed !important; }
+.qa-pos i, .qa-pos svg { color: #28a745 !important; stroke: #28a745 !important; }
+.qa-purchase { background-color: #e9f2fb !important; }
+.qa-purchase i, .qa-purchase svg { color: #007bff !important; stroke: #007bff !important; }
+.qa-expense { background-color: #fbecec !important; }
+.qa-expense i, .qa-expense svg { color: #dc3545 !important; stroke: #dc3545 !important; }
+.qa-payment { background-color: #fff8e7 !important; }
+.qa-payment i, .qa-payment svg { color: #ffc107 !important; stroke: #ffc107 !important; }
+
+body.vertical-collapsed .vertical-menu .quick-actions,
+body.vertical-collpsed .vertical-menu .quick-actions,
+body.sidebar-enable .vertical-menu .quick-actions {
+    display: none !important;
+}
+@media (max-width: 991.98px) {
+    .quick-actions { display: none !important; }
+}
+
+/* Section headers (menu-title) - match reference */
+#sidebar-menu li.menu-title {
+    color: #6c757d !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 16px 24px 8px !important;
+    margin-top: 8px !important;
+    border: none !important;
+}
+#sidebar-menu li.menu-title:first-child {
+    margin-top: 0 !important;
+}
+
+/* Notification badge (red) */
+#sidebar-menu .badge.bg-danger,
+#sidebar-menu .badge.rounded-pill.bg-danger {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+/* Sub-menu styling */
+#sidebar-menu ul.sub-menu li a {
+    color: #495057 !important;
+    font-weight: 500 !important;
 }
 </style>
 
@@ -67,38 +187,34 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
             <div data-simplebar class="h-100">
 
 
-                <!-- Quick Actions (hidden for admin/staff) -->
+                <!-- Quick Access (hidden for admin/staff) -->
                 {% if not request.user.is_staff %}
                 <div class="quick-actions">
-
-                <a href="{% url 'create-sale' %}" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm qa-card">
-                    <i data-feather="shopping-bag" style="width: 24px; height: 24px;"></i>
-                    <div class="small mt-1">Sale & POS</div>
-                    </div>
-                </a>
-
-                <a href="{% url 'add_purchase' %}" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm qa-card">
-                    <i data-feather="shopping-cart" style="width: 24px; height: 24px;"></i>
-                    <div class="small mt-1">Purchases</div>
-                    </div>
-                </a>
-
-                <a href="{% url 'add_expense' %}" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm qa-card">
-                    <i data-feather="file-text" style="width: 24px; height: 24px;"></i>
-                    <div class="small mt-1">Expenses</div>
-                    </div>
-                </a>
-
-                <a href="{% url 'add_payment' %}" class="text-center text-decoration-none m-2">
-                    <div class="border rounded p-3 shadow-sm qa-card">
-                    <i data-feather="dollar-sign" style="width: 24px; height: 24px;"></i>
-                    <div class="small mt-1">Payments</div>
-                    </div>
-                </a>
-
+                    <div class="qa-header">Quick Access</div>
+                    <a href="{% url 'create-sale' %}">
+                        <div class="qa-card qa-pos">
+                            <i data-feather="shopping-cart"></i>
+                            <div class="small">POS Sale</div>
+                        </div>
+                    </a>
+                    <a href="{% url 'add_purchase' %}">
+                        <div class="qa-card qa-purchase">
+                            <i data-feather="shopping-bag"></i>
+                            <div class="small">Purchase</div>
+                        </div>
+                    </a>
+                    <a href="{% url 'add_expense' %}">
+                        <div class="qa-card qa-expense">
+                            <i data-feather="file-text"></i>
+                            <div class="small">Expense</div>
+                        </div>
+                    </a>
+                    <a href="{% url 'add_payment' %}">
+                        <div class="qa-card qa-payment">
+                            <i data-feather="dollar-sign"></i>
+                            <div class="small">Payment</div>
+                        </div>
+                    </a>
                 </div>
                 {% endif %}
 
@@ -354,26 +470,26 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                         {% if user.is_vendor %}
 
-                   
+                        <li class="menu-title">Operations</li>
+                        <li>
+                            <a href="{% url 'order_list' %}">
+                                <i data-feather="globe"></i>
+                                <span>Online Orders</span>
+                                <span class="badge rounded-pill bg-danger float-end ms-2">0</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'order_exchange_list' %}">
+                                <i data-feather="repeat"></i>
+                                <span>Returns &amp; Exchange</span>
+                            </a>
+                        </li>
 
-                            <li>
-                                <a href="{% url 'update_company_profile_withoutid' %}" class="has-arrow">
-                                    <i data-feather="briefcase"></i>
-                                    <span data-key="t-authentication">Company Profile</span>
-                                </a>
-                            </li>
-                           
-                            <li>
-                                <a href="{% url 'daybook_report' %}" class="has-arrow">
-                                    <i data-feather="book-open"></i>
-                                    <span data-key="t-authentication">Day Book</span>
-                                </a>
-                            </li>
-                   
+                        <li class="menu-title">Inventory &amp; Stock</li>
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="package"></i>
-                                <span data-key="t-authentication">Product</span>
+                                <span data-key="t-authentication">Products</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
 
@@ -472,10 +588,11 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                         
                        
                        
+                        <li class="menu-title">Sales &amp; Purchases</li>
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="users"></i>
-                                <span data-key="t-authentication">Manage Customer</span>
+                                <span data-key="t-authentication">Customers</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
                                 <li><a href="{% url 'add_customer' %}">Add Customer</a></li>
@@ -485,8 +602,8 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Manage Vendor</span>
+                                <i data-feather="briefcase"></i>
+                                <span data-key="t-authentication">Vendors</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
                                 <li><a href="{% url 'add_vendor' %}">Add Vendor</a></li>
@@ -507,26 +624,7 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                          
 
-                        <li class="menu-item-has-children">
-                            <a href="javascript:void(0);"  class="has-arrow">
-                                <i data-feather="shopping-bag"></i>
-                                <span data-key="t-authentication">Order Management</span>
-                            </a>
-                            <ul class="sub-menu">
-                                <li>
-                                    <a href="{% url 'order_list' %}">
-                                        <i data-feather="list" style="width:16px;height:16px;"></i>
-                                        <span>Orders List</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{% url 'order_exchange_list' %}">
-                                        <i data-feather="refresh-cw" style="width:16px;height:16px;"></i>
-                                        <span>Return / Exchange Requests</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
+                        
 
 
                        
@@ -541,10 +639,17 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
 
 
+                        <li class="menu-title">Finance &amp; Accounts</li>
+                        <li>
+                            <a href="{% url 'daybook_report' %}">
+                                <i data-feather="book-open"></i>
+                                <span>Day Book</span>
+                            </a>
+                        </li>
                         <li>
                             <a href="javascript: void(0);" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Bank Account</span>
+                                <i data-feather="building"></i>
+                                <span data-key="t-authentication">Banking</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
                                 <li><a href="{% url 'add_bank' %}">Add Bank</a></li>
@@ -554,8 +659,8 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                           <li>
                             <a href="{% url 'cash_in_hand' %}">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Cash In Hand</span>
+                                <i data-feather="dollar-sign"></i>
+                                <span data-key="t-authentication">Cash in Hand</span>
                             </a>
                         </li>
 
@@ -593,9 +698,31 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                         </li>
                     
 {% endcomment %}
+                        <li class="menu-title">Organization</li>
+                        <li>
+                            <a href="{% url 'update_company_profile_withoutid' %}">
+                                <i data-feather="briefcase"></i>
+                                <span>Company Profile</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="shield"></i>
+                                <span>Security &amp; Policy</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'privacy_policy' %}">Privacy Policy</a></li>
+                                <li><a href="{% url 'policy_page' 'terms-and-conditions' %}">Terms and Condition</a></li>
+                                <li><a href="{% url 'policy_page' 'help-and-support' %}">Help and Support</a></li>
+                                <li><a href="{% url 'policy_page' 'shipping-and-delivery' %}">Shipping and Delivery</a></li>
+                                <li><a href="{% url 'policy_page' 'return-and-refund' %}">Return and Refund</a></li>
+                                <li><a href="{% url 'policy_page' 'vendor-agreement' %}">Vendor Agreement</a></li>
+                                <li><a href="{% url 'policy_page' 'settlement-policy' %}">Settlement Policy</a></li>
+                            </ul>
+                        </li>
                           <li>
                             <a href="{% url 'invoice_setting' %}">
-                                <i data-feather="layers"></i>
+                                <i data-feather="file-text"></i>
                                 <span data-key="t-authentication">Invoice Settings</span>
                             </a>
                         </li>
@@ -609,12 +736,12 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                        {% endif %}
 
-                        <!-- Reports (Coming Soon) -->
+                        <!-- Reports (Soon) -->
                         <li>
                             <a href="javascript: void(0);">
-                                <i data-feather="bar-chart-2"></i>
+                                <i data-feather="trending-up"></i>
                                 <span>Reports</span>
-                                <span class="badge rounded-pill bg-secondary ms-2">Coming Soon</span>
+                                <span class="badge badge-soon ms-2">Soon</span>
                             </a>
                         </li>
                         

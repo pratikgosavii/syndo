@@ -123,6 +123,17 @@
     </div>
 
     <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center px-3 py-3 mb-3" style="background-color: #fff4dc; border: 2px solid orange; border-radius: 10px;">
+            <label class="form-check-label fw-bold mb-0" for="id_thermal_print">
+                <i class="bi bi-printer me-2"></i>Thermal Print
+            </label>
+            <div class="form-check form-switch mb-0">
+                {{ invoice_form.thermal_print }}
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4">
         <label class="form-label fw-bold">Terms & Conditions</label>
         <p class="text-muted small mb-2">Add terms and conditions for your invoices (one per vendor). This will appear on your bills.</p>
         {{ invoice_form.terms_and_conditions }}
@@ -132,7 +143,7 @@
     </div>
 
     {% for field in invoice_form %}
-        {% if field.name != 'terms_and_conditions' %}
+        {% if field.name != 'terms_and_conditions' and field.name != 'thermal_print' %}
         <div class="form-check form-switch d-flex justify-content-between align-items-start mb-3 px-2">
             <div>
                 <label class="form-check-label fw-bold" for="{{ field.id_for_label }}">{{ field.label }}</label>

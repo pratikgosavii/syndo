@@ -220,6 +220,7 @@ urlpatterns = [
     path('completed-return/<return_item_id>/', completed_return, name='completed_return'),
     
     path('privacy-policy/', privacy_policy, name='privacy_policy'),
+    path('policy/<slug:slug>/', policy_page, name='policy_page'),
     
     # KYC Verification (QuickKYC)
     path('kyc/verify-pan/', VerifyPANAPIView.as_view(), name='verify_pan'),

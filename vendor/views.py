@@ -5063,9 +5063,24 @@ def completed_return(request, return_item_id):
 
 
 def privacy_policy(request):
-
-  
     return render(request, 'privacy_policy.html')
+
+
+POLICY_SLUGS = {
+    'terms-and-conditions': 'Terms and Condition',
+    'help-and-support': 'Help and Support',
+    'shipping-and-delivery': 'Shipping and Delivery',
+    'return-and-refund': 'Return and Refund',
+    'vendor-agreement': 'Vendor Agreement',
+    'settlement-policy': 'Settlement Policy',
+}
+
+
+def policy_page(request, slug):
+    if slug not in POLICY_SLUGS:
+        from django.http import Http404
+        raise Http404
+    return render(request, 'policy_page.html', {'policy_title': POLICY_SLUGS[slug]})
 
 
 
