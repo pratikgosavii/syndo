@@ -25,12 +25,18 @@
     <link href="{% static 'css/app.min.css'%}" id="app-style" rel="stylesheet" type="text/css" />
 
     <style>
-
+        body { background-color: #fff !important; }
         .dropdown-menu {
             max-height: 300px; /* Set the maximum height of the dropdown */
             overflow-y: auto; /* Enable vertical scrolling */
         }
-
+        /* When sidebar menu is closed: ignore menu height, let main page scroll and overflow */
+        body[data-sidebar-size=sm] { min-height: auto !important; }
+        body[data-sidebar-size=sm] .main-content {
+            overflow-y: auto !important;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
     </style>
 
     {% endblock css %}

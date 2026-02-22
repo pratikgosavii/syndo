@@ -20,6 +20,7 @@
   />
 
   <style>
+    body { background-color: #fff !important; }
     /* Vendor theme (purple #775599, cream #f0d28c) - pages can override .btn-primary in extra_css */
     :root {
         --vendor-primary: #775599;
@@ -74,6 +75,13 @@
     .container-xl,
     .container-xxl {
         max-width: 1219px !important;
+    }
+    /* When sidebar menu is closed: ignore menu height, let main page scroll and overflow */
+    body[data-sidebar-size=sm] { min-height: auto !important; }
+    body[data-sidebar-size=sm] .main-content {
+        overflow-y: auto !important;
+        overflow-x: hidden;
+        min-height: 100vh;
     }
 </style>
 

@@ -1,179 +1,153 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Categories List{% endblock title %}
-
+{% block title %}Expense Categories{% endblock title %}
 
 {% block extra_css %}
-    <!-- plugin css -->
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet"
-          type="text/css"/>
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-    />
-    <style>
-        body {
-            background-color: gainsboro;
-            color: #775599;;
-        }
-
-        .card {
-            background-color: #ffffff;
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-header {
-            background-color: #775599;;
-            color: #ffffff;
-            border-radius: 8px 8px 0 0;
-            padding: 20px;
-        }
-
-        .card-title {
-            margin: 0;
-        }
-
-        .card-body {
-            padding: 20px;
-        }
-
-        .table thead {
-            background-color: gray;
-            color: white;
-        }
-
-        .table tbody tr {
-            background-color: white;
-            color: black;
-        }
-
-        .table tbody tr:hover {
-            background-color: #f0d28c;
-            color: #775599;;
-        }
-
-        .status-approved {
-            color: rgb(80, 244, 80);
-            font-weight: bold;
-        }
-
-        .status-pending {
-            color: blue;
-            font-weight: bold;
-        }
-
-        .status-not-approved {
-            color: red;
-            font-weight: bold;
-        }
-
-        @media (max-width: 768px) {
-            .table-responsive {
-                overflow-x: auto;
-            }
-        }
-    </style>
+<style>
+    .expense-category-page .category-table {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+    }
+    .expense-category-page .category-table thead th {
+        background: #fff !important;
+        color: #334155;
+        padding: 0.75rem 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .expense-category-page .category-table tbody td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        color: #1e293b;
+    }
+    .expense-category-page .category-table tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .expense-category-page .category-table tbody tr:last-child {
+        border-bottom: none;
+    }
+    .expense-category-page .category-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+    .expense-category-page .action-icons {
+        font-size: 1.1rem;
+        padding: 0.25rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+    .expense-category-page .action-icons:hover {
+        opacity: 0.8;
+    }
+    .expense-category-page .btn-add {
+        background-color: #FCA311 !important;
+        border-color: #FCA311 !important;
+        font-weight: 600;
+    }
+    .expense-category-page .btn-add:hover {
+        background-color: #e69500 !important;
+        border-color: #e69500 !important;
+    }
+    .expense-category-page .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: #64748b;
+    }
+    .expense-category-page .empty-state i {
+        font-size: 2.5rem;
+        color: #cbd5e1;
+        margin-bottom: 0.75rem;
+    }
+</style>
 {% endblock extra_css %}
 
 {% block content %}
-
-    <!-- ============================================================== -->
-    <!-- Start right Content here -->
-    <!-- ============================================================== -->
-    <div class="main-content">
-        <div class="page-content">
-            <div class="container-fluid">
-                <!-- start page title -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 class="mb-sm-0 font-size-18"><i class="bi bi-tags me-2" style="color: #775599;"></i>List Expense Category</h4>
-                            <a href="{% url 'add_expense_category' %}" class="btn btn-primary">
-                                <i class="bi bi-plus-lg me-1"></i> Add Expense Category
-                            </a>
-                        </div>
+<div class="main-content expense-category-page">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between mb-3">
+                        <h4 class="mb-sm-0 font-size-18 fw-semibold"><i class="bi bi-tags me-2 text-primary"></i>Expense Categories</h4>
+                        <a href="{% url 'add_expense_category' %}" class="btn btn-primary btn-add">
+                            <i class="bi bi-plus-lg me-1"></i> Add Expense Category
+                        </a>
                     </div>
                 </div>
-                <div class="container">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table
-                                                id="datatable"
-                                                class="table table-bordered table-striped"
-                                        >
-                                           <thead>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table category-table mb-0" data-enable-filters="false">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 60px;">#</th>
+                                            <th>Name</th>
+                                            <th style="width: 100px;" class="text-end">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if data %}
+                                            {% for i in data %}
+                                                <tr>
+                                                    <td>{{ forloop.counter }}</td>
+                                                    <td class="fw-medium">{{ i.name }}</td>
+                                                    <td class="text-end">
+                                                        <a href="{% url 'update_expense_category' i.id %}" class="action-icons" title="Edit">
+                                                            <i class="bi bi-pencil-square text-primary"></i>
+                                                        </a>
+                                                        <a href="{% url 'delete_expense_category' i.id %}" class="action-icons ms-2 btn-delete-expense" title="Delete" data-name="{{ i.name }}">
+                                                            <i class="bi bi-trash text-danger"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% else %}
                                             <tr>
-                                                <th>#</th>
-                                                <th>Name</th>
-                                            
-                                                <th>Action</th>
+                                                <td colspan="3">
+                                                    <div class="empty-state">
+                                                        <i class="bi bi-tags d-block"></i>
+                                                        <p class="mb-2 fw-medium">No expense categories yet</p>
+                                                        <p class="mb-0 small">Add your first category to organize expenses.</p>
+                                                        <a href="{% url 'add_expense_category' %}" class="btn btn-primary btn-sm mt-3">Add Expense Category</a>
+                                                    </div>
+                                                </td>
                                             </tr>
-                                            </thead>
-                                            <tbody id="tableBody">
-                                            {% if data %}
-                                                {% for i in data %}
-                                                    <tr>
-                                                        <td>{{ forloop.counter }}</td>
-                                                        <td>{{ i.name }}</td>
-                                                      
-                                                        <td>
-                                                            <a href="{% url 'add_expense_category' %}">
-                                                                <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
-                                                            </a>
-                                                            <a href="{% url 'delete_expense_category' i.id %}">
-                                                                <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                {% endfor %}
-                                            {% endif %}
-                                            </tbody>
-
-                                        </table>
-                                    </div>
-                                </div>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- container-fluid -->
         </div>
-        <!-- End Page-content -->
-
-        {% block footer %}
-            {% include 'partials/footer.html' %}
-        {% endblock footer %}
     </div>
-    <!-- end main content-->
+    {% block footer %}
+        {% include 'partials/footer.html' %}
+    {% endblock footer %}
+</div>
 {% endblock content %}
 
 {% block extra_js %}
-    <script>
-        // Auto-hide toast after 5 seconds
-        setTimeout(() => {
-            const toastElement = document.getElementById("toast");
-            if (toastElement) {
-                toastElement.classList.remove("show"); // Hide toast
-                setTimeout(() => {
-                    toastElement.remove(); // Remove from DOM
-                }, 500); // Wait for fade-out animation
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-delete-expense').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            var name = this.dataset.name || 'this category';
+            if (!confirm('Delete expense category "' + name + '"? This cannot be undone.')) {
+                e.preventDefault();
             }
-        }, 5000);
-    </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Plugins js-->
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.min.js' %}"></script>
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/maps/jquery-jvectormap-world-mill-en.js' %}"></script>
-    <script src="{% static 'js/pages/allchart.js' %}"></script>
-    <!-- dashboard init -->
-    <script src="{% static 'js/pages/dashboard.init.js' %}"></script>
-
+        });
+    });
+});
+</script>
 {% endblock extra_js %}

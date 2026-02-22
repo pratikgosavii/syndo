@@ -135,9 +135,11 @@
 .qa-payment { background-color: #fff8e7 !important; }
 .qa-payment i, .qa-payment svg { color: #ffc107 !important; stroke: #ffc107 !important; }
 
+/* Hide Quick Access when sidebar is collapsed/closed */
 body.vertical-collapsed .vertical-menu .quick-actions,
 body.vertical-collpsed .vertical-menu .quick-actions,
-body.sidebar-enable .vertical-menu .quick-actions {
+body.sidebar-enable .vertical-menu .quick-actions,
+body[data-sidebar-size=sm] .vertical-menu .quick-actions {
     display: none !important;
 }
 @media (max-width: 991.98px) {
