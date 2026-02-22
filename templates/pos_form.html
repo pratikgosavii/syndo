@@ -29,7 +29,7 @@
         .pos-main-row {
             display: grid;
             grid-template-columns: 1fr 380px;
-            height: calc(100vh - 70px - 30px);
+            height: calc(100vh - 70px - 5px);
             min-height: 400px;
         }
         @media (max-width: 991px) {
@@ -601,6 +601,11 @@
       color: #b91c1c !important;
       border-color: #fecaca !important;
     }
+
+    .page-content {
+    padding: calc(49px + 24px) calc(24px / 2) 60px calc(24px / 2);
+    }
+
     </style>
 {% endblock %}
 

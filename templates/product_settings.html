@@ -122,20 +122,6 @@
 
             <div class="col-md-6">
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="category" name="category" {% if settings.category %}checked{% endif %}>
-                    <label class="form-check-label" for="category">Category</label>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="sub_category" name="sub_category" {% if settings.sub_category %}checked{% endif %}>
-                    <label class="form-check-label" for="sub_category">Sub Category</label>
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="brand_name" name="brand_name" {% if settings.brand_name %}checked{% endif %}>
                     <label class="form-check-label" for="brand_name">Brand Name</label>
                 </div>
@@ -381,8 +367,6 @@ function displaySelectedImages() {
     stock: {{ settings.stock|yesno:"true,false" }},
     imei: {{ settings.imei|yesno:"true,false" }},
     low_stock_alert: {{ settings.low_stock_alert|yesno:"true,false" }},
-    category: {{ settings.category|yesno:"true,false" }},
-    sub_category: {{ settings.sub_category|yesno:"true,false" }},
     brand_name: {{ settings.brand_name|yesno:"true,false" }},
     color: {{ settings.color|yesno:"true,false" }},
     size: {{ settings.size|yesno:"true,false" }},

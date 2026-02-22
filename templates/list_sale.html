@@ -76,7 +76,7 @@
             Total Items: {{ sale.total_items }}<br>
             Total Amount: ₹{{ sale.total_amount }}<br>
             Tax ({{ sale.tax_percentage }}%): ₹{{ sale.total_tax }}<br>
-            Discount({{ sale.discount_percentage }}%): {{ sale.total_discount }}<br>
+            Discount({{ sale.discount_percentage }}%): {{ sale.discount_amount|default:0 }}<br>
             <strong>Final Amount: ₹{{ sale.total_amount }}</strong>
         </div>
         <div>

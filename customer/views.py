@@ -479,10 +479,7 @@ class OnlineOrderInvoiceAPIView(APIView):
             if hasattr(company_profile, 'billing_state') and company_profile.billing_state:
                 vendor_state_name = str(company_profile.billing_state)
             elif hasattr(company_profile, 'state') and company_profile.state:
-                if hasattr(company_profile.state, 'name'):
-                    vendor_state_name = company_profile.state.name
-                else:
-                    vendor_state_name = str(company_profile.state)
+                vendor_state_name = str(company_profile.state)
         
         customer_state_name = None
         if customer_address.state:

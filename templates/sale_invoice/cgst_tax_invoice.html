@@ -58,7 +58,7 @@
             <strong>{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</strong><br>
             {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }},{% endif %}
             {% if sale_instance.company_profile.address_line_2 %} {{ sale_instance.company_profile.address_line_2 }},{% endif %}
-            {% if sale_instance.company_profile.state %} {{ sale_instance.company_profile.state.name }}{% endif %}<br>
+            {% if sale_instance.company_profile.state %} {{ sale_instance.company_profile.state }}{% endif %}<br>
             GSTIN: {{ sale_instance.company_profile.gstin|default:"Unregistered" }}
         </p>
     </div>

@@ -16,6 +16,21 @@
         .btn-primary { background-color: #775599; border-color: #775599; }
         .btn-primary:hover { background-color: #5e4477; border-color: #5e4477; }
         .form-control, .form-select { border-radius: 6px; }
+        .image-preview { max-height: 50px; max-width: 80px; margin-top: 10px; border-radius: 6px; border: 1px solid #dee2e6; cursor: pointer; object-fit: cover; }
+        .image-fullscreen-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; cursor: pointer; }
+        .image-fullscreen-overlay.show { display: flex; }
+        .image-fullscreen-overlay img { max-width: 95%; max-height: 95%; object-fit: contain; pointer-events: none; }
+        .searchable-select-wrap { position: relative; }
+        .searchable-trigger { cursor: pointer; background-color: #fff; }
+        .searchable-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 220px; background: #fff; border: 1px solid #ced4da; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050; margin-top: 2px; flex-direction: column; overflow: hidden; }
+        .searchable-dropdown.show { display: flex; }
+        .searchable-dropdown-search { flex-shrink: 0; padding: 0.4rem 0.5rem; border-bottom: 1px solid #e9ecef; position: relative; }
+        .searchable-dropdown-search input { width: 100%; padding: 0.35rem 0.5rem 0.35rem 1.75rem; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.8125rem; }
+        .searchable-dropdown-search .bi-search { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280; font-size: 0.8rem; pointer-events: none; }
+        .searchable-dropdown-list { max-height: 160px; overflow-y: auto; }
+        .searchable-dropdown-item { padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; border-bottom: 1px solid #f1f3f5; }
+        .searchable-dropdown-item:hover { background: #e7f1ff; }
+        .searchable-dropdown-empty { padding: 0.75rem; color: #6c757d; font-size: 0.875rem; }
     </style>
 {% endblock extra_css %}
 
@@ -52,7 +67,18 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label for="id_product_category" class="form-label">Category</label>
-                                    {{ form.product_category }}
+                                    <div class="searchable-select-wrap position-relative">
+                                        <input type="text" class="form-control searchable-trigger" id="category-trigger" placeholder="Select category..." readonly autocomplete="off">
+                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <div class="searchable-dropdown" id="category-dropdown">
+                                            <div class="searchable-dropdown-search">
+                                                <i class="bi bi-search"></i>
+                                                <input type="text" id="category-search-inner" placeholder="Search category..." autocomplete="off">
+                                            </div>
+                                            <div class="searchable-dropdown-list" id="category-list"></div>
+                                        </div>
+                                    </div>
+                                    <div class="d-none">{{ form.product_category }}</div>
                                     {% if form.product_category.errors %}<div class="invalid-feedback d-block">{{ form.product_category.errors.0 }}</div>{% endif %}
                                 </div>
                                 <div class="col-md-6">
@@ -74,9 +100,16 @@
                                 <div class="col-12">
                                     <label for="id_image" class="form-label">Image</label>
                                     {{ form.image }}
+                                    <div id="preview-wrapper" class="mt-2" style="{% if not form.instance or not form.instance.image %}display: none;{% endif %}">
+                                        <img id="preview" class="image-preview d-block" src="{% if form.instance and form.instance.image %}{{ form.instance.image.url }}{% else %}#{% endif %}" alt="Image Preview" title="Click to view full size">
+                                    </div>
                                     {% if form.image.errors %}<div class="invalid-feedback d-block">{{ form.image.errors.0 }}</div>{% endif %}
                                 </div>
                             </div>
+                        </div>
+
+                        <div id="image-fullscreen-overlay" class="image-fullscreen-overlay" title="Click to close">
+                            <img id="image-fullscreen-img" src="#" alt="Full size">
                         </div>
 
                         <div class="section-card">
@@ -106,4 +139,96 @@
 {% endblock content %}
 
 {% block extra_js %}
+<script>
+(function() {
+    var categoryTrigger = document.getElementById('category-trigger');
+    var categorySearchInner = document.getElementById('category-search-inner');
+    var categoryList = document.getElementById('category-list');
+    var categoryDropdown = document.getElementById('category-dropdown');
+    var categorySelect = document.getElementById('id_product_category');
+
+    var categories = [];
+    if (categorySelect) {
+        var opts = categorySelect.querySelectorAll('option');
+        for (var i = 0; i < opts.length; i++) {
+            var v = opts[i].value;
+            if (v) categories.push({ id: v, name: opts[i].textContent.trim() });
+        }
+    }
+
+    if (categoryTrigger && categoryList && categorySelect) {
+        function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function renderCategoryList(filter) {
+            var q = (filter || '').toLowerCase().trim();
+            var filtered = categories.filter(function(c) { return !q || (c.name || '').toLowerCase().indexOf(q) !== -1; });
+            categoryList.innerHTML = filtered.length
+                ? filtered.map(function(c) { return '<div class="searchable-dropdown-item" data-id="'+esc(c.id)+'" data-name="'+esc(c.name)+'">'+esc(c.name)+'</div>'; }).join('')
+                : '<div class="searchable-dropdown-empty">No category found</div>';
+        }
+        function closeCategory() { if (categoryDropdown) categoryDropdown.classList.remove('show'); }
+        function openCategory() {
+            closeCategory();
+            if (categoryDropdown) categoryDropdown.classList.add('show');
+            if (categorySearchInner) { categorySearchInner.value = ''; categorySearchInner.focus(); }
+            renderCategoryList('');
+        }
+        categoryTrigger.addEventListener('click', function(e) { e.stopPropagation(); openCategory(); });
+        if (categorySearchInner) categorySearchInner.addEventListener('input', function() { renderCategoryList(this.value); });
+        if (categorySearchInner) categorySearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
+        categoryList.addEventListener('click', function(e) {
+            var item = e.target.closest('.searchable-dropdown-item[data-id]');
+            if (!item) return;
+            categorySelect.value = item.dataset.id;
+            categoryTrigger.value = item.dataset.name || item.textContent;
+            closeCategory();
+        });
+        if (categoryDropdown) categoryDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+        document.addEventListener('click', closeCategory);
+
+        var selId = categorySelect.value;
+        var sel = categories.find(function(c) { return String(c.id) === String(selId); });
+        if (sel) categoryTrigger.value = sel.name;
+    }
+
+    var imageInput = document.getElementById('id_image');
+    var previewImg = document.getElementById('preview');
+    var previewWrapper = document.getElementById('preview-wrapper');
+    if (imageInput && previewImg && previewWrapper) {
+        imageInput.addEventListener('change', function() {
+            var file = this.files && this.files[0];
+            if (file && file.type.indexOf('image') !== -1) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewWrapper.style.display = '';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewImg.src = '#';
+                previewWrapper.style.display = 'none';
+            }
+        });
+    }
+
+    var overlay = document.getElementById('image-fullscreen-overlay');
+    var fullscreenImg = document.getElementById('image-fullscreen-img');
+    function showFullscreen(src) {
+        if (!src || src === '#') return;
+        if (fullscreenImg && overlay) {
+            fullscreenImg.src = src;
+            overlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    function hideFullscreen() {
+        if (overlay) {
+            overlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+    }
+    if (previewImg) previewImg.addEventListener('click', function() { showFullscreen(this.src); });
+    if (overlay) overlay.addEventListener('click', hideFullscreen);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideFullscreen(); });
+})();
+</script>
 {% endblock extra_js %}

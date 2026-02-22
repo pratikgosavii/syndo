@@ -29,6 +29,7 @@ router.register(r'expense', ExpenseViewSet, basename='ExpenseViewSet')
 router.register(r'purchase', PurchaseViewSet, basename='PurchaseViewSet')
 
 router.register(r'PrintVariant', PrintVariantViewSet, basename='PrintVariantViewSet')
+router.register(r'CustomizePrintVariant', CustomizePrintVariantViewSet, basename='CustomizePrintVariantViewSet')
 router.register(r'product', ProductViewSet, basename='product')
 router.register(r'super-catalogue', SuperCatalogueViewSet, basename='super-catalogue')
 router.register(r'productsetting', ProductSettingsViewSet, basename='ProductSettingsViewSet')
@@ -83,6 +84,7 @@ urlpatterns = [
     path('daybook-report/', daybook_report, name='daybook_report'),
     
     path('add-company-profile/', add_company_profile, name='add_company_profile'),
+    path('update-company-profile-withoutid/', update_company_profile_withoutid, name='update_company_profile_withoutid'),
     path('update-company-profile/<company_profile_id>', update_company_profile, name='update_company_profile'),
     path('delete-company-profile/<company_profile_id>', delete_company_profile, name='delete_company_profile'),
     path('list-company-profile/', list_company_profile, name='list_company_profile'),

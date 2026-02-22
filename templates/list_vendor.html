@@ -339,7 +339,7 @@
                                         <div class="vendor-info">
                                             <div class="vendor-name-row">
                                                 <div class="vendor-name">{% if i.company_name %}{{ i.company_name }}{% else %}{{ i.name }}{% endif %}</div>
-                                                <div class="vendor-address-inline">{% if i.city or i.state %}{{ i.city|default:'' }}{% if i.state %}{% if i.city %}, {% endif %}{{ i.state.name }}{% endif %}{% else %}—{% endif %}</div>
+                                                <div class="vendor-address-inline">{% if i.city or i.state %}{{ i.city|default:'' }}{% if i.state %}{% if i.city %}, {% endif %}{{ i.state }}{% endif %}{% else %}—{% endif %}</div>
                                             </div>
                                             <div class="vendor-company">{% if i.company_name %}{{ i.name }}{% endif %}</div>
                                             <div class="vendor-contact">
@@ -352,7 +352,7 @@
                                                         <div class="vendor-detail-label">LOCATION</div>
                                                         <div class="vendor-detail-value">
                                                             {% if i.city or i.state %}
-                                                                {{ i.city|default:'' }}{% if i.state %}{% if i.city %}, {% endif %}{{ i.state.name }}{% endif %}
+                                                                {{ i.city|default:'' }}{% if i.state %}{% if i.city %}, {% endif %}{{ i.state }}{% endif %}
                                                             {% else %}
                                                                 —
                                                             {% endif %}

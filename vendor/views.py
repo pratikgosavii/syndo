@@ -4,6 +4,7 @@ import json
 from decimal import Decimal
 
 from masters.filters import EventFilter
+from masters.models import product_category, product_subcategory, size as size_model
 from vendor.filters import productFilter
 
 # Create your views here.
@@ -101,6 +102,33 @@ def update_company_profile(request, company_profile_id):
     else:
 
         instance = CompanyProfile.objects.get(id=company_profile_id)
+        forms = CompanyProfileForm(instance=instance)
+
+        context = {
+            'form': forms
+        }
+        return render(request, 'add_company_profile.html', context)
+
+@login_required(login_url='login_admin')
+def update_company_profile_withoutid(request):
+
+    if request.method == 'POST':
+
+        instance = CompanyProfile.objects.get(user=request.user)
+
+        forms = CompanyProfileForm(request.POST, request.FILES, instance=instance)
+
+        if forms.is_valid():
+            forms = forms.save(commit=False)
+            forms.user = request.user  # assign user here
+            forms.save()
+            return redirect('list_company_profile')
+        else:
+            print(forms.errors)
+    
+    else:
+
+        instance = CompanyProfile.objects.get(user=request.user)
         forms = CompanyProfileForm(instance=instance)
 
         context = {
@@ -1360,6 +1388,13 @@ def add_product(request, parent_id=None):
 
             product_instance.save()
 
+            # Process multiple gallery images
+            gallery_files = request.FILES.getlist('gallery_images')
+            for f in gallery_files:
+                if f and f.content_type and f.content_type.startswith('image/'):
+                    img = ProductImage.objects.create(image=f)
+                    product_instance.gallery_images.add(img)
+
             addon_formset = AddonFormSet(
                 request.POST, request.FILES,
                 instance=product_instance,
@@ -1401,12 +1436,40 @@ def add_product(request, parent_id=None):
         variant_formset = VariantFormSet(prefix='print_variants')
         customize_variant_formset = CustomizePrintVariantFormSet(prefix='customize_print_variants')
 
+    categories = [{'id': c.id, 'name': c.name} for c in product_category.objects.all().order_by('name')]
+    subcategories = [{'id': s.id, 'name': s.name, 'category_id': s.category_id} for s in product_subcategory.objects.select_related('category').order_by('name')]
+    sizes = [{'id': sz.id, 'name': sz.name} for sz in size_model.objects.all().order_by('name')]
+    company = CompanyProfile.objects.filter(user=request.user).first()
+    has_gstin = bool(company and company.gstin and company.gstin.strip())
+    settings_obj, _ = ProductSettings.objects.get_or_create(user=request.user)
+    product_settings_json = json.dumps({
+        'wholesale_price': settings_obj.wholesale_price,
+        'stock': settings_obj.stock,
+        'imei': settings_obj.imei,
+        'low_stock_alert': settings_obj.low_stock_alert,
+        'category': settings_obj.category,
+        'sub_category': settings_obj.sub_category,
+        'brand_name': settings_obj.brand_name,
+        'color': settings_obj.color,
+        'size': settings_obj.size,
+        'batch_number': settings_obj.batch_number,
+        'expiry_date': settings_obj.expiry_date,
+        'description': settings_obj.description,
+        'image': settings_obj.image,
+        'tax': settings_obj.tax,
+        'food': settings_obj.food,
+    })
     context = {
         'form': product_form,
         'formset': addon_formset,
         'variant_formset': variant_formset,
         'customize_print_variant_formset': customize_variant_formset,
         'parent_instance': parent_instance,  # useful for template if variant
+        'categories_json': json.dumps(categories),
+        'subcategories_json': json.dumps(subcategories),
+        'sizes_json': json.dumps(sizes),
+        'has_gstin': has_gstin,
+        'product_settings_json': product_settings_json,
     }
     return render(request, 'add_product.html', context)
 
@@ -1448,6 +1511,13 @@ def update_product(request, product_id):
             product_instance.user = request.user
             product_instance.save()
 
+            # Process multiple gallery images (add to existing)
+            gallery_files = request.FILES.getlist('gallery_images')
+            for f in gallery_files:
+                if f and f.content_type and f.content_type.startswith('image/'):
+                    img = ProductImage.objects.create(image=f)
+                    product_instance.gallery_images.add(img)
+
             addon_formset.save()
             variant_formset.save()
             customize_variant_formset.save()
@@ -1465,12 +1535,40 @@ def update_product(request, product_id):
         variant_formset = VariantFormSet(instance=instance, prefix='print_variants')
         customize_variant_formset = CustomizePrintVariantFormSet(instance=instance, prefix='customize_print_variants')
 
+    categories = [{'id': c.id, 'name': c.name} for c in product_category.objects.all().order_by('name')]
+    subcategories = [{'id': s.id, 'name': s.name, 'category_id': s.category_id} for s in product_subcategory.objects.select_related('category').order_by('name')]
+    sizes = [{'id': sz.id, 'name': sz.name} for sz in size_model.objects.all().order_by('name')]
+    company = CompanyProfile.objects.filter(user=request.user).first()
+    has_gstin = bool(company and company.gstin and company.gstin.strip())
+    settings_obj, _ = ProductSettings.objects.get_or_create(user=request.user)
+    product_settings_json = json.dumps({
+        'wholesale_price': settings_obj.wholesale_price,
+        'stock': settings_obj.stock,
+        'imei': settings_obj.imei,
+        'low_stock_alert': settings_obj.low_stock_alert,
+        'category': settings_obj.category,
+        'sub_category': settings_obj.sub_category,
+        'brand_name': settings_obj.brand_name,
+        'color': settings_obj.color,
+        'size': settings_obj.size,
+        'batch_number': settings_obj.batch_number,
+        'expiry_date': settings_obj.expiry_date,
+        'description': settings_obj.description,
+        'image': settings_obj.image,
+        'tax': settings_obj.tax,
+        'food': settings_obj.food,
+    })
     context = {
         'form': product_form,
         'formset': addon_formset,
         'variant_formset': variant_formset,
         'customize_print_variant_formset': customize_variant_formset,
         'instance': instance,
+        'categories_json': json.dumps(categories),
+        'subcategories_json': json.dumps(subcategories),
+        'sizes_json': json.dumps(sizes),
+        'has_gstin': has_gstin,
+        'product_settings_json': product_settings_json,
     }
     return render(request, 'add_product.html', context)
 
@@ -1570,172 +1668,383 @@ from num2words import num2words
 from datetime import datetime
 
 
+from io import BytesIO
+from datetime import datetime
+from django.http import HttpResponse
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+from reportlab.lib import colors
+from reportlab.graphics.barcode import code128
+
+
+# ----------------------------
+# Helpers
+# ----------------------------
+def draw_mixed_text(c, x, y, parts, font_size=9, gap=2):
+    """
+    Draws text on one line with mixed styles.
+    parts = [
+      {"text": "Item:", "font": "Helvetica-Bold"},
+      {"text": " The big product name", "font": "Helvetica"},
+    ]
+    Returns total width.
+    """
+    cursor_x = x
+    total_w = 0
+    for p in parts:
+        font = p.get("font", "Helvetica")
+        text = p.get("text", "")
+        c.setFont(font, font_size)
+        c.drawString(cursor_x, y, text)
+        w = c.stringWidth(text, font, font_size)
+        cursor_x += w
+        total_w += w + gap
+    return max(0, total_w - gap)
+
+
+def wrap_text_by_width(c, text, font_name, font_size, max_width):
+    """
+    Simple word wrap based on stringWidth.
+    Returns list of lines.
+    """
+    words = (text or "").split()
+    if not words:
+        return [""]
+
+    lines = []
+    line = words[0]
+    for w in words[1:]:
+        test = line + " " + w
+        if c.stringWidth(test, font_name, font_size) <= max_width:
+            line = test
+        else:
+            lines.append(line)
+            line = w
+    lines.append(line)
+    return lines
+
+
+def format_barcode_digits(value):
+    """
+    Makes "1 3 4 5 6 7 8" style output.
+    If value contains non-digits, we still space characters.
+    """
+    chars = [ch for ch in str(value)]
+    return " ".join(chars)
+
+
+# ----------------------------
+# Core label renderer
+# ----------------------------
+def render_label(c, data, layout):
+    """
+    Draws ONE label on the current PDF page.
+    data keys expected:
+      company_name, item_name, mrp, discount, note, package_date, barcode_value,
+      sale_price, price_in_text
+    layout: dict of sizes/positions
+    """
+    W = layout["page_w"]
+    H = layout["page_h"]
+    pad = layout["pad"]
+
+    # Background (white)
+    c.setFillColor(colors.white)
+    c.rect(0, 0, W, H, stroke=0, fill=1)
+
+    # Outer rounded border
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(1)
+    c.roundRect(pad, pad, W - 2 * pad, H - 2 * pad, 3 * mm, stroke=1, fill=0)
+
+    # Column bounds (keep a consistent grid)
+    inner_left = pad + 4 * mm
+    inner_right = W - pad - 4 * mm
+    header_top = H - pad - 4 * mm
+
+    # Two-column split (right column is fixed width for barcode group)
+    right_col_w = 44 * mm
+    gutter = 4 * mm
+    right_x0 = inner_right - right_col_w
+    left_x0 = inner_left
+    left_x1 = right_x0 - gutter  # end of left column
+
+    # ----------------------------
+    # 1) Header
+    # ----------------------------
+    company = (data.get("company_name") or "COMPANY NAME").upper()
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(W / 2, header_top - 2 * mm, company)
+
+    # baseline after header
+    y = header_top - 9 * mm
+
+    # ----------------------------
+    # 2) Item row (full width)
+    # ----------------------------
+    c.setFillColor(colors.black)
+    item_name = data.get("item_name") or "The big product name here"
+
+    item_label_fs = 10
+    value_fs = 10
+    label_w = c.stringWidth("Item:", "Helvetica-Bold", item_label_fs) + 2
+    max_item_value_w = (inner_right - inner_left) - label_w
+
+    item_lines = wrap_text_by_width(c, item_name, "Helvetica", value_fs, max_item_value_w)
+    item_lines = item_lines[:2]
+
+    draw_mixed_text(
+        c,
+        inner_left,
+        y,
+        [{"text": "Item:", "font": "Helvetica-Bold"},
+         {"text": " " + item_lines[0], "font": "Helvetica"}],
+        font_size=item_label_fs
+    )
+    y -= 5.2 * mm
+
+    if len(item_lines) > 1:
+        c.setFont("Helvetica", value_fs)
+        c.drawString(inner_left + label_w, y, item_lines[1])
+        y -= 5.2 * mm
+
+    y -= 1.2 * mm
+
+    # ----------------------------
+    # 3) Left column: MRP + Discount | Right column: Package Date (same line)
+    # ----------------------------
+    mrp = data.get("mrp", 1000)
+    discount = data.get("discount", 1000)
+
+    line_fs = 10
+    line_gap = 5.3 * mm
+
+    draw_mixed_text(
+        c,
+        left_x0,
+        y,
+        [{"text": "MRP :", "font": "Helvetica-Bold"},
+         {"text": f"  {mrp}", "font": "Helvetica"}],
+        font_size=line_fs
+    )
+    # Package Date: same line as MRP, right-aligned, label bold / date regular
+    package_date = data.get("package_date") or "DD/MM/YYYY"
+    c.setFillColor(colors.black)
+    date_w = c.stringWidth(package_date, "Helvetica", line_fs)
+    label_w = c.stringWidth("Package Date - ", "Helvetica-Bold", line_fs)
+    c.setFont("Helvetica", line_fs)
+    c.drawRightString(inner_right, y, package_date)
+    c.setFont("Helvetica-Bold", line_fs)
+    c.drawString(inner_right - date_w - label_w, y, "Package Date - ")
+    y -= line_gap
+
+    draw_mixed_text(
+        c,
+        left_x0,
+        y,
+        [{"text": "Discount :", "font": "Helvetica-Bold"},
+         {"text": f"  {discount}", "font": "Helvetica"}],
+        font_size=line_fs
+    )
+    y -= line_gap
+
+    # ----------------------------
+    # 3) Note box (left column, below discount)
+    # ----------------------------
+    # Box geometry
+    note_box_h = 14 * mm
+    note_box_w = (left_x1 - left_x0)
+    note_box_y = pad + 2 * mm  # anchored at bottom, below discount
+
+    # Outline (light gray) + rounded corners
+    c.setStrokeColor(colors.HexColor("#AAB2BD"))
+    c.setLineWidth(0.9)
+    c.setFillColor(colors.white)
+    c.roundRect(left_x0, note_box_y, note_box_w, note_box_h, 2.3 * mm, stroke=1, fill=1)
+
+    # Note text inside
+    # Force the idea of wrapping so "her" ends up on the 2nd line (as you requested).
+    # We'll do it by default with proper wrapping at a safe width.
+    note = (data.get("note") or "").strip()
+    note_fs = 9
+    inner_pad = 2.5 * mm
+
+    text_x = left_x0 + inner_pad
+    text_y_top = note_box_y + note_box_h - inner_pad - 2  # top inset
+
+    # "Note :" bold then rest normal, wrapped
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", note_fs)
+
+    # Build value lines with wrapping
+    value_max_w = note_box_w - inner_pad * 2 - c.stringWidth("Note :", "Helvetica-Bold", note_fs) - 2
+    value_lines = wrap_text_by_width(c, note, "Helvetica", note_fs, value_max_w)
+    if not value_lines:
+        value_lines = [""]
+
+    # First line mixed
+    draw_mixed_text(
+        c,
+        text_x,
+        text_y_top - note_fs,
+        [{"text": "Note :", "font": "Helvetica-Bold"},
+         {"text": " " + value_lines[0], "font": "Helvetica"}],
+        font_size=note_fs
+    )
+
+    # Remaining lines (regular), limited to fit box
+    max_lines = 2  # keep it neat like your reference
+    c.setFont("Helvetica", note_fs)
+    for idx, line in enumerate(value_lines[1:max_lines], start=1):
+        c.drawString(text_x, text_y_top - note_fs - (idx * (note_fs + 2)), line)
+
+    # ----------------------------
+    # 4) Right column: Barcode group + Sale Price + price-in-text
+    # ----------------------------
+    # Barcode block area
+    barcode_value = data.get("barcode_value") or "1345678"
+    sale_price = data.get("sale_price", 1000)
+    price_in_text = (data.get("price_in_text") or "").strip()
+
+    # Barcode position: lifted up so digits, Sale Price, In Word fit below without overlap
+    barcode_h = 8 * mm
+    barcode_w = right_col_w
+    barcode_x = right_x0
+    barcode_y = note_box_y + note_box_h - 0 * mm  # lifted above note box, leaves room for text below
+
+    # Generate barcode (Code128)
+    # Tune barWidth for a premium dense look without bleeding.
+    bc = code128.Code128(str(barcode_value), barHeight=barcode_h, barWidth=0.55)
+    # Center barcode inside right column
+    bc_draw_w = bc.width
+    bc_x = barcode_x + (barcode_w - bc_draw_w) / 2
+    bc.drawOn(c, bc_x, barcode_y)
+
+    # Barcode digits below (spaced)
+    digits = format_barcode_digits(barcode_value)
+    c.setFont("Helvetica", 7.5)
+    digits_y = barcode_y - 3.5 * mm
+    c.drawCentredString(barcode_x + barcode_w / 2, digits_y, digits)
+
+    # Sale Price (bold + larger, but smaller than header)
+    sale_y = digits_y - 6 * mm
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(barcode_x, sale_y, "Sale Price :")
+    c.setFont("Helvetica-Bold", 13)
+    sale_label_w = c.stringWidth("Sale Price :", "Helvetica-Bold", 13)
+    c.drawString(barcode_x + sale_label_w + 2.5 * mm, sale_y, f"{sale_price}")
+
+    # Price in text / In Word (small, regular) - only when set
+    if price_in_text:
+        c.setFont("Helvetica", 8.5)
+        c.setFillColor(colors.HexColor("#2F3A45"))
+        c.drawString(barcode_x, sale_y - 4.7 * mm, price_in_text)
+
+
+# ----------------------------
+# Django View
+# ----------------------------
 def generate_barcode(request):
-    # Example product details (replace these with DB data)
-
-    if request.method == "POST":
-
-        ids = request.POST.getlist("selected_products")
-        note_text = (request.POST.get("note") or "").strip()
-
-        if not ids:
-            return HttpResponse("No products selected", status=400)
-
-        # Build list of (product, copies) for each selected product
-        product_copies_list = []
-        for pid in ids:
-            try:
-                copies = max(1, int(request.POST.get("copies_%s" % pid, 1) or 1))
-            except (ValueError, TypeError):
-                copies = 1
-            prod = product.objects.filter(id=pid, user=request.user, is_active=True).first()
-            if prod:
-                product_copies_list.append((prod, copies))
-        if not product_copies_list:
-            return HttpResponse("No valid products selected", status=400)
-        products = [p for p, _ in product_copies_list]
-        copies_per_product = {p.id: c for p, c in product_copies_list} 
-        try: 
-            user_settings = BarcodeSettings.objects.get(user=request.user) 
-        except BarcodeSettings.DoesNotExist: user_settings = None
-
-        try: 
-            company = CompanyProfile.objects.get(user=request.user) 
-            company_name = company.company_name or "COMPANY NAME" 
-        except CompanyProfile.DoesNotExist: 
-            company_name = "COMPANY NAME"
-        
-       
-
-
-        # Dynamically set layout size
-        # if user_settings and user_settings.barcode_size == "50x100":
-        #     PAGE_WIDTH = 100 * mm
-        #     PAGE_HEIGHT = 50 * mm
-        #     barcode_height = 18 * mm
-        #     font_title = 10
-        #     font_text = 8
-        #     font_price = 9
-        # else:
-        #     PAGE_WIDTH = 50 * mm
-        #     PAGE_HEIGHT = 25 * mm
-        #     barcode_height = 10 * mm
-        #     font_title = 7
-        #     font_text = 5
-        #     font_price = 6
-
-        PAGE_WIDTH = 100 * mm
-        PAGE_HEIGHT = 50 * mm
-        barcode_height = 18 * mm
-        font_title = 10
-        font_text = 9
-        font_price = 9
-
-        # Create PDF
-
-        buffer = BytesIO()
-        p = canvas.Canvas(buffer, pagesize=(PAGE_WIDTH, PAGE_HEIGHT))
-
-        for i in products:
-            copies = copies_per_product.get(i.id, 1)
-            for _ in range(copies):
-                item_name = i.name
-                mrp = i.mrp if i.mrp is not None else 0
-                discount = i.wholesale_price
-                sale_price = i.sales_price if i.sales_price is not None else (i.wholesale_price or 0)
-                package_date = datetime.now().strftime("%d/%m/%Y")
-                note = note_text if note_text else ""
-                barcode_value = str("svindo") + str(i.id)
-
-                # Margin padding
-                x_margin = 2 * mm
-                y_margin = 2 * mm
-
-                # Draw rounded border
-                p.setStrokeColor(colors.black)
-                p.roundRect(x_margin, y_margin, PAGE_WIDTH - 2 * x_margin, PAGE_HEIGHT - 2 * y_margin, 3 * mm, stroke=1, fill=0)
-
-                # Starting coordinates
-                x_left = x_margin + 5
-                y_top = PAGE_HEIGHT - y_margin - 8
-
-                # === Company Name (Top Center) ===
-                p.setFont("Helvetica-Bold", font_title + 2)
-                p.drawCentredString(PAGE_WIDTH / 2, y_top - 4, company_name)
-
-                # Add extra vertical gap below company name
-                company_name_gap = 10
-                content_start_y = y_top - 4 - company_name_gap
-
-                # === Left Side (Item / MRP / Discount) ===
-                p.setFont("Helvetica-Bold", font_text)
-                line_gap = 12
-                start_y = content_start_y - 10
-
-                # Item
-                p.drawString(x_left, start_y, "Item:")
-                p.setFont("Helvetica", font_text)
-                p.drawString(x_left + 28, start_y, str(item_name))
-
-                # MRP
-                p.setFont("Helvetica-Bold", font_text)
-                p.drawString(x_left, start_y - line_gap, "MRP:")
-                p.setFont("Helvetica", font_text)
-                p.drawString(x_left + 28, start_y - line_gap, f"{mrp:.2f}")
-
-                # Discount
-                p.setFont("Helvetica-Bold", font_text)
-                p.drawString(x_left, start_y - 2 * line_gap, "Discount:")
-                p.setFont("Helvetica", font_text)
-                p.drawString(x_left + 45, start_y - 2 * line_gap, str(discount if discount else "None"))
-
-                # === NOTE BOX (Anchored near bottom left) ===
-                note_box_height = 12 * mm
-                note_box_y = y_margin + 8 * mm
-                p.setFont("Helvetica-Bold", font_text)
-                p.drawString(x_left, note_box_y + 14 * mm, "Note:")
-                p.rect(x_left, note_box_y-2, 45 * mm, 12 * mm)
-                p.setFont("Helvetica", font_text - 1)
-                display_note = (note[:50] + "...") if len(note) > 50 else note
-                p.drawString(x_left + 5, note_box_y + note_box_height / 2 - 3, display_note)
-
-                # === RIGHT SIDE (Package Date / Barcode / Sale Price / In Word) ===
-                right_start_x = PAGE_WIDTH - (x_margin + 45 * mm)
-                right_section_offset = 25
-                right_top_y = y_top - right_section_offset
-
-                p.setFont("Helvetica", font_text)
-                p.drawString(right_start_x, right_top_y, f"Package Date - {package_date}")
-
-                barcode_top_gap = 5 * mm
-                barcode = code128.Code128(barcode_value, barHeight=barcode_height, barWidth=0.6)
-                barcode_x = PAGE_WIDTH - x_margin - 40 * mm
-                barcode_y = right_top_y - barcode_top_gap - barcode_height
-                barcode.drawOn(p, barcode_x, barcode_y)
-
-                price_gap = 10
-                p.setFont("Helvetica-Bold", font_price)
-                p.drawString(right_start_x, barcode_y - price_gap, f"Sale Price: {sale_price:.2f}")
-
-                p.setFont("Helvetica", font_text - 1)
-                inword_text = f"In Word: {num2words(sale_price)}"
-                text_width = p.stringWidth(inword_text, "Helvetica", font_text - 1)
-                p.drawString(PAGE_WIDTH - x_margin - text_width - 5, note_box_y - 12, inword_text)
-                # Finish up
-                p.showPage()
-        p.save()
-
-        buffer.seek(0)
-        return HttpResponse(buffer, content_type='application/pdf')
-
-
-    else:
-
+    if request.method != "POST":
         data = product.objects.filter(user=request.user, is_active=True)
-        context = {
-            'data': data
-        }
-        return render(request, 'list_product_barcode.html', context)
+        context = {"data": data}
+        return render(request, "list_product_barcode.html", context)
+
+    ids = request.POST.getlist("selected_products")
+    note_text = (request.POST.get("note") or "").strip()
+
+    if not ids:
+        return HttpResponse("No products selected", status=400)
+
+    product_copies_list = []
+    for pid in ids:
+        try:
+            copies = max(1, int(request.POST.get(f"copies_{pid}", 1) or 1))
+        except (ValueError, TypeError):
+            copies = 1
+
+        prod = product.objects.filter(id=pid, user=request.user, is_active=True).first()
+        if prod:
+            product_copies_list.append((prod, copies))
+
+    if not product_copies_list:
+        return HttpResponse("No valid products selected", status=400)
+
+    try:
+        user_settings = BarcodeSettings.objects.get(user=request.user)
+    except BarcodeSettings.DoesNotExist:
+        user_settings = None
+
+    try:
+        company = CompanyProfile.objects.get(user=request.user)
+        company_name = (company.company_name or "COMPANY NAME").strip()
+    except CompanyProfile.DoesNotExist:
+        company_name = "COMPANY NAME"
+
+    PAGE_W = 100 * mm
+    PAGE_H = 50 * mm
+
+    layout = {
+        "page_w": PAGE_W,
+        "page_h": PAGE_H,
+        "pad": 2.2 * mm,
+    }
+
+    buf = BytesIO()
+    c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
+
+    show_mrp = True if user_settings is None else bool(getattr(user_settings, "mrp_label", True))
+    show_discount = True if user_settings is None else bool(getattr(user_settings, "show_discount", True))
+    show_package_date = True if user_settings is None else bool(getattr(user_settings, "show_package_date", True))
+    show_price_text = True if user_settings is None else bool(getattr(user_settings, "show_price_with_text", True))
+
+    for prod, copies in product_copies_list:
+        for _ in range(copies):
+            item_name = prod.name or "The big product name here"
+            mrp = int(prod.mrp) if prod.mrp is not None else 0
+            discount = int(prod.wholesale_price) if prod.wholesale_price is not None else 0
+            sale_price = int(prod.sales_price) if prod.sales_price is not None else discount
+            package_date = datetime.now().strftime("%d/%m/%Y")
+
+            barcode_value = f"1345678{prod.id}"
+
+            # Price in words (In Word) - amount only, no Rupees/Only
+            price_in_text_val = ""
+            if show_price_text:
+                try:
+                    price_in_text_val = num2words(sale_price, lang='en_IN').title()
+                except Exception:
+                    price_in_text_val = str(sale_price)
+
+            data = {
+                "company_name": company_name,
+                "item_name": item_name,
+                "mrp": (mrp if show_mrp else ""),
+                "discount": (discount if show_discount else ""),
+                "note": note_text,
+                "package_date": (package_date if show_package_date else "DD/MM/YYYY"),
+                "barcode_value": barcode_value,
+                "sale_price": sale_price,
+                "price_in_text": price_in_text_val,
+            }
+
+            if not show_mrp:
+                data["mrp"] = ""
+            if not show_discount:
+                data["discount"] = ""
+            if not show_package_date:
+                data["package_date"] = "DD/MM/YYYY"
+            if not show_price_text:
+                data["price_in_text"] = ""
+
+            render_label(c, data, layout)
+            c.showPage()
+
+    c.save()
+    buf.seek(0)
+    return HttpResponse(buf.getvalue(), content_type="application/pdf")
 
         
 
@@ -1749,7 +2058,7 @@ def product_setting(request):
 
     if request.method == 'POST':
         checkbox_fields = [
-            'wholesale_price', 'stock', 'imei', 'low_stock_alert', 'category', 'sub_category', 'brand_name', 'color', 'size',
+            'wholesale_price', 'stock', 'imei', 'low_stock_alert', 'brand_name', 'color', 'size',
             'batch_number', 'expiry_date', 'description', 'image', 'tax', 'food',
             'instant_delivery', 'self_pickup', 'general_delivery', 'shop_orders',
             'return_policy', 'cod', 'replacement', 'shop_exchange', 'shop_warranty', 'brand_warranty',
@@ -1865,59 +2174,43 @@ class get_product(ListAPIView):
 
 @login_required(login_url='login_admin')
 def add_addon(request):
-
+    categories = [{'id': c.id, 'name': c.name} for c in product_category.objects.all().order_by('name')]
     if request.method == 'POST':
-
         forms = addon_Form(request.POST, request.FILES)
-
         if forms.is_valid():
             forms = forms.save(commit=False)
-            forms.user = request.user  # assign user here
+            forms.user = request.user
             forms.save()
             return redirect('list_addon')
         else:
             print(forms.errors)
-            context = {
-                'form': forms
-            }
+            context = {'form': forms, 'categories_json': json.dumps(categories)}
             return render(request, 'add_addon.html', context)
-    
     else:
-
         forms = addon_Form()
-
-        context = {
-            'form': forms
-        }
+        context = {'form': forms, 'categories_json': json.dumps(categories)}
         return render(request, 'add_addon.html', context)
 
         
 
 @login_required(login_url='login_admin')
 def update_addon(request, addon_id):
-
+    categories = [{'id': c.id, 'name': c.name} for c in product_category.objects.all().order_by('name')]
+    instance = addon.objects.get(id=addon_id)
     if request.method == 'POST':
-
-        instance = addon.objects.get(id=addon_id)
-
         forms = addon_Form(request.POST, request.FILES, instance=instance)
-
         if forms.is_valid():
             forms = forms.save(commit=False)
-            forms.user = request.user  # assign user here
+            forms.user = request.user
             forms.save()
             return redirect('list_addon')
         else:
             print(forms.errors)
-    
+            context = {'form': forms, 'categories_json': json.dumps(categories)}
+            return render(request, 'add_addon.html', context)
     else:
-
-        instance = addon.objects.get(id=addon_id)
         forms = addon_Form(instance=instance)
-
-        context = {
-            'form': forms
-        }
+        context = {'form': forms, 'categories_json': json.dumps(categories)}
         return render(request, 'add_addon.html', context)
 
         
@@ -1932,10 +2225,12 @@ def delete_addon(request, addon_id):
 
 @login_required(login_url='login_admin')
 def list_addon(request):
-
-    data = addon.objects.filter(user = request.user)
+    data = addon.objects.filter(user=request.user).select_related('product_category')
+    categories = list(data.values_list('product_category__name', flat=True).distinct().order_by('product_category__name'))
+    categories = [c for c in categories if c]
     context = {
-        'data': data
+        'data': data,
+        'categories': categories,
     }
     return render(request, 'list_addon.html', context)
 
@@ -3215,7 +3510,7 @@ def add_expense(request):
 
     if request.method == 'POST':
 
-        forms = ExpenseForm(request.POST, request.FILES)
+        forms = ExpenseForm(request.POST, request.FILES, user=request.user)
 
         if forms.is_valid():
             forms = forms.save(commit=False)
@@ -3225,18 +3520,18 @@ def add_expense(request):
         else:
             print(forms.errors)
             context = {
-                'form': forms
+                'form': forms,
+                'banks': vendor_bank.objects.filter(user=request.user),
             }
             return render(request, 'add_expense.html', context)
     
     else:
 
-        forms = ExpenseForm()
+        forms = ExpenseForm(user=request.user)
 
         context = {
             'form': forms,
-            "banks" : vendor_bank.objects.all(),
-
+            'banks': vendor_bank.objects.filter(user=request.user),
         }
         return render(request, 'add_expense.html', context)
 
@@ -3249,21 +3544,27 @@ def update_expense(request, expense_id):
 
         instance = Expense.objects.get(id=expense_id)
 
-        forms = ExpenseForm(request.POST, request.FILES, instance=instance)
+        forms = ExpenseForm(request.POST, request.FILES, instance=instance, user=request.user)
 
         if forms.is_valid():
             forms.save()
             return redirect('list_expense')
         else:
             print(forms.errors)
+            context = {
+                'form': forms,
+                'banks': vendor_bank.objects.filter(user=request.user),
+            }
+            return render(request, 'add_expense.html', context)
     
     else:
 
         instance = Expense.objects.get(id=expense_id)
-        forms = ExpenseForm(instance=instance)
+        forms = ExpenseForm(instance=instance, user=request.user)
 
         context = {
-            'form': forms
+            'form': forms,
+            'banks': vendor_bank.objects.filter(user=request.user),
         }
         return render(request, 'add_expense.html', context)
 
@@ -3662,14 +3963,10 @@ def pos(request):
                 sale_instance.save()
 
                 # Process Sale Items
-                total_items = 0
-                total_amount = Decimal("0.00")
-
                 for p, q, pr in zip(products, quantities, prices):
                     if p and q and pr:
                         qty = int(q)
                         price = Decimal(pr)
-                        amount = qty * price
 
                         SaleItem.objects.create(
                             user=request.user,
@@ -3679,15 +3976,14 @@ def pos(request):
                             price=price,
                         )
 
-                        total_items += qty
-                        total_amount += amount
-
                 # Save wholesale
                 invoice = wholesale_form.save(commit=False)
                 invoice.user = request.user
                 invoice.sale = sale_instance
                 invoice.save()
 
+                # Recalculate and save Sale totals from items + wholesale + discount
+                _update_sale_totals(sale_instance, invoice)
 
                 return redirect("sale_bill_details", sale_id=sale_instance.id)
 
@@ -3778,9 +4074,6 @@ def update_sale(request, sale_id):
                 if delete_item_ids:
                     SaleItem.objects.filter(id__in=delete_item_ids, sale=sale_instance).delete()
 
-                total_items = 0
-                total_amount = Decimal("0.00")
-
                 # 2. Iterate through rows
                 for idx, (p, q, pr) in enumerate(zip(products, quantities, prices)):
                     if not (p and q and pr):
@@ -3788,7 +4081,6 @@ def update_sale(request, sale_id):
 
                     qty = int(q)
                     price = Decimal(pr)
-                    amount = qty * price
 
                     if idx < len(existing_item_ids) and existing_item_ids[idx] and existing_item_ids[idx] not in delete_item_ids:
                         # Update existing
@@ -3807,14 +4099,14 @@ def update_sale(request, sale_id):
                             price=price,
                         )
 
-                    total_items += qty
-                    total_amount += amount
-
                 # 3. Save wholesale
                 invoice = wholesale_form.save(commit=False)
                 invoice.user = request.user
                 invoice.sale = sale_instance
                 invoice.save()
+
+                # Recalculate and save Sale totals from items + wholesale + discount
+                _update_sale_totals(sale_instance, invoice)
 
                 return redirect("sale_bill_details", sale_id=sale_instance.id)
 
@@ -3864,9 +4156,51 @@ def delete_sale(request, sale_id):
 
     return redirect('list_sale')
 
+
+def _update_sale_totals(sale_instance, wholesale_instance=None):
+    """Recalculate Sale totals from SaleItems + delivery/packaging - discount - advance."""
+    items = SaleItem.objects.filter(sale=sale_instance)
+    agg = items.aggregate(
+        total_taxable=Sum('amount'),
+        total_gst=Sum('tax_amount'),
+        total_qty=Sum('quantity'),
+    )
+    total_taxable = agg['total_taxable'] or Decimal('0')
+    total_gst = agg['total_gst'] or Decimal('0')
+    total_items = int(agg['total_qty'] or 0)
+
+    delivery = Decimal('0')
+    packaging = Decimal('0')
+    if wholesale_instance:
+        delivery = wholesale_instance.delivery_charges or Decimal('0')
+        packaging = wholesale_instance.packaging_charges or Decimal('0')
+
+    total_amount_before_discount = total_taxable + total_gst + delivery + packaging
+    discount_amount = getattr(sale_instance, 'discount_amount', None) or Decimal('0')
+    advance_amount = getattr(sale_instance, 'advance_payment_amount', None) or getattr(sale_instance, 'advance_amount', None) or Decimal('0')
+    total_amount = total_amount_before_discount - discount_amount
+    balance_amount = total_amount - advance_amount
+
+    sale_instance.total_items = total_items
+    sale_instance.total_taxable_amount = total_taxable
+    sale_instance.total_gst_amount = total_gst
+    sale_instance.total_amount_before_discount = total_amount_before_discount
+    sale_instance.total_amount = total_amount
+    sale_instance.advance_amount = advance_amount
+    sale_instance.balance_amount = balance_amount
+    sale_instance.save(update_fields=[
+        'total_items', 'total_taxable_amount', 'total_gst_amount',
+        'total_amount_before_discount', 'total_amount', 'advance_amount', 'balance_amount',
+    ])
+
+
 def sale_bill_details(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id)
-    wholesale = pos_wholesale.objects.filter(sale=sale, user= request.user).first()  # get wholesale data if exists
+    wholesale = pos_wholesale.objects.filter(sale=sale, user=request.user).first()
+    # Recalculate totals if missing (e.g. old records before totals were saved)
+    if sale.items.exists() and (sale.total_taxable_amount == 0 or sale.total_amount == 0):
+        _update_sale_totals(sale, wholesale)
+        sale.refresh_from_db()
 
     context = {
         'sale': sale,
@@ -3948,7 +4282,7 @@ def sale_invoice(request, sale_id):
     # Determine store GST type (CGST if vendor/customer state matches else IGST)
     vendor_state_name = None
     if getattr(sale, "company_profile", None) and getattr(sale.company_profile, "state", None):
-        vendor_state_name = sale.company_profile.state.name
+        vendor_state_name = sale.company_profile.state
     customer_state_name = getattr(sale.customer, "billing_state", None) or getattr(sale.customer, "dispatch_state", None)
     same_state = False
     if vendor_state_name and customer_state_name:
@@ -7038,12 +7372,6 @@ class PrintVariantChoiceAPIView(APIView):
 
     def get(self, request):
         return Response({
-            "paper_choices": [
-                {"value": key, "label": label} for key, label in PrintVariant.PAPER_CHOICES
-            ],
-            "color_type_choices": [
-                {"value": key, "label": label} for key, label in PrintVariant.COLOR_CHOICES
-            ],
             "unit_choices": [
                 {"value": key, "label": label} for key, label in product.UNIT_CHOICES
             ],
@@ -7060,6 +7388,10 @@ class PrintVariantViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 
+class CustomizePrintVariantViewSet(viewsets.ModelViewSet):
+    queryset = CustomizePrintVariant.objects.all()
+    serializer_class = CustomizePrintVariantSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ReminderSettingViewSet(viewsets.ModelViewSet):
@@ -7314,7 +7646,7 @@ class customer_sale_invoice(APIView):
         # Determine store GST type (CGST if vendor/customer state matches else IGST)
         vendor_state_name = None
         if getattr(sale, "company_profile", None) and getattr(sale.company_profile, "state", None):
-            vendor_state_name = sale.company_profile.state.name
+            vendor_state_name = sale.company_profile.state
         customer_state_name = getattr(sale.customer, "billing_state", None) or getattr(sale.customer, "dispatch_state", None)
         same_state = False
         if vendor_state_name and customer_state_name:

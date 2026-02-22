@@ -221,6 +221,30 @@ def _get_parent_field_name(ledger_model):
     return name.replace("Ledger", "").lower()
 
 
+def _get_invoice_label(transaction_type, reference_id):
+    """Get invoice/reference number for display; falls back to ref #id if not found."""
+    if reference_id is None:
+        return "-"
+    try:
+        if transaction_type == "sale":
+            inv = Sale.objects.filter(pk=reference_id).values_list("invoice_number", flat=True).first()
+            if inv:
+                return inv
+            # Wholesale: reference_id is sale.id, check pos_wholesale
+            inv = pos_wholesale.objects.filter(sale_id=reference_id).values_list("invoice_number", flat=True).first()
+            return inv or f"#{reference_id}"
+        if transaction_type == "purchase":
+            inv = Purchase.objects.filter(pk=reference_id).values_list("purchase_code", flat=True).first()
+            return inv or f"#{reference_id}"
+        if transaction_type == "expense":
+            return f"EXP-#{reference_id}"
+        if transaction_type in ("payment", "deposit", "withdrawal"):
+            return f"PAY-#{reference_id}"
+    except Exception:
+        pass
+    return f"#{reference_id}"
+
+
 def _group_existing_by_parent(ledger_model, transaction_type, reference_id):
     """
     Return mapping of { parent_or_user: total_amount } for entries matching transaction & ref.
@@ -250,6 +274,7 @@ def reset_ledger_for_reference(ledger_model, transaction_type, reference_id):
         if not total or Decimal(total) == 0:
             continue
         delta = -Decimal(total)
+        inv_label = _get_invoice_label(transaction_type, reference_id)
         if ledger_model.__name__ == "CashLedger":
             create_ledger(
                 None,
@@ -257,7 +282,7 @@ def reset_ledger_for_reference(ledger_model, transaction_type, reference_id):
                 transaction_type,
                 reference_id,
                 delta,
-                f"Reversal for ref #{reference_id}",
+                f"Reversal for invoice {inv_label}",
                 user=parent_or_user,
             )
         else:
@@ -267,7 +292,7 @@ def reset_ledger_for_reference(ledger_model, transaction_type, reference_id):
                 transaction_type,
                 reference_id,
                 delta,
-                f"Reversal for ref #{reference_id}",
+                f"Reversal for invoice {inv_label}",
             )
 
 

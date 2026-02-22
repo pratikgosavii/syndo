@@ -1,7 +1,7 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Create Category{% endblock title %}
+{% block title %}Add Purchase{% endblock title %}
 
 
 {% block extra_css %}
@@ -11,28 +11,49 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
-        body { background-color: #f8f9fa; padding-bottom: 20px; }
-        .form-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-        .section-card { border: 1px solid #eee; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; }
-        .section-title { font-weight: 600; color: #775599; margin-bottom: 1rem; font-size: 1rem; }
-        .section-title .bi { margin-right: 0.5rem; opacity: 0.9; }
-        .form-label { font-weight: 500; color: #333; }
-        /* Payment section: grey UI to match reference */
-        .payment-section-card { border: 1px solid #dee2e6; border-radius: 10px; margin-bottom: 1.5rem; background: #fff; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-        .payment-section-card .payment-section-header { background: #e9ecef; padding: 12px 1.25rem; font-weight: 700; color: #495057; font-size: 1rem; border-bottom: 1px solid #dee2e6; }
-        .payment-section-card .payment-section-header .bi { margin-right: 0.5rem; color: #6c757d; }
-        .payment-section-card .payment-section-body { padding: 1.25rem; background: #fafafa; }
+        /* Page: exact match to reference - light grey background */
+        body { background-color: #F5F7FA; padding-bottom: 20px; }
+        .form-container { background-color: transparent; padding: 0; }
+        /* Cards: white, rounded corners, subtle shadow */
+        .section-card { border: 1px solid #e9ecef; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        /* Section titles: dark grey, font-weight 600, icons peach/orange */
+        .section-title { font-weight: 600; color: #333; margin-bottom: 1rem; font-size: 1.1rem; }
+        .section-title .bi { margin-right: 0.5rem; color: #FD7E14; }
+        .form-label { font-weight: 500; color: #495057; }
+        /* Inputs: white bg, light grey border, rounded */
+        .section-card .form-control, .section-card .form-select { 
+            border: 1px solid #CED4DA; background: #fff; border-radius: 5px; 
+        }
+        .section-card .form-control:focus, .section-card .form-select:focus { 
+            border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); 
+        }
+        /* Payment section: clean card without grey header */
+        .payment-section-card { border: 1px solid #e9ecef; border-radius: 10px; margin-bottom: 1.5rem; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden; }
+        .payment-section-card .payment-section-body { padding: 1.25rem; background: #fff; }
         .payment-section-card .payment-section-body .form-label { color: #495057; }
         .payment-section-card .payment-section-body .form-control,
-        .payment-section-card .payment-section-body .form-select { border: 1px solid #ced4da; background: #fff; }
-        .btn-payment { background: #f8f9fa; border: 1px solid #ced4da; color: #6c757d; }
-        .btn-payment.btn-payment-active { background-color: #FFA500; border-color: #FFA500; color: #fff; }
+        .payment-section-card .payment-section-body .form-select { border: 1px solid #CED4DA; background: #fff; border-radius: 5px; }
+        /* Payment buttons: inactive white, active light blue */
+        .btn-payment { background: #fff; border: 1px solid #CED4DA; color: #333; border-radius: 5px; }
+        .btn-payment.btn-payment-active { background-color: #E0F2F7; border-color: #E0F2F7; color: #007BFF; }
         .btn-payment:not(.btn-payment-active):hover { border-color: #adb5bd; color: #495057; background: #fff; }
-        .form-heading { font-weight: 600; color: #775599; margin-bottom: 1rem; }
 
-        textarea[name="references"], textarea[name="notes"], textarea[name="terms"] { min-height: 60px; max-height: 60px; width: 100%; }
-        .btn-primary { background-color: #775599; border-color: #775599; }
-        .btn-primary:hover { background-color: #5e4477; border-color: #5e4477; }
+        textarea[name="references"], textarea[name="notes"], textarea[name="terms"] { min-height: 80px; resize: vertical; width: 100%; border: 1px solid #CED4DA; border-radius: 5px; }
+        .btn-primary { background-color: #007BFF; border-color: #007BFF; }
+        .btn-primary:hover { background-color: #0056b3; border-color: #0056b3; }
+        /* + New Vendor */
+        .btn-new-vendor { background-color: #FCA311 !important; border: 1px solid #FCA311 !important; color: #fff; font-weight: 600; }
+        .btn-new-vendor:hover { background-color: #e5920f !important; border-color: #e5920f !important; color: #fff; }
+        /* + Add Row: light blue bg, blue border, white text */
+        .btn-add-row { background-color: #0D6EFD; border: 1px solid #0D6EFD; color: #fff; font-weight: 600; }
+        .btn-add-row:hover { background-color: #0b5ed7; border-color: #0b5ed7; color: #fff; }
+        /* + Add to Catalog: transparent/grey, dark text */
+        .btn-add-catalog { background: #E9ECEF; border: 1px solid #CED4DA; color: #495057; }
+        .btn-add-catalog:hover { background: #dee2e6; border-color: #adb5bd; color: #495057; }
+        .btn-remove-x { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: #DC3545; border: none; border-radius: 6px; color: #fff; }
+        .btn-remove-x:hover { background: #bb2d3b; color: #fff; }
+        .purchase-code-readonly { background-color: #e9ecef !important; color: #6c757d; }
+        .subtotal-row { border-top: 1px solid #dee2e6; padding-top: 0.75rem; margin-top: 0.75rem; font-size: 1rem; font-weight: 600; }
     </style>
 
      <style>
@@ -95,7 +116,7 @@
         <div class="row">
             <div class="col-12">
                 <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                    <h4 class="mb-sm-0 font-size-18">Purchase</h4>
+                    <h4 class="mb-sm-0 fw-bold" style="font-size: 1.5rem; color: #333;">Add Purchase</h4>
                 </div>
             </div>
         </div>
@@ -108,295 +129,187 @@
           <div class="form-container">
             <form method="POST" enctype="multipart/form-data">
               {% csrf_token %}
-              <!-- Category Title Section -->
-              <div class="card mb-3">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <!-- Static purchase code display -->
-                  
-
-                      <div class="mb-3">
-                        <label class="form-label">Purchase Code</label>
-
-
-                        {% if form.purchase_code %}
-                            <!-- Add form: show readonly input -->
-                            {{ form.purchase_code }}
-                        {% else %}
-                            <!-- Update form: show static bold text -->
-                            <strong class="fw-bold">{{ form.instance.purchase_code }}</strong>
-                        {% endif %}
-                      </div>
-
-
-
-                      
-
-
-
-
-                      
-                      
-                    </div>
-
-                    <div class="text-muted">
-                      <!-- Render purchase_date as an input for editing -->
-                      {{ form.purchase_date }}
-                      {% if form.purchase_date.errors %}
-                        <div class="text-danger mt-1 small">
-                          {{ form.purchase_date.errors.0 }}
-                        </div>
-                      {% endif %}
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-
-              <!-- Vendor -->
-              <div class="card mb-3">
-                <div class="card-body">
-                  <div class="mb-3">
-                    <label for="vendor" class="form-label">
-                      <i class="bi bi-person-badge"></i> Vendor
-                    </label>
-                    <a href="{% url 'add_vendor' %}" class="btn btn-primary btn-sm ms-2">
-                      <i class="mdi mdi-plus"></i> Add Vendor
-                    </a>
-                    {{ form.vendor }}
-                    {% if form.vendor.errors %}
-                      <div class="text-danger">{{ form.vendor.errors.0 }}</div>
+              <!-- Transaction Details -->
+              <div class="section-card">
+                <h6 class="section-title"><i class="bi bi-receipt"></i> Transaction Details</h6>
+                <div class="row g-3">
+                  <div class="col-md-2">
+                    <label class="form-label">Purchase Code</label>
+                    {% if form.instance.pk %}
+                      <strong class="form-control-plaintext">{{ form.instance.purchase_code }}</strong>
+                    {% else %}
+                      <div class="form-control purchase-code-readonly" readonly>Auto-generated</div>
+                      <input type="hidden" name="purchase_code" value="">
                     {% endif %}
                   </div>
-
-                  <!-- Product -->
-                  <select id="product-options" style="display:none;">
-                    {% for p in data %}
-                      <option value="{{ p.id }}">{{ p.name }}</option>
-                    {% endfor %}
-                  </select>
-
-                  <h5 class="d-flex align-items-center flex-wrap gap-2">
-                    Products
-                    <button type="button" class="btn btn-primary btn-sm" id="add-product" title="Add product row">
-                      <i class="mdi mdi-plus"></i> Add row
-                    </button>
-                    <a href="{% url 'add_product' %}" class="btn btn-outline-secondary btn-sm">Add product to catalog</a>
-                  </h5>
-
-                  <div id="products-wrapper">
-
-                     <div class="row fw-bold border-bottom pb-2 mb-2">
-    <div class="col-md-4">Product</div>
-    <div class="col-md-2">Quantity</div>
-    <div class="col-md-2">Purchase Price</div>
-    <div class="col-md-2">Total</div>
-    <div class="col-md-2">Action</div>
-  </div>
-
-  {% for item in existing_items %}
-    <div class="product-row row g-2 mb-2 align-items-center">
-
-      <!-- Product Dropdown -->
-      <div class="col-md-4">
-        <select name="products" class="form-control product-select">
-          <option value="">Select Product</option>
-          {% for p in data %}
-            <option value="{{ p.id }}" {% if p.id == item.product_id %}selected{% endif %}>{{ p.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <!-- Quantity -->
-      <div class="col-md-2">
-        <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="{{ item.quantity|default:1 }}">
-      </div>
-
-      <!-- Price -->
-      <div class="col-md-2">
-        <input type="text" name="price" class="form-control price" placeholder="Price" value="{{ item.price|default:'' }}">
-      </div>
-
-      <!-- Total -->
-      <div class="col-md-2">
-        <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly value="{{ item.total|default:'' }}">
-      </div>
-
-      <!-- Remove Button -->
-      <div class="col-md-2">
-        <button type="button" class="btn btn-danger btn-sm w-100 remove-row">Remove</button>
-      </div>
-
-    </div>
-  {% empty %}
-    <!-- At least one row so user can select product on new purchase -->
-    <div class="product-row row g-2 mb-2 align-items-center">
-      <div class="col-md-4">
-        <select name="products" class="form-control product-select">
-          <option value="">Select Product</option>
-          {% for p in data %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="1">
-      </div>
-      <div class="col-md-2">
-        <input type="text" name="price" class="form-control price" placeholder="Price">
-      </div>
-      <div class="col-md-2">
-        <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly>
-      </div>
-      <div class="col-md-2">
-        <button type="button" class="btn btn-danger btn-sm w-100 remove-row">Remove</button>
-      </div>
-    </div>
-  {% endfor %}
-</div>
-
-                  <br>
-                </div>
-              </div>
-
-              <!-- Supplier Invoice Section -->
-              <div class="card mb-3">
-                <div class="card-header">
-                  <strong>Supplier Invoice</strong>
-                </div>
-                <div class="card-body">
-                  <div class="mb-3">
-                    <label for="supplier_invoice_date" class="form-label">
-                      <i class="bi bi-calendar"></i> Supplier Invoice Date
-                    </label>
+                  <div class="col-md-2">
+                    <label class="form-label">Purchase Date</label>
+                    {{ form.purchase_date }}
+                    {% if form.purchase_date.errors %}<div class="text-danger small mt-1">{{ form.purchase_date.errors.0 }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Supplier Invoice Date</label>
                     {{ form.supplier_invoice_date }}
-                    {% if form.supplier_invoice_date.errors %}
-                      <div class="text-danger">{{ form.supplier_invoice_date.errors.0 }}</div>
-                    {% endif %}
+                    {% if form.supplier_invoice_date.errors %}<div class="text-danger small mt-1">{{ form.supplier_invoice_date.errors.0 }}</div>{% endif %}
                   </div>
-                  <div class="mb-3">
-                    <label for="serial_number" class="form-label">
-                      <i class="bi bi-upc-scan"></i> Serial Number
-                    </label>
+                  <div class="col-md-3">
+                    <label class="form-label">Vendor</label>
+                    <div class="d-flex gap-2 align-items-start">
+                      <div class="flex-grow-1">{{ form.vendor }}</div>
+                      <a href="{% url 'add_vendor' %}" class="btn btn-new-vendor btn-sm flex-shrink-0" target="_blank">
+                        <i class="bi bi-plus"></i> New Vendor
+                      </a>
+                    </div>
+                    {% if form.vendor.errors %}<div class="text-danger small mt-1">{{ form.vendor.errors.0 }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Supplier Serial Number</label>
                     {{ form.serial_number }}
-                    {% if form.serial_number.errors %}
-                      <div class="text-danger">{{ form.serial_number.errors.0 }}</div>
-                    {% endif %}
+                    {% if form.serial_number.errors %}<div class="text-danger small mt-1">{{ form.serial_number.errors.0 }}</div>{% endif %}
                   </div>
                 </div>
               </div>
 
-              <!-- Optional Fields -->
-              <div class="card mb-3">
-                <div class="card-body">
-                 
-                  <div class="mb-3">
-                    <label for="references" class="form-label">
-                      <i class="bi bi-link-45deg"></i> References
-                    </label>
-                    {{ form.references }}
-                    {% if form.references.errors %}
-                      <div class="text-danger">{{ form.references.errors.0 }}</div>
-                    {% endif %}
+              <!-- Product Items -->
+              <div class="section-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="section-title mb-0"><i class="bi bi-box"></i> Product Items</h6>
+                  <a href="{% url 'add_product' %}" class="btn btn-add-catalog btn-sm">
+                    <i class="bi bi-plus"></i> Add to Catalog
+                  </a>
+                </div>
+                <select id="product-options" style="display:none;">
+                  {% for p in data %}<option value="{{ p.id }}" data-gst="{{ p.gst|default:18 }}">{{ p.name }}</option>{% endfor %}
+                </select>
+                <div class="row fw-bold border-bottom pb-2 mb-2 text-uppercase small" style="color: #495057;">
+                  <div class="col-md-4">Product</div>
+                  <div class="col-md-2">Quantity</div>
+                  <div class="col-md-2">Purchase Price (₹)</div>
+                  <div class="col-md-2">Total (₹)</div>
+                  <div class="col-md-2"></div>
+                </div>
+                <div id="products-wrapper">
+                  {% for item in existing_items %}
+                  <div class="product-row row g-2 mb-2 align-items-center">
+                    <div class="col-md-4">
+                      <select name="products" class="form-control product-select">
+                        <option value="">Select Product</option>
+                        {% for p in data %}
+                          <option value="{{ p.id }}" {% if p.id == item.product_id %}selected{% endif %}>{{ p.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="{{ item.quantity|default:1 }}">
+                    </div>
+                    <div class="col-md-2">
+                      <input type="text" name="price" class="form-control price" placeholder="Price" value="{{ item.price|default:'' }}">
+                    </div>
+                    <div class="col-md-2">
+                      <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly value="{{ item.total|default:'' }}">
+                    </div>
+                    <div class="col-md-2">
+                      <button type="button" class="btn btn-remove-x remove-row" title="Remove"><i class="bi bi-x"></i></button>
+                    </div>
                   </div>
-
-                  <div class="mb-3">
-                    <label for="notes" class="form-label">
-                      <i class="bi bi-chat-left-text"></i> Notes
-                    </label>
-                    {{ form.notes }}
-                    {% if form.notes.errors %}
-                      <div class="text-danger">{{ form.notes.errors.0 }}</div>
-                    {% endif %}
+                  {% empty %}
+                  <div class="product-row row g-2 mb-2 align-items-center">
+                    <div class="col-md-4">
+                      <select name="products" class="form-control product-select">
+                        <option value="">Select Product</option>
+                        {% for p in data %}<option value="{{ p.id }}" data-gst="{{ p.gst|default:18 }}">{{ p.name }}</option>{% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-2">
+                      <input type="number" name="quantity" class="form-control quantity" placeholder="Qty" min="1" value="1">
+                    </div>
+                    <div class="col-md-2">
+                      <input type="text" name="price" class="form-control price" placeholder="Price">
+                    </div>
+                    <div class="col-md-2">
+                      <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly>
+                    </div>
+                    <div class="col-md-2">
+                      <button type="button" class="btn btn-remove-x remove-row" title="Remove"><i class="bi bi-x"></i></button>
+                    </div>
                   </div>
+                  {% endfor %}
+                </div>
+                <div class="mt-2">
+                  <button type="button" class="btn btn-add-row btn-sm" id="add-product">
+                    <i class="bi bi-plus"></i> Add Row
+                  </button>
+                </div>
+              </div>
 
-                  <div class="mb-3">
-                    <label for="terms" class="form-label">
-                      <i class="bi bi-card-text"></i> Terms
-                    </label>
-                    {{ form.terms }}
-                    {% if form.terms.errors %}
-                      <div class="text-danger">{{ form.terms.errors.0 }}</div>
-                    {% endif %}
-                  </div>
-
-                  <div class="mb-3">
-                    <label for="delivery_shipping_charges" class="form-label">
-                      <i class="bi bi-truck"></i> Delivery / Shipping Charges
-                    </label>
+              <!-- Logistics & Shipping -->
+              <div class="section-card">
+                <h6 class="section-title"><span class="logistics-emoji">🚚</span> Logistics & Shipping</h6>
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Shipping / Delivery Charges</label>
                     {{ form.delivery_shipping_charges }}
-                    {% if form.delivery_shipping_charges.errors %}
-                      <div class="text-danger">{{ form.delivery_shipping_charges.errors.0 }}</div>
-                    {% endif %}
+                    {% if form.delivery_shipping_charges.errors %}<div class="text-danger small">{{ form.delivery_shipping_charges.errors.0 }}</div>{% endif %}
                   </div>
-
-                  <div class="mb-3">
-                    <label for="packaging_charges" class="form-label">
-                      <i class="bi bi-box2"></i> Packaging Charges
-                    </label>
+                  <div class="col-md-4">
+                    <label class="form-label">Packaging Charges</label>
                     {{ form.packaging_charges }}
-                    {% if form.packaging_charges.errors %}
-                      <div class="text-danger">{{ form.packaging_charges.errors.0 }}</div>
-                    {% endif %}
+                    {% if form.packaging_charges.errors %}<div class="text-danger small">{{ form.packaging_charges.errors.0 }}</div>{% endif %}
                   </div>
-
-                  <div class="mb-3">
-                    <label for="packaging_charges" class="form-label">
-                      <i class="bi bi-box2"></i> Eway Bill No
-                    </label>
-                    {{ form.eway_bill_no }}
-                    {% if form.eway_bill_no.errors %}
-                      <div class="text-danger">{{ form.eway_bill_no.errors.0 }}</div>
-                    {% endif %}
-                  </div>
-
-                  <div class="mb-3">
-                    <label for="packaging_charges" class="form-label">
-                      <i class="bi bi-box2"></i>LR Number
-                    </label>
-                    {{ form.lr_no }}
-                    {% if form.lr_no.errors %}
-                      <div class="text-danger">{{ form.lr_no.errors.0 }}</div>
-                    {% endif %}
-                  </div>
-
-                  <div class="mb-3">
-                    <label for="packaging_charges" class="form-label">
-                      <i class="bi bi-box2"></i>Vehicle Number
-                    </label>
-                    {{ form.vehicle_no }}
-                    {% if form.vehicle_no.errors %}
-                      <div class="text-danger">{{ form.vehicle_no.errors.0 }}</div>
-                    {% endif %}
-                  </div>
-
-                  <div class="mb-3">
-                    <label for="packaging_charges" class="form-label">
-                      <i class="bi bi-box2"></i>Transport Number
-                    </label>
+                  <div class="col-md-4">
+                    <label class="form-label">Transport Number</label>
                     {{ form.transport_name }}
-                    {% if form.transport_name.errors %}
-                      <div class="text-danger">{{ form.transport_name.errors.0 }}</div>
-                    {% endif %}
+                    {% if form.transport_name.errors %}<div class="text-danger small">{{ form.transport_name.errors.0 }}</div>{% endif %}
                   </div>
-
-
-                  
+                  <div class="col-md-4">
+                    <label class="form-label">E-way Bill No</label>
+                    {{ form.eway_bill_no }}
+                    {% if form.eway_bill_no.errors %}<div class="text-danger small">{{ form.eway_bill_no.errors.0 }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">LR Number</label>
+                    {{ form.lr_no }}
+                    {% if form.lr_no.errors %}<div class="text-danger small">{{ form.lr_no.errors.0 }}</div>{% endif %}
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Vehicle Number</label>
+                    {{ form.vehicle_no }}
+                    {% if form.vehicle_no.errors %}<div class="text-danger small">{{ form.vehicle_no.errors.0 }}</div>{% endif %}
+                  </div>
                 </div>
               </div>
 
-              <!-- Payment (image style: orange header bar + orange active button) -->
-              <div class="payment-section-card mb-4">
-                <div class="payment-section-header"><i class="bi bi-credit-card"></i>Payment</div>
-                <div class="payment-section-body">
+              <!-- Notes/Terms + Payment Method (two columns) -->
+              <div class="row g-3 mb-4">
+                <div class="col-lg-6">
+                  <div class="section-card h-100">
+                    <div class="mb-3" style="display:none;">
+                      <label for="references" class="form-label">References</label>
+                      {{ form.references }}
+                    </div>
+                    <div class="mb-3">
+                      <label for="notes" class="form-label">Notes</label>
+                      {{ form.notes }}
+                      {% if form.notes.errors %}<div class="text-danger small">{{ form.notes.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="mb-0">
+                      <label for="terms" class="form-label">Terms</label>
+                      {{ form.terms }}
+                      {% if form.terms.errors %}<div class="text-danger small">{{ form.terms.errors.0 }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+                <div class="col-lg-6">
+              <!-- Payment Method -->
+              <div class="payment-section-card mb-0 h-100">
+                <div class="payment-section-body" style="padding-top: 1.25rem;">
+                  <label class="form-label d-block mb-3">Payment Method</label>
                   <div class="mb-3">
-                    <label class="form-label">Payment type</label>
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Payment method">
-                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cash' %}btn-payment-active{% endif %}" onclick="selectPayment('cash', this)"><i class="bi bi-cash me-1"></i>Cash</button>
-                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'upi' %}btn-payment-active{% endif %}" onclick="selectPayment('upi', this)"><i class="bi bi-phone me-1"></i>UPI</button>
-                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cheque' %}btn-payment-active{% endif %}" onclick="selectPayment('cheque', this)"><i class="bi bi-bank me-1"></i>Cheque</button>
-                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'credit' %}btn-payment-active{% endif %}" onclick="selectPayment('credit', this)"><i class="bi bi-clock-history me-1"></i>Credit</button>
+                    <div class="btn-group btn-group-sm d-flex btn-group-payment" role="group" aria-label="Payment method">
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cash' or not form.instance.payment_method %}btn-payment-active{% endif %}" onclick="selectPayment('cash', this)">Cash</button>
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'upi' %}btn-payment-active{% endif %}" onclick="selectPayment('upi', this)">UPI</button>
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'cheque' %}btn-payment-active{% endif %}" onclick="selectPayment('cheque', this)">Cheque</button>
+                      <button type="button" class="btn btn-payment {% if form.instance.payment_method == 'credit' %}btn-payment-active{% endif %}" onclick="selectPayment('credit', this)">Credit</button>
                     </div>
                     {% if form.payment_method.errors %}<div class="text-danger small mt-1">{{ form.payment_method.errors.0 }}</div>{% endif %}
                     <input type="hidden" name="payment_method" id="payment_method" value="{{ form.instance.payment_method|default:'cash' }}" required>
@@ -411,15 +324,15 @@
                     </select>
                   </div>
                   <div class="row g-3 mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                       <label class="form-label">Discount (₹)</label>
                       {{ form.discount_amount }}
                       {% if form.discount_amount.errors %}<div class="text-danger small">{{ form.discount_amount.errors.0 }}</div>{% endif %}
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                       <label class="form-label">Discount (%)</label>
                       {{ form.discount_percentage }}
-                      {% if form.discount_percent.errors %}<div class="text-danger small">{{ form.discount_percent.errors.0 }}</div>{% endif %}
+                      {% if form.discount_percentage.errors %}<div class="text-danger small">{{ form.discount_percentage.errors.0 }}</div>{% endif %}
                     </div>
                   </div>
                   <div id="credit_time" style="display: none;">
@@ -444,6 +357,19 @@
                       {% if form.due_date.errors %}<div class="text-danger small">{{ form.due_date.errors.0 }}</div>{% endif %}
                     </div>
                   </div>
+                  <div class="border-top pt-3 mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2"><span>Total Products:</span><strong id="total-products">0</strong></div>
+                    <div class="d-flex justify-content-between align-items-center mb-2"><span>Subtotal:</span><strong>₹ <span id="subtotal-display">0.00</span></strong></div>
+                    <div class="d-flex justify-content-between align-items-center mb-2"><span>Total GST:</span><strong>₹ <span id="total-gst-display">0.00</span></strong></div>
+                    <div class="d-flex justify-content-between align-items-center mb-2"><span>Shipping / Delivery Charges:</span><strong>₹ <span id="shipping-display">0.00</span></strong></div>
+                    <div class="d-flex justify-content-between align-items-center mb-2"><span>Discount:</span><strong>₹ <span id="discount-display">0.00</span></strong></div>
+                    <div class="subtotal-row d-flex justify-content-between align-items-center">
+                      <span>Total Amount:</span>
+                      <strong class="fs-5">₹ <span id="total-amount-display">0.00</span></strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
                 </div>
               </div>
          
@@ -612,8 +538,9 @@ function createProductRow() {
     colRemove.className = 'col-md-2';
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
-    removeBtn.className = 'btn btn-danger btn-sm w-100 remove-row';
-    removeBtn.textContent = 'Remove';
+    removeBtn.className = 'btn btn-remove-x remove-row';
+    removeBtn.title = 'Remove';
+    removeBtn.innerHTML = '<i class="bi bi-x"></i>';
     colRemove.appendChild(removeBtn);
 
     // Append all cols to row
@@ -634,6 +561,7 @@ document.getElementById('add-product').addEventListener('click', function () {
     const newRow = createProductRow();
     wrapper.appendChild(newRow);
     $(newRow).find('.product-select').select2({placeholder:'Select Product', width:'100%'});
+    updateSubtotal();
 });
 
 // Init Select2 on existing product rows (e.g. first row on new purchase, or rows on edit)
@@ -645,9 +573,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Remove row
 document.addEventListener('click', function (e) {
-    if (e.target.classList.contains('remove-row')) {
+    const btn = e.target.closest('.remove-row');
+    if (btn) {
         const rows = document.querySelectorAll('.product-row');
-        if (rows.length > 1) e.target.closest('.product-row').remove();
+        if (rows.length > 1) {
+            btn.closest('.product-row').remove();
+            updateSubtotal();
+        }
     }
 });
 
@@ -664,10 +596,12 @@ $(document).on('select2:select', '.product-select', function (e) {
             const price = parseFloat(data.price) || 0;
             $row.find('.price').val(price.toFixed(2));
             $row.find('.total-price').val((qty*price).toFixed(2));
+            if (typeof updateSubtotal === 'function') updateSubtotal();
         },
         error: function(){
             $row.find('.price').val('');
             $row.find('.total-price').val('');
+            if (typeof updateSubtotal === 'function') updateSubtotal();
         }
     });
 });
@@ -680,6 +614,7 @@ document.addEventListener('input', function(e){
         const price = parseFloat(row.querySelector('.price').value) || 0;
         const qty = parseFloat(e.target.value) || 0;
         row.querySelector('.total-price').value = (price*qty).toFixed(2);
+        updateSubtotal();
     }
 });
 
@@ -690,7 +625,73 @@ document.addEventListener('input', function(e){
         const qty = parseFloat(row.querySelector('.quantity').value) || 0;
         const price = parseFloat(e.target.value) || 0;
         row.querySelector('.total-price').value = (price*qty).toFixed(2);
+        updateSubtotal();
     }
+});
+
+function recalculateTotals() {
+    let totalProducts = 0;
+    let subtotal = 0;
+    let gstTotal = 0;
+    document.querySelectorAll('.product-row').forEach(function(row) {
+        const qty = parseFloat(row.querySelector('.quantity')?.value) || 0;
+        const price = parseFloat(row.querySelector('.price')?.value) || 0;
+        const amount = qty * price;
+        const sel = row.querySelector('.product-select');
+        const gstRate = (sel?.selectedOptions?.[0]?.getAttribute('data-gst')) ? parseFloat(sel.selectedOptions[0].getAttribute('data-gst')) : 18;
+        const rowGst = amount * (gstRate / 100);
+        totalProducts += qty;
+        subtotal += amount;
+        gstTotal += rowGst;
+    });
+    const deliveryEl = document.getElementById('id_delivery_shipping_charges');
+    const packagingEl = document.getElementById('id_packaging_charges');
+    const shipping = (parseFloat(deliveryEl?.value) || 0) + (parseFloat(packagingEl?.value) || 0);
+
+    const discountPctEl = document.getElementById('discount-percentage');
+    const discountAmtEl = document.getElementById('discount-amount-input');
+    const subtotalBeforeDiscount = subtotal;
+    let discountAmount = 0;
+    let discountPercentage = 0;
+    if (discountPctEl && discountAmtEl) {
+        if (document.activeElement === discountPctEl) {
+            discountPercentage = parseFloat(discountPctEl.value) || 0;
+            discountAmount = subtotalBeforeDiscount * (discountPercentage / 100);
+            discountAmtEl.value = discountAmount.toFixed(2);
+        } else if (document.activeElement === discountAmtEl) {
+            discountAmount = parseFloat(discountAmtEl.value) || 0;
+            discountPercentage = (subtotalBeforeDiscount === 0) ? 0 : (discountAmount / subtotalBeforeDiscount) * 100;
+            discountPctEl.value = discountPercentage.toFixed(2);
+        } else {
+            discountPercentage = parseFloat(discountPctEl.value) || 0;
+            discountAmount = subtotalBeforeDiscount * (discountPercentage / 100);
+            discountAmtEl.value = discountAmount.toFixed(2);
+        }
+    }
+
+    const totalAmount = (subtotal - discountAmount) + gstTotal + shipping;
+    const fmt = (n) => (n || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const el = function(id) { return document.getElementById(id); };
+    if (el('total-products')) el('total-products').textContent = totalProducts;
+    if (el('subtotal-display')) el('subtotal-display').textContent = fmt(subtotal);
+    if (el('total-gst-display')) el('total-gst-display').textContent = fmt(gstTotal);
+    if (el('shipping-display')) el('shipping-display').textContent = fmt(shipping);
+    if (el('discount-display')) el('discount-display').textContent = fmt(discountAmount);
+    if (el('total-amount-display')) el('total-amount-display').textContent = fmt(totalAmount);
+}
+
+function updateSubtotal() { recalculateTotals(); }
+
+document.addEventListener('DOMContentLoaded', function() {
+    recalculateTotals();
+    const discountPct = document.getElementById('discount-percentage');
+    const discountAmt = document.getElementById('discount-amount-input');
+    const delivery = document.getElementById('id_delivery_shipping_charges');
+    const packaging = document.getElementById('id_packaging_charges');
+    if (discountPct) discountPct.addEventListener('input', recalculateTotals);
+    if (discountAmt) discountAmt.addEventListener('input', recalculateTotals);
+    if (delivery) delivery.addEventListener('input', recalculateTotals);
+    if (packaging) packaging.addEventListener('input', recalculateTotals);
 });
 </script>
 

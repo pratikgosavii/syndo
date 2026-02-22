@@ -28,7 +28,6 @@
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <h4 class="mb-sm-0 font-size-18"><i class="bi bi-building me-2" style="color: #775599;"></i>{% if form.instance.pk %}Update{% else %}Add{% endif %} Company Profile</h4>
-                        <a href="{% url 'list_company_profile' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
                     </div>
                 </div>
             </div>
@@ -95,6 +94,26 @@
                                     <label for="id_address_line_2" class="form-label">Address line 2</label>
                                     {{ form.address_line_2 }}
                                     {% if form.address_line_2.errors %}<div class="invalid-feedback d-block">{{ form.address_line_2.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_pincode" class="form-label">Pincode</label>
+                                    {{ form.pincode }}
+                                    {% if form.pincode.errors %}<div class="invalid-feedback d-block">{{ form.pincode.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_city" class="form-label">City</label>
+                                    {{ form.city }}
+                                    {% if form.city.errors %}<div class="invalid-feedback d-block">{{ form.city.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_state" class="form-label">State</label>
+                                    {{ form.state }}
+                                    {% if form.state.errors %}<div class="invalid-feedback d-block">{{ form.state.errors.0 }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_country" class="form-label">Country</label>
+                                    {{ form.country }}
+                                    {% if form.country.errors %}<div class="invalid-feedback d-block">{{ form.country.errors.0 }}</div>{% endif %}
                                 </div>
                             </div>
                         </div>

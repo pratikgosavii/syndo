@@ -35,8 +35,7 @@ def get_order_invoice_totals(order):
             if getattr(company_profile, "billing_state", None):
                 vendor_state_name = str(company_profile.billing_state)
             elif getattr(company_profile, "state", None):
-                s = company_profile.state
-                vendor_state_name = getattr(s, "name", str(s))
+                vendor_state_name = str(company_profile.state)
     customer_state_name = None
     if order.address and getattr(order.address, "state", None):
         customer_state_name = str(order.address.state)

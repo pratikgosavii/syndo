@@ -16,10 +16,18 @@
     .form-heading { font-weight: 600; color: #495057; margin-bottom: 1rem; font-size: 1rem; }
     .form-label { font-weight: 500; color: #495057; }
     .form-control, .form-select { border-radius: 6px; border: 1px solid #ced4da; }
-    .image-preview { max-height: 100px; margin-top: 10px; border-radius: 8px; border: 1px solid #dee2e6; }
+    .image-preview { max-height: 100px; margin-top: 10px; border-radius: 8px; border: 1px solid #dee2e6; cursor: pointer; }
+    /* Fullscreen image overlay */
+    .image-fullscreen-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+        z-index: 9999; align-items: center; justify-content: center;
+        cursor: pointer;
+    }
+    .image-fullscreen-overlay.show { display: flex; }
+    .image-fullscreen-overlay img { max-width: 95%; max-height: 95%; object-fit: contain; pointer-events: none; }
     .custom-button { min-width: 150px; }
     /* Submit Product button: yellow/orange (reference image 2) */
-    .btn-submit-product { background-color: #f59e0b; border-color: #f59e0b; color: #fff; }
+    .btn-submit-product { background-color: #f59e0b !important; border-color: #f59e0b !important; color: #fff !important; }
     .btn-submit-product:hover { background-color: #d97706; border-color: #d97706; color: #fff; }
     /* Toggle switch: grey off, blue on */
     .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
@@ -43,8 +51,17 @@
     }
     .section-card-header-row .section-title { margin-bottom: 0; color: #212529; font-weight: 700; }
     .section-card-header-row .section-title .bi { color: #775599; }
-    .use-default-link { color: #6c757d; font-size: 0.9rem; text-decoration: none; }
-    .use-default-link:hover { color: #495057; text-decoration: underline; }
+    .use-default-link {
+        background-color: #f59e0b !important;
+        border: 1px solid #f59e0b !important;
+        border-color: #f59e0b !important;
+        color: #fff !important;
+        padding: 4px;
+        font-size: 0.9rem;
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .use-default-link:hover { color: #fff !important; background-color: #d97706 !important; border-color: #d97706 !important; text-decoration: none; }
     /* Checkbox option in light grey rounded box (match reference image 2) */
     .option-box {
         display: inline-flex; align-items: center; gap: 0.5rem;
@@ -70,6 +87,58 @@
     /* Submit section must always be visible for all product types (id + class so it works even when cached) */
     #product-form-submit-section,
     .product-form-submit-section { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+
+    /* Searchable selects with search box INSIDE dropdown */
+    .searchable-select-wrap { position: relative; }
+    .searchable-trigger {
+        cursor: pointer;
+        position: relative;
+    }
+    .searchable-trigger[readonly] { background-color: #fff; }
+    .searchable-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 220px;
+        background: #fff;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1050;
+        margin-top: 2px;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .searchable-dropdown.show { display: flex; }
+    .searchable-dropdown-search {
+        flex-shrink: 0;
+        padding: 0.4rem 0.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .searchable-dropdown-search input {
+        width: 100%;
+        padding: 0.35rem 0.5rem 0.35rem 1.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 0.8125rem;
+    }
+    .searchable-dropdown-search .bi-search { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280; font-size: 0.8rem; pointer-events: none; }
+    .searchable-dropdown-search { position: relative; }
+    .searchable-dropdown-list {
+        max-height: 160px;
+        overflow-y: auto;
+    }
+    .searchable-dropdown-item {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .searchable-dropdown-item:hover, .searchable-dropdown-item.selected { background: #e7f1ff; }
+    .searchable-dropdown-item:last-child { border-bottom: none; }
+    .searchable-dropdown-empty { padding: 0.75rem; color: #6c757d; font-size: 0.875rem; }
 </style>
 {% endblock extra_css %}
 
@@ -99,9 +168,17 @@
                                     <label for="id_product_type" class="form-label">Product type</label>
                                     {{ form.product_type }}
                                 </div>
+                               
                                 <div class="col-md-6">
                                     <label for="id_sale_type" class="form-label">Sale type</label>
                                     {{ form.sale_type }}
+                                </div>
+                                 <div class="col-md-6" id="customizePrintToggleWrapper" style="display: block;">
+                                    <label class="form-label d-block">Customize print?</label>
+                                    <label class="switch">
+                                        {{ form.is_customize }}
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
                                 <div class="col-12">
                                     <label for="id_name" class="form-label">Product name</label>
@@ -109,34 +186,46 @@
                                 </div>
                                 <div class="col-md-6" id="category_wrapper">
                                     <label for="id_category" class="form-label">Category</label>
-                                    {{ form.category }}
+                                    <div class="searchable-select-wrap position-relative">
+                                        <input type="text" class="form-control searchable-trigger" id="category-trigger" placeholder="Select category..." readonly autocomplete="off">
+                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <div class="searchable-dropdown" id="category-dropdown">
+                                            <div class="searchable-dropdown-search">
+                                                <i class="bi bi-search"></i>
+                                                <input type="text" id="category-search-inner" placeholder="Search category..." autocomplete="off">
+                                            </div>
+                                            <div class="searchable-dropdown-list" id="category-list"></div>
+                                        </div>
+                                    </div>
+                                    <div class="d-none">{{ form.category }}</div>
                                 </div>
                                 <div class="col-md-6" id="sub_category_wrapper">
                                     <label for="id_sub_category" class="form-label">Sub category</label>
-                                    {{ form.sub_category }}
-                                </div>
-                                <div class="col-12">
-                                    <div id="foodOptionToggleWrapper" style="display: block;">
-                                        <label class="form-label d-block">Include food option?</label>
-                                        <label class="switch">
-                                            {{ form.is_food }}
-                                            <span class="slider"></span>
-                                        </label>
+                                    <div class="searchable-select-wrap position-relative">
+                                        <input type="text" class="form-control searchable-trigger" id="subcategory-trigger" placeholder="Select category first..." readonly autocomplete="off">
+                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <div class="searchable-dropdown" id="subcategory-dropdown">
+                                            <div class="searchable-dropdown-search">
+                                                <i class="bi bi-search"></i>
+                                                <input type="text" id="subcategory-search-inner" placeholder="Search subcategory..." autocomplete="off">
+                                            </div>
+                                            <div class="searchable-dropdown-list" id="subcategory-list"></div>
+                                        </div>
                                     </div>
+                                    <div class="d-none">{{ form.sub_category }}</div>
                                 </div>
-                                <div class="col-12">
-                                    <div id="customizePrintToggleWrapper" style="display: block;">
-                                        <label class="form-label d-block">Customize print?</label>
-                                        <label class="switch">
-                                            {{ form.is_customize }}
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
+                                <div class="col-md-6" id="foodOptionToggleWrapper" style="display: block;">
+                                    <label class="form-label d-block">Include food option?</label>
+                                    <label class="switch">
+                                        {{ form.is_food }}
+                                        <span class="slider"></span>
+                                    </label>
                                 </div>
                                 <div id="foodTypeWrapper" style="display: none;" class="col-md-6">
                                     <label for="id_food_type" class="form-label">Food type</label>
                                     {{ form.food_type }}
                                 </div>
+                               
                                 <div class="col-12" id="description_wrapper">
                                     <label for="id_description" class="form-label">Description</label>
                                     {{ form.description }}
@@ -165,43 +254,59 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label for="id_unit" class="form-label">Unit</label>
-                                    {{ form.unit }}
+                                    <div class="searchable-select-wrap position-relative">
+                                        <input type="text" class="form-control searchable-trigger" id="unit-trigger" placeholder="Select unit..." readonly autocomplete="off">
+                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <div class="searchable-dropdown" id="unit-dropdown">
+                                            <div class="searchable-dropdown-search">
+                                                <i class="bi bi-search"></i>
+                                                <input type="text" id="unit-search-inner" placeholder="Search unit..." autocomplete="off">
+                                            </div>
+                                            <div class="searchable-dropdown-list" id="unit-list"></div>
+                                        </div>
+                                    </div>
+                                    <div class="d-none">{{ form.unit }}</div>
                                 </div>
                             </div>
                         </div>
                        
-                        <!-- Tax & details -->
+                        <!-- Tax & details (shown only when company profile has GSTIN) -->
+                        {% if has_gstin %}
                         <div class="section-card">
-                            <div class="section-title"><i class="bi bi-receipt"></i>Tax & details</div>
-                            <div class="row g-3">
-                                <div class="col-md-6 product-only-field" id="size_wrapper">
-                                    <label for="id_size" class="form-label product-only-field">Size</label>
-                                    {{ form.size }}
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div class="section-title"><i class="bi bi-receipt"></i>Tax & details  
+                            
+                            
+                            
+                            </div>
+                            <div class="col-md-3 col-sm-4">
+                                <div class="form-check mb-0">
+                                    {{ form.tax_inclusive }}
+                                    <label class="form-check-label" for="id_tax_inclusive">Tax inclusive</label>
                                 </div>
-                                <div class="col-md-6">
+                            </div>
+                            </div>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3 col-sm-4">
                                     <label for="id_hsn" class="form-label">HSN</label>
                                     {{ form.hsn }}
                                 </div>
-                                <div class="col-12">
-                                    <div class="form-check mb-2">
-                                        {{ form.tax_inclusive }}
-                                        <label class="form-check-label" for="id_tax_inclusive">Tax inclusive</label>
-                                    </div>
-                                    <div id="tax_div" class="mb-2">
-                                        <label for="id_gst" class="form-label">GST (%)</label>
-                                        {{ form.gst }}
-                                    </div>
-                                    <span class="small text-muted">* To enable GST details please select as registered business in company settings.</span>
+                               
+                                <div class="col-md-3 col-sm-4" id="tax_div">
+                                    <label for="id_gst" class="form-label">GST (%)</label>
+                                    {{ form.gst }}
                                 </div>
+                               
                             </div>
                         </div>
+                        {% endif %}
                     
                         <!-- Stock (reference image 2: General product settings – checkboxes in light grey boxes) -->
                         <div class="section-card product-only-field">
                             <div class="section-title"><i class="bi bi-boxes"></i>Stock</div>
                             <div class="row g-3">
                                 <div class="col-12">
-                                    <div class="options-row">
+                                    <div class="s-row">
                                         <div class="option-box" id="track_serial_numbers_wrapper">
                                             {{ form.track_serial_numbers }}
                                             <label class="form-check-label" for="id_track_serial_numbers">Track serial numbers</label>
@@ -232,10 +337,25 @@
                                     <label for="id_brand_name" class="form-label">Brand name</label>
                                     {{ form.brand_name }}
                                 </div>
+                                <div class="col-md-6 product-only-field" id="size_wrapper">
+                                    <label for="id_size" class="form-label product-only-field">Size</label>
+                                    <div class="searchable-select-wrap position-relative">
+                                        <input type="text" class="form-control searchable-trigger" id="size-trigger" placeholder="Select size..." readonly autocomplete="off">
+                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <div class="searchable-dropdown" id="size-dropdown">
+                                            <div class="searchable-dropdown-search">
+                                                <i class="bi bi-search"></i>
+                                                <input type="text" id="size-search-inner" placeholder="Search size..." autocomplete="off">
+                                            </div>
+                                            <div class="searchable-dropdown-list" id="size-list"></div>
+                                        </div>
+                                    </div>
+                                    <div class="d-none">{{ form.size }}</div>
+                                </div>
                                 <div class="col-12 product-only-field" id="color_wrapper">
                                     <label for="common_colors" class="form-label d-block">Color</label>
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <select id="common_colors" class="form-control form-select" style="max-width: 180px;" onchange="updateColorPickerFromDropdown(this)">
+                                        <select id="common_colors" class="form-control form-select" style="max-width: 180px;" onchange="updateColorDisplayFromDropdown(this)">
                                             <option value="">Select common color</option>
                                             <option value="#ffffff">White</option>
                                             <option value="#000000">Black</option>
@@ -247,8 +367,9 @@
                                             <option value="#800080">Purple</option>
                                             <option value="#808080">Gray</option>
                                         </select>
-                                        <input type="color" id="color_picker" onchange="updateDropdownFromColorPicker(this)" class="form-control form-control-color" style="width: 3rem; height: 2.25rem;">
-                                        {{ form.color }}
+                                        <div id="color_display" class="color-swatch-display" style="width: 2.5rem; height: 2.25rem; border-radius: 6px; border: 1px solid #ced4da; background: #f3f4f6; flex-shrink: 0;" title="Selected color preview"></div>
+                                        <span id="color_hex_display" class="text-muted small align-self-center" style="min-width: 4.5rem;">—</span>
+                                        <div class="visually-hidden">{{ form.color }}</div>
                                     </div>
                                 </div>
                                 <div class="col-md-6" id="batch_number_wrapper">
@@ -273,33 +394,28 @@
                                         <span class="upload-text">Upload Main Image</span>
                                         {{ form.image }}
                                     </label>
-                                    <img id="preview" class="image-preview d-block mt-2" src="#" alt="Image Preview" hidden>
+                                    <div id="preview-wrapper" class="mt-2" style="{% if not instance or not instance.image %}display: none;{% endif %}">
+                                        <img id="preview" class="image-preview d-block" src="{% if instance and instance.image %}{{ instance.image.url }}{% else %}#{% endif %}" alt="Image Preview">
+                                    </div>
                                 </div>
                                 <div class="col-md-6" id="gallery_images_wrapper">
-                                    <label for="id_gallery_images" class="form-label">Gallery Images</label>
+                                    <label for="gallery_images_input" class="form-label">Gallery Images (multiple)</label>
                                     <label class="media-upload-zone mb-0 d-block">
                                         <span class="upload-icon"><i class="bi bi-images"></i></span>
-                                        <span class="upload-text">Upload Gallery Images</span>
-                                        {{ form.gallery_images }}
+                                        <span class="upload-text">Upload multiple images</span>
+                                        <input type="file" name="gallery_images" id="gallery_images_input" class="form-control" accept="image/*" multiple>
                                     </label>
+                                    <div id="gallery-preview" class="d-flex flex-wrap gap-2 mt-2"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Submit row: always visible right after Media (before Delivery/Policies) -->
-                        <div id="product-form-submit-section" class="product-form-submit-section section-card d-flex flex-wrap align-items-center justify-content-between gap-3">
-                            <div class="d-flex align-items-center">
-                                <label class="switch mb-0 me-3">
-                                    {{ form.is_active }}
-                                    <span class="slider"></span>
-                                </label>
-                                <label class="form-label mb-0" for="id_is_active">Is Active</label>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="{% url 'list_product' %}" class="btn btn-outline-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-submit-product custom-button"><i class="bi bi-check-lg me-1"></i>{% if instance %}Update Product{% else %}Submit Product{% endif %}</button>
-                            </div>
+                        <div id="image-fullscreen-overlay" class="image-fullscreen-overlay" title="Click to close">
+                            <img id="image-fullscreen-img" src="#" alt="Full size">
                         </div>
+
+                        <!-- Submit row: always visible right after Media (before Delivery/Policies) -->
+                       
                     
                         <!-- Delivery & Policies -->
                        
@@ -325,8 +441,6 @@
                                     <thead>
                                         <tr>
                                             <th>Sr No</th>
-                                            <th>Paper</th>
-                                            <th>Color Type</th>
                                             <th>Min Qty</th>
                                             <th>Max Qty</th>
                                             <th>Price</th>
@@ -340,14 +454,13 @@
                                             <tr class="variant-form">
                                                 <td class="sr-no">{{ forloop.counter }}</td>
                                                 {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                                                <td>{{ form.paper }}</td>
-                                                <td>{{ form.color_type }}</td>
                                                 <td>{{ form.min_quantity }}</td>
                                                 <td>{{ form.max_quantity }}</td>
                                                 <td>{{ form.price }}</td>
                                                 <td>{{ form.sided }}</td>
-                                                <td>
-                                                    {{ form.DELETE }}
+                                                <td class="text-center">
+                                                    <span class="d-none">{{ form.DELETE }}</span>
+                                                    <button type="button" class="btn btn-link text-danger p-0 border-0 btn-delete-variant" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                                                 </td>
                                             </tr>
                                         {% endfor %}
@@ -364,7 +477,7 @@
                         <div id="customPrintWrapper" style="display: none;">
                             <hr>
 
-                            <div id="customizevariantSection">
+                            <div id="customizevariantSection" style="margin-bottom:10px;">
 
                                 {% for form in customize_print_variant_formset.forms %}
                                     {% if form.errors %}
@@ -396,8 +509,9 @@
                                                 {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
                                                 <td>{{ form.size }}</td>
                                                 <td>{{ form.price }}</td>
-                                                <td>
-                                                    {{ form.DELETE }}
+                                                <td class="text-center">
+                                                    <span class="d-none">{{ form.DELETE }}</span>
+                                                    <button type="button" class="btn btn-link text-danger p-0 border-0 btn-delete-customize-variant" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                                                 </td>
                                             </tr>
                                         {% endfor %}
@@ -468,7 +582,7 @@
                         <div class="section-card" id="delivery_div">
                             <div class="section-card-header-row">
                                 <div class="section-title"><i class="bi bi-truck"></i>Delivery Details</div>
-                                <a href="#" class="use-default-link use-defaults-trigger">Use Default</a>
+                                <a href="#" class="use-default-link use-defaults-trigger" data-block="delivery">Use Default</a>
                             </div>
                             <div class="options-row options-row-delivery">
                                 <div class="option-box">
@@ -495,7 +609,7 @@
                         <div class="section-card" id="policies_div">
                             <div class="section-card-header-row">
                                 <div class="section-title"><i class="bi bi-shield-check"></i>Policies</div>
-                                <a href="#" class="use-default-link use-defaults-trigger">Use Default</a>
+                                <a href="#" class="use-default-link use-defaults-trigger" data-block="policies">Use Default</a>
                             </div>
                             <div class="options-row options-row-policies">
                                 <div class="option-box">
@@ -545,6 +659,22 @@
                         
                         {% endif %}
 
+
+                         <div id="product-form-submit-section" class="product-form-submit-section section-card d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div class="d-flex align-items-center">
+                                <label class="switch mb-0 me-3">
+                                    {{ form.is_active }}
+                                    <span class="slider"></span>
+                                </label>
+                                <label class="form-label mb-0" for="id_is_active">Is Active</label>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'list_product' %}" class="btn btn-outline-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-submit-product custom-button"><i class="bi bi-check-lg me-1"></i>{% if instance %}Update Product{% else %}Submit Product{% endif %}</button>
+                            </div>
+                        </div>
+
+
                     </form>
                 </div>
             </div>
@@ -557,8 +687,306 @@
 {% endblock content %}
 
 {% block extra_js %}
+<script src="{% static 'libs/tinymce/tinymce.min.js' %}"></script>
 <script>
-    // Image preview
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof tinymce !== 'undefined') {
+            tinymce.init({
+                selector: '#id_description',
+                height: 220,
+                menubar: false,
+                plugins: 'lists link code',
+                toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link | removeformat | code',
+                content_style: 'body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; }',
+                branding: false
+            });
+        }
+        // Main image preview on file select (hide wrapper when no preview)
+        var imageInput = document.getElementById('id_image');
+        var previewImg = document.getElementById('preview');
+        var previewWrapper = document.getElementById('preview-wrapper');
+        if (imageInput && previewImg && previewWrapper) {
+            imageInput.addEventListener('change', function() {
+                var file = this.files && this.files[0];
+                if (file && file.type.indexOf('image') !== -1) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImg.src = e.target.result;
+                        previewWrapper.style.display = '';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    previewImg.src = '#';
+                    previewWrapper.style.display = 'none';
+                }
+            });
+        }
+        // Fullscreen image on click (main + gallery previews)
+        var overlay = document.getElementById('image-fullscreen-overlay');
+        var fullscreenImg = document.getElementById('image-fullscreen-img');
+        function showFullscreen(src) {
+            if (!src || src === '#') return;
+            if (fullscreenImg && overlay) {
+                fullscreenImg.src = src;
+                overlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        function hideFullscreen() {
+            if (overlay) {
+                overlay.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        }
+        if (previewImg) previewImg.addEventListener('click', function() { showFullscreen(this.src); });
+        if (overlay) overlay.addEventListener('click', hideFullscreen);
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideFullscreen(); });
+        var galleryPrev = document.getElementById('gallery-preview');
+        if (galleryPrev) galleryPrev.addEventListener('click', function(e) {
+            if (e.target && e.target.tagName === 'IMG' && e.target.src) showFullscreen(e.target.src);
+        });
+        // Gallery images: multiple file preview
+        var galleryInput = document.getElementById('gallery_images_input');
+        var galleryPreview = document.getElementById('gallery-preview');
+        if (galleryInput && galleryPreview) {
+            galleryInput.addEventListener('change', function() {
+                galleryPreview.innerHTML = '';
+                var files = this.files || [];
+                for (var i = 0; i < Math.min(files.length, 6); i++) {
+                    if (files[i].type.indexOf('image') === -1) continue;
+                    var reader = new FileReader();
+                    reader.onload = (function(idx) {
+                        return function(e) {
+                            var img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'image-preview';
+                            img.style.maxHeight = '60px';
+                            img.style.width = 'auto';
+                            galleryPreview.appendChild(img);
+                        };
+                    })(i);
+                    reader.readAsDataURL(files[i]);
+                }
+                if (files.length > 6) galleryPreview.appendChild(document.createTextNode('+' + (files.length - 6) + ' more'));
+            });
+        }
+    });
+</script>
+<script>
+    // Searchable category, subcategory, unit - search box INSIDE dropdown
+    (function() {
+        var categories = {{ categories_json|default:"[]"|safe }};
+        var subcategories = {{ subcategories_json|default:"[]"|safe }};
+        var sizes = {{ sizes_json|default:"[]"|safe }};
+
+        var categoryTrigger = document.getElementById('category-trigger');
+        var categorySearchInner = document.getElementById('category-search-inner');
+        var categoryList = document.getElementById('category-list');
+        var categoryDropdown = document.getElementById('category-dropdown');
+        var categorySelect = document.getElementById('id_category');
+        var subcategoryTrigger = document.getElementById('subcategory-trigger');
+        var subcategorySearchInner = document.getElementById('subcategory-search-inner');
+        var subcategoryList = document.getElementById('subcategory-list');
+        var subcategoryDropdown = document.getElementById('subcategory-dropdown');
+        var subcategorySelect = document.getElementById('id_sub_category');
+        var unitTrigger = document.getElementById('unit-trigger');
+        var unitSearchInner = document.getElementById('unit-search-inner');
+        var unitList = document.getElementById('unit-list');
+        var unitDropdown = document.getElementById('unit-dropdown');
+        var unitSelect = document.getElementById('id_unit');
+        var sizeTrigger = document.getElementById('size-trigger');
+        var sizeSearchInner = document.getElementById('size-search-inner');
+        var sizeList = document.getElementById('size-list');
+        var sizeDropdown = document.getElementById('size-dropdown');
+        var sizeSelect = document.getElementById('id_size');
+
+        if (!categoryTrigger || !subcategoryTrigger) return;
+
+        function esc(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function renderCategoryList(filter) {
+            var q = (filter || '').toLowerCase().trim();
+            var filtered = categories.filter(function(c) { return !q || (c.name || '').toLowerCase().indexOf(q) !== -1; });
+            categoryList.innerHTML = filtered.length
+                ? filtered.map(function(c) { return '<div class="searchable-dropdown-item" data-id="'+c.id+'" data-name="'+esc(c.name)+'">'+esc(c.name)+'</div>'; }).join('')
+                : '<div class="searchable-dropdown-empty">No category found</div>';
+        }
+
+        function renderSubcategoryList(filter, categoryId) {
+            var q = (filter || '').toLowerCase().trim();
+            var filtered = subcategories.filter(function(s) { return String(s.category_id) === String(categoryId); });
+            if (q) filtered = filtered.filter(function(s) { return (s.name || '').toLowerCase().indexOf(q) !== -1; });
+            subcategoryList.innerHTML = filtered.length
+                ? filtered.map(function(s) { return '<div class="searchable-dropdown-item" data-id="'+s.id+'" data-name="'+esc(s.name)+'">'+esc(s.name)+'</div>'; }).join('')
+                : '<div class="searchable-dropdown-empty">No subcategory found</div>';
+        }
+
+        function getUnitOptions() {
+            var opts = [];
+            if (unitSelect) for (var i = 0; i < unitSelect.options.length; i++) {
+                var o = unitSelect.options[i];
+                if (o.value) opts.push({ value: o.value, label: o.text });
+            }
+            return opts;
+        }
+
+        function renderUnitList(filter) {
+            var opts = getUnitOptions();
+            var q = (filter || '').toLowerCase().trim();
+            var filtered = opts.filter(function(o) { return !q || (o.label||o.value||'').toLowerCase().indexOf(q) !== -1; });
+            unitList.innerHTML = filtered.length
+                ? filtered.map(function(o) { return '<div class="searchable-dropdown-item" data-value="'+esc(o.value)+'" data-label="'+esc(o.label)+'">'+esc(o.label)+'</div>'; }).join('')
+                : '<div class="searchable-dropdown-empty">No unit found</div>';
+        }
+
+        function renderSizeList(filter) {
+            var q = (filter || '').toLowerCase().trim();
+            var filtered = sizes.filter(function(s) { return !q || (s.name || '').toLowerCase().indexOf(q) !== -1; });
+            sizeList.innerHTML = filtered.length
+                ? filtered.map(function(s) { return '<div class="searchable-dropdown-item" data-id="'+s.id+'" data-name="'+esc(s.name)+'">'+esc(s.name)+'</div>'; }).join('')
+                : '<div class="searchable-dropdown-empty">No size found</div>';
+        }
+
+        function closeAll() {
+            if (categoryDropdown) categoryDropdown.classList.remove('show');
+            if (subcategoryDropdown) subcategoryDropdown.classList.remove('show');
+            if (unitDropdown) unitDropdown.classList.remove('show');
+            if (sizeDropdown) sizeDropdown.classList.remove('show');
+        }
+
+        function openCategory() {
+            closeAll();
+            if (categoryDropdown) categoryDropdown.classList.add('show');
+            if (categorySearchInner) { categorySearchInner.value = ''; categorySearchInner.focus(); }
+            renderCategoryList('');
+        }
+
+        function openSubcategory() {
+            if (!categorySelect || !categorySelect.value) return;
+            closeAll();
+            if (subcategoryDropdown) subcategoryDropdown.classList.add('show');
+            if (subcategorySearchInner) { subcategorySearchInner.value = ''; subcategorySearchInner.focus(); }
+            renderSubcategoryList('', categorySelect.value);
+        }
+
+        function openUnit() {
+            closeAll();
+            if (unitDropdown) unitDropdown.classList.add('show');
+            if (unitSearchInner) { unitSearchInner.value = ''; unitSearchInner.focus(); }
+            renderUnitList('');
+        }
+
+        function openSize() {
+            closeAll();
+            if (sizeDropdown) sizeDropdown.classList.add('show');
+            if (sizeSearchInner) { sizeSearchInner.value = ''; sizeSearchInner.focus(); }
+            renderSizeList('');
+        }
+
+        categoryTrigger.addEventListener('click', function(e) { e.stopPropagation(); openCategory(); });
+        if (categorySearchInner) categorySearchInner.addEventListener('input', function() { renderCategoryList(this.value); });
+        if (categorySearchInner) categorySearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
+
+        subcategoryTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (categorySelect && categorySelect.value) openSubcategory();
+        });
+        if (subcategorySearchInner) subcategorySearchInner.addEventListener('input', function() { renderSubcategoryList(this.value, categorySelect ? categorySelect.value : ''); });
+        if (subcategorySearchInner) subcategorySearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
+
+        if (unitTrigger) unitTrigger.addEventListener('click', function(e) { e.stopPropagation(); openUnit(); });
+        if (unitSearchInner) unitSearchInner.addEventListener('input', function() { renderUnitList(this.value); });
+        if (unitSearchInner) unitSearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
+
+        if (sizeTrigger) sizeTrigger.addEventListener('click', function(e) { e.stopPropagation(); openSize(); });
+        if (sizeSearchInner) sizeSearchInner.addEventListener('input', function() { renderSizeList(this.value); });
+        if (sizeSearchInner) sizeSearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
+
+        categoryDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+        categoryList.addEventListener('click', function(e) {
+            var item = e.target.closest('.searchable-dropdown-item[data-id]');
+            if (!item) return;
+            categorySelect.value = item.dataset.id;
+            categoryTrigger.value = item.dataset.name || item.textContent;
+            closeAll();
+            subcategorySelect.value = '';
+            subcategoryTrigger.value = '';
+            if (subcategorySearchInner) subcategorySearchInner.value = '';
+        });
+
+        subcategoryList.addEventListener('click', function(e) {
+            var item = e.target.closest('.searchable-dropdown-item[data-id]');
+            if (!item) return;
+            subcategorySelect.value = item.dataset.id;
+            subcategoryTrigger.value = item.dataset.name || item.textContent;
+            closeAll();
+        });
+
+        if (unitDropdown) unitDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+        if (unitList) unitList.addEventListener('click', function(e) {
+            var item = e.target.closest('.searchable-dropdown-item[data-value]');
+            if (!item) return;
+            unitSelect.value = item.dataset.value;
+            unitTrigger.value = item.dataset.label || item.textContent;
+            closeAll();
+        });
+
+        if (sizeDropdown) sizeDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+        if (sizeList) sizeList.addEventListener('click', function(e) {
+            var item = e.target.closest('.searchable-dropdown-item[data-id]');
+            if (!item) return;
+            sizeSelect.value = item.dataset.id;
+            sizeTrigger.value = item.dataset.name || item.textContent;
+            closeAll();
+        });
+
+        categorySelect.addEventListener('change', function() {
+            subcategorySelect.value = '';
+            subcategoryTrigger.value = '';
+            if (subcategorySearchInner) subcategorySearchInner.value = '';
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.searchable-select-wrap')) closeAll();
+        });
+
+        function syncFromSelects() {
+            if (categorySelect && categorySelect.value) {
+                var c = categories.find(function(x) { return String(x.id) === String(categorySelect.value); });
+                if (c) categoryTrigger.value = c.name;
+            } else categoryTrigger.value = '';
+            if (subcategorySelect && subcategorySelect.value) {
+                var s = subcategories.find(function(x) { return String(x.id) === String(subcategorySelect.value); });
+                if (s) subcategoryTrigger.value = s.name;
+            } else subcategoryTrigger.value = '';
+            if (unitSelect && unitTrigger) {
+                if (unitSelect.value) {
+                    var opts = getUnitOptions();
+                    var u = opts.find(function(x) { return String(x.value) === String(unitSelect.value); });
+                    if (u) unitTrigger.value = u.label;
+                } else unitTrigger.value = '';
+            }
+            if (sizeSelect && sizeTrigger) {
+                if (sizeSelect.value) {
+                    var sz = sizes.find(function(x) { return String(x.id) === String(sizeSelect.value); });
+                    if (sz) sizeTrigger.value = sz.name;
+                } else sizeTrigger.value = '';
+            }
+        }
+
+        if (useUnitCheck && unitTrigger) {
+            useUnitCheck.addEventListener('change', function() {
+                if (!this.checked) { unitSelect.value = ''; unitTrigger.value = ''; unitTrigger.disabled = true; }
+                else { unitTrigger.disabled = false; }
+            });
+        }
+
+        syncFromSelects();
+        window.syncCategorySubcategoryDisplay = syncFromSelects;
+    })();
 </script>
 
 
@@ -667,6 +1095,69 @@
         variantContainer2.appendChild(newFormRow);
     });
 
+    // ---------- Delete variant row (icon click): remove from DOM, call API for existing records ----------
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
+    function renumberFormsetRows(container, prefix) {
+        const rows = container.querySelectorAll('tr');
+        const totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+        if (totalInput) totalInput.value = rows.length;
+        rows.forEach(function(row, idx) {
+            row.querySelectorAll('input, select').forEach(function(el) {
+                if (el.name && el.name.indexOf(prefix) === 0) {
+                    el.name = el.name.replace(new RegExp('^' + prefix + '-\\d+-'), prefix + '-' + idx + '-');
+                }
+                if (el.id && el.id.indexOf(prefix.replace(/_/g, '')) !== -1) {
+                    el.id = el.id.replace(/-\d+-/, '-' + idx + '-');
+                }
+            });
+            row.querySelectorAll('label').forEach(function(label) {
+                if (label.htmlFor) label.htmlFor = label.htmlFor.replace(/-\d+-/, '-' + idx + '-');
+            });
+            var srNo = row.querySelector('.sr-no');
+            if (srNo) srNo.innerText = idx + 1;
+        });
+    }
+    function removeVariantRow(btn, apiPath, prefix) {
+        var row = btn.closest('tr');
+        var idInput = row.querySelector("input[type='hidden'][name$='-id']");
+        var variantId = idInput ? idInput.value.trim() : '';
+        if (variantId) {
+            fetch(apiPath + variantId + '/', {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
+            }).then(function(r) {
+                if (r.ok || r.status === 204) {
+                    row.remove();
+                    renumberFormsetRows(row.closest('tbody'), prefix);
+                } else {
+                    console.error('Delete failed:', r.status);
+                }
+            }).catch(function(e) { console.error('Delete error:', e); });
+        } else {
+            row.remove();
+            renumberFormsetRows(row.closest('tbody'), prefix);
+        }
+    }
+    variantContainer?.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-variant');
+        if (btn) { e.preventDefault(); removeVariantRow(btn, '{% url "PrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'print_variants'); }
+    });
+    variantContainer2?.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-customize-variant');
+        if (btn) { e.preventDefault(); removeVariantRow(btn, '{% url "CustomizePrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'customize_print_variants'); }
+    });
+
+    // ---------- Delete addon row (icon click) ----------
+    addonContainer?.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-addon');
+        if (btn) { e.preventDefault(); removeVariantRow(btn, '{% url "ProductAddonViewSet-detail" 0 %}'.replace('/0/', '/'), 'addon'); }
+    });
 
 });
 
@@ -745,7 +1236,7 @@
 
     // for hiding/ showing product fields on  product type fields
     function toggleProductOnlyFields(show) {     
-        const exemptIds = ["id_track_serial_numbers", "id_low_stock_alert"];
+        const exemptIds = ["id_track_serial_numbers", "id_low_stock_alert", "size-search-inner"];
 
         document.querySelectorAll('.product-only-field').forEach(el => {
             el.style.display = show ? '' : 'none';
@@ -806,9 +1297,34 @@
 
 
 
- function adjustFormFields(productType, saleType) {
-    console.log(productType)
-    console.log(saleType)
+    var productSettings = {{ product_settings_json|default:"{}"|safe }};
+
+    function applyProductSettingsForOffline(settings) {
+        if (!settings) return;
+        setVisibleById('category_wrapper', settings.category);
+        setVisibleById('sub_category_wrapper', settings.sub_category);
+        setVisibleById('brand_name_wrapper', settings.brand_name);
+        setVisibleById('color_wrapper', settings.color);
+        setVisibleById('size_wrapper', settings.size);
+        setVisibleById('batch_number_wrapper', settings.batch_number);
+        setVisibleById('expiry_date_wrapper', settings.expiry_date);
+        setVisibleById('description_wrapper', settings.description);
+        setVisibleById('image_wrapper', settings.image);
+        setVisibleById('wholesale_price_wrapper', settings.wholesale_price);
+        setVisibleById('opening_stock_wrapper', settings.stock);
+        setVisibleById('low_stock_alert_wrapper', settings.stock);
+        setVisibleById('low_stock_quantity_wrapper', settings.stock && settings.low_stock_alert);
+        setCheckbox('id_low_stock_alert', settings.low_stock_alert);
+        setVisibleById('track_serial_numbers_wrapper', settings.imei);
+        setCheckbox('id_track_serial_numbers', settings.imei);
+        setVisibleById('tax_div', settings.tax);
+        var foodWrapper = document.getElementById('foodOptionToggleWrapper');
+        if (foodWrapper) { foodWrapper.style.display = settings.food ? '' : 'none'; setCheckbox('id_is_food', settings.food); }
+        var galleryWrapper = document.getElementById('gallery_images_wrapper');
+        if (galleryWrapper) galleryWrapper.style.display = 'none';
+    }
+
+    function adjustFormFields(productType, saleType) {
         const key = `${productType}_${saleType}`;
         const rules = {
             'product_offline': {
@@ -884,17 +1400,17 @@
             switch (rule) {
                 case 'required':
                     wrapper.style.display = 'block';
-                    input.disabled = false;
+                    wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = false);
                     input.required = true;
                     break;
                 case 'optional':
                     wrapper.style.display = 'block';
-                    input.disabled = false;
+                    wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = false);
                     input.required = false;
                     break;
                 case 'hide':
                     wrapper.style.display = 'none';
-                    input.disabled = true;
+                    wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = true);
                     input.required = false;
                     break;
             }
@@ -910,7 +1426,11 @@
     function updateFieldLogic() {
         const productType = document.getElementById('productType').value;
         const saleType = document.getElementById('saleType').value;
-        adjustFormFields(productType, saleType);
+        if (saleType === 'offline') {
+            applyProductSettingsForOffline(productSettings);
+        } else {
+            adjustFormFields(productType, saleType);
+        }
     }
 
     saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product
@@ -974,11 +1494,11 @@ changeMrpLabel("Selling Price");
             handleFoodToggleChange();
 
             // Show customize print toggle and related wrappers
-            customizePrintToggleWrapper.style.display = 'block';
+            if (customizePrintToggleWrapper) customizePrintToggleWrapper.style.display = 'block';
             handleCustomPrintToggleChange(); // Initial state
         } else {
             setSaleTypeOptionsDefault();
-            toggleVariantFormSection(selectedType === 'product');
+            toggleVariantFormSection(false);  // Hide variant sections when not print
             toggleProductOnlyFields(selectedType === 'product');
             
             addon_section.style.display = 'none';
@@ -989,16 +1509,16 @@ changeMrpLabel("Selling Price");
 
             handleFoodToggleChange();
 
-            // Hide all customize print stuff
-            customizePrintWrapper.style.display = 'none';
-            standardPrintWrapper.style.display = 'none';
-            customPrintWrapper.style.display = 'none';
-
-           
-            customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-                el.disabled = true;
-                el.required = false;
-            });
+            // Hide all print variant sections (standard + customize)
+            if (customizePrintToggleWrapper) customizePrintToggleWrapper.style.display = 'none';
+            if (standardPrintWrapper) standardPrintWrapper.style.display = 'none';
+            if (customPrintWrapper) {
+                customPrintWrapper.style.display = 'none';
+                customPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = true;
+                    el.required = false;
+                });
+            }
         }
         // Always keep submit section visible for every product type (product, service, print)
         const submitSection = document.getElementById('product-form-submit-section');
@@ -1039,49 +1559,51 @@ document.addEventListener("DOMContentLoaded", function () {
     toggleGSTInput();
   });
 
-  const colorPicker = document.getElementById("color_picker");
-  const colorValue = document.getElementById("color_value");
-  const colorPreview = document.getElementById("color_preview");
-  const commonColors = document.getElementById("common_colors");
-
-  function updateColorPickerFromDropdown(select) {
-    if (select.value) {
-      colorPicker.value = select.value;
-      colorValue.value = select.value;
-      colorPreview.style.background = select.value;
+  // Color dropdown: update display swatch + hex value + form input (elements resolved at call time)
+  function updateColorDisplayFromDropdown(select) {
+    if (!select) return;
+    var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
+    var colorDisplay = document.getElementById("color_display");
+    var colorHexDisplay = document.getElementById("color_hex_display");
+    var hex = select.value ? String(select.value).trim() : '';
+    if (colorValue) colorValue.value = hex;
+    if (colorHexDisplay) colorHexDisplay.textContent = hex || '—';
+    if (colorDisplay) {
+      if (hex) {
+        colorDisplay.style.background = hex;
+        colorDisplay.style.borderColor = (hex === '#ffffff' ? '#ced4da' : hex);
+      } else {
+        colorDisplay.style.background = '#f3f4f6';
+        colorDisplay.style.borderColor = '#ced4da';
+      }
     }
   }
 
-  function updateDropdownFromColorPicker(picker) {
-    colorValue.value = picker.value;
-    colorPreview.style.background = picker.value;
-    commonColors.value = ""; // Reset dropdown selection
-  }
-
-  // Initialize on load
-  window.onload = function() {
-    const initialColor = "{{ form.color.value|default:'' }}";  // <--- wrap in quotes
-    console.log(initialColor);
-    console.log(initialColor)
-    if (initialColor) {
-      colorPicker.value = initialColor;
-      colorPreview.style.background = initialColor;
-
-      for (let i = 0; i < commonColors.options.length; i++) {
+  document.addEventListener('DOMContentLoaded', function() {
+    var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
+    var colorDisplay = document.getElementById("color_display");
+    var colorHexDisplay = document.getElementById("color_hex_display");
+    var commonColors = document.getElementById("common_colors");
+    var initialColor = "{{ form.color.value|default:'' }}".trim();
+    if (colorValue && initialColor) colorValue.value = initialColor;
+    if (colorHexDisplay) colorHexDisplay.textContent = initialColor || '—';
+    if (colorDisplay && initialColor) {
+      colorDisplay.style.background = initialColor;
+      colorDisplay.style.borderColor = (initialColor === '#ffffff' ? '#ced4da' : initialColor);
+    }
+    if (commonColors && initialColor) {
+      for (var i = 0; i < commonColors.options.length; i++) {
         if (commonColors.options[i].value.toLowerCase() === initialColor.toLowerCase()) {
           commonColors.selectedIndex = i;
           break;
         }
       }
     }
-  }
+  });
 
   
 function handleCustomPrintToggleChange() {
     const isCustom = document.getElementById('customPrintToggle')?.checked;
-    const select = document.querySelector('#id_print_variants-0-paper');
-
-    console.log('sdsdsd')
 
     if (isCustom) {
         standardPrintWrapper.style.display = 'none';
@@ -1092,9 +1614,9 @@ function handleCustomPrintToggleChange() {
             el.required = false;
         });
 
-        if (select) {
-            select.removeAttribute('required');
-        }
+        standardPrintWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+            el.removeAttribute('required');
+        });
 
     } else {
 
@@ -1129,11 +1651,6 @@ function handleCustomPrintToggleChange() {
 
 
   window.addEventListener("DOMContentLoaded", () => {
-    console.log("-------------------")
-
-    colorValue.value = colorPicker.value;
-    colorPreview.style.background = colorPicker.value;
-
     handleProductTypeChange();
     // Ensure submit section is always visible regardless of product type
     const submitSection = document.getElementById('product-form-submit-section');
@@ -1291,42 +1808,43 @@ function handleCustomPrintToggleChange() {
         }
     }
 
-    document.getElementById("use-defaults-btn").addEventListener("click", function () {
-    fetch("{% url 'product_defaults' %}")
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                const data = result.data;
-                for (const field in data) {
-                    console.log(field)
-                    try {
-                        let el = document.querySelector(`[name="${field}"]`);
-                        if (el && data[field] !== null && data[field] !== "") {
-                            if (el.tagName.toLowerCase() === 'select') {
-                                el.value = data[field];
-                            }
-                            else if (el.type === 'file') {
-                                console.warn(`Skipping file input: ${field}`);
-                            }
-                            else if (el.type === 'checkbox') {
-                                el.checked = Boolean(data[field]); // ✅ handle checkboxes
-                            }
-                            else {
-                                el.value = data[field];
-                            }
+    function applyDeliveryDefaults(settings) {
+        setCheckbox('id_instant_delivery', settings.instant_delivery);
+        setCheckbox('id_self_pickup', settings.self_pickup);
+        setCheckbox('id_general_delivery', settings.general_delivery);
+        setCheckbox('id_is_on_shop', settings.shop_orders);
+    }
+    function applyPoliciesDefaults(settings) {
+        setCheckbox('id_return_policy', settings.return_policy);
+        setCheckbox('id_cod', settings.cod);
+        setCheckbox('id_replacement', settings.replacement);
+        setCheckbox('id_shop_exchange', settings.shop_exchange);
+        setCheckbox('id_shop_warranty', settings.shop_warranty);
+        setCheckbox('id_brand_warranty', settings.brand_warranty);
+    }
+
+    document.querySelectorAll('.use-defaults-trigger').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var block = this.getAttribute('data-block');
+            if (!block) return;
+            fetch("{% url 'product_defaults' %}")
+                .then(response => response.json())
+                .then(function(result) {
+                    if (result.success) {
+                        var data = result.data;
+                        if (block === 'delivery') {
+                            applyDeliveryDefaults(data);
+                        } else if (block === 'policies') {
+                            applyPoliciesDefaults(data);
                         }
-                    } catch (err) {
-                        console.error(`Error setting field "${field}":`, err);
+                    } else {
+                        console.warn("No product settings found.");
                     }
-                }
-                // Apply visibility/checkbox defaults
-                applyProductSettingsUI(data);
-            } else {
-                console.warn("No defaults found or failed to fetch.");
-            }
-        })
-        .catch(error => {
-            console.error("Error fetching defaults:", error);
+                })
+                .catch(function(error) {
+                    console.error("Error fetching product settings:", error);
+                });
         });
     });
 

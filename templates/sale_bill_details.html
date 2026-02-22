@@ -170,31 +170,27 @@
                             <div class="border rounded p-3 mb-3">
                                 <div class="d-flex justify-content-between">
                                     <span>Total</span>
-                                    <strong>Rs {{ sale.total_amount }}</strong>
+                                    <strong>Rs {{ sale.total_amount_before_discount|default:0|floatformat:2 }}</strong>
                                 </div>
-                                {% comment %} <div class="d-flex justify-content-between">
-                                    <span>Charges</span>
-                                    <strong>Rs {{ wholesale.delivery_charges|default:0|add:wholesale.packaging_charges|default:0 }}</strong>
-                                </div> {% endcomment %}
                                 <div class="d-flex justify-content-between">
                                     <span>Discount</span>
-                                    <strong>Rs {{ sale.total_discount }}</strong>
+                                    <strong>Rs {{ sale.discount_amount|default:0|floatformat:2 }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Tax</span>
-                                    <strong>Rs 0.00</strong>
+                                    <strong>Rs {{ sale.total_gst_amount|default:0|floatformat:2 }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Net Total</span>
-                                    <strong>Rs {{ sale.total_amount }}</strong>
+                                    <strong>Rs {{ sale.total_amount|default:0|floatformat:2 }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Advance Paid</span>
-                                    <strong>Rs 0.00</strong>
+                                    <strong>Rs {{ sale.advance_amount|default:0|floatformat:2 }}</strong>
                                 </div>
                                 <div class="d-flex justify-content-between">
                                     <span>Balance</span>
-                                    <strong class="text-danger">Rs {{ sale.final_amount }}</strong>
+                                    <strong class="text-danger">Rs {{ sale.balance_amount|default:0|floatformat:2 }}</strong>
                                 </div>
                             </div>
 

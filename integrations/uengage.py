@@ -192,7 +192,7 @@ def _pickup_from_company_profile(vendor_user):
         return None
     address = ", ".join([
         p for p in [
-            cp.address_line_1, cp.address_line_2, cp.city, cp.state.name if getattr(cp.state, "name", None) else None, cp.pincode, cp.country
+            cp.address_line_1, cp.address_line_2, cp.city, cp.state, cp.pincode, cp.country
         ] if p
     ])
     return {

@@ -724,7 +724,7 @@ class PrintVariant(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.get_color_type_display()} | {self.get_sided_display()} | {self.get_paper_display()}"
+        return f"{self.get_sided_display()}"
     
 
 class CustomizePrintVariant(models.Model):
@@ -995,6 +995,46 @@ class PurchaseItem(models.Model):
 
             
 
+STATE_CHOICES = [
+    ("Andhra Pradesh", "Andhra Pradesh"),
+    ("Arunachal Pradesh", "Arunachal Pradesh"),
+    ("Assam", "Assam"),
+    ("Bihar", "Bihar"),
+    ("Chhattisgarh", "Chhattisgarh"),
+    ("Goa", "Goa"),
+    ("Gujarat", "Gujarat"),
+    ("Haryana", "Haryana"),
+    ("Himachal Pradesh", "Himachal Pradesh"),
+    ("Jharkhand", "Jharkhand"),
+    ("Karnataka", "Karnataka"),
+    ("Kerala", "Kerala"),
+    ("Madhya Pradesh", "Madhya Pradesh"),
+    ("Maharashtra", "Maharashtra"),
+    ("Manipur", "Manipur"),
+    ("Meghalaya", "Meghalaya"),
+    ("Mizoram", "Mizoram"),
+    ("Nagaland", "Nagaland"),
+    ("Odisha", "Odisha"),
+    ("Punjab", "Punjab"),
+    ("Rajasthan", "Rajasthan"),
+    ("Sikkim", "Sikkim"),
+    ("Tamil Nadu", "Tamil Nadu"),
+    ("Telangana", "Telangana"),
+    ("Tripura", "Tripura"),
+    ("Uttar Pradesh", "Uttar Pradesh"),
+    ("Uttarakhand", "Uttarakhand"),
+    ("West Bengal", "West Bengal"),
+    ("Andaman and Nicobar Islands", "Andaman and Nicobar Islands"),
+    ("Chandigarh", "Chandigarh"),
+    ("Dadra and Nagar Haveli and Daman and Diu", "Dadra and Nagar Haveli and Daman and Diu"),
+    ("Delhi", "Delhi"),
+    ("Jammu and Kashmir", "Jammu and Kashmir"),
+    ("Ladakh", "Ladakh"),
+    ("Lakshadweep", "Lakshadweep"),
+    ("Puducherry", "Puducherry"),
+]
+
+
 class CompanyProfile(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True, related_name="user_company_profile")
@@ -1010,7 +1050,7 @@ class CompanyProfile(models.Model):
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     pincode = models.CharField(max_length=10, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
-    state = models.ForeignKey('masters.State', on_delete=models.SET_NULL, null=True, blank=True)
+    state = models.CharField(max_length=100, choices=STATE_CHOICES, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
 
     # Shipping address
@@ -1019,7 +1059,7 @@ class CompanyProfile(models.Model):
     shipping_address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     shipping_pincode = models.CharField(max_length=10, blank=True, null=True)
     shipping_city = models.CharField(max_length=100, blank=True, null=True)
-    shipping_state = models.ForeignKey('masters.State', on_delete=models.SET_NULL, null=True, blank=True, related_name='shipping_company_profiles')
+    shipping_state = models.CharField(max_length=100, choices=STATE_CHOICES, blank=True, null=True)
     shipping_country = models.CharField(max_length=100, blank=True, null=True)
 
     pan = models.CharField(max_length=10, blank=True, null=True)
@@ -1446,9 +1486,6 @@ class BarcodeSettings(models.Model):
         ("50x100", "50MM * 100MM"),
     ]
     barcode_size = models.CharField(max_length=10, choices=BARCODE_SIZE_CHOICES, default="25x50")
-
-    show_note = models.BooleanField(default=False)
-    note_label = models.CharField(max_length=20, blank=True, null=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -240,7 +240,7 @@
           <h2>{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</h2>
           {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br />{% endif %}
           {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br />{% endif %}
-          {% if sale_instance.company_profile.state %}State: {{ sale_instance.company_profile.state.name }}{% endif %}<br />
+          {% if sale_instance.company_profile.state %}State: {{ sale_instance.company_profile.state }}{% endif %}<br />
           GSTIN : {{ sale_instance.company_profile.gstin|default:"-" }} &nbsp;&nbsp; PAN : {{ sale_instance.company_profile.pan|default:"-" }}<br />
           Mobile : {{ sale_instance.company_profile.contact|default:"-" }} &nbsp;&nbsp; Email : {{ sale_instance.company_profile.email|default:"-" }}<br />
           {% if wholesale.reverse_charges %}<b>Reverse Charge</b>{% endif %}

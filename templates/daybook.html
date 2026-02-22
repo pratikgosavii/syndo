@@ -53,7 +53,7 @@
                 <div class="card-header"><h5 class="card-title mb-0">Balances</h5></div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped mb-0">
+                        <table class="table table-bordered table-striped mb-0" data-enable-filters="false">
                             <thead>
                                 <tr>
                                     <th>Account</th>
@@ -64,13 +64,13 @@
                             <tbody>
                                 <tr>
                                     <td>Cash in hand</td>
-                                    <td>{{ accounts.cash_in_hand.opening|intcomma }}</td>
-                                    <td>{{ accounts.cash_in_hand.closing|intcomma }}</td>
+                                    <td>{{ accounts.cash_in_hand.opening }}</td>
+                                    <td>{{ accounts.cash_in_hand.closing }}</td>
                                 </tr>
                                 <tr>
                                     <td>Bank Balance</td>
-                                    <td>{{ accounts.bank_balance.opening|intcomma }}</td>
-                                    <td>{{ accounts.bank_balance.closing|intcomma }}</td>
+                                    <td>{{ accounts.bank_balance.opening }}</td>
+                                    <td>{{ accounts.bank_balance.closing }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -82,7 +82,7 @@
                 <div class="card-header"><h5 class="card-title mb-0">Entries</h5></div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
+                        <table class="table table-bordered table-striped" data-enable-filters="false">
                             <thead>
                                 <tr>
                                     <th>Type</th>
@@ -90,7 +90,6 @@
                                     <th>Debit</th>
                                     <th>Credit</th>
                                     <th>Time</th>
-                                    <th>Ref</th>
                                     <th>Description</th>
                                 </tr>
                             </thead>
@@ -99,11 +98,11 @@
                                 <tr>
                                     <td>{{ e.type }}</td>
                                     <td>{{ e.medium }}</td>
-                                    <td>{{ e.debit|intcomma }}</td>
-                                    <td>{{ e.credit|intcomma }}</td>
-                                    <td>{{ e.time|date:"H:i:s" }}</td>
-                                    <td>{{ e.reference_id|default:"-" }}</td>
-                                    <td>{{ e.description|default:"-" }}</td>
+                                    <td>{{ e.debit }}</td>
+                                    <td>{{ e.credit }}</td>
+                                    <td>{{ e.time }}</td>
+                                  
+                                    <td>{{ e.description }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr><td colspan="7" class="text-center">No entries for this day.</td></tr>

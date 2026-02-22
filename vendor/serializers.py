@@ -68,10 +68,6 @@ class OnlineStoreSettingSerializer(serializers.ModelSerializer):
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
-    state_details = StateSerializer(source = "state", read_only = True)
-    shipping_state_details = StateSerializer(source="shipping_state", read_only=True)
-
-
     class Meta:
         model = CompanyProfile
         fields = '__all__'
@@ -226,19 +222,13 @@ class BankTransferSerializer(serializers.ModelSerializer):
     
     
 class PrintVariantSerializer(serializers.ModelSerializer):
-    color_type_display = serializers.CharField(source='get_color_type_display', read_only=True)
     sided_display = serializers.CharField(source='get_sided_display', read_only=True)
-    paper_display = serializers.CharField(source='get_paper_display', read_only=True)
 
     class Meta:
         model = PrintVariant
         fields = [
             'id',
             'product',
-            'paper',
-            'paper_display',
-            'color_type',
-            'color_type_display',
             'sided',
             'sided_display',
             'min_quantity',
@@ -472,7 +462,7 @@ class product_serializer(serializers.ModelSerializer):
             product_addon.objects.create(product=instance, **addon)
 
         # Only allow model fields for PrintVariant, ignore display keys
-        allowed_variant_keys = {"paper", "color_type", "sided", "min_quantity", "max_quantity", "price"}
+        allowed_variant_keys = {"sided", "min_quantity", "max_quantity", "price"}
         for variant in variants_data:
             if isinstance(variant, dict):
                 variant = {k: v for k, v in variant.items() if k in allowed_variant_keys}
@@ -560,7 +550,7 @@ class product_serializer(serializers.ModelSerializer):
 
         if variants_data:
             PrintVariant.objects.filter(product=instance).delete()
-            allowed_variant_keys = {"paper", "color_type", "sided", "min_quantity", "max_quantity", "price"}
+            allowed_variant_keys = {"sided", "min_quantity", "max_quantity", "price"}
             for variant in variants_data:
                 if isinstance(variant, dict):
                     variant = {k: v for k, v in variant.items() if k in allowed_variant_keys}

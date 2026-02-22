@@ -357,17 +357,12 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                    
 
                             <li>
-                                <a href="{% url 'add_company_profile' %}" class="has-arrow">
+                                <a href="{% url 'update_company_profile_withoutid' %}" class="has-arrow">
                                     <i data-feather="briefcase"></i>
                                     <span data-key="t-authentication">Company Profile</span>
                                 </a>
                             </li>
-                            <li>
-                                <a href="{% url 'list_company_profile' %}">
-                                    <i data-feather="file-text"></i>
-                                    <span>Company Profile List</span>
-                                </a>
-                            </li>
+                           
                             <li>
                                 <a href="{% url 'daybook_report' %}" class="has-arrow">
                                     <i data-feather="book-open"></i>
@@ -431,18 +426,9 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
                                 <span data-key="t-authentication">Purchase</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-
-                                <li>
-                                    <a href="javascript: void(0);" class="has-arrow">
-                                        <i data-feather="layers"></i>
-                                        <span data-key="t-authentication">Purchase</span>
-                                    </a>
-                                    <ul class="sub-menu" aria-expanded="false">
-                                        <li><a href="{% url 'add_purchase' %}">Add Purchase</a></li>
-                                        <li><a href="{% url 'list_purchase' %}">Purchase List</a></li>
-                                    </ul>
-                                </li> 
-                            </ul> 
+                                <li><a href="{% url 'add_purchase' %}">Add Purchase</a></li>
+                                <li><a href="{% url 'list_purchase' %}">Purchase List</a></li>
+                            </ul>
                         </li> 
 
 
@@ -463,14 +449,10 @@ body.sidebar-enable .vertical-menu .quick-actions {    /* small-screen toggled o
 
                       
                         <li>
-                            <a href="javascript: void(0);" class="has-arrow">
+                            <a href="{% url 'list_expense_category' %}" class="has-arrow">
                                 <i data-feather="layers"></i>
                                 <span data-key="t-authentication">Expense Category</span>
                             </a>
-                            <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_expense_category' %}">Add Expense Category</a></li>
-                                <li><a href="{% url 'list_expense_category' %}">Expense List</a></li>
-                            </ul>
                         </li> 
                       
 

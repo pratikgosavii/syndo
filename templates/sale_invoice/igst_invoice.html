@@ -42,7 +42,7 @@
                 <div class="bold">{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</div>
                 {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br>{% endif %}
                 {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br>{% endif %}
-                {% if sale_instance.company_profile.state %}State: {{ sale_instance.company_profile.state.name }}{% endif %}
+                {% if sale_instance.company_profile.state %}State: {{ sale_instance.company_profile.state }}{% endif %}
             </td>
             <td style="text-align:right;">
                 GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>

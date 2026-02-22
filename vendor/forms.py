@@ -113,6 +113,7 @@ class product_Form(forms.ModelForm):
     class Meta:
         model = product
         fields = '__all__'
+        exclude = ['gallery_images']  # Handled separately in view for multiple file upload
         widgets = {
             'user': forms.Select(attrs={'class': 'form-control'}),
             'product_type': forms.Select(attrs={'id': 'productType', 'class': 'form-control'}),
@@ -149,7 +150,6 @@ class product_Form(forms.ModelForm):
 
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'gallery_images': forms.ClearableFileInput(attrs={'class': 'form-control'}),
 
             'is_customize': forms.CheckboxInput(attrs={'class': 'form-check-input', "id" : "customPrintToggle"}),
             'instant_delivery': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -217,7 +217,7 @@ class ProductAddonForm(forms.ModelForm):
 class PrintVariantForm(forms.ModelForm):
     class Meta:
         model = PrintVariant
-        fields = ['product', 'paper', 'color_type', 'min_quantity', 'max_quantity', 'price', 'sided']
+        fields = ['product', 'min_quantity', 'max_quantity', 'price', 'sided']
 
 
 
@@ -390,6 +390,10 @@ class CompanyProfileForm(forms.ModelForm):
             'billing_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'address_line_1': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'address_line_2': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'pincode': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pincode'}),
+            'city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City'}),
+            'state': forms.Select(attrs={'class': 'form-control form-select'}),
+            'country': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Country'}),
             'pan': forms.TextInput(attrs={'class': 'form-control'}),
             'upi_id': forms.TextInput(attrs={'class': 'form-control'}),
             'website': forms.URLInput(attrs={'class': 'form-control'}),
@@ -436,11 +440,11 @@ class PurchaseForm(forms.ModelForm):
         exclude = ['user']  # user will be set in the view
         widgets = {
             'purchase_code': forms.TextInput(attrs={'class': 'form-control'}),
-            'vendor': forms.Select(attrs={'class': 'form-control'}),
+            'vendor': forms.Select(attrs={'class': 'form-select form-control'}),
             'supplier_invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'serial_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'discount-amount-input'}),
-            'discount_percentage': forms.NumberInput(attrs={'class': 'form-control', 'id': 'discount-percentage'}),
+            'serial_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Invoice No. from Supplier'}),
+            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'id' : 'discount-amount-input', 'placeholder': '0'}),
+            'discount_percentage': forms.NumberInput(attrs={'class': 'form-control', 'id': 'discount-percentage', 'placeholder': '0'}),
             'payment_method': forms.Select(attrs={'class': 'form-control', 'id': 'payment_method'}),
             'bank': forms.Select(attrs={'class': 'form-control'}),
             'advance_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
@@ -452,10 +456,10 @@ class PurchaseForm(forms.ModelForm):
             'transport_name': forms.TextInput(attrs={'class': 'form-control', 'id' : 'vehicle_number'}),
             'dispatch_address': forms.TextInput(attrs={'class': 'form-control'}),
             'references': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'delivery_shipping_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'packaging_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Internal notes...'}),
+            'terms': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Payment terms...'}),
+            'delivery_shipping_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'packaging_charges': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
             
             'advance_payment_amount': forms.NumberInput(attrs={
                 'class': 'form-control d-inline-block w-auto me-2',
@@ -483,6 +487,7 @@ class PurchaseForm(forms.ModelForm):
 
         if user is not None:
             self.fields['vendor'].queryset = vendor_vendors.objects.filter(user=user)
+            self.fields['vendor'].empty_label = "Select Vendor"
             self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
             self.fields['advance_bank'].queryset = vendor_bank.objects.filter(user=user)
 
@@ -522,7 +527,7 @@ class ExpenseForm(forms.ModelForm):
         widgets = {
             'amount': forms.NumberInput(attrs={'class': 'form-control'}),
             'expense_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'category': forms.Select(attrs={'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-control form-select expense-category-select'}),
             'is_paid': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'payment_type': forms.Select(attrs={'class': 'form-control'}),
             'bank': forms.Select(attrs={'class': 'form-control'}),
@@ -535,10 +540,17 @@ class ExpenseForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super(ExpenseForm, self).__init__(*args, **kwargs)
-        
+
+        from masters.models import expense_category
+
         if user:
-            self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
-            self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
+            if 'company_profile' in self.fields:
+                self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
+            if 'bank' in self.fields:
+                self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
+            if 'category' in self.fields:
+                self.fields['category'].queryset = expense_category.objects.filter(user=user).order_by('name')
+                self.fields['category'].empty_label = 'Search or select category...'
 
 
 
@@ -775,8 +787,7 @@ class TaxSettingsForm(forms.ModelForm):
 class BarcodeSettingsForm(forms.ModelForm):
     class Meta:
         model = BarcodeSettings
-        fields = ['show_package_date', 'show_discount', 'show_price_with_text', 'barcode_size', 'show_note']
-        # mrp_label and note_label removed from form per requirement
+        fields = ['show_package_date', 'mrp_label', 'show_discount', 'show_price_with_text', 'barcode_size']
 
 class InvoiceSettingsForm(forms.ModelForm):
     class Meta:
