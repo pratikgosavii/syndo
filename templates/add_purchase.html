@@ -42,7 +42,7 @@
         .btn-primary { background-color: #151e31; border-color: #151e31; }
         .btn-primary:hover { background-color: #151e31; border-color: #151e31; }
         /* + New Vendor */
-        .btn-new-vendor { background-color: #FCA311 !important; border: 1px solid #FCA311 !important; color: #fff !important; font-weight: 600; }
+        .btn-new-vendor { background-color: #FCA311 !important; border: 1px solid #FCA311 !important; color: #fff !important; font-weight: 600 !important; }
         .btn-new-vendor:hover { background-color: #e5920f !important; border-color: #e5920f !important; color: #fff; }
         /* + Add Row: light blue bg, blue border, white text */
         .btn-add-row { background-color: #151e31; border: 1px solid #151e31; color: #fff; font-weight: 600; }
@@ -102,6 +102,16 @@
     input:checked + .slider:before {
         transform: translateX(22px);
     }
+    
+    .btn-remove-x{
+      background: #ff2f2f !important;
+      padding: 3px !important;
+    color: white !important;
+    font-weight: 600 !important;
+
+    }
+
+
 </style>
 
 
@@ -174,7 +184,7 @@
               <div class="section-card">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <h6 class="section-title mb-0"><i class="bi bi-box"></i> Product Items</h6>
-                  <a href="{% url 'add_product' %}" class="btn btn-add-catalog btn-sm">
+                  <a href="{% url 'add_product' %}" class="btn btn-add-catalog btn-sm" style="background-color: #FCA311 !important; border: 1px solid #FCA311 !important; color: #fff !important; font-weight: 600 !important;  ">
                     <i class="bi bi-plus"></i> Add to Catalog
                   </a>
                 </div>
@@ -209,7 +219,7 @@
                       <input type="text" name="total_price" class="form-control total-price" placeholder="Total" readonly value="{{ item.total|default:'' }}">
                     </div>
                     <div class="col-md-2">
-                      <button type="button" class="btn btn-remove-x remove-row" title="Remove"><i class="bi bi-x"></i></button>
+                      <button type="button" class="btn btn-remove-x remove-row" title="Remove"><i style="" class="bi bi-x"></i></button>
                     </div>
                   </div>
                   {% empty %}

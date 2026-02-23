@@ -536,6 +536,21 @@
         .dispatch-document-card .section-title .bi { color: #b45309; }
         .dispatch-document-card .form-control { background: #fff; border-color: #e2e8f0; }
         .dispatch-document-card .form-check-input:checked { background-color: #f59e0b; border-color: #f59e0b; }
+
+        /* Add Customer modal – horizontal layout like add_customer page */
+        #customerModal .customer-modal-form .section-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+        }
+        #customerModal .customer-modal-form .section-title {
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        #customerModal .modal-body { max-height: 70vh; overflow-y: auto; }
     </style>
 
     <style>
@@ -996,41 +1011,143 @@
                                         
                                     
         <div class="modal fade" id="customerModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-xl">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">Add Customer</h5>
+              <h5 class="modal-title" id="exampleModalLabel"><i class="bi bi-person-plus me-2"></i>Add Customer</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-              <div class="modal-content" id="customerModalContent">
-                <form id="customerForm" method="post">
-                  {% csrf_token %}
-                  <div class="modal-body">
-                    {% for field in customer_forms %}
-                      <div class="mb-3">
-                        <label class="form-label">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                          <div class="text-danger">{{ field.errors }}</div>
-                        {% endif %}
+            <div class="modal-body" id="customerModalContent">
+              <form id="customerForm" method="post">
+                {% csrf_token %}
+                <div class="customer-modal-form">
+                  <div class="section-card mb-3">
+                    <div class="section-title small"><i class="bi bi-person me-1"></i>Basic information</div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="id_name" class="form-label">Customer name</label>
+                        {{ customer_forms.name }}
+                        {% if customer_forms.name.errors %}<div class="text-danger small">{{ customer_forms.name.errors.0 }}</div>{% endif %}
                       </div>
-                    {% endfor %}
+                      <div class="col-md-3">
+                        <label for="id_contact" class="form-label">Mobile number</label>
+                        {{ customer_forms.contact }}
+                        {% if customer_forms.contact.errors %}<div class="text-danger small">{{ customer_forms.contact.errors.0 }}</div>{% endif %}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_email" class="form-label">Email</label>
+                        {{ customer_forms.email }}
+                        {% if customer_forms.email.errors %}<div class="text-danger small">{{ customer_forms.email.errors.0 }}</div>{% endif %}
+                      </div>
+                    </div>
                   </div>
-                
-
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                  <div class="section-card mb-3">
+                    <div class="section-title small"><i class="bi bi-briefcase me-1"></i>Business details</div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="id_company_name" class="form-label">Company name</label>
+                        {{ customer_forms.company_name }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_gst_number" class="form-label">GST number</label>
+                        {{ customer_forms.gst_number }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_pan_number" class="form-label">PAN number</label>
+                        {{ customer_forms.pan_number }}
+                      </div>
+                      <div class="col-md-6">
+                        <label for="id_aadhar_number" class="form-label">Aadhar number</label>
+                        {{ customer_forms.aadhar_number }}
+                      </div>
+                    </div>
                   </div>
-
-
-                </form>
-
+                  <div class="section-card mb-3">
+                    <div class="section-title small"><i class="bi bi-geo-alt me-1"></i>Billing address</div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="id_billing_address_line1" class="form-label">Address line 1</label>
+                        {{ customer_forms.billing_address_line1 }}
+                      </div>
+                      <div class="col-md-6">
+                        <label for="id_billing_address_line2" class="form-label">Address line 2</label>
+                        {{ customer_forms.billing_address_line2 }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_billing_city" class="form-label">City</label>
+                        {{ customer_forms.billing_city }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_billing_state" class="form-label">State</label>
+                        {{ customer_forms.billing_state }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_billing_country" class="form-label">Country</label>
+                        {{ customer_forms.billing_country }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_billing_pincode" class="form-label">Pincode</label>
+                        {{ customer_forms.billing_pincode }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="section-card mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div class="section-title small mb-0"><i class="bi bi-truck me-1"></i>Dispatch address</div>
+                      <div class="form-check form-check-sm">
+                        <input class="form-check-input" type="checkbox" id="copyBillingModal" onclick="copyBillingToDispatchModal(this)">
+                        <label class="form-check-label small" for="copyBillingModal">Same as billing</label>
+                      </div>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label for="id_dispatch_address_line1" class="form-label">Address line 1</label>
+                        {{ customer_forms.dispatch_address_line1 }}
+                      </div>
+                      <div class="col-md-6">
+                        <label for="id_dispatch_address_line2" class="form-label">Address line 2</label>
+                        {{ customer_forms.dispatch_address_line2 }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_dispatch_city" class="form-label">City</label>
+                        {{ customer_forms.dispatch_city }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_dispatch_state" class="form-label">State</label>
+                        {{ customer_forms.dispatch_state }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_dispatch_country" class="form-label">Country</label>
+                        {{ customer_forms.dispatch_country }}
+                      </div>
+                      <div class="col-md-3">
+                        <label for="id_dispatch_pincode" class="form-label">Pincode</label>
+                        {{ customer_forms.dispatch_pincode }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="section-card mb-0">
+                    <div class="section-title small"><i class="bi bi-currency-rupee me-1"></i>Transport & balance</div>
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label for="id_transport_name" class="form-label">Transport name</label>
+                        {{ customer_forms.transport_name }}
+                      </div>
+                      <div class="col-md-4">
+                        <label for="id_opening_balance" class="form-label">Opening balance</label>
+                        {{ customer_forms.opening_balance }}
+                        {% if customer_forms.opening_balance.errors %}<div class="text-danger small">{{ customer_forms.opening_balance.errors.0 }}</div>{% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer mt-3">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
+                </div>
+              </form>
             </div>
           </div>
-            
         </div>
       </div>
                     
@@ -1041,8 +1158,23 @@
 
 
 <script>
+  function copyBillingToDispatchModal(checkbox) {
+    var map = [
+      ['billing_address_line1', 'dispatch_address_line1'],
+      ['billing_address_line2', 'dispatch_address_line2'],
+      ['billing_city', 'dispatch_city'],
+      ['billing_state', 'dispatch_state'],
+      ['billing_country', 'dispatch_country'],
+      ['billing_pincode', 'dispatch_pincode']
+    ];
+    map.forEach(function(pair) {
+      var billing = document.getElementById('id_' + pair[0]);
+      var dispatch = document.getElementById('id_' + pair[1]);
+      if (checkbox.checked && billing && dispatch) dispatch.value = billing.value;
+    });
+  }
   $(document).ready(function () {
-    // Load modal content dynamically if needed
+    // Load modal content dynamically if needed (refresh form on open)
     $('[data-bs-target="#customerModal"]').on('click', function () {
       $.get("{% url 'add_customer_modal' %}", function (html) {
         $('#customerModalContent').html(html);

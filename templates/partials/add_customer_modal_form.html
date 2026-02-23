@@ -1,0 +1,128 @@
+<form id="customerForm" method="post">
+  {% csrf_token %}
+  <div class="customer-modal-form">
+    <div class="section-card mb-3">
+      <div class="section-title small"><i class="bi bi-person me-1"></i>Basic information</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="id_name" class="form-label">Customer name</label>
+          {{ form.name }}
+          {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+          <label for="id_contact" class="form-label">Mobile number</label>
+          {{ form.contact }}
+          {% if form.contact.errors %}<div class="text-danger small">{{ form.contact.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+          <label for="id_email" class="form-label">Email</label>
+          {{ form.email }}
+          {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="section-card mb-3">
+      <div class="section-title small"><i class="bi bi-briefcase me-1"></i>Business details</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="id_company_name" class="form-label">Company name</label>
+          {{ form.company_name }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_gst_number" class="form-label">GST number</label>
+          {{ form.gst_number }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_pan_number" class="form-label">PAN number</label>
+          {{ form.pan_number }}
+        </div>
+        <div class="col-md-6">
+          <label for="id_aadhar_number" class="form-label">Aadhar number</label>
+          {{ form.aadhar_number }}
+        </div>
+      </div>
+    </div>
+    <div class="section-card mb-3">
+      <div class="section-title small"><i class="bi bi-geo-alt me-1"></i>Billing address</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="id_billing_address_line1" class="form-label">Address line 1</label>
+          {{ form.billing_address_line1 }}
+        </div>
+        <div class="col-md-6">
+          <label for="id_billing_address_line2" class="form-label">Address line 2</label>
+          {{ form.billing_address_line2 }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_billing_city" class="form-label">City</label>
+          {{ form.billing_city }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_billing_state" class="form-label">State</label>
+          {{ form.billing_state }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_billing_country" class="form-label">Country</label>
+          {{ form.billing_country }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_billing_pincode" class="form-label">Pincode</label>
+          {{ form.billing_pincode }}
+        </div>
+      </div>
+    </div>
+    <div class="section-card mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="section-title small mb-0"><i class="bi bi-truck me-1"></i>Dispatch address</div>
+        <div class="form-check form-check-sm">
+          <input class="form-check-input" type="checkbox" id="copyBillingModal" onclick="copyBillingToDispatchModal(this)">
+          <label class="form-check-label small" for="copyBillingModal">Same as billing</label>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="id_dispatch_address_line1" class="form-label">Address line 1</label>
+          {{ form.dispatch_address_line1 }}
+        </div>
+        <div class="col-md-6">
+          <label for="id_dispatch_address_line2" class="form-label">Address line 2</label>
+          {{ form.dispatch_address_line2 }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_dispatch_city" class="form-label">City</label>
+          {{ form.dispatch_city }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_dispatch_state" class="form-label">State</label>
+          {{ form.dispatch_state }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_dispatch_country" class="form-label">Country</label>
+          {{ form.dispatch_country }}
+        </div>
+        <div class="col-md-3">
+          <label for="id_dispatch_pincode" class="form-label">Pincode</label>
+          {{ form.dispatch_pincode }}
+        </div>
+      </div>
+    </div>
+    <div class="section-card mb-0">
+      <div class="section-title small"><i class="bi bi-currency-rupee me-1"></i>Transport & balance</div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="id_transport_name" class="form-label">Transport name</label>
+          {{ form.transport_name }}
+        </div>
+        <div class="col-md-4">
+          <label for="id_opening_balance" class="form-label">Opening balance</label>
+          {{ form.opening_balance }}
+          {% if form.opening_balance.errors %}<div class="text-danger small">{{ form.opening_balance.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer mt-3">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
+  </div>
+</form>
