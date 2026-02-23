@@ -33,23 +33,111 @@
         }
         .ledger-page .filter-bar {
             background: #fff;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 1rem 1.25rem;
             margin-bottom: 1rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #e5e7eb;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 1rem;
             justify-content: space-between;
         }
-        .ledger-page .filter-bar .date-inputs { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-        .ledger-page .filter-bar .date-inputs input {
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 0.4rem 0.6rem;
-            font-size: 0.9rem;
+        .ledger-page .filter-bar form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
+        .ledger-page .filter-bar .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
+        .ledger-page .filter-bar .filter-group-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .ledger-page .filter-bar .filter-input {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            color: #334155;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .ledger-page .filter-bar .filter-input:focus {
+            outline: none;
+            border-color: #FCA311;
+            box-shadow: 0 0 0 2px rgba(252, 163, 17, 0.2);
+        }
+        .ledger-page .filter-bar .filter-input::placeholder { color: #94a3b8; }
+        .ledger-page .filter-bar .filter-date { min-width: 142px; }
+        .ledger-page .filter-bar .filter-to { color: #94a3b8; font-size: 0.8rem; font-weight: 500; }
+        .ledger-page .filter-bar .filter-select {
+            min-width: 140px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            color: #334155;
+            cursor: pointer;
+        }
+        .ledger-page .filter-bar .filter-select:focus {
+            outline: none;
+            border-color: #FCA311;
+        }
+        .ledger-page .filter-bar .filter-search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+            max-width: 280px;
+        }
+        .ledger-page .filter-bar .filter-search-wrap .bi-search {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1rem;
+            pointer-events: none;
+        }
+        .ledger-page .filter-bar .filter-search {
+            padding-left: 2.5rem;
+            width: 100%;
+            min-width: 180px;
+        }
+        .ledger-page .filter-bar .btn-search {
+            background: #1e293b;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .ledger-page .filter-bar .btn-search:hover { background: #334155; color: #fff; }
+        .ledger-page .filter-bar .btn-clear {
+            background: transparent;
+            color: #64748b;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: none;
+            padding: 0.5rem 0.75rem;
+            text-decoration: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .ledger-page .filter-bar .btn-clear:hover { color: #334155; }
         .ledger-page .btn-add {
             background: #FFC107;
             color: #1e293b;
@@ -144,19 +232,27 @@
                 </div>
 
                 <div class="filter-bar">
-                    <form method="get" action="" class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
-                        <input type="date" name="date_from" value="{{ date_from }}" class="filter-input filter-date" placeholder="mm/dd/yyyy">
-                        <span class="filter-to">to</span>
-                        <input type="date" name="date_to" value="{{ date_to }}" class="filter-input filter-date" placeholder="mm/dd/yyyy" title="End date">
-                        <select name="filter_type" class="filter-input filter-select">
+                    <form method="get" action="">
+                        <div class="filter-group">
+                            <input type="date" name="date_from" value="{{ date_from }}" class="filter-input filter-date" id="date_from" aria-label="Start date">
+                            <span class="filter-to">to</span>
+                            <input type="date" name="date_to" value="{{ date_to }}" class="filter-input filter-date" id="date_to" aria-label="End date">
+                        </div>
+                        <select name="filter_type" class="filter-input filter-select" aria-label="Payment type">
                             <option value="">All Types</option>
                             <option value="gave" {% if filter_type == 'gave' %}selected{% endif %}>You Gave</option>
                             <option value="received" {% if filter_type == 'received' %}selected{% endif %}>You Received</option>
                         </select>
-                        <input type="text" name="search" value="{{ search }}" class="filter-input filter-search" placeholder="Search Payment ID, Customer or Vendor Name...">
-                        <button type="submit" class="btn-search">Search</button>
+                        <div class="filter-search-wrap">
+                            <i class="bi bi-search"></i>
+                            <input type="text" name="search" value="{{ search }}" class="filter-input filter-search" placeholder="Search payment, customer, vendor..." aria-label="Search">
+                        </div>
+                        <button type="submit" class="btn-search"><i class="bi bi-search"></i> Search</button>
+                        {% if date_from or date_to or filter_type or search %}
+                        <a href="{% url 'list_payment' %}" class="btn-clear"><i class="bi bi-x-circle"></i> Clear</a>
+                        {% endif %}
                     </form>
-                    <a href="{% url 'add_payment' %}" class="btn-add ms-auto"><i class="bi bi-plus-lg"></i> Add Payment</a>
+                    <a href="{% url 'add_payment' %}" class="btn-add"><i class="bi bi-plus-lg"></i> Add Payment</a>
                 </div>
 
                 {% for payment in data %}
