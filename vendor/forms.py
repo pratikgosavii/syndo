@@ -114,6 +114,7 @@ class product_Form(forms.ModelForm):
         model = product
         fields = '__all__'
         exclude = ['gallery_images']  # Handled separately in view for multiple file upload
+        # Pricing required depends on product_type; see clean()
         widgets = {
             'user': forms.Select(attrs={'class': 'form-control'}),
             'product_type': forms.Select(attrs={'id': 'productType', 'class': 'form-control'}),
@@ -175,7 +176,36 @@ class product_Form(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Required for pricing is set in clean() by product_type (product: only sales_price; service/print: all three)
+        self.fields['wholesale_price'].required = False
+        self.fields['mrp'].required = False
+        self.fields['sales_price'].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        product_type = cleaned.get('product_type')
+        if not product_type:
+            return cleaned
+        if product_type == 'product':
+            # Product type: only sales_price is required
+            if cleaned.get('sales_price') in (None, ''):
+                self.add_error('sales_price', 'Sales price is required for product type.')
+            # Allow wholesale_price and mrp to be empty; set default for DB (model requires wholesale_price)
+            if cleaned.get('wholesale_price') in (None, ''):
+                cleaned['wholesale_price'] = 0
+            if cleaned.get('mrp') in (None, ''):
+                cleaned['mrp'] = None  # model allows null for mrp
+        elif product_type in ('service', 'print'):
+            # Service/print: wholesale price, MRP and sales price are required
+            if cleaned.get('wholesale_price') in (None, ''):
+                self.add_error('wholesale_price', 'Wholesale price is required for service/print.')
+            if cleaned.get('mrp') in (None, ''):
+                self.add_error('mrp', 'MRP is required for service/print.')
+            if cleaned.get('sales_price') in (None, ''):
+                self.add_error('sales_price', 'Sales price is required for service/print.')
+        return cleaned
 
 
 class addon_Form(forms.ModelForm):
@@ -287,17 +317,17 @@ class VendorBankForm(forms.ModelForm):
             'is_active',
         ]
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Bank Name'}),
-            'account_holder': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Holder Name'}),
-            'account_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Account Number'}),
-            'ifsc_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'IFSC Code'}),
-            'branch': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Branch Name'}),
-            
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. HDFC Bank'}),
+            'account_holder': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Svindo Pvt Ltd'}),
+            'account_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Account Number'}),
+            'ifsc_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'E.G. HDFC0001234'}),
+            'branch': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Jubilee Hills Branch'}),
             'opening_balance': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Enter Opening Balance'
+                'placeholder': '0.00',
+                'step': '0.01',
             }),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input bank-active-toggle'}),
         }
 
 

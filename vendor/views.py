@@ -611,12 +611,13 @@ def delete_bank(request, bank_id):
 
 @login_required(login_url='login_admin')
 def list_bank(request):
-
-    data = vendor_bank.objects.filter(user = request.user)
+    data = vendor_bank.objects.filter(user=request.user)
+    total_balance = data.aggregate(total=Sum("balance"))["total"] or 0
     context = {
-        'data': data
+        "data": data,
+        "total_balance": total_balance,
     }
-    return render(request, 'list_bank.html', context)
+    return render(request, "list_bank.html", context)
 
 
 
@@ -1082,26 +1083,51 @@ class VendorLedgerAPIView(APIView):
     
 
 def bank_ledger(request, bank_id):
-    # Same calculation as BankLedgerAPIView: opening + sum(ledger) = balance
+    from django.db.models import Q
+
     bank = get_object_or_404(vendor_bank, id=bank_id)
-    ledger_entries = bank.ledger_entries.order_by("created_at")
+    ledger_entries = bank.ledger_entries.all()
     ledger_total = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
     opening = bank.opening_balance or 0
     balance = opening + ledger_total
+
+    from_date = request.GET.get("from_date", "").strip()
+    to_date = request.GET.get("to_date", "").strip()
+    transaction_type = request.GET.get("transaction_type", "").strip()
+    search = request.GET.get("search", "").strip()
+    if from_date:
+        ledger_entries = ledger_entries.filter(created_at__date__gte=from_date)
+    if to_date:
+        ledger_entries = ledger_entries.filter(created_at__date__lte=to_date)
+    if transaction_type:
+        ledger_entries = ledger_entries.filter(transaction_type=transaction_type)
+    if search:
+        if search.isdigit():
+            ledger_entries = ledger_entries.filter(Q(description__icontains=search) | Q(reference_id=int(search)))
+        else:
+            ledger_entries = ledger_entries.filter(description__icontains=search)
+    ledger_entries = ledger_entries.order_by("-created_at")
+
+    transaction_type_choices = [("", "All Transactions")] + list(BankLedger.TRANSACTION_TYPES)
 
     return render(request, "bank_ledger.html", {
         "bank": bank,
         "opening": opening,
         "balance": balance,
         "ledger": ledger_entries,
+        "transaction_type_choices": transaction_type_choices,
+        "from_date": from_date,
+        "to_date": to_date,
+        "transaction_type": transaction_type,
+        "search": search,
     })
 
 
 def customer_ledger(request, customer_id):
-    # Same calculation as CustomerLedgerAPIView: balance, total_sales, ledger
+    from django.db.models import Q
     from .models import vendor_customers
 
-    ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id).order_by("created_at")
+    ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id)
     customer = None
     try:
         customer = vendor_customers.objects.get(id=customer_id)
@@ -1109,7 +1135,25 @@ def customer_ledger(request, customer_id):
     except vendor_customers.DoesNotExist:
         balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
+    from_date = request.GET.get("from_date", "").strip()
+    to_date = request.GET.get("to_date", "").strip()
+    transaction_type = request.GET.get("transaction_type", "").strip()
+    search = request.GET.get("search", "").strip()
+    if from_date:
+        ledger_entries = ledger_entries.filter(created_at__date__gte=from_date)
+    if to_date:
+        ledger_entries = ledger_entries.filter(created_at__date__lte=to_date)
+    if transaction_type:
+        ledger_entries = ledger_entries.filter(transaction_type=transaction_type)
+    if search:
+        if search.isdigit():
+            ledger_entries = ledger_entries.filter(Q(description__icontains=search) | Q(reference_id=int(search)))
+        else:
+            ledger_entries = ledger_entries.filter(description__icontains=search)
+    ledger_entries = ledger_entries.order_by("-created_at")
+
     total_sales = Sale.objects.filter(customer_id=customer_id).aggregate(total=Sum("total_amount"))["total"] or 0
+    transaction_type_choices = [("", "All Transactions")] + list(CustomerLedger.TRANSACTION_TYPES)
 
     return render(request, "customer_ledger.html", {
         "customer_id": customer_id,
@@ -1117,15 +1161,40 @@ def customer_ledger(request, customer_id):
         "balance": balance,
         "total_sales": total_sales,
         "ledger": ledger_entries,
+        "transaction_type_choices": transaction_type_choices,
+        "from_date": from_date,
+        "to_date": to_date,
+        "transaction_type": transaction_type,
+        "search": search,
     })
 
 
 def vendor_ledger(request, vendor_id):
-    # Same calculation as VendorLedgerAPIView: vendor.balance or fallback from ledger
+    from django.db.models import Q
+
     vendor = get_object_or_404(vendor_vendors, pk=vendor_id)
-    ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id).order_by("created_at")
+    ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id)
     balance = vendor.balance or ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
     total_purchases = Purchase.objects.filter(vendor_id=vendor_id).aggregate(total=Sum("total_amount"))["total"] or 0
+
+    from_date = request.GET.get("from_date", "").strip()
+    to_date = request.GET.get("to_date", "").strip()
+    transaction_type = request.GET.get("transaction_type", "").strip()
+    search = request.GET.get("search", "").strip()
+    if from_date:
+        ledger_entries = ledger_entries.filter(created_at__date__gte=from_date)
+    if to_date:
+        ledger_entries = ledger_entries.filter(created_at__date__lte=to_date)
+    if transaction_type:
+        ledger_entries = ledger_entries.filter(transaction_type=transaction_type)
+    if search:
+        if search.isdigit():
+            ledger_entries = ledger_entries.filter(Q(description__icontains=search) | Q(reference_id=int(search)))
+        else:
+            ledger_entries = ledger_entries.filter(description__icontains=search)
+    ledger_entries = ledger_entries.order_by("-created_at")
+
+    transaction_type_choices = [("", "All Transactions")] + list(VendorLedger.TRANSACTION_TYPES)
 
     return render(request, "vendor_ledger.html", {
         "vendor_id": vendor_id,
@@ -1133,21 +1202,53 @@ def vendor_ledger(request, vendor_id):
         "balance": balance,
         "total_purchases": total_purchases,
         "ledger": ledger_entries,
+        "transaction_type_choices": transaction_type_choices,
+        "from_date": from_date,
+        "to_date": to_date,
+        "transaction_type": transaction_type,
+        "search": search,
     })
 
 def cash_ledger(request):
-    # Same calculation as CashLedgerAPIView: CashBalance model first, else sum(ledger)
-    ledger_entries = CashLedger.objects.filter(user=request.user).order_by("created_at")
+    from django.db.models import Q
+    from .models import CashBalance
+
+    ledger_entries = CashLedger.objects.filter(user=request.user)
     try:
-        from .models import CashBalance
         balance_obj = CashBalance.objects.get(user=request.user)
         balance = balance_obj.balance or 0
     except Exception:
         balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
 
+    from_date = request.GET.get("from_date", "").strip()
+    to_date = request.GET.get("to_date", "").strip()
+    transaction_type = request.GET.get("transaction_type", "").strip()
+    search = request.GET.get("search", "").strip()
+
+    if from_date:
+        ledger_entries = ledger_entries.filter(created_at__date__gte=from_date)
+    if to_date:
+        ledger_entries = ledger_entries.filter(created_at__date__lte=to_date)
+    if transaction_type:
+        ledger_entries = ledger_entries.filter(transaction_type=transaction_type)
+    if search:
+        if search.isdigit():
+            ledger_entries = ledger_entries.filter(Q(description__icontains=search) | Q(reference_id=int(search)))
+        else:
+            ledger_entries = ledger_entries.filter(description__icontains=search)
+
+    ledger_entries = ledger_entries.order_by("-created_at")
+
+    transaction_type_choices = [("", "All Types")] + list(CashLedger.TRANSACTION_TYPES)
+
     return render(request, "cash_ledger.html", {
         "balance": balance,
         "ledger": ledger_entries,
+        "transaction_type_choices": transaction_type_choices,
+        "from_date": from_date,
+        "to_date": to_date,
+        "transaction_type": transaction_type,
+        "search": search,
     })
 
 
@@ -1417,15 +1518,21 @@ def add_product(request, parent_id=None):
                 prefix='customize_print_variants'
             )
 
-            if addon_formset.is_valid() and variant_formset.is_valid() and customize_variant_formset.is_valid():
+            # When product is customize print, standard print variant formset is expected to be empty; skip its validation and save
+            is_customize = request.POST.get('is_customize') == 'on'
+            variant_formset_valid = variant_formset.is_valid() if not is_customize else True
+
+            if addon_formset.is_valid() and variant_formset_valid and customize_variant_formset.is_valid():
                 addon_formset.save()
-                variant_formset.save()
+                if not is_customize:
+                    variant_formset.save()
                 customize_variant_formset.save()
                 return redirect('list_product')
             else:
                 # Debug errors
                 print("Addon formset errors:", addon_formset.errors)
-                print("Variant formset errors:", variant_formset.errors)
+                if not is_customize:
+                    print("Variant formset errors:", variant_formset.errors)
                 print("Customize variant formset errors:", customize_variant_formset.errors)
         else:
             print("Product form errors:", product_form.errors)
@@ -1511,7 +1618,11 @@ def update_product(request, product_id):
         variant_formset = VariantFormSet(request.POST, request.FILES, instance=instance, prefix='print_variants')
         customize_variant_formset = CustomizePrintVariantFormSet(request.POST, request.FILES, instance=instance, prefix='customize_print_variants')
 
-        if product_form.is_valid() and addon_formset.is_valid() and variant_formset.is_valid() and customize_variant_formset.is_valid():
+        # When product is customize print, standard print variant formset is expected to be empty; skip its validation and save
+        is_customize = request.POST.get('is_customize') == 'on'
+        variant_formset_valid = variant_formset.is_valid() if not is_customize else True
+
+        if product_form.is_valid() and addon_formset.is_valid() and variant_formset_valid and customize_variant_formset.is_valid():
             product_instance = product_form.save(commit=False)
             product_instance.user = request.user
             product_instance.save()
@@ -1524,14 +1635,16 @@ def update_product(request, product_id):
                     product_instance.gallery_images.add(img)
 
             addon_formset.save()
-            variant_formset.save()
+            if not is_customize:
+                variant_formset.save()
             customize_variant_formset.save()
 
             return redirect('list_product')
         else:
             print("Product form errors:", product_form.errors)
             print("Addon formset errors:", addon_formset.errors)
-            print("Variant formset errors:", variant_formset.errors)
+            if not is_customize:
+                print("Variant formset errors:", variant_formset.errors)
             print("Customize variant formset errors:", customize_variant_formset.errors)
 
     else:
@@ -1595,9 +1708,9 @@ def delete_product(request, product_id):
 def list_product(request):
 
     if request.user.is_superuser:
-        data = product.objects.all()
+        data = product.objects.all().order_by('-created_at')
     else:
-        data = product.objects.filter(user=request.user, is_active=True)
+        data = product.objects.filter(user=request.user, is_active=True).order_by('-created_at')
 
     categories = list(data.values_list('category__name', flat=True).distinct().order_by('category__name'))
     brands = list(data.exclude(brand_name__isnull=True).exclude(brand_name='').values_list('brand_name', flat=True).distinct().order_by('brand_name'))
@@ -5354,18 +5467,42 @@ class CashAdjustHistoryAPIView(APIView):
 
 @login_required(login_url='login_admin')
 def cash_adjust_history_view(request):
-    from .models import CashLedger
-    # Get adjustment entries from CashLedger instead of CashAdjustHistory
-    qs = CashLedger.objects.filter(
+    from django.db.models import Q
+    from .models import CashLedger, CashBalance
+    # Same context shape as cash_ledger for identical UI
+    ledger_entries = CashLedger.objects.filter(
         user=request.user,
         transaction_type="adjustment"
-    ).order_by('-created_at')
-    
+    )
+    try:
+        balance_obj = CashBalance.objects.get(user=request.user)
+        balance = balance_obj.balance or 0
+    except Exception:
+        balance = CashLedger.objects.filter(user=request.user).aggregate(total=Sum("amount"))["total"] or 0
+    from_date = request.GET.get("from_date", "").strip()
+    to_date = request.GET.get("to_date", "").strip()
+    search = request.GET.get("search", "").strip()
+    if from_date:
+        ledger_entries = ledger_entries.filter(created_at__date__gte=from_date)
+    if to_date:
+        ledger_entries = ledger_entries.filter(created_at__date__lte=to_date)
+    if search:
+        if search.isdigit():
+            ledger_entries = ledger_entries.filter(Q(description__icontains=search) | Q(reference_id=int(search)))
+        else:
+            ledger_entries = ledger_entries.filter(description__icontains=search)
+    ledger_entries = ledger_entries.order_by("-created_at")
+    transaction_type_choices = [("", "All Types")] + list(CashLedger.TRANSACTION_TYPES)
     context = {
-        'data' : qs
+        "balance": balance,
+        "ledger": ledger_entries,
+        "transaction_type_choices": transaction_type_choices,
+        "from_date": from_date,
+        "to_date": to_date,
+        "transaction_type": "adjustment",
+        "search": search,
     }
-
-    return render(request, 'cash_adjust_history.html', context)
+    return render(request, "cash_adjust_history.html", context)
 
 class StoreWorkingHourViewSet(viewsets.ModelViewSet):
     serializer_class = StoreWorkingHourSerializer

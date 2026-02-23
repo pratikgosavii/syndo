@@ -8,21 +8,61 @@
     <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
     <style>
-        body { background-color: gainsboro; color: #775599; }
-        .card { background-color: #ffffff; border: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .card-header { background-color: #775599; color: #ffffff; border-radius: 8px 8px 0 0; padding: 20px; }
-        .tile { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; min-width: 150px; }
-        .tile h6 { margin: 0; font-weight: 700; }
-        .tile .value { font-size: 18px; }
-        .tile-sales { border-left: 5px solid #22c55e; }
-        .tile-purchase { border-left: 5px solid #3b82f6; }
-        .tile-stock { border-left: 5px solid #06b6d4; }
-        .tile-receipts { border-left: 5px solid #f59e0b; }
-        .tile-payments { border-left: 5px solid #ef4444; }
-        .tile-expenses { border-left: 5px solid #8b5cf6; }
-        .table thead { background-color: gray; color: white; }
-        .table tbody tr { background-color: white; color: black; }
-        .table tbody tr:hover { background-color: #f0d28c; color: #775599; }
+        body { background-color: #f1f5f9; color: #334155; }
+        .card { background-color: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .card-header { background-color: #775599; color: #fff; border-radius: 10px 10px 0 0; padding: 1rem 1.25rem; }
+        .tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; min-width: 150px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+        .tile h6 { margin: 0; font-weight: 700; font-size: 0.8rem; color: #64748b; }
+        .tile .value { font-size: 1.1rem; font-weight: 800; color: #1e293b; }
+        .tile-sales { border-left: 4px solid #22c55e; }
+        .tile-purchase { border-left: 4px solid #3b82f6; }
+        .tile-stock { border-left: 4px solid #06b6d4; }
+        .tile-receipts { border-left: 4px solid #14b8a6; }
+        .tile-payments { border-left: 4px solid #ef4444; }
+        .tile-expenses { border-left: 4px solid #f59e0b; }
+        .table thead { background: #f9fafb !important; color: #374151; }
+        .table tbody tr { background: #fff; }
+        .table tbody tr:hover { background: #f8fafc !important; }
+
+        /* Daybook entries table - per reference image: pastel pills, clean layout */
+        .daybook-entries-wrap { background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .daybook-entries-table { margin-bottom: 0; }
+        .daybook-entries-table thead th {
+            background: #f9fafb !important;
+            color: #374151;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .daybook-entries-table thead th.text-end { text-align: right; }
+        .daybook-entries-table tbody td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            color: #334155;
+            font-size: 0.9rem;
+        }
+        .daybook-entries-table tbody tr:last-child td { border-bottom: none; }
+        .daybook-entries-table tbody tr:hover { background: #f8fafc !important; }
+        .daybook-entries-table tbody td.text-end { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+        /* Pastel pill badges - light bg, darker text (per reference image) */
+        .daybook-pill {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .daybook-pill-sale { background: #dcfce7; color: #166534; }
+        .daybook-pill-purchase { background: #fee2e2; color: #991b1b; }
+        .daybook-pill-expense { background: #fef3c7; color: #92400e; }
+        .daybook-pill-receipt, .daybook-pill-deposit { background: #dcfce7; color: #166534; }
+        .daybook-pill-payment { background: #ccfbf1; color: #0f766e; }
+        .daybook-pill-default { background: #f3f4f6; color: #374151; }
     </style>
 {% endblock extra_css %}
 
@@ -78,37 +118,56 @@
                 </div>
             </div>
 
-            <div class="card mt-3">
-                <div class="card-header"><h5 class="card-title mb-0">Entries</h5></div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped" data-enable-filters="false">
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Medium</th>
-                                    <th>Debit</th>
-                                    <th>Credit</th>
-                                    <th>Time</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for e in entries %}
-                                <tr>
-                                    <td>{{ e.type }}</td>
-                                    <td>{{ e.medium }}</td>
-                                    <td>{{ e.debit }}</td>
-                                    <td>{{ e.credit }}</td>
-                                    <td>{{ e.time }}</td>
-                                  
-                                    <td>{{ e.description }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="7" class="text-center">No entries for this day.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+            <div class="card mt-3 border-0 shadow-sm">
+                <div class="card-header" style="background: #fff; color: #1e293b; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 0.95rem;">
+                    <h5 class="card-title mb-0">Transactions (Entries)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="daybook-entries-wrap">
+                        <div class="table-responsive">
+                            <table class="table daybook-entries-table" data-enable-filters="false">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Medium</th>
+                                        <th class="text-end">Debit (Out)</th>
+                                        <th class="text-end">Credit (In)</th>
+                                        <th>Time</th>
+                                        <th>Ref</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for e in entries %}
+                                    <tr>
+                                        <td>
+                                            {% if e.type == 'sale' %}
+                                                <span class="daybook-pill daybook-pill-sale">Sale</span>
+                                            {% elif e.type == 'purchase' %}
+                                                <span class="daybook-pill daybook-pill-purchase">Purchase</span>
+                                            {% elif e.type == 'expense' %}
+                                                <span class="daybook-pill daybook-pill-expense">Expense</span>
+                                            {% elif e.type == 'receipt' or e.type == 'deposit' %}
+                                                <span class="daybook-pill daybook-pill-receipt">Receipt</span>
+                                            {% elif e.type == 'payment' %}
+                                                <span class="daybook-pill daybook-pill-payment">Payment</span>
+                                            {% else %}
+                                                <span class="daybook-pill daybook-pill-default">{{ e.type|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ e.medium }}</td>
+                                        <td class="text-end">{% if e.debit %}₹ {{ e.debit|intcomma }}{% else %}-{% endif %}</td>
+                                        <td class="text-end">{% if e.credit %}₹ {{ e.credit|intcomma }}{% else %}-{% endif %}</td>
+                                        <td>{{ e.time|time:"g:i A" }}</td>
+                                        <td>{{ e.reference_id|default:"-" }}</td>
+                                        <td>{{ e.description|default:"-" }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="7" class="text-center py-5"><span class="text-muted">No entries for this day.</span></td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

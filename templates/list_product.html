@@ -80,6 +80,7 @@
         gap: 1rem;
     }
     .product-list-page .product-section { flex: 1; min-width: 0; }
+    .product-list-page .product-section-srno { min-width: 36px; flex: 0 0 auto; font-weight: 600; color: #6b7280; font-size: 0.8125rem; }
     .product-list-page .product-section-ident { min-width: 220px; }
     .product-list-page .product-section-pricing { min-width: 100px; }
     .product-list-page .product-section-stock { min-width: 100px; }
@@ -282,6 +283,7 @@
                         {% for i in data %}
                         <div class="product-card product-row" data-name="{{ i.name|lower }}" data-brand="{{ i.brand_name|default:''|lower }}" data-sku="{{ i.assign_barcode|default:'' }}" data-category="{% if i.category %}{{ i.category }}{% endif %}">
                             <div class="product-card-inner">
+                                <div class="product-section product-section-srno">{{ forloop.counter }}</div>
                                 <div class="product-section product-section-ident">
                                     <div class="d-flex align-items-start gap-3">
                                         {% if i.image %}

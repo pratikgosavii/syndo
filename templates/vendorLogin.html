@@ -13,7 +13,7 @@
 
     <style>
         body {
-            background-color: #ffdb8a;
+            background-color: white;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -106,7 +106,7 @@
         </div>
     {% endif %}
     <div class="logo">
-        <img src="{% static 'images/svindo_logo.png' %}" alt="Logo"/>
+        <img src="{% static 'images/logo.png' %}" alt="Logo"/>
     </div>
     <h4 class="text-center mb-4">Vendor Login</h4>
     <form action="" method="POST">
@@ -163,7 +163,9 @@
         {% endif %}
         <button type="submit" class="btn btn-purple w-100" style="color:black;">Login</button>
     </form>
-
+    <div class="register-link">
+        <a href="{% url 'vendor_forgot_password' %}">Forgot password?</a>
+    </div>
 </div>
 
 <!-- Bootstrap JS -->

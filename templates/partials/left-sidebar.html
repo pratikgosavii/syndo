@@ -142,6 +142,10 @@ body.sidebar-enable .vertical-menu .quick-actions,
 body[data-sidebar-size=sm] .vertical-menu .quick-actions {
     display: none !important;
 }
+/* Hide logout button when sidebar is closed (icon-only view) */
+body[data-sidebar-size=sm] .sidebar-logout-wrap {
+    display: none !important;
+}
 @media (max-width: 991.98px) {
     .quick-actions { display: none !important; }
 }
@@ -567,23 +571,15 @@ body[data-sidebar-size=sm] .vertical-menu .quick-actions {
 
                       
                         <li>
-                            <a href="{% url 'list_expense_category' %}" class="has-arrow">
-                                <i data-feather="layers"></i>
-                                <span data-key="t-authentication">Expense Category</span>
-                            </a>
-                        </li> 
-                      
-
-                                
-                        <li>
                             <a href="javascript: void(0);" class="has-arrow">
                                 <i data-feather="file-text"></i>
                                 <span data-key="t-authentication">Expense</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'list_expense_category' %}">Expense Category</a></li>
                                 <li><a href="{% url 'add_expense' %}">Add Expense</a></li>
                                 <li><a href="{% url 'list_expense' %}">Expense List</a></li>
-                            </ul> 
+                            </ul>
                         </li> 
 
 
@@ -713,13 +709,13 @@ body[data-sidebar-size=sm] .vertical-menu .quick-actions {
                                 <span>Security &amp; Policy</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'privacy_policy' %}">Privacy Policy</a></li>
-                                <li><a href="{% url 'policy_page' 'terms-and-conditions' %}">Terms and Condition</a></li>
-                                <li><a href="{% url 'policy_page' 'help-and-support' %}">Help and Support</a></li>
-                                <li><a href="{% url 'policy_page' 'shipping-and-delivery' %}">Shipping and Delivery</a></li>
-                                <li><a href="{% url 'policy_page' 'return-and-refund' %}">Return and Refund</a></li>
-                                <li><a href="{% url 'policy_page' 'vendor-agreement' %}">Vendor Agreement</a></li>
-                                <li><a href="{% url 'policy_page' 'settlement-policy' %}">Settlement Policy</a></li>
+                                <li><a href="https://www.svindo.com/#/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a></li>
+                                <li><a href="https://www.svindo.com/#/terms" target="_blank" rel="noopener noreferrer">Terms and Condition</a></li>
+                                <li><a href="https://www.svindo.com/#/support" target="_blank" rel="noopener noreferrer">Help and Support</a></li>
+                                <li><a href="https://www.svindo.com/#/shipping-policy" target="_blank" rel="noopener noreferrer">Shipping and Delivery</a></li>
+                                <li><a href="https://www.svindo.com/#/refund-policy" target="_blank" rel="noopener noreferrer">Return and Refund</a></li>
+                                <li><a href="https://www.svindo.com/#/vendor-agreement" target="_blank" rel="noopener noreferrer">Vendor Agreement</a></li>
+                                <li><a href="https://www.svindo.com/#/settlement-policy" target="_blank" rel="noopener noreferrer">Settlement Policy</a></li>
                             </ul>
                         </li>
                           <li>
@@ -747,11 +743,11 @@ body[data-sidebar-size=sm] .vertical-menu .quick-actions {
                             </a>
                         </li>
                         
-                        <div style="margin: 100% 0 0 35%; align-content: center">
+                        <div class="sidebar-logout-wrap" style="margin: 100% 0 0 35%; align-content: center">
                             <form method="POST" action="{% url 'logout' %}">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-primary" style="background-color: #775599;" >Logout</button>
-                        </form>
+                            </form>
                         </div>
                     </ul>
 

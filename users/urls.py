@@ -31,7 +31,9 @@ urlpatterns = [
     path('delete-user/', DeleteUserAPIView.as_view(), name='DeleteUserAPIView'),
     path('reset-password/', ResetPasswordView.as_view(), name='ResetPasswordView'),
     path('logout/', logout_page, name='logout'),
-    
+    path('vendor-forgot-password/', vendor_forgot_password, name='vendor_forgot_password'),
+    path('vendor-reset-password/<uidb64>/<token>/', vendor_reset_password_confirm, name='vendor_reset_password_confirm'),
+
     path('user_list/', user_list, name='user_list'),
     path('list-user-customer/', list_user_customer, name='list_user_customer'),
     path('list-user-vendor/', list_user_vendor, name='list_user_vendor'),

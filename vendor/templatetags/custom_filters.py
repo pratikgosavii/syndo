@@ -55,7 +55,7 @@ def abs_amount(value):
 
 @register.filter
 def ledger_type_pill_class(transaction_type):
-    """Return Bootstrap-style pill class for transaction type (Transactions UI)."""
+    """Return pill class for transaction type (light bg + dark text, cash ledger style)."""
     if not transaction_type:
         return "pill-default"
     t = str(transaction_type).lower()
@@ -65,4 +65,27 @@ def ledger_type_pill_class(transaction_type):
         return "pill-purchase"
     if t in ("expense",):
         return "pill-expense"
-    return "pill-receipt"  # receipt, payment, deposit, refund, etc.
+    if t in ("cash_transfer", "transfer", "transfered"):
+        return "pill-transfer"
+    if t in ("adjustment",):
+        return "pill-adjustment"
+    if t in ("deposit",):
+        return "pill-deposit"
+    if t in ("withdrawal",):
+        return "pill-withdrawal"
+    return "pill-receipt"
+
+
+@register.filter
+def cash_reference_display(entry):
+    """Return display label for cash ledger reference (e.g. PUR-2026-057, INV-2026-086)."""
+    return ledger_reference_display(entry)
+
+
+@register.filter
+def ledger_reference_display(entry):
+    """Return display label for any ledger reference (e.g. EXP-0016, PAY-0068, PUR-2026-057)."""
+    if not entry:
+        return "–"
+    from vendor.signals import _get_invoice_label
+    return _get_invoice_label(entry.transaction_type, entry.reference_id) or "–"

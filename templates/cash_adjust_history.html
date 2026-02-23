@@ -1,22 +1,51 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
+{% load humanize %}
+{% load custom_filters %}
 
 {% block title %}Cash Adjust History{% endblock title %}
 
 {% block extra_css %}
-    <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <style>
-        body { background-color: gainsboro; color: #775599; }
-        .card { background-color: #ffffff; border: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .card-header { background-color: #775599; color: #ffffff; border-radius: 8px 8px 0 0; padding: 20px; }
-        .card-title { margin: 0; }
-        .card-body { padding: 20px; }
-        .table thead { background-color: gray; color: white; }
-        .table tbody tr { background-color: white; color: black; }
-        .table tbody tr:hover { background-color: #f0d28c; color: #775599; }
-        @media (max-width: 768px) { .table-responsive { overflow-x: auto; } }
-    </style>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+<style>
+    body { background-color: #f1f5f9; color: #334155; font-size: 0.875rem; }
+    .ledger-page-header { margin-bottom: 0.75rem; margin-top: 0.5rem; }
+    .ledger-title-block { display: flex; align-items: center; gap: 0.6rem; }
+    .ledger-icon-wrap { width: 38px; height: 38px; background: #f59e0b; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .ledger-icon-wrap i { font-size: 1.1rem; color: #fff; }
+    .ledger-title { font-size: 1.15rem; font-weight: 700; color: #1a1d21; margin: 0 0 0.1rem 0; }
+    .ledger-subtitle { font-size: 0.75rem; color: #64748b; margin: 0; }
+    .summary-cards-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .summary-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; flex: 1; min-width: 140px; }
+    .summary-card.account-card { border-left: 3px solid #f97316; }
+    .summary-card .account-name { font-size: 0.95rem; font-weight: 700; color: #1a1d21; margin-bottom: 0.2rem; }
+    .summary-card .account-meta { font-size: 0.75rem; color: #64748b; }
+    .summary-card .balance-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #94a3b8; margin-bottom: 0.2rem; }
+    .summary-card .balance-value { font-size: 1rem; font-weight: 700; color: #374151; }
+    .summary-card.closing-card { background: #151e31; border: 1px solid #151e31; }
+    .summary-card.closing-card .balance-label { color: rgba(255,255,255,0.8); }
+    .summary-card.closing-card .balance-value { color: #fff; font-size: 1.1rem; }
+    .summary-card.closing-card .balance-value.negative { color: #fca5a5; }
+    .filter-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; }
+    .filter-card .form-label { font-size: 0.65rem; font-weight: 600; color: #64748b; margin-bottom: 0.2rem; }
+    .filter-card .form-control, .filter-card .form-select { border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; padding: 0.35rem 0.5rem; }
+    .btn-apply-filter { background: #151e31; color: #fff; border: none; border-radius: 6px; padding: 0.35rem 0.75rem; font-weight: 600; font-size: 0.8rem; }
+    .btn-apply-filter:hover { background: #0f172a; color: #fff; }
+    .ledger-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; overflow: hidden; }
+    .ledger-table { margin-bottom: 0; font-size: 0.8rem; }
+    .ledger-table thead th { background: #f8f9fa !important; color: #374151; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.45rem 0.6rem; border-bottom: 1px solid #e5e7eb; }
+    .ledger-table tbody td { padding: 0.45rem 0.6rem; border-bottom: 1px solid #f1f3f5; vertical-align: middle; color: #374151; }
+    .ledger-table tbody tr:hover { background-color: #f8f9fa; }
+    .ledger-table tbody tr:last-child td { border-bottom: none; }
+    .ledger-table .text-end { text-align: right; font-variant-numeric: tabular-nums; }
+    .pill { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: #fff; }
+    .pill-adjustment { background: #64748b; }
+    .pill-default { background: #64748b; }
+    .ref-link { color: #2563eb; text-decoration: none; font-weight: 500; font-size: 0.8rem; }
+    .ref-link:hover { text-decoration: underline; }
+    .amount-in { color: #16a34a; font-weight: 500; }
+    .amount-out { color: #dc2626; font-weight: 500; }
+</style>
 {% endblock extra_css %}
 
 {% block content %}
@@ -25,77 +54,115 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">Cash Adjust History</h4>
-                    </div>
-                </div>
-            </div>
-
-            <div class="container">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table id="datatable" class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Previous</th>
-                                                <th>New</th>
-                                                <th>Δ (Change)</th>
-                                                <th>Note</th>
-                                                <th>Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tableBody">
-                                            {% if data %}
-                                                {% for row in data %}
-                                                    <tr>
-                                                        <td>{{ forloop.counter }}</td>
-                                                        <td>{{ row.previous_balance }}</td>
-                                                        <td>{{ row.new_balance }}</td>
-                                                        <td>{% if row.delta_amount %}{{ row.delta_amount|floatformat:2 }}{% else %}0.00{% endif %}</td>
-                                                        <td>{{ row.note|default:"-" }}</td>
-                                                        <td>{{ row.created_at|date:"Y-m-d H:i" }}</td>
-                                                    </tr>
-                                                {% endfor %}
-                                            {% else %}
-                                                <tr>
-                                                    <td colspan="6" class="text-center">No history found.</td>
-                                                </tr>
-                                            {% endif %}
-                                        </tbody>
-                                    </table>
-                                </div>
+                    <div class="ledger-page-header">
+                        <div class="ledger-title-block">
+                            <div class="ledger-icon-wrap"><i class="bi bi-cash-stack"></i></div>
+                            <div>
+                                <h1 class="ledger-title">Cash Adjust History</h1>
+                                <p class="ledger-subtitle">Track cash balance adjustments</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="summary-cards-row">
+                        <div class="summary-card account-card">
+                            <div class="account-name">Cash in Hand</div>
+                            <div class="account-meta">Current account balance</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="balance-label">Opening Balance</div>
+                            <div class="balance-value">₹ 0.00</div>
+                        </div>
+                        <div class="summary-card closing-card">
+                            <div class="balance-label">Closing Balance</div>
+                            <div class="balance-value {% if balance < 0 %}negative{% endif %}">{% if balance < 0 %}− {% endif %}₹ {{ balance|abs_amount|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="filter-card">
+                        <form method="get" action="{% url 'cash_adjust_history_fb' %}" class="row g-3 align-items-end flex-wrap">
+                            <div class="col-auto">
+                                <label class="form-label d-block">From Date</label>
+                                <input type="date" name="from_date" class="form-control" value="{{ from_date }}" style="min-width: 130px;">
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label d-block">To Date</label>
+                                <input type="date" name="to_date" class="form-control" value="{{ to_date }}" style="min-width: 130px;">
+                            </div>
+                            <div class="col-auto">
+                                <label class="form-label d-block">Transaction Type</label>
+                                <select name="transaction_type" class="form-select" style="min-width: 160px;">
+                                    {% for value, label in transaction_type_choices %}
+                                    <option value="{{ value }}" {% if transaction_type == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-auto flex-grow-1" style="min-width: 180px;">
+                                <label class="form-label d-block">Search</label>
+                                <input type="text" name="search" class="form-control" placeholder="Search Description or ID..." value="{{ search }}">
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-apply-filter">Apply Filter</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="ledger-card">
+                        <div class="table-responsive">
+                            <table class="table ledger-table mb-0" data-enable-filters="false">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Date / Time</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                        <th>Transaction ID</th>
+                                        <th class="text-end">Opening (₹)</th>
+                                        <th class="text-end">Amount (₹)</th>
+                                        <th class="text-end">Balance (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if ledger %}
+                                        {% for entry in ledger %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ entry.created_at|date:"d-m-Y H:i" }}</td>
+                                            <td><span class="pill {{ entry.transaction_type|ledger_type_pill_class }}">{{ entry.get_transaction_type_display|default:entry.transaction_type }}</span></td>
+                                            <td>{{ entry.description|default:"–" }}</td>
+                                            <td>
+                                                {% with ref_display=entry|ledger_reference_display %}
+                                                {% if entry.reference_id and ref_display != "–" %}<span class="ref-link">{{ ref_display }}</span>{% else %}{{ ref_display }}{% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td class="text-end">₹ {{ entry.opening_balance|floatformat:2|intcomma }}</td>
+                                            <td class="text-end {% if entry.amount >= 0 %}amount-in{% else %}amount-out{% endif %}">{% if entry.amount >= 0 %}+ {% else %}− {% endif %} {{ entry.amount|abs_amount|floatformat:2|intcomma }}</td>
+                                            <td class="text-end">₹ {{ entry.balance_after|floatformat:2|intcomma }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr><td colspan="8" class="text-center text-muted py-4">No ledger entries found.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+        {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
     </div>
-    {% block footer %}
-        {% include 'partials/footer.html' %}
-    {% endblock footer %}
 </div>
 {% endblock content %}
-
-{% block extra_js %}
-    <script>
-        setTimeout(() => {
-            const toastElement = document.getElementById("toast");
-            if (toastElement) {
-                toastElement.classList.remove("show");
-                setTimeout(() => { toastElement.remove(); }, 500);
-            }
-        }, 5000);
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.min.js' %}"></script>
-    <script src="{% static 'libs/admin-resources/jquery.vectormap/maps/jquery-jvectormap-world-mill-en.js' %}"></script>
-    <script src="{% static 'js/pages/allchart.js' %}"></script>
-    <script src="{% static 'js/pages/dashboard.init.js' %}"></script>
-{% endblock extra_js %}
-
-

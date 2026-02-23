@@ -159,6 +159,21 @@
                 <div class="form-container">
                     <form method="POST" enctype="multipart/form-data" id="product-form" novalidate>
                         {% csrf_token %}
+                        {% if form.errors %}
+                        <div id="form-errors-alert" class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                            <div>
+                                <strong>Please fix the errors below:</strong>
+                                <ul class="mb-0 mt-1 ps-3">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li><strong>{% if field == 'category' %}Category{% elif field == 'sub_category' %}Sub category{% else %}{{ field }}{% endif %}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
 
                         <!-- Basic information -->
                         <div class="section-card">
@@ -187,7 +202,7 @@
                                 <div class="col-md-6" id="category_wrapper">
                                     <label for="id_category" class="form-label">Category</label>
                                     <div class="searchable-select-wrap position-relative">
-                                        <input type="text" class="form-control searchable-trigger" id="category-trigger" placeholder="Select category..." readonly autocomplete="off">
+                                        <input type="text" class="form-control searchable-trigger {% if form.category.errors %}is-invalid{% endif %}" id="category-trigger" placeholder="Select category..." readonly autocomplete="off">
                                         <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
                                         <div class="searchable-dropdown" id="category-dropdown">
                                             <div class="searchable-dropdown-search">
@@ -198,11 +213,12 @@
                                         </div>
                                     </div>
                                     <div class="d-none">{{ form.category }}</div>
+                                    {% if form.category.errors %}<div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>{% endif %}
                                 </div>
                                 <div class="col-md-6" id="sub_category_wrapper">
                                     <label for="id_sub_category" class="form-label">Sub category</label>
                                     <div class="searchable-select-wrap position-relative">
-                                        <input type="text" class="form-control searchable-trigger" id="subcategory-trigger" placeholder="Select category first..." readonly autocomplete="off">
+                                        <input type="text" class="form-control searchable-trigger {% if form.sub_category.errors %}is-invalid{% endif %}" id="subcategory-trigger" placeholder="Select category first..." readonly autocomplete="off">
                                         <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
                                         <div class="searchable-dropdown" id="subcategory-dropdown">
                                             <div class="searchable-dropdown-search">
@@ -213,6 +229,7 @@
                                         </div>
                                     </div>
                                     <div class="d-none">{{ form.sub_category }}</div>
+                                    {% if form.sub_category.errors %}<div class="invalid-feedback d-block">{{ form.sub_category.errors.0 }}</div>{% endif %}
                                 </div>
                                 <div class="col-md-6" id="foodOptionToggleWrapper" style="display: block;">
                                     <label class="form-label d-block">Include food option?</label>
@@ -236,7 +253,7 @@
                         <div class="section-card">
                             <div class="section-title"><i class="bi bi-currency-rupee"></i>Pricing</div>
                             <div class="row g-3" id="mrp_section">
-                                <div class="col-md-4 product-only-field" id="wholesale_price_wrapper">
+                                <div class="col-md-4" id="wholesale_price_wrapper">
                                     <label for="id_wholesale_price" class="form-label">Wholesale price</label>
                                     {{ form.wholesale_price }}
                                 </div>
@@ -244,7 +261,7 @@
                                     <label for="id_purchase_price" class="form-label">Purchase price</label>
                                     {{ form.purchase_price }}
                                 </div>
-                                <div class="col-md-4 product-only-field">
+                                <div class="col-md-4" id="sales_price_wrapper">
                                     <label for="id_sales_price" class="form-label">Sales price</label>
                                     {{ form.sales_price }}
                                 </div>
@@ -383,8 +400,8 @@
                             </div>
                         </div>
                     
-                        <!-- Media (match reference image 2: dashed border, icon + text) -->
-                        <div class="section-card">
+                        <!-- Media (match reference image 2: dashed border, icon + text). Hidden for product type "product" when Product Settings image is off. -->
+                        <div class="section-card" id="media_section_card">
                             <div class="section-title"><i class="bi bi-image"></i>Media</div>
                             <div class="row g-3">
                                 <div class="col-md-6" id="image_wrapper">
@@ -437,7 +454,7 @@
                                         </div>
                                     {% endif %}
                                 {% endfor %}
-                                <table class="table table-bordered" id="variant-table">
+                                <table class="table table-bordered" id="variant-table" data-enable-filters="false">
                                     <thead>
                                         <tr>
                                             <th>Sr No</th>
@@ -565,7 +582,10 @@
                                                 {% endfor %}
                                             </td>
 
-                                            <td>{{ form.DELETE }}</td>
+                                            <td class="text-center">
+                                                <span class="d-none">{{ form.DELETE }}</span>
+                                                <button type="button" class="btn btn-link text-danger p-0 border-0 btn-delete-addon" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                                            </td>
                                         </tr>
                                     {% endfor %}
 
@@ -1022,6 +1042,13 @@
         const hiddenId = newFormRow.querySelector("input[type='hidden'][name$='-id']");
         if (hiddenId) hiddenId.value = "";
 
+        // Ensure DELETE is unchecked for the new row
+        const deleteInput = newFormRow.querySelector("input[name*='-DELETE']");
+        if (deleteInput) deleteInput.checked = false;
+
+        // Show row in case cloned from a hidden (deleted) row
+        newFormRow.style.display = '';
+
         // Update Sr No
         newFormRow.querySelector(".sr-no").innerText = currentFormCount + 1;
 
@@ -1098,21 +1125,21 @@
         variantContainer2.appendChild(newFormRow);
     });
 
-    // ---------- Delete variant row (icon click): remove from DOM, call API for existing records ----------
+    // ---------- Delete formset row: delete from backend (API) if existing record, then remove from DOM and renumber ----------
     function getCsrfToken() {
         return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     }
     function renumberFormsetRows(container, prefix) {
-        const rows = container.querySelectorAll('tr');
-        const totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+        var rows = container.querySelectorAll('tr');
+        var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
         if (totalInput) totalInput.value = rows.length;
         rows.forEach(function(row, idx) {
-            row.querySelectorAll('input, select').forEach(function(el) {
+            row.querySelectorAll('input, select, textarea').forEach(function(el) {
                 if (el.name && el.name.indexOf(prefix) === 0) {
                     el.name = el.name.replace(new RegExp('^' + prefix + '-\\d+-'), prefix + '-' + idx + '-');
                 }
-                if (el.id && el.id.indexOf(prefix.replace(/_/g, '')) !== -1) {
-                    el.id = el.id.replace(/-\d+-/, '-' + idx + '-');
+                if (el.id) {
+                    el.id = el.id.replace(new RegExp('-\\d+-'), '-' + idx + '-');
                 }
             });
             row.querySelectorAll('label').forEach(function(label) {
@@ -1122,12 +1149,18 @@
             if (srNo) srNo.innerText = idx + 1;
         });
     }
-    function removeVariantRow(btn, apiPath, prefix) {
+    function removeFormsetRow(btn, apiBaseUrl, prefix) {
         var row = btn.closest('tr');
+        if (!row) return;
+        var tbody = row.closest('tbody');
         var idInput = row.querySelector("input[type='hidden'][name$='-id']");
-        var variantId = idInput ? idInput.value.trim() : '';
-        if (variantId) {
-            fetch(apiPath + variantId + '/', {
+        var recordId = idInput ? idInput.value.trim() : '';
+        function doRemove() {
+            row.remove();
+            renumberFormsetRows(tbody, prefix);
+        }
+        if (recordId && apiBaseUrl) {
+            fetch(apiBaseUrl + recordId + '/', {
                 method: 'DELETE',
                 headers: {
                     'X-CSRFToken': getCsrfToken(),
@@ -1135,31 +1168,26 @@
                 },
                 credentials: 'same-origin'
             }).then(function(r) {
-                if (r.ok || r.status === 204) {
-                    row.remove();
-                    renumberFormsetRows(row.closest('tbody'), prefix);
-                } else {
-                    console.error('Delete failed:', r.status);
-                }
+                if (r.ok || r.status === 204) doRemove();
+                else console.error('Delete failed:', r.status);
             }).catch(function(e) { console.error('Delete error:', e); });
         } else {
-            row.remove();
-            renumberFormsetRows(row.closest('tbody'), prefix);
+            doRemove();
         }
     }
     variantContainer?.addEventListener('click', function(e) {
         var btn = e.target.closest('.btn-delete-variant');
-        if (btn) { e.preventDefault(); removeVariantRow(btn, '{% url "PrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'print_variants'); }
+        if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "PrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'print_variants'); }
     });
     variantContainer2?.addEventListener('click', function(e) {
         var btn = e.target.closest('.btn-delete-customize-variant');
-        if (btn) { e.preventDefault(); removeVariantRow(btn, '{% url "CustomizePrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'customize_print_variants'); }
+        if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "CustomizePrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'customize_print_variants'); }
     });
 
     // ---------- Delete addon row (icon click) ----------
     addonContainer?.addEventListener('click', function(e) {
         var btn = e.target.closest('.btn-delete-addon');
-        if (btn) { e.preventDefault(); removeVariantRow(btn, '{% url "ProductAddonViewSet-detail" 0 %}'.replace('/0/', '/'), 'addon'); }
+        if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "ProductAddonViewSet-detail" 0 %}'.replace('/0/', '/'), 'addon'); }
     });
 
 });
@@ -1241,24 +1269,37 @@
 
 
     // for hiding/ showing product fields on  product type fields
-    function toggleProductOnlyFields(show) {     
-        const exemptIds = ["id_track_serial_numbers", "id_low_stock_alert", "size-search-inner"];
+    function toggleProductOnlyFields(show) {
+        // Pricing required is set by setPricingRequired(productType), not here
+        const exemptIds = ["id_track_serial_numbers", "id_low_stock_alert", "size-search-inner", "id_wholesale_price", "id_mrp", "id_sales_price"];
 
         document.querySelectorAll('.product-only-field').forEach(el => {
             el.style.display = show ? '' : 'none';
             el.querySelectorAll('input, select, textarea').forEach(input => {
-                // disable/enable normally
                 input.disabled = !show;
-
-                // check if this input is in exempt list
                 if (exemptIds.includes(input.id)) {
-                    input.required = false;  // never required
+                    input.required = false;
                 } else {
-                    input.required = show;   // follow normal logic
+                    input.required = show;
                 }
             });
         });
+    }
 
+    function setPricingRequired(productType) {
+        const wholesale = document.getElementById('id_wholesale_price');
+        const mrp = document.getElementById('id_mrp');
+        const sales = document.getElementById('id_sales_price');
+        if (!sales) return;
+        if (productType === 'product') {
+            sales.required = true;
+            if (wholesale) wholesale.required = false;
+            if (mrp) mrp.required = false;
+        } else if (productType === 'service' || productType === 'print') {
+            if (wholesale) wholesale.required = true;
+            if (mrp) mrp.required = true;
+            sales.required = true;
+        }
     }
 
     function toggleVariantFormSection(show) {
@@ -1434,11 +1475,23 @@
     function updateFieldLogic() {
         const productType = (document.getElementById('productType') || document.getElementById('id_product_type'))?.value;
         const saleType = (document.getElementById('saleType') || document.getElementById('id_sale_type'))?.value;
-        if (saleType === 'offline') {
+        // Only apply product settings (hide/show from Product Settings page) when product type is "product"
+        if (saleType === 'offline' && productType === 'product') {
             applyProductSettingsForOffline(productSettings);
-        } else {
-            adjustFormFields(productType, saleType);
         }
+        // Always apply product-type-based rules (product/service/print × offline/both)
+        adjustFormFields(productType, saleType);
+        // For product type "product" only: respect Product Settings for description/image (not for services or print)
+        if (productType === 'product' && productSettings) {
+            setVisibleById('description_wrapper', productSettings.description);
+            setVisibleById('image_wrapper', productSettings.image);
+            var galleryWrapper = document.getElementById('gallery_images_wrapper');
+            if (galleryWrapper) galleryWrapper.style.display = productSettings.image ? '' : 'none';
+            var mediaCard = document.getElementById('media_section_card');
+            if (mediaCard) mediaCard.style.display = productSettings.image ? '' : 'none';
+        }
+        // Pricing: product = only sales price required; service/print = wholesale, MRP and sales price required
+        setPricingRequired(productType);
     }
 
     if (saleType) saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product
@@ -1690,6 +1743,10 @@ function handleCustomPrintToggleChange() {
   document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('product-form') || document.querySelector('form');
     if (!form) return;
+
+    // When server returns validation errors, scroll to the error alert
+    const formErrorsAlert = document.getElementById('form-errors-alert');
+    if (formErrorsAlert) formErrorsAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     function showError(el) {
       if (!el || el.validity.valid) return;

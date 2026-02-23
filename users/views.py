@@ -1,7 +1,10 @@
 from email import message
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib import messages
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from vendor.models import vendor_store
 
@@ -378,6 +381,91 @@ def  login_vendor(request):
                 messages.error(request, 'wrong username password')
     context = {'form': forms}
     return render(request, 'vendorLogin.html', context)
+
+
+def vendor_forgot_password(request):
+    from django.core.mail import send_mail
+    from django.conf import settings
+    from django.urls import reverse
+    from .forms import VendorForgotPasswordForm
+
+    if request.method == 'POST':
+        form = VendorForgotPasswordForm(request.POST)
+        if form.is_valid():
+            mobile = form.cleaned_data['mobile'].strip()
+            lookup_mobile = '+91' + mobile
+            user = User.objects.filter(mobile=lookup_mobile, is_vendor=True).first()
+            if user:
+                if not user.email or not user.email.strip():
+                    messages.error(
+                        request,
+                        'No email is registered for this account. Please contact support to add your email for password reset.'
+                    )
+                else:
+                    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+                    token = default_token_generator.make_token(user)
+                    reset_url = request.build_absolute_uri(
+                        reverse('vendor_reset_password_confirm', kwargs={'uidb64': uidb64, 'token': token})
+                    )
+                    subject = 'Reset your vendor password'
+                    message = (
+                        f'Hello,\n\n'
+                        f'You requested a password reset for your vendor account (mobile: {mobile}).\n\n'
+                        f'Click the link below to set a new password:\n{reset_url}\n\n'
+                        f'This link is valid for a limited time. If you did not request this, please ignore this email.\n\n'
+                        f'— Svindo'
+                    )
+                    try:
+                        send_mail(
+                            subject=subject,
+                            message=message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[user.email],
+                            fail_silently=False,
+                        )
+                        messages.success(
+                            request,
+                            'If an account exists with this mobile number, we have sent password reset instructions to your registered email. Please check your inbox.'
+                        )
+                    except Exception as e:
+                        messages.error(
+                            request,
+                            'We could not send the reset email. Please try again later or contact support.'
+                        )
+            else:
+                messages.success(
+                    request,
+                    'If an account exists with this mobile number, we have sent password reset instructions to your registered email. Please check your inbox.'
+                )
+            return redirect('vendor_forgot_password')
+    else:
+        form = VendorForgotPasswordForm()
+    return render(request, 'vendorForgotPassword.html', {'form': form})
+
+
+def vendor_reset_password_confirm(request, uidb64, token):
+    from .forms import VendorSetPasswordForm
+
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid, is_vendor=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is None or not default_token_generator.check_token(user, token):
+        messages.error(request, 'Reset link is invalid or has expired. Please request a new one.')
+        return redirect('vendor_forgot_password')
+
+    if request.method == 'POST':
+        form = VendorSetPasswordForm(request.POST)
+        if form.is_valid():
+            user.set_password(form.cleaned_data['new_password1'])
+            user.save()
+            messages.success(request, 'Your password has been set. You can now log in.')
+            return redirect('login_vendor')
+    else:
+        form = VendorSetPasswordForm()
+    return render(request, 'vendorResetPasswordConfirm.html', {'form': form, 'uidb64': uidb64, 'token': token})
 
 
 # def resgister_page(request):

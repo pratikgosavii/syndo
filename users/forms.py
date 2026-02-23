@@ -13,6 +13,46 @@ class LoginForm(forms.Form):
     }))
 
 
+class VendorForgotPasswordForm(forms.Form):
+    mobile = forms.CharField(
+        max_length=10,
+        min_length=10,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter 10-digit mobile number',
+            'pattern': '[0-9]{10}',
+            'maxlength': '10',
+            'inputmode': 'numeric',
+        })
+    )
+
+
+class VendorSetPasswordForm(forms.Form):
+    new_password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'New password',
+            'autocomplete': 'new-password',
+        }),
+        min_length=8,
+        label='New password'
+    )
+    new_password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm new password',
+            'autocomplete': 'new-password',
+        }),
+        label='Confirm new password'
+    )
+
+    def clean(self):
+        data = super().clean()
+        if data.get('new_password1') != data.get('new_password2'):
+            raise forms.ValidationError('Passwords do not match.')
+        return data
+
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm

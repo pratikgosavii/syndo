@@ -104,6 +104,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
@@ -426,3 +427,15 @@ SITE_BASE_URL = "https://vendor.svindo.com"
 # Allows opening invoice PDF without login when a valid token is present.
 # 7 days (matches message text: "Valid for 7 days")
 CUSTOMER_INVOICE_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
+
+# --------------------
+# Email (vendor password reset, etc.)
+# --------------------
+# Default: console backend (emails printed to console). For production set EMAIL_BACKEND to smtp and configure SMTP.
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@svindo.com')
