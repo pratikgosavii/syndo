@@ -18,6 +18,19 @@ def get_item(dictionary, key):
 
 
 @register.filter
+def line_discount(item):
+    """Per-line discount: (qty * price) - amount. For thermal bill Dis column."""
+    if not item or not hasattr(item, 'quantity') or not hasattr(item, 'price') or not hasattr(item, 'amount'):
+        return 0
+    try:
+        pre = float(item.quantity) * float(item.price)
+        amt = float(item.amount)
+        return round(pre - amt, 2)
+    except (TypeError, ValueError):
+        return 0
+
+
+@register.filter
 def replace_underscore(value):
     return value.replace("_", " ").title()
 

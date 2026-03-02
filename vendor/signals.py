@@ -476,14 +476,17 @@ def sale_ledger(sender, instance, created, **kwargs):
             )['total'] or 0
             opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
 
+            # Use invoice label (invoice_number / POS code) instead of raw ID in descriptions
+            sale_label = _get_invoice_label("sale", instance.id)
+
             if instance.payment_method == 'credit' and balance_amt > 0:
                 # Credit sale: add only remaining due to customer balance
                 amount_due = balance_amt
-                description = f"Sale #{instance.id} (Credit)"
+                description = f"Sale {sale_label} (Credit)"
             else:
                 # Fully paid sale (cash/upi/cheque): no due, keep credit balance unchanged
                 amount_due = Decimal(0)
-                description = f"Sale #{instance.id} (Paid)"
+                description = f"Sale {sale_label} (Paid)"
 
             balance_after = opening_balance + amount_due
                 
@@ -519,9 +522,9 @@ def sale_ledger(sender, instance, created, **kwargs):
                         "sale",
                         instance.id,
                         bank_amt,
-                        f"Sale #{instance.id} ({instance.payment_method.upper()})",
+                        f"Sale {sale_label} ({instance.payment_method.upper()})",
                     )
-                    logger.info(f"[SALE_LEDGER] Bank ledger created for Sale #{instance.id} using bank: {instance.bank}")
+                    logger.info(f"[SALE_LEDGER] Bank ledger created for Sale {sale_label} using bank: {instance.bank}")
             elif instance.payment_method == "credit" and instance.advance_payment_method == "bank":
                 logger.info("[SALE_LEDGER] Credit sale with bank advance detected")
                 # Check both advance_amount and advance_payment_amount fields
@@ -540,7 +543,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                     logger.info(f"[SALE_LEDGER] Amount: {advance_amt}")
                     logger.info(f"[SALE_LEDGER] Transaction Type: sale")
                     logger.info(f"[SALE_LEDGER] Reference ID: {instance.id}")
-                    logger.info(f"[SALE_LEDGER] Description: Sale #{instance.id} (Bank Advance)")
+                    logger.info(f"[SALE_LEDGER] Description: Sale {sale_label} (Bank Advance)")
                     logger.info("[SALE_LEDGER] Calling create_ledger() for BankLedger...")
                     logger.info("=" * 80)
                     
@@ -551,7 +554,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                             "sale",
                             instance.id,
                             advance_amt,
-                            f"Sale #{instance.id} (Bank Advance)"
+                            f"Sale {sale_label} (Bank Advance)"
                         )
                         logger.info("=" * 80)
                         logger.info("[SALE_LEDGER] BANK LEDGER ENTRY CREATED SUCCESSFULLY")
@@ -620,7 +623,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                 logger.info(f"[SALE_LEDGER] Amount: {cash_amount}")
                 logger.info(f"[SALE_LEDGER] Transaction Type: sale")
                 logger.info(f"[SALE_LEDGER] Reference ID: {instance.id}")
-                description = f"Sale #{instance.id}" + (" (Cash Advance)" if instance.payment_method == "credit" else "")
+                description = f"Sale {sale_label}" + (" (Cash Advance)" if instance.payment_method == "credit" else "")
                 logger.info(f"[SALE_LEDGER] Description: {description}")
                 logger.info(f"[SALE_LEDGER] Payment Method: {instance.payment_method}")
                 logger.info("[SALE_LEDGER] Calling create_ledger() for CashLedger...")
@@ -788,6 +791,9 @@ def purchase_ledger(sender, instance, created, **kwargs):
                     instance.refresh_from_db(fields=["balance_amount"])
             balance_amt = Decimal(instance.balance_amount or 0)
             
+            # Use purchase code / invoice label instead of raw ID in descriptions
+            purchase_label = _get_invoice_label("purchase", instance.id)
+
             # Create vendor ledger entries for ALL purchases (for audit/tracking)
             # Vendor ledger:
             # - For CREDIT purchases, record ONLY remaining due (balance_amount = total - advance)
@@ -800,7 +806,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         "purchase",
                         instance.id,
                         balance_amt,
-                        f"Purchase #{instance.id} (Credit)",
+                        f"Purchase {purchase_label} (Credit)",
                     )
             else:
                 if total_amt > 0:
@@ -810,7 +816,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         "purchase",
                         instance.id,
                         total_amt,
-                        f"Purchase #{instance.id}",
+                        f"Purchase {purchase_label}",
                     )
             
             # Reset vendor running balance from opening + sum(ONLY credit purchase ledger entries)
@@ -850,7 +856,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 "purchase",
                 instance.id,
                 -cash_amount,  # Negative amount to DECREASE cash balance
-                f"Purchase #{instance.id} (Cash)",
+                f"Purchase {purchase_label} (Cash)",
                 user=instance.user,
             )
         
@@ -865,9 +871,9 @@ def purchase_ledger(sender, instance, created, **kwargs):
                     "purchase",
                     instance.id,
                     -bank_amount,  # Negative amount to DECREASE bank balance
-                    f"Purchase #{instance.id} ({instance.payment_method.upper()})",
+                    f"Purchase {purchase_label} ({instance.payment_method.upper()})",
                 )
-                logger.info(f"[PURCHASE_LEDGER] Bank ledger created for Purchase #{instance.id} using bank: {bank_to_use.name}")
+                logger.info(f"[PURCHASE_LEDGER] Bank ledger created for Purchase {purchase_label} using bank: {bank_to_use.name}")
             else:
                 logger.warning(
                     f"[PURCHASE_LEDGER] ⚠️ {instance.payment_method.upper()} payment selected but bank/advance_bank is not set! Bank ledger not created."
@@ -884,7 +890,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         "purchase",
                         instance.id,
                         -advance_amt,  # Negative amount to DECREASE cash balance
-                        f"Purchase #{instance.id} (Credit - Cash Advance)",
+                            f"Purchase {purchase_label} (Credit - Cash Advance)",
                             user=instance.user,
                     )
                 elif instance.advance_mode == "bank" and instance.advance_bank:
@@ -894,7 +900,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         "purchase",
                         instance.id,
                         -advance_amt,  # Negative amount to DECREASE bank balance
-                            f"Purchase #{instance.id} (Credit - Bank Advance)",
+                                f"Purchase {purchase_label} (Credit - Bank Advance)",
                     )
                 else:
                         logger.warning(

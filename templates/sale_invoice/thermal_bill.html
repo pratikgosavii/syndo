@@ -1,0 +1,144 @@
+{% load static %}
+{% load num_to_words %}
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TAX INVOICE / BILL</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #000;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 4px;
+        }
+        .bill { width: 100%; }
+        .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #000; }
+        .logo-placeholder {
+            width: 40px; height: 40px; border-radius: 50%; border: 1px solid #ccc;
+            display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0;
+        }
+        .logo-placeholder img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .company-name { font-size: 16px; font-weight: bold; margin-left: 8px; }
+        .invoice-title { text-align: right; font-size: 10px; }
+        .invoice-title .main { font-weight: bold; font-size: 11px; }
+        .section { margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed #999; }
+        .section-title { font-weight: bold; margin-bottom: 2px; font-size: 10px; }
+        .sold-by .name { font-weight: bold; }
+        .two-col { display: flex; justify-content: space-between; gap: 8px; }
+        .two-col > div { flex: 1; }
+        .address-block { font-size: 10px; line-height: 1.3; }
+        table.items { width: 100%; border-collapse: collapse; font-size: 10px; }
+        table.items th, table.items td { padding: 3px 2px; text-align: left; border-bottom: 1px solid #ddd; }
+        table.items th { font-weight: bold; }
+        table.items .qty, table.items .rate, table.items .dis, table.items .amt { text-align: right; }
+        table.items .col-# { width: 18px; }
+        table.items .col-name { }
+        table.items .col-qty { width: 28px; text-align: right; }
+        table.items .col-rate { width: 36px; text-align: right; }
+        table.items .col-dis { width: 32px; text-align: right; }
+        table.items .col-amt { width: 42px; text-align: right; }
+        .summary { font-size: 10px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 2px 0; }
+        .summary-row.grand { font-weight: bold; font-size: 12px; margin-top: 4px; padding-top: 4px; border-top: 1px solid #000; }
+        .footer { text-align: center; font-size: 9px; color: #666; margin-top: 10px; padding-top: 6px; }
+    </style>
+</head>
+<body>
+<div class="bill">
+    <!-- Header: Company name | TAX INVOICE / BILL (no logo) -->
+    <div class="header">
+        <div class="company-name">
+            {% if sale_instance.company_profile %}
+                {{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"Store" }}
+            {% else %}
+                Store
+            {% endif %}
+        </div>
+        <div class="invoice-title">
+            <div class="main">TAX INVOICE / BILL</div>
+            <div>(Original for recipient)</div>
+        </div>
+    </div>
+
+    <!-- Sold By -->
+    <div class="section sold-by">
+        <div class="section-title">Sold By :</div>
+        <div class="name">{% if sale_instance.company_profile %}{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"—" }}{% else %}—{% endif %}</div>
+        <div class="address-block">
+            {% if sale_instance.company_profile %}{{ sale_instance.company_profile.address_line_1|default:"" }}{% if sale_instance.company_profile.address_line_2 %}<br>{{ sale_instance.company_profile.address_line_2 }}{% endif %}{% else %}—{% endif %}
+        </div>
+        <div>Mobile : {% if sale_instance.company_profile %}{{ sale_instance.company_profile.contact|default:"—" }}{% else %}—{% endif %}</div>
+        <div class="two-col" style="margin-top: 2px;">
+            <span>PAN : {{ vendor_pan|default:"—" }}</span>
+            <span>GSTIN : {{ vendor_gstin|default:"—" }}</span>
+        </div>
+        {% if vendor_fssai %}<div>FSSAI : {{ vendor_fssai }}</div>{% endif %}
+    </div>
+
+    <!-- Invoice & Customer -->
+    <div class="section">
+        <div class="two-col">
+            <div>
+                <div>Invoice no: {{ wholesale.invoice_number|default:sale_instance.invoice_number|default:sale_instance.id }}</div>
+                <div>Order Type: On-Shop</div>
+                <div>Customer Name : {{ sale_instance.customer.name|default:"Walk-in Customer" }}</div>
+                <div>Ph : {% if sale_instance.customer %}{{ sale_instance.customer.contact|default:"—" }}{% else %}—{% endif %}</div>
+            </div>
+            <div style="text-align: right;">
+                <div>Date : {{ sale_instance.created_at|date:"d/m/Y" }}</div>
+                <div>Time : {{ sale_instance.created_at|time:"g:i A" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Billing & Delivery Address removed for compact thermal bill -->
+
+    <!-- Items Table -->
+    <table class="items">
+        <thead>
+            <tr>
+                <th class="col-#">#</th>
+                <th class="col-name">Item Name</th>
+                <th class="col-qty">Qty</th>
+                <th class="col-rate">Rate</th>
+                <th class="col-dis">Dis</th>
+                <th class="col-amt">Amt</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in sale_instance.items.all %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.product.name|truncatechars:35 }}</td>
+                <td class="qty">{{ item.quantity }}</td>
+                <td class="rate">{{ item.price|floatformat:0 }}</td>
+                <td class="dis">{{ item|line_discount|floatformat:0 }}</td>
+                <td class="amt">{{ item.amount|floatformat:0 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No items</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Summary -->
+    <div class="section summary">
+        <div class="summary-row">Subtotal<span>{{ sale_instance.total_amount_before_discount|default:sale_instance.total_taxable_amount|default:0|floatformat:2 }}</span></div>
+        <div class="summary-row">Delivery Charges<span>{{ wholesale.delivery_charges|default:0|floatformat:2 }}</span></div>
+        <div class="summary-row">Discount<span>{{ sale_instance.discount_amount|default:0|floatformat:2 }}</span></div>
+        {% if sum_cgst %}<div class="summary-row">CGST (%)<span>{{ sum_cgst|floatformat:2 }}</span></div>{% endif %}
+        {% if sum_sgst %}<div class="summary-row">UT/SGST (%)<span>{{ sum_sgst|floatformat:2 }}</span></div>{% endif %}
+        {% if sum_igst %}<div class="summary-row">IGST (%)<span>{{ sum_igst|floatformat:2 }}</span></div>{% endif %}
+        <div class="summary-row">Round off<span>{{ round_off_value|floatformat:2 }}</span></div>
+        <div class="summary-row grand">Grand Amount<span>₹ {{ rounded_total|floatformat:0 }}</span></div>
+    </div>
+
+    <div class="footer">Powered by Syndo</div>
+</div>
+</body>
+</html>

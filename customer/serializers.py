@@ -1,5 +1,6 @@
 from typing import Any
 import logging
+from decimal import Decimal, ROUND_HALF_UP
 from rest_framework import serializers
 from .models import *
 
@@ -618,19 +619,31 @@ def on_order_accepted(order):
 
     create_ledger = not _is_cod_order(order)
 
+    # Pre-calc totals for proportional allocation of order.total_amount across items
+    item_total = Decimal(getattr(order, "item_total", 0) or 0)
+    total_amount = Decimal(getattr(order, "total_amount", 0) or 0)
+
     for oi in order.items.select_related("product", "product__user").all():
         # Idempotent: if ledger exists, we already processed this item (for non-COD)
         if create_ledger and OnlineOrderLedger.objects.filter(order_item=oi).exists():
             continue
         # 1. OnlineOrderLedger (skip for COD; created on delivery via on_order_delivered_cod)
         if create_ledger:
+            # Allocate this item's share of the order total (including tax/shipping/discount)
+            line_total = Decimal(oi.total_price() or 0)
+            if item_total > 0 and total_amount > 0 and line_total > 0:
+                ratio = line_total / item_total
+                amount = (total_amount * ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                amount = line_total
+
             OnlineOrderLedger.objects.create(
                 user=oi.product.user,
                 order_item=oi,
                 product=oi.product,
                 order_id=order.id,
                 quantity=oi.quantity,
-                amount=order.total_amount,
+                amount=amount,
                 status="recorded",
                 note="Online order recorded (accepted)",
             )
@@ -662,16 +675,28 @@ def on_order_delivered_cod(order):
         return
     from vendor.models import OnlineOrderLedger
 
+    # Pre-calc totals for proportional allocation of order.total_amount across items
+    item_total = Decimal(getattr(order, "item_total", 0) or 0)
+    total_amount = Decimal(getattr(order, "total_amount", 0) or 0)
+
     for oi in order.items.select_related("product", "product__user").all():
         if OnlineOrderLedger.objects.filter(order_item=oi).exists():
             continue
+        # Allocate this item's share of the order total (including tax/shipping/discount)
+        line_total = Decimal(oi.total_price() or 0)
+        if item_total > 0 and total_amount > 0 and line_total > 0:
+            ratio = line_total / item_total
+            amount = (total_amount * ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            amount = line_total
+
         OnlineOrderLedger.objects.create(
             user=oi.product.user,
             order_item=oi,
             product=oi.product,
             order_id=order.id,
             quantity=oi.quantity,
-            amount=order.total_amount,
+            amount=amount,
             status="recorded",
             note="Online order (COD) recorded on delivery",
         )

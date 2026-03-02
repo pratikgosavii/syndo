@@ -381,6 +381,9 @@
         }
         .billing-summary-line { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; margin-bottom: 4px; }
         .billing-summary-line strong { color: #334155; font-weight: 700; }
+        .shipping-charges-label { color: #d84315 !important; }
+        .packaging-charges-label { color: #d84315 !important; }
+        #wholesale-charges-summary { margin-top: 8px; margin-bottom: 4px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
         .billing-sidebar .total-amount-line { font-size: 15px; margin: 8px 0 4px; }
         .billing-sidebar hr { border: none; border-top: 1px solid #e2e8f0; margin: 10px 0; }
         .pay-grid {
@@ -927,7 +930,10 @@
                     <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
                     <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
                     <div class="billing-summary-line">Total GST (18%): <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
-                    <div class="billing-summary-line">Shipping / Delivery Charges: <strong>₹<span id="additional-charges">0.00</span></strong></div>
+                    <div id="wholesale-charges-summary" style="display: none;">
+                        <div class="billing-summary-line"><span class="shipping-charges-label">Shipping / Delivery Charges:</span> <strong>₹<span id="delivery-charges-display">0.00</span></strong></div>
+                        <div class="billing-summary-line"><span class="packaging-charges-label">Packaging Charges:</span> <strong>₹<span id="packaging-charges-display">0.00</span></strong></div>
+                    </div>
                     <div id="advance_summary" class="billing-summary-line" style="display:none;">Advance: <strong>₹<span id="advance-amount">0.00</span></strong> (<span id="advance-mode">Cash</span> <span id="advance-bank-name" style="display:none;"></span>)</div>
                     <div class="billing-summary-line total-amount-line">Total Amount: <strong>₹<span id="total-amount-before-discount">0.00</span></strong></div>
                   </div>
@@ -1250,9 +1256,12 @@ function recalculateTotals() {
     const discountPercentageField = document.getElementById('discount-percentage');
     const discountAmountField = document.getElementById('discount-amount-input');
     const advanceAmountField = document.getElementById('id_advance_payment_amount');
+    const isWholesale = document.getElementById('wholesale_selector')?.checked;
     const deliveryChargesEl = document.getElementById('id_delivery_charges');
     const packagingChargesEl = document.getElementById('id_packaging_charges');
-    const shippingCharges = (deliveryChargesEl ? (parseFloat(deliveryChargesEl.value) || 0) : 0) + (packagingChargesEl ? (parseFloat(packagingChargesEl.value) || 0) : 0);
+    const deliveryCharges = isWholesale ? (deliveryChargesEl ? (parseFloat(deliveryChargesEl.value) || 0) : 0) : 0;
+    const packagingCharges = isWholesale ? (packagingChargesEl ? (parseFloat(packagingChargesEl.value) || 0) : 0) : 0;
+    const shippingCharges = deliveryCharges + packagingCharges;
 
     let discountAmount = 0;
     let discountPercentage = 0;
@@ -1280,7 +1289,8 @@ function recalculateTotals() {
     if (el('total-items')) el('total-items').innerText = totalItems;
     if (el('subtotal-amount')) el('subtotal-amount').innerText = subtotal.toFixed(2);
     if (el('total-gst-amount')) el('total-gst-amount').innerText = gstAmount.toFixed(2);
-    if (el('additional-charges')) el('additional-charges').innerText = shippingCharges.toFixed(2);
+    if (el('delivery-charges-display')) el('delivery-charges-display').innerText = deliveryCharges.toFixed(2);
+    if (el('packaging-charges-display')) el('packaging-charges-display').innerText = packagingCharges.toFixed(2);
     if (el('total-amount-before-discount')) el('total-amount-before-discount').innerText = totalBeforeDiscount.toFixed(2);
     if (el('advance-amount')) el('advance-amount').innerText = advanceAmount.toFixed(2);
     if (el('advance-mode')) el('advance-mode').innerText = (document.getElementById('advance_payment_method') && document.getElementById('advance_payment_method').value) ? document.getElementById('advance_payment_method').value.charAt(0).toUpperCase() + document.getElementById('advance_payment_method').value.slice(1) : 'Cash';
@@ -2073,11 +2083,11 @@ document.addEventListener('DOMContentLoaded', function () {
     field.dataset.originalRequired = field.hasAttribute('required') ? "true" : "false";
   });
 
-  var shippingSummaryEl = document.getElementById('shipping-charges-summary');
+  var wholesaleChargesSummaryEl = document.getElementById('wholesale-charges-summary');
   function toggleWholesale() {
     if (igstToggle.checked) {
       wholesaleBlock.style.display = 'block';
-      if (shippingSummaryEl) shippingSummaryEl.style.display = 'none';
+      if (wholesaleChargesSummaryEl) wholesaleChargesSummaryEl.style.display = 'block';
       wholesaleFields.forEach(field => {
         if (field.dataset.originalRequired === "true") {
           field.setAttribute('required', 'required');
@@ -2085,7 +2095,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     } else {
       wholesaleBlock.style.display = 'none';
-      if (shippingSummaryEl) shippingSummaryEl.style.display = '';
+      if (wholesaleChargesSummaryEl) wholesaleChargesSummaryEl.style.display = 'none';
       wholesaleFields.forEach(field => {
         field.removeAttribute('required');
       });

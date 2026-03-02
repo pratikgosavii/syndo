@@ -17,3 +17,6 @@ logs/
 # Runtime logs
 logs/
 *.log
+
+resume_syndo
+resume_syndo.html

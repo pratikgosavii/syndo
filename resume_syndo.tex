@@ -1,0 +1,201 @@
+\documentclass[10pt, letterpaper]{article}
+
+% Packages:
+\usepackage[
+    ignoreheadfoot,
+    top=1.5cm,
+    bottom=1.5cm,
+    left=1.75cm,
+    right=1.75cm,
+    footskip=0.8cm,
+]{geometry}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{primaryColor}{RGB}{0, 0, 0}
+\usepackage{enumitem}
+\usepackage{fontawesome5}
+\usepackage{amsmath}
+\usepackage[
+    pdftitle={Pratik Gosavi 8830265487},
+    pdfauthor={Pratik Gosavi},
+    colorlinks=true,
+    urlcolor=primaryColor
+]{hyperref}
+\usepackage[pscoord]{eso-pic}
+\usepackage{calc}
+\usepackage{bookmark}
+\usepackage{lastpage}
+\usepackage{changepage}
+\usepackage{paracol}
+\usepackage{ifthen}
+\usepackage{needspace}
+\usepackage{iftex}
+
+\ifPDFTeX
+    \input{glyphtounicode}
+    \pdfgentounicode=1
+    \usepackage[T1]{fontenc}
+    \usepackage[utf8]{inputenc}
+    \usepackage{lmodern}
+\fi
+
+\usepackage{charter}
+
+\raggedright
+\AtBeginEnvironment{adjustwidth}{\partopsep0pt}
+\pagestyle{empty}
+\setcounter{secnumdepth}{0}
+\setlength{\parindent}{0pt}
+\setlength{\topskip}{0pt}
+\setlength{\columnsep}{0.12cm}
+\pagenumbering{gobble}
+
+\titleformat{\section}{\needspace{3\baselineskip}\bfseries\large}{}{0pt}{}[\vspace{1pt}\titlerule]
+
+\titlespacing{\section}{-1pt}{0.2cm}{0.15cm}
+
+\renewcommand\labelitemi{$\vcenter{\hbox{\small$\bullet$}}$}
+\newenvironment{highlights}{
+    \begin{itemize}[topsep=0.06cm, parsep=0.06cm, partopsep=0pt, itemsep=0pt, leftmargin=0cm+10pt]
+}{
+    \end{itemize}
+}
+
+\newenvironment{highlightscompact}{
+    \begin{itemize}[topsep=0.04cm, parsep=0.04cm, partopsep=0pt, itemsep=0pt, leftmargin=10pt]
+}{
+    \end{itemize}
+}
+
+\newenvironment{onecolentry}{
+    \begin{adjustwidth}{0cm+0.00001cm}{0cm+0.00001cm}
+}{
+    \end{adjustwidth}
+}
+
+\newenvironment{twocolentry}[2][]{
+    \onecolentry
+    \def\secondColumn{#2}
+    \setcolumnwidth{\fill, 4.2cm}
+    \begin{paracol}{2}
+}{
+    \switchcolumn \raggedleft \secondColumn
+    \end{paracol}
+    \end{adjustwidth}
+}
+
+\newenvironment{header}{
+    \setlength{\topsep}{0pt}\par\kern\topsep\centering\linespread{1.4}
+}{
+    \par\kern\topsep
+}
+
+\let\hrefWithoutArrow\href
+
+\begin{document}
+    \newcommand{\AND}{\unskip\cleaders\copy\ANDbox\hskip\wd\ANDbox\ignorespaces}
+    \newsavebox\ANDbox
+    \sbox\ANDbox{$|$}
+
+    \begin{header}
+        \fontsize{18pt}{18pt}\selectfont \textbf{Pratik Gosavi}
+
+        \vspace{1pt}
+        \fontsize{11pt}{11pt}\selectfont Full-Stack Python Developer | Associate Professional Engineer
+
+        \normalsize
+        \mbox{Akola, Maharashtra}%
+        \kern 5pt \AND \kern 5pt %
+        \mbox{\hrefWithoutArrow{mailto:pratikgosavi654@gmail.com}{pratikgosavi654@gmail.com}}%
+        \kern 5pt \AND \kern 5pt %
+        \mbox{\hrefWithoutArrow{tel:+91-8830265487}{8830265487}}%
+        \kern 5pt \AND \kern 5pt %
+        \mbox{\hrefWithoutArrow{https://github.com/pratikgosavii}{GitHub}}
+    \end{header}
+
+    \vspace{2pt}
+
+    \section{Summary}
+    \begin{onecolentry}
+        Full-stack Python/Django developer with 4+ years of experience building enterprise ERP and business platforms. Led development of Syndo (50+ models, 400+ API endpoints) using Django, Django REST Framework, and Python. Delivered 40\% faster API response times, 35\% fewer deployment errors, and 60\% sales growth for client projects. Strong expertise in RESTful APIs, inventory, POS, ledger automation, and cloud deployment (Azure, Heroku, EC2).
+    \end{onecolentry}
+
+    \section{Experience}
+
+    \begin{twocolentry}{July 2022 -- Present}
+        \textbf{Associate Professional Engineer}, DXC Technology
+    \end{twocolentry}
+    \vspace{0.1cm}
+    \begin{onecolentry}
+        \begin{highlightscompact}
+            \item Developed Syndo -- full-stack ERP for SMBs: 50+ database models, 400+ REST API endpoints (Django, DRF, JWT, Swagger/OpenAPI), reducing manual data entry by 50\%
+            \item Optimized API response times by 40\% via query optimization and selective prefetch; built inventory, POS, purchase/sale, cash/bank/customer/vendor ledgers with transaction history and balance tracking
+            \item Integrated Cashfree payment gateway and uEngage (WhatsApp) for order notifications; architected Django signals for real-time ledger updates, cutting reconciliation errors by 35\%
+            \item Designed product catalog: products, services, print variants, addons, stock tracking, low-stock alerts; automated CI/CD via GitLab reducing deployment errors by 35\%
+            \item Developed responsive Bootstrap frontend with dynamic formsets for variants/addons; supported 50+ SMB clients and 10K+ daily transactions
+        \end{highlightscompact}
+    \end{onecolentry}
+
+    \begin{twocolentry}{June 2021 -- Dec 2021}
+        \textbf{Intern}, JDMR\_ischool
+    \end{twocolentry}
+    \vspace{0.1cm}
+    \begin{onecolentry}
+        \begin{highlightscompact}
+            \item Implemented JWT Authentication and RESTful API projects in Django to speed up the development process
+            \item Automated scraping and exporting into a database using Python, saving 15 hours each week
+        \end{highlightscompact}
+    \end{onecolentry}
+
+    \begin{twocolentry}{May 2019 -- Aug 2019}
+        \textbf{Developer}, Zencon Pvt Ltd
+    \end{twocolentry}
+    \vspace{0.1cm}
+    \begin{onecolentry}
+        \begin{highlightscompact}
+            \item Developed a portal to take the company's whole services online (cars, vehicle replacement, insurance, loans), increasing sales and efficiency by 60\%
+            \item Learned Python automation and web scraping using Selenium; introduced to Django, Angular, Ionic
+            \item Provided training to client site end-users
+        \end{highlightscompact}
+    \end{onecolentry}
+
+    \section{Projects}
+    \begin{twocolentry}{Jan 2019 -- Mar 2019}
+        \textbf{Online Home Services} -- Front-end Developer
+    \end{twocolentry}
+    \begin{onecolentry}
+        \begin{highlightscompact}
+            \item Platform for booking local helpers (cooking, electrical, household); built with Bootstrap, served 100+ early users
+        \end{highlightscompact}
+    \end{onecolentry}
+    \begin{twocolentry}{Mar 2022 -- Apr 2022}
+        \textbf{E-commerce Book Selling} (College project)
+    \end{twocolentry}
+    \begin{onecolentry}
+        \begin{highlightscompact}
+            \item Full-stack Django app with product catalog, cart, checkout; SQLite backend, deployed on Heroku
+        \end{highlightscompact}
+    \end{onecolentry}
+
+    \section{Education}
+    \begin{twocolentry}{2023}
+        \textbf{B.E. Computer Science}, GH Raisoni College of Engineering and Management, Pune
+    \end{twocolentry}
+    \begin{twocolentry}{2019}
+        \textbf{Diploma in Information Technology}, Government Polytechnic, Amravati
+    \end{twocolentry}
+
+    \section{Technical Skills}
+    \begin{onecolentry}
+        \begin{highlightscompact}
+            \item \textbf{Languages:} Python (Django, DRF), C, C++
+            \item \textbf{Frameworks \& APIs:} Django, Django REST Framework, JWT, REST, Swagger/OpenAPI, Bootstrap
+            \item \textbf{Databases:} SQL, SQLite, Firebase; Git, GitHub, Linux/Unix
+            \item \textbf{Deployment \& Tools:} PythonAnywhere, Heroku, Azure, Amazon EC2; Agile, Unit Testing
+            \item \textbf{Freelancing:} AI writer (OpenAI), inventory system, bike supply chain portal, e-commerce medicine site
+        \end{highlightscompact}
+    \end{onecolentry}
+
+\end{document}

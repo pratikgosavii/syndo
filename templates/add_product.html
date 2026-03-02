@@ -1223,8 +1223,15 @@
         saleType.appendChild(option);
     }
 
+    var saleTypePrintBlocker = null;
     function setSaleTypeOptionsForPrint() {
     if (!saleType) return;
+    var pt = document.getElementById('productType') || document.getElementById('id_product_type');
+    if (pt) { pt.removeAttribute('disabled'); pt.style.pointerEvents = ''; }
+    if (saleTypePrintBlocker) saleType.removeEventListener('mousedown', saleTypePrintBlocker);
+    saleTypePrintBlocker = function(e) { e.preventDefault(); };
+    saleType.addEventListener('mousedown', saleTypePrintBlocker);
+
     // Clear old options
     saleType.innerHTML = '';
 
@@ -1238,33 +1245,39 @@
     // Set value explicitly
     saleType.value = 'online';
 
-    // Prevent user from changing it visually
-    saleType.addEventListener('mousedown', function (e) {
-        e.preventDefault(); // stops dropdown from opening
-    });
-
-    // Add a hidden input so value still goes to server
+    // Remove any stale hidden inputs from previous print mode
+    saleType.parentNode.querySelectorAll('input[name="sale_type"]').forEach(inp => { if (inp.type === 'hidden') inp.remove(); });
     let hiddenInput = document.createElement('input');
     hiddenInput.type = 'hidden';
     hiddenInput.name = 'sale_type';
-    hiddenInput.value = saleType.value;
+    hiddenInput.value = 'online';
     saleType.parentNode.appendChild(hiddenInput);
 }
 
 
 
     function setSaleTypeOptionsDefault(productTypeVal) {
-        clearSaleTypeOptions();
         if (!saleType) return;
+        var currentVal = saleType.value;
+        if (saleTypePrintBlocker) {
+            saleType.removeEventListener('mousedown', saleTypePrintBlocker);
+            saleTypePrintBlocker = null;
+        }
+        saleType.parentNode.querySelectorAll('input[name="sale_type"]').forEach(inp => { if (inp.type === 'hidden') inp.remove(); });
+        clearSaleTypeOptions();
 
         Object.entries(allSaleOptions).forEach(([value, text]) => {
-            // 👇 if not print, exclude "online"
-            if (productTypeVal !== 'print' && value === 'online') return;
             addSaleTypeOption(value, text);
         });
 
         saleType.removeAttribute('disabled');
-        saleType.value = 'offline'; // 👈 set default to offline (or 'both' if preferred)
+        if (['offline', 'online', 'both'].indexOf(currentVal) >= 0) {
+            saleType.value = currentVal;
+        } else {
+            saleType.value = 'offline';
+        }
+        var pt = document.getElementById('productType') || document.getElementById('id_product_type');
+        if (pt) { pt.removeAttribute('disabled'); pt.style.pointerEvents = ''; }
     }
 
 
@@ -1475,14 +1488,19 @@
     function updateFieldLogic() {
         const productType = (document.getElementById('productType') || document.getElementById('id_product_type'))?.value;
         const saleType = (document.getElementById('saleType') || document.getElementById('id_sale_type'))?.value;
-        // Only apply product settings (hide/show from Product Settings page) when product type is "product"
+        // For offline products: apply full product settings (stock, category, etc.)
         if (saleType === 'offline' && productType === 'product') {
             applyProductSettingsForOffline(productSettings);
         }
         // Always apply product-type-based rules (product/service/print × offline/both)
         adjustFormFields(productType, saleType);
-        // For product type "product" only: respect Product Settings for description/image (not for services or print)
+        // For product type "product" only: respect Product Settings for optional fields (brand, color, size, batch, expiry, description, image)
         if (productType === 'product' && productSettings) {
+            setVisibleById('brand_name_wrapper', productSettings.brand_name);
+            setVisibleById('color_wrapper', productSettings.color);
+            setVisibleById('size_wrapper', productSettings.size);
+            setVisibleById('batch_number_wrapper', productSettings.batch_number);
+            setVisibleById('expiry_date_wrapper', productSettings.expiry_date);
             setVisibleById('description_wrapper', productSettings.description);
             setVisibleById('image_wrapper', productSettings.image);
             var galleryWrapper = document.getElementById('gallery_images_wrapper');
@@ -1566,6 +1584,7 @@ changeMrpLabel("Selling Price");
             setSaleTypeOptionsDefault(selectedType);
             toggleVariantFormSection(false);  // Hide variant sections when not print
             toggleProductOnlyFields(selectedType === 'product');
+            if (selectedType === 'product' && typeof updateFieldLogic === 'function') updateFieldLogic();
             
             addon_section.style.display = 'none';
             addon_section.querySelectorAll('input, select, textarea').forEach(el => {
@@ -1593,6 +1612,9 @@ changeMrpLabel("Selling Price");
         // Always keep submit section visible for every product type (product, service, print)
         const submitSection = document.getElementById('product-form-submit-section');
         if (submitSection) submitSection.style.display = '';
+        // Ensure product type dropdown stays interactive
+        var ptEl = document.getElementById('productType') || document.getElementById('id_product_type');
+        if (ptEl) { ptEl.removeAttribute('disabled'); ptEl.style.pointerEvents = ''; }
     }
 
     // Add listener

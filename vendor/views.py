@@ -4540,6 +4540,13 @@ def sale_invoice(request, sale_id):
         # Fallback
         template_name = "sale_invoice/online_invoice.html"
 
+    # --- Thermal bill for retail: when thermal_print is True, use thermal template for retail POS bills ---
+    user = sale.user or request.user
+    inv_settings = InvoiceSettings.objects.filter(user=user).first()
+    use_thermal = inv_settings and inv_settings.thermal_print and not sale.is_wholesale_rate
+    if use_thermal:
+        template_name = "sale_invoice/thermal_bill.html"
+
     # --- Charges and totals ---
     from decimal import Decimal
     delivery = Decimal(getattr(wholesale, "delivery_charges", 0) or 0)
@@ -4619,9 +4626,30 @@ def sale_invoice(request, sale_id):
     if term_from_sale and str(term_from_sale).strip():
         display_terms = term_from_sale
     else:
-        user = sale.user or request.user
-        inv_settings = InvoiceSettings.objects.filter(user=user).first()
         display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
+
+    # For thermal bill: vendor PAN, GSTIN, FSSAI; embed company logo as base64 (PDF service can't fetch relative URLs)
+    vendor_pan = None
+    vendor_gstin = None
+    vendor_fssai = None
+    company_logo_data_uri = None
+    if use_thermal:
+        import base64
+        store = vendor_store.objects.filter(user=user).first()
+        cp = sale.company_profile
+        vendor_pan = (cp.pan if cp else None) or (store.pan_number if store else None)
+        vendor_gstin = (cp.gstin if cp else None) or (store.gstin if store else None)
+        vendor_fssai = store.fssai_number if store else None
+        # Embed company logo as base64 so html2pdf.app (external service) can render it
+        if cp and cp.profile_image:
+            try:
+                with cp.profile_image.open('rb') as f:
+                    logo_b64 = base64.b64encode(f.read()).decode('ascii')
+                ext = cp.profile_image.name.split('.')[-1].lower() if cp.profile_image.name else 'jpeg'
+                mime = 'image/png' if ext == 'png' else 'image/jpeg'
+                company_logo_data_uri = f"data:{mime};base64,{logo_b64}"
+            except Exception:
+                pass
 
     context = {
         'sale_instance': sale,
@@ -4644,6 +4672,10 @@ def sale_invoice(request, sale_id):
         'paid_amount': paid_amount,
         'balance_amount': balance_amount,
         'items_with_tax': items_with_tax,
+        'vendor_pan': vendor_pan,
+        'vendor_gstin': vendor_gstin,
+        'vendor_fssai': vendor_fssai,
+        'company_logo_data_uri': company_logo_data_uri,
     }
     
     # Generate PDF using html2pdf.app API
@@ -4656,19 +4688,21 @@ def sale_invoice(request, sale_id):
         template = get_template(template_name)
         html_content = template.render(context, request)
         
+        # PDF options: thermal 80mm width for thermal, A4 for standard
+        # html2pdf.app: width/height in pixels. 80mm ≈ 302px, 297mm ≈ 1123px
+        pdf_body = {'html': html_content, 'apiKey': getattr(settings, 'HTML2PDF_API_KEY', '')}
+        if use_thermal:
+            pdf_body['width'] = 302  # 80mm
+            pdf_body['height'] = 1123  # 297mm (thermal roll length)
+            pdf_body['marginTop'] = 15
+            pdf_body['marginBottom'] = 15
+            pdf_body['marginLeft'] = 12
+            pdf_body['marginRight'] = 12
+        else:
+            pdf_body['options'] = {'printBackground': True, 'margin': '1cm', 'pageSize': 'A4'}
+
         # Generate PDF using html2pdf.app
-        api_response = requests.post(
-            'https://api.html2pdf.app/v1/generate',
-            json={
-                'html': html_content,
-                'apiKey': getattr(settings, 'HTML2PDF_API_KEY', ''),
-                'options': {
-                    'printBackground': True,
-                    'margin': '1cm',
-                    'pageSize': 'A4'
-                }
-            }
-        )
+        api_response = requests.post('https://api.html2pdf.app/v1/generate', json=pdf_body)
         
         if api_response.status_code == 200:
             response = HttpResponse(api_response.content, content_type='application/pdf')
