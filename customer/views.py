@@ -302,6 +302,7 @@ class ReturnShippingRatesAPIView(APIView):
         address_id = request.query_params.get("address_id")
         delivery_type = request.query_params.get("delivery_type") or "self_pickup"
 
+        # Basic presence check
         if not vendor_user_id or not address_id:
             return Response(
                 {"detail": "vendor_user_id and address_id are required"},
@@ -309,12 +310,28 @@ class ReturnShippingRatesAPIView(APIView):
             )
 
         try:
-            vendor_user = User.objects.get(id=vendor_user_id)
+            vendor_user_id_int = int(vendor_user_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Invalid vendor_user_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            address_id_int = int(address_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Invalid address_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            vendor_user = User.objects.get(id=vendor_user_id_int)
         except User.DoesNotExist:
             return Response({"detail": "Vendor user not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            addr = Address.objects.get(id=address_id, user=request.user)
+            addr = Address.objects.get(id=address_id_int, user=request.user)
         except Address.DoesNotExist:
             return Response({"detail": "Address not found"}, status=status.HTTP_404_NOT_FOUND)
 

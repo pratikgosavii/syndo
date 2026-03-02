@@ -2,7 +2,8 @@
 Invoice-style order totals for print online order:
 - Per item: if item total < sales_price value → use sales_value + addons as item total.
 - If item total >= sales_price → use total only (no addons).
-Then item_total, tax_total, total_amount (incl. shipping tax) for consistency with invoice PDF.
+- If product is GST inclusive (tax_inclusive=True): do not add any tax; tax_total stays 0 for that item.
+- total_amount = item_total + tax_total + shipping_fee + shipping_tax - delivery_discount - coupon.
 """
 from decimal import Decimal
 import logging
@@ -89,7 +90,7 @@ def get_order_invoice_totals(order):
             logger.info(msg)
         sum_taxable += taxable_val
 
-        # Respect tax_inclusive flag: only add GST to tax_total when product is tax-exclusive.
+        # For print order: if product is GST inclusive, do not apply tax (price already includes GST).
         tax_inclusive = bool(getattr(item.product, "tax_inclusive", False))
         if not tax_inclusive:
             any_non_inclusive = True
