@@ -1,8 +1,9 @@
 """
 Invoice-style order totals for print online order:
-- Per item: if item total < sales_price value → use sales_value + addons as item total.
-- If item total >= sales_price → use total only (no addons).
-- If product is GST inclusive (tax_inclusive=True): do not add any tax; tax_total stays 0 for that item.
+- Per item: line total = quantity × item price. If this total is less than product sales_price
+  (single value, not × quantity), use sales_price as the item total; otherwise use (quantity × item price).
+  Then add addon_total for print items.
+- If product is GST inclusive (tax_inclusive=True): do not add any tax.
 - total_amount = item_total + tax_total + shipping_fee + shipping_tax - delivery_discount - coupon.
 """
 from decimal import Decimal
@@ -14,8 +15,8 @@ logger = logging.getLogger("request")
 def get_order_invoice_totals(order):
     """
     Compute item_total, tax_total, total_amount for print online order:
-    - Per item: if (price*qty) < (sales_price*qty) → taxable = sales_price*qty + addon_total.
-    - If (price*qty) >= (sales_price*qty) → taxable = price*qty only (no addons).
+    - Per item: line total = quantity × item price. If line total < product sales_price (single value),
+      use sales_price as item total; else use line total. Then add addon_total for print items.
     - total_amount = item_total + tax_total + shipping_fee + shipping_tax - delivery_discount - coupon.
 
     Expects order with items prefetched: items__product, items__print_job__add_ons.
@@ -56,38 +57,27 @@ def get_order_invoice_totals(order):
             continue
         unit_price = Decimal(item.price or 0)
         quantity = int(item.quantity or 0)
-        item_price_total = unit_price * quantity
+        # Line total = quantity × item price (not quantity × sales_price).
+        item_line_total = unit_price * quantity
         sales_price = getattr(item.product, "sales_price", None)
-        sales_price_item = (Decimal(str(sales_price)) * quantity) if sales_price is not None else None
+        sales_price_val = Decimal(str(sales_price)) if sales_price is not None else None
 
         addon_total = Decimal(0)
+        print_job = getattr(item, "print_job", None)
         try:
-            print_job = getattr(item, "print_job", None)
             if print_job and hasattr(print_job, "add_ons"):
                 for addon in print_job.add_ons.all():
                     addon_total += Decimal(str(getattr(addon, "price_per_unit", 0) or 0))
         except Exception:
             pass
 
-        if sales_price_item is not None and item_price_total < sales_price_item:
-            taxable_val = sales_price_item + addon_total
-            msg = (
-                f"[order_totals] order_id={getattr(order, 'order_id', order.id)} item_id={item.id} "
-                f"product={getattr(item.product, 'name', '')} item_price_total={item_price_total} < "
-                f"sales_price_item={sales_price_item} → taxable_val=sales_price+addons={taxable_val} (addon_total={addon_total})"
-            )
-            print(msg)
-            logger.info(msg)
+        # If (quantity × item price) total is less than product sales_price, use sales_price as item total.
+        if sales_price_val is not None and item_line_total < sales_price_val:
+            base_total = sales_price_val
         else:
-            # total >= sales price: keep total only (no addons)
-            taxable_val = item_price_total
-            msg = (
-                f"[order_totals] order_id={getattr(order, 'order_id', order.id)} item_id={item.id} "
-                f"product={getattr(item.product, 'name', '')} item_price_total={item_price_total} >= "
-                f"sales_price_item={sales_price_item} → taxable_val=total_only={taxable_val}"
-            )
-            print(msg)
-            logger.info(msg)
+            base_total = item_line_total
+        taxable_val = base_total + addon_total
+
         sum_taxable += taxable_val
 
         # For print order: if product is GST inclusive, do not apply tax (price already includes GST).
