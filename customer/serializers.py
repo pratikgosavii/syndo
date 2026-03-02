@@ -619,18 +619,32 @@ def on_order_accepted(order):
 
     create_ledger = not _is_cod_order(order)
 
-    # Pre-calc totals for proportional allocation of order.total_amount across items
-    item_total = Decimal(getattr(order, "item_total", 0) or 0)
+    # Pre-calc line totals for proportional allocation of order.total_amount across items.
+    # For print jobs, prefer OrderPrintJob.total_amount; otherwise use quantity * price.
+    items = list(order.items.select_related("product", "product__user").all())
+    line_totals = []
+    for oi in items:
+        line_total = Decimal(0)
+        try:
+            pj = getattr(oi, "print_job", None)
+            if pj and getattr(pj, "total_amount", None) is not None:
+                line_total = Decimal(pj.total_amount or 0)
+            else:
+                line_total = Decimal(oi.total_price() or 0)
+        except Exception:
+            line_total = Decimal(oi.total_price() or 0)
+        line_totals.append(line_total)
+
+    item_total = sum(line_totals) if line_totals else Decimal(0)
     total_amount = Decimal(getattr(order, "total_amount", 0) or 0)
 
-    for oi in order.items.select_related("product", "product__user").all():
+    for oi, line_total in zip(items, line_totals):
         # Idempotent: if ledger exists, we already processed this item (for non-COD)
         if create_ledger and OnlineOrderLedger.objects.filter(order_item=oi).exists():
             continue
         # 1. OnlineOrderLedger (skip for COD; created on delivery via on_order_delivered_cod)
         if create_ledger:
             # Allocate this item's share of the order total (including tax/shipping/discount)
-            line_total = Decimal(oi.total_price() or 0)
             if item_total > 0 and total_amount > 0 and line_total > 0:
                 ratio = line_total / item_total
                 amount = (total_amount * ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -675,15 +689,28 @@ def on_order_delivered_cod(order):
         return
     from vendor.models import OnlineOrderLedger
 
-    # Pre-calc totals for proportional allocation of order.total_amount across items
-    item_total = Decimal(getattr(order, "item_total", 0) or 0)
+    # Pre-calc line totals for proportional allocation for COD orders (same logic as on_order_accepted)
+    items = list(order.items.select_related("product", "product__user").all())
+    line_totals = []
+    for oi in items:
+        line_total = Decimal(0)
+        try:
+            pj = getattr(oi, "print_job", None)
+            if pj and getattr(pj, "total_amount", None) is not None:
+                line_total = Decimal(pj.total_amount or 0)
+            else:
+                line_total = Decimal(oi.total_price() or 0)
+        except Exception:
+            line_total = Decimal(oi.total_price() or 0)
+        line_totals.append(line_total)
+
+    item_total = sum(line_totals) if line_totals else Decimal(0)
     total_amount = Decimal(getattr(order, "total_amount", 0) or 0)
 
-    for oi in order.items.select_related("product", "product__user").all():
+    for oi, line_total in zip(items, line_totals):
         if OnlineOrderLedger.objects.filter(order_item=oi).exists():
             continue
         # Allocate this item's share of the order total (including tax/shipping/discount)
-        line_total = Decimal(oi.total_price() or 0)
         if item_total > 0 and total_amount > 0 and line_total > 0:
             ratio = line_total / item_total
             amount = (total_amount * ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -772,6 +799,7 @@ class OrderSerializer(serializers.ModelSerializer):
             tax_total = Decimal("0.00")
             order_items = []
             print_jobs_payload = []  # parallel array of print job payloads or None
+            has_print_product = False
 
         for item in items_data:
             product_id = item.get("product")
@@ -815,6 +843,9 @@ class OrderSerializer(serializers.ModelSerializer):
                         ],
                     }
             print_jobs_payload.append(item_print_job)
+
+            if is_print_product:
+                has_print_product = True
 
             # Calculate pricing based on product type
             if is_print_product and item_print_job:
@@ -1306,30 +1337,31 @@ class OrderSerializer(serializers.ModelSerializer):
                     page_numbers=f_data.get("page_numbers", ""),
                 )
 
-        # Recompute order totals using invoice rule: if item total < sales_price → use sales_price + addons; else use total only.
-        # This runs on the order API so stored item_total/tax_total/total_amount match the invoice PDF.
-        try:
-            from customer.order_totals import get_order_invoice_totals
-            order.refresh_from_db()
-            order_with_prefetch = Order.objects.prefetch_related(
-                "items__product", "items__print_job__add_ons"
-            ).select_related("address").get(pk=order.pk)
-            totals = get_order_invoice_totals(order_with_prefetch)
-            order.item_total = totals["item_total"]
-            order.tax_total = totals["tax_total"]
-            order.total_amount = totals["total_amount"]
-            order.save(update_fields=["item_total", "tax_total", "total_amount"])
-            request_logger = logging.getLogger("request")
-            msg = (
-                f"[order_api] order_id={order.order_id} recomputed totals: "
-                f"item_total={order.item_total} tax_total={order.tax_total} total_amount={order.total_amount}"
-            )
-            print(msg)
-            request_logger.info(msg)
-        except Exception as e:
-            logger.warning(f"[ORDER_SERIALIZER] Recompute invoice totals failed (using initial totals): {e}")
-            request_logger = logging.getLogger("request")
-            request_logger.warning(f"[order_api] order_id={order.order_id} recompute failed: {e}")
+        # Recompute order totals using invoice rule ONLY for print orders.
+        # Normal products keep the original create() totals.
+        if has_print_product:
+            try:
+                from customer.order_totals import get_order_invoice_totals
+                order.refresh_from_db()
+                order_with_prefetch = Order.objects.prefetch_related(
+                    "items__product", "items__print_job__add_ons"
+                ).select_related("address").get(pk=order.pk)
+                totals = get_order_invoice_totals(order_with_prefetch)
+                order.item_total = totals["item_total"]
+                order.tax_total = totals["tax_total"]
+                order.total_amount = totals["total_amount"]
+                order.save(update_fields=["item_total", "tax_total", "total_amount"])
+                request_logger = logging.getLogger("request")
+                msg = (
+                    f"[order_api] order_id={order.order_id} recomputed totals: "
+                    f"item_total={order.item_total} tax_total={order.tax_total} total_amount={order.total_amount}"
+                )
+                print(msg)
+                request_logger.info(msg)
+            except Exception as e:
+                logger.warning(f"[ORDER_SERIALIZER] Recompute invoice totals failed (using initial totals): {e}")
+                request_logger = logging.getLogger("request")
+                request_logger.warning(f"[order_api] order_id={order.order_id} recompute failed: {e}")
 
         # Clear cart only when order is confirmed: COD/cash immediately; online pay only after payment success (cleared in webhook).
         payment_mode = (getattr(order, "payment_mode", "") or "COD").strip().lower()
