@@ -249,6 +249,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     reviews = serializers.SerializerMethodField()
 
     is_favourite = serializers.SerializerMethodField()  # ✅ dynamic now
+    gallery_images_details = serializers.SerializerMethodField()
 
     class Meta:
         model = product
@@ -291,6 +292,18 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             )
 
         return obj.id in self._user_fav_ids
+
+    def get_gallery_images_details(self, obj):
+        """
+        Return gallery images for this variant, same format as main product_serializer.
+        """
+        gi = getattr(obj, "gallery_images", None)
+        # New schema (ManyToMany): serialize related images
+        if hasattr(gi, "all"):
+            return ProductImageSerializer(gi.all(), many=True, context=self.context).data
+        # Legacy schema (ImageField): return single image entry if present
+        url = gi.url if getattr(gi, "name", None) else None
+        return [] if not url else [{"id": None, "image": url, "created_at": None}]
 
 
 class VendorStoreSerializer2(serializers.ModelSerializer):
