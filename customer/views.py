@@ -416,8 +416,8 @@ class RequestOfferAPIView(APIView):
         from vendor.models import Offer
         from vendor.serializers import OfferSerializer
 
-        queryset = Offer.objects.filter(request__id = request_id).order_by('-created_at')
-        serializer = OfferSerializer(queryset, many=True)
+        queryset = Offer.objects.filter(request__id=request_id).order_by('-created_at')
+        serializer = OfferSerializer(queryset, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
