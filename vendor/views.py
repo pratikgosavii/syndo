@@ -4110,7 +4110,7 @@ def pos(request):
 
     sale_form = SaleForm(user=request.user)
     customer_form = vendor_customersForm()
-    wholesale_form = pos_wholesaleForm(initial={'packaging_charges': 100})
+    wholesale_form = pos_wholesaleForm(initial={'packaging_charges': 0, 'delivery_charges': 0})
 
     # Pre-fill default company_profile for GET (and as initial on form)
     try:

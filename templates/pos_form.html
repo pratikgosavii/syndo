@@ -634,7 +634,7 @@
 <div class="main-content">
   <div class="page-content">
     <div class="container-fluid">
-      <div class="container">
+      <div class="container padding-left=0, padding-right=0">
         <div class="form-container">
           <form method="post" action="" id="pos-form">
             {% csrf_token %}
@@ -687,7 +687,7 @@
                       <select name="product[]" class="form-select product-select" placeholder="Search Product">
                         <option value="">Search Product</option>
                         {% for p in products %}
-                          <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}">{{ p.name }}</option>
+                          <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -730,7 +730,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" {% if p.id == item.product.id %}selected{% endif %}>{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}" {% if p.id == item.product.id %}selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -755,7 +755,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}">{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -929,7 +929,7 @@
                    <div class="billing-summary-box">
                     <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
                     <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
-                    <div class="billing-summary-line">Total GST (18%): <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
+                    <div class="billing-summary-line">Total GST: <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
                     <div id="wholesale-charges-summary" style="display: none;">
                         <div class="billing-summary-line"><span class="shipping-charges-label">Shipping / Delivery Charges:</span> <strong>₹<span id="delivery-charges-display">0.00</span></strong></div>
                         <div class="billing-summary-line"><span class="packaging-charges-label">Packaging Charges:</span> <strong>₹<span id="packaging-charges-display">0.00</span></strong></div>
@@ -1241,14 +1241,36 @@ function recalculateTotals() {
     document.querySelectorAll('.item-row').forEach(row => {
         const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
         const price = parseFloat(row.querySelector('.rate-input').value) || 0;
-        const amount = qty * price;
+        const grossAmount = qty * price; // what user sees/enters
         const sel = row.querySelector('.product-select');
-        const gstRate = (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) ? (parseFloat(sel.options[sel.selectedIndex].getAttribute('data-gst')) || 18) : 18;
-        const rowGst = amount * (gstRate / 100);
+        const opt = (sel && sel.selectedIndex >= 0) ? sel.options[sel.selectedIndex] : null;
+        const gstRate = opt ? (parseFloat(opt.getAttribute('data-gst')) || 0) : 0;
+        const taxInclusiveFlag = opt ? opt.getAttribute('data-tax-inclusive') : null;
+        const isTaxInclusive = taxInclusiveFlag === '1';
 
-        if (row.querySelector('.amount')) row.querySelector('.amount').value = amount.toFixed(2);
+        let baseAmount = grossAmount;
+        let rowGst = 0;
+
+        if (gstRate > 0) {
+            if (isTaxInclusive) {
+                // Price is GST inclusive: split into base + tax so that
+                // base + tax == grossAmount, but tax still shows in summary.
+                const divisor = 1 + (gstRate / 100);
+                baseAmount = grossAmount / divisor;
+                rowGst = grossAmount - baseAmount;
+            } else {
+                // Price is before tax: GST is added on top.
+                baseAmount = grossAmount;
+                rowGst = grossAmount * (gstRate / 100);
+            }
+        } else {
+            baseAmount = grossAmount;
+            rowGst = 0;
+        }
+
+        if (row.querySelector('.amount')) row.querySelector('.amount').value = grossAmount.toFixed(2);
         totalItems += qty;
-        subtotal += amount;
+        subtotal += baseAmount;
         gstAmount += rowGst;
     });
 

@@ -965,7 +965,7 @@ class PurchaseItem(models.Model):
     total_with_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Final total including tax")
 
     def save(self, *args, **kwargs):
-        # Calculate GST like SaleItem
+        # Calculate GST like SaleItem, respecting tax_inclusive flag
         from decimal import Decimal, ROUND_HALF_UP
         
         def _to_decimal(value):
@@ -979,11 +979,26 @@ class PurchaseItem(models.Model):
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
         gst_rate = _to_decimal(getattr(self.product, "gst", 0))
+        tax_inclusive = bool(getattr(self.product, "tax_inclusive", False))
 
-        # Calculations (kept in Decimal)
-        self.amount = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.tax_amount = (self.amount * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.total_with_tax = (self.amount + self.tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        gross = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        if gst_rate > 0:
+            if tax_inclusive:
+                # Purchase price includes GST: split gross into base + tax.
+                divisor = (Decimal("1") + (gst_rate / Decimal("100")))
+                base = (gross / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                tax = (gross - base).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                base = gross
+                tax = (base * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            base = gross
+            tax = Decimal("0.00")
+
+        self.amount = base
+        self.tax_amount = tax
+        self.total_with_tax = (base + tax).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         
         # Keep total for backward compatibility (same as total_with_tax)
         self.total = self.total_with_tax
@@ -1220,11 +1235,28 @@ class SaleItem(models.Model):
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
         gst_rate = _to_decimal(getattr(self.product, "gst", 0))
+        tax_inclusive = bool(getattr(self.product, "tax_inclusive", False))
 
-        # Calculations (kept in Decimal)
-        self.amount = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.tax_amount = (self.amount * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.total_with_tax = (self.amount + self.tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        gross = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        if gst_rate > 0:
+            if tax_inclusive:
+                # Price includes GST: split gross into base + tax so that
+                # amount (taxable) + tax_amount == gross.
+                divisor = (Decimal("1") + (gst_rate / Decimal("100")))
+                base = (gross / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                tax = (gross - base).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                # Price is before tax: add GST on top.
+                base = gross
+                tax = (base * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            base = gross
+            tax = Decimal("0.00")
+
+        self.amount = base
+        self.tax_amount = tax
+        self.total_with_tax = (base + tax).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         super().save(*args, **kwargs)
 
