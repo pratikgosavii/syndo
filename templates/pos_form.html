@@ -1199,28 +1199,93 @@
         data: formData,
         processData: false,
         contentType: false,
-       success: function (data) {
-  if (data.success) {
-    alert("Customer added: " + data.name);
+        success: function (data) {
+          if (data.success) {
+            alert("Customer added: " + data.name);
 
-    // 👇 Add new option to dropdown and select it
-    $('#id_customer').append(
-      $('<option>', {
-        value: data.id,  // make sure your view returns the ID
-        text: data.name,
-        selected: true
-      })
-    );
+            // 👇 Add new option to dropdown and select it
+            $('#id_customer').append(
+              $('<option>', {
+                value: data.id,  // make sure your view returns the ID
+                text: data.name,
+                selected: true
+              })
+            );
 
-    // 👇 Hide the modal
-    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
-  } else {
-    $('#customerModalContent').html(data.html);
-  }
-}
+            // Trigger downstream auto-fill for wholesale fields
+            $('#id_customer').trigger('change');
 
+            // 👇 Hide the modal
+            bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+          } else {
+            $('#customerModalContent').html(data.html);
+          }
+        }
       });
     });
+
+    // When customer is selected/changed, auto-fill wholesale dispatch address, city and transport name
+    function fillWholesaleFromCustomer(customerId) {
+      if (!customerId) {
+        console.log('POS: no customerId selected, skipping wholesale fill');
+        return;
+      }
+
+      console.log('POS: fetching customer details for', customerId);
+      $.ajax({
+        url: "/vendor/customer/" + customerId + "/",
+        method: "GET",
+        success: function (data) {
+          console.log('POS: customer details loaded', data);
+          if (!data) return;
+
+          // Build a single dispatch address string from customer dispatch fields
+          const parts = [];
+          if (data.dispatch_address_line1) parts.push(data.dispatch_address_line1);
+          if (data.dispatch_address_line2) parts.push(data.dispatch_address_line2);
+          if (data.dispatch_city) parts.push(data.dispatch_city);
+          if (data.dispatch_pincode) parts.push(data.dispatch_pincode);
+          if (data.dispatch_state) parts.push(data.dispatch_state);
+          if (data.dispatch_country) parts.push(data.dispatch_country);
+
+          const dispatchAddress = parts.join(", ");
+          const deliveryCity = data.dispatch_city || data.billing_city || "";
+          const transportName = data.transport_name || "";
+
+          const dispatchField = document.getElementById("id_dispatch_address");
+          if (dispatchField && dispatchAddress) {
+            dispatchField.value = dispatchAddress;
+          }
+
+          const cityField = document.getElementById("id_delivery_city");
+          if (cityField && deliveryCity) {
+            cityField.value = deliveryCity;
+          }
+
+          const transportField = document.getElementById("id_transport_name");
+          if (transportField && transportName) {
+            transportField.value = transportName;
+          }
+        },
+        error: function (xhr, status, err) {
+          console.error('POS: failed to load customer details', status, err);
+        }
+      });
+    }
+
+    // Bind change using delegated jQuery handler so it works with Select2 too
+    $(document).on('change', '#id_customer', function () {
+      const customerId = $(this).val();
+      console.log('POS: customer changed ->', customerId);
+      fillWholesaleFromCustomer(customerId);
+    });
+
+    // On page load (edit case) – pre-fill if already selected
+    const initialCustomerId = $('#id_customer').val();
+    if (initialCustomerId) {
+      console.log('POS: initial customer id ->', initialCustomerId);
+      fillWholesaleFromCustomer(initialCustomerId);
+    }
   });
 </script>
 
@@ -1244,14 +1309,17 @@ function recalculateTotals() {
         const grossAmount = qty * price; // what user sees/enters
         const sel = row.querySelector('.product-select');
         const opt = (sel && sel.selectedIndex >= 0) ? sel.options[sel.selectedIndex] : null;
-        const gstRate = opt ? (parseFloat(opt.getAttribute('data-gst')) || 0) : 0;
+        let gstRate = opt ? (parseFloat(opt.getAttribute('data-gst')) || 0) : 0;
         const taxInclusiveFlag = opt ? opt.getAttribute('data-tax-inclusive') : null;
         const isTaxInclusive = taxInclusiveFlag === '1';
 
         let baseAmount = grossAmount;
         let rowGst = 0;
 
-        if (gstRate > 0) {
+        // Composite scheme from backend: no GST calculations when enabled
+        const isCompositeScheme = !!(window.POS_COMPOSITE_SCHEME);
+
+        if (!isCompositeScheme && gstRate > 0) {
             if (isTaxInclusive) {
                 // Price is GST inclusive: split into base + tax so that
                 // base + tax == grossAmount, but tax still shows in summary.
@@ -2195,6 +2263,30 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
+</script>
+
+<script>
+  // Default invoice terms from backend (InvoiceSettings.terms_and_conditions)
+  const POS_INVOICE_DEFAULT_TERMS = "{{ invoice_terms|default_if_none:''|escapejs }}";
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const wholesaleToggle = document.getElementById('wholesale_selector');
+    const termsField = document.getElementById('id_terms');
+
+    function maybeFillTerms() {
+      if (!wholesaleToggle || !termsField) return;
+      const isWholesale = wholesaleToggle.checked;
+      if (isWholesale && !termsField.value && POS_INVOICE_DEFAULT_TERMS) {
+        termsField.value = POS_INVOICE_DEFAULT_TERMS;
+      }
+    }
+
+    if (wholesaleToggle) {
+      wholesaleToggle.addEventListener('change', maybeFillTerms);
+      // On initial load
+      maybeFillTerms();
+    }
+  });
 </script>
 
 

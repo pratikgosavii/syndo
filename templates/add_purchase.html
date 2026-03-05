@@ -227,7 +227,15 @@
                     <div class="col-md-4">
                       <select name="products" class="form-control product-select">
                         <option value="">Select Product</option>
-                        {% for p in data %}<option value="{{ p.id }}" data-gst="{{ p.gst|default:18 }}">{{ p.name }}</option>{% endfor %}
+                        {% for p in data %}
+                          <option
+                            value="{{ p.id }}"
+                            data-gst="{{ p.gst|default:18 }}"
+                            data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}"
+                          >
+                            {{ p.name }}
+                          </option>
+                        {% endfor %}
                       </select>
                     </div>
                     <div class="col-md-2">

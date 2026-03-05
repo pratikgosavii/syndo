@@ -426,7 +426,8 @@
                             </div>
                         </div>
 
-                        {% if data.status != "accepted" %}
+                        {# Show Accept button only when order is not yet accepted and not cancelled/completed #}
+                        {% if data.status == "not_accepted" %}
                         <a href="{% url 'accept_order' data.id %}" class="btn btn-accept-order">Accept Order</a>
                         {% endif %}
 

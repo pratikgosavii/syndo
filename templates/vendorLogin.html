@@ -4,66 +4,122 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Login Page</title>
-    <!-- Bootstrap CSS -->
-    <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-    />
-
+    <title>Vendor Login | Svindo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet"/>
     <style>
+        :root {
+            --svindo-primary: #FCA311 !important;
+            --svindo-primary-dark: #e0940f;
+        }
         body {
-            background-color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background-color: #f8fafc;
             height: 100vh;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
         }
-
-        .login-container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .logo {
+        .vendor-login-wrapper {
+            height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
+            overflow: hidden;
         }
-
-        .logo img {
-            width: 100px;
-            margin-bottom: 8px;
+        .left-panel {
+            padding: 2rem 3rem;
         }
-
-        .btn-purple {
-            background-color: #ffdb8a;
-            color: #fff;
+        .tagline {
+            font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
         }
-
-        .btn-purple:hover {
-            background-color: #ffdb8a;
+        .tagline .word-1 { color: #1e293b; }
+        .tagline .word-2 { color: #FCA311 !important; }
+        .tagline .word-3 { color: #FCA311 !important; }
+        .tagline .word-4 { color: #FCA311 !important; }
+        .left-panel .desc {
+            font-size: 0.95rem;
+            color: #64748b;
+            margin-top: 0.75rem;
+            max-width: 360px;
         }
-
-        .register-link {
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgb(35 32 32 / 28%);
+            padding: 1.75rem 2rem;
+            max-width: 420px;
+        }
+        .login-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+        }
+        .login-logo img {
+            height: 48px;
+            width: auto;
+            max-width: 120px;
+            object-fit: contain;
+        }
+        .login-card .brand-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
             text-align: center;
-            margin-top: 15px;
         }
-
-        .register-link a {
-            color: #291a4a;
-            text-decoration: none;
+        .login-card .brand-tag {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-align: center;
+            margin-bottom: 1rem;
         }
-
-        .register-link a:hover {
-            text-decoration: underline;
+        .form-control {
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9rem;
         }
-
+        .form-control:focus {
+            border-color: #FCA311 !important;
+            box-shadow: 0 0 0 3px rgba(252, 163, 17, 0.25);
+        }
+        .phone-prefix {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+        .phone-input-wrap {
+            display: flex;
+        }
+        .phone-input-wrap .form-control {
+            border-radius: 0 8px 8px 0;
+            border-left: none;
+        }
+        .phone-input-wrap:focus-within .phone-prefix {
+            border-color: #FCA311 !important;
+        }
+        .phone-input-wrap:focus-within .form-control {
+            border-color: #FCA311 !important;
+        }
+        .btn-login {
+            background: #FCA311 !important;
+            color: #1e293b !important;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.95rem;
+        }
+        .btn-login:hover {
+            background: #e0940f !important;
+            color: #1e293b !important;
+        }
         .password-wrapper {
             position: relative;
         }
@@ -76,102 +132,227 @@
             background: none;
             cursor: pointer;
             padding: 0;
-            color: #6c757d;
+            color: #94a3b8;
         }
-        .password-wrapper .toggle-password:hover {
-            color: #291a4a;
+        .password-wrapper .toggle-password:hover { color: #475569; }
+        .password-wrapper input { padding-right: 44px; }
+        .terms-link {
+            font-size: 0.8rem;
+            color: #64748b;
         }
-        .password-wrapper input {
-            padding-right: 40px;
+        .app-download-divider {
+            margin: 0.75rem 0 0.5rem;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 0.75rem;
+        }
+        .app-download-text {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        .btn-app-store {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.4rem 0.9rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+            color: #334155;
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-app-store:hover {
+            background: #f8fafc;
+            border-color: #FCA311 !important;
+            color: #FCA311 !important;
+        }
+        .btn-app-store i { font-size: 1rem; }
+        .btn-app-store.btn-disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .signup-prompt {
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+        .signup-prompt .btn-signup {
+            background: none;
+            border: none;
+            color: #FCA311 !important;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
         }
         .mobile-error {
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             color: #dc3545;
             margin-top: 4px;
+        }
+        @media (max-width: 991px) {
+            .left-panel { padding: 1rem 1.25rem; text-align: center; }
+            .left-panel .desc { margin-left: auto; margin-right: auto; }
         }
     </style>
 </head>
 <body>
+<div class="vendor-login-wrapper">
+    <div class="container py-2">
+        <div class="row align-items-center g-2">
+            <!-- Left: Tagline -->
+            <div class="col-lg-6">
+                <div class="left-panel">
+                    <h1 class="tagline">
+                        <span class="word-1">Sell Local.</span><br/>
+                        <span class="word-2">Grow Faster.</span><br/>
+                        <span class="word-3">Earn Smarter.</span><br/>
+                        <span class="word-4">Zero Fees.</span>
+                    </h1>
+                    <p class="desc">
+                        Reach customers near you. Manage orders, track sales, and grow your business—all without paying extra commissions.
+                    </p>
+                </div>
+            </div>
 
-<div class="login-container">
-    {% if form.errors %}
-        <div class="alert alert-danger mt-3">
-            <ul>
-                {% for field, errors in form.errors.items %}
-                    {% for error in errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                {% endfor %}
-            </ul>
-        </div>
-    {% endif %}
-    <div class="logo">
-        <img src="{% static 'images/logo.png' %}" alt="Logo"/>
-    </div>
-    <h4 class="text-center mb-4">Vendor Login</h4>
-    <form action="" method="POST">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="mobile" class="form-label">Mobile</label>
-            <input
-                    type="tel"
-                    class="form-control"
-                    id="mobile"
-                    value="{{ mobile|default:'' }}"
-                    name="mobile"
-                    placeholder="Enter 10-digit mobile number"
-                    pattern="[0-9]{10}"
-                    maxlength="10"
-                    minlength="10"
-                    inputmode="numeric"
-                    autocomplete="tel"
-                    required
-            />
-            <span id="mobile-error" class="mobile-error" style="display: none;">Please enter a valid 10-digit mobile number.</span>
-        </div>
-        <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <div class="password-wrapper">
-                <input
-                        type="password"
-                        class="form-control"
-                        id="password"
-                        name="password"
-                        placeholder="Enter your password"
-                        autocomplete="current-password"
-                        required
-                />
-                <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
-                    <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
-                        <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
-                    </svg>
-                    <svg id="eyeSlashIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="display: none;">
-                        <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
-                        <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
-                        <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
-                    </svg>
-                </button>
+            <!-- Right: Login card -->
+            <div class="col-lg-6 d-flex justify-content-lg-end justify-content-center">
+                <div class="login-card w-100">
+                    <div class="login-logo">
+                        <img src="{% static 'images/logo.png' %}" alt="Svindo">
+                    </div>
+                    <div class="brand-name">Svindo</div>
+                    <div class="brand-tag">Vendor Portal</div>
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger py-2 small">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}{{ error }}{% endfor %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <form action="" method="POST">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            <label for="mobile" class="form-label small fw-semibold text-secondary mb-1">Phone Number</label>
+                            <div class="phone-input-wrap">
+                                <span class="phone-prefix">+91</span>
+                                <input type="tel"
+                                       class="form-control"
+                                       id="mobile"
+                                       value="{{ mobile|default:'' }}"
+                                       name="mobile"
+                                       placeholder="Enter 10-digit mobile number"
+                                       pattern="[0-9]{10}"
+                                       maxlength="10"
+                                       minlength="10"
+                                       inputmode="numeric"
+                                       autocomplete="tel"
+                                       required/>
+                            </div>
+                            <span id="mobile-error" class="mobile-error" style="display: none;">Please enter a valid 10-digit mobile number.</span>
+                        </div>
+                        <div class="mb-2">
+                            <label for="password" class="form-label small fw-semibold text-secondary mb-1">Password</label>
+                            <div class="password-wrapper">
+                                <input type="password"
+                                       class="form-control"
+                                       id="password"
+                                       name="password"
+                                       placeholder="Enter your password"
+                                       autocomplete="current-password"
+                                       required/>
+                                <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
+                                    <i class="bi bi-eye" id="eyeIcon"></i>
+                                    <i class="bi bi-eye-slash" id="eyeSlashIcon" style="display: none;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% if messages %}
+                            <div class="mb-2">
+                                {% for message in messages %}
+                                    <div class="alert alert-info py-2 small">{{ message }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <button type="submit" class="btn btn-login w-100">Continue</button>
+                    </form>
+
+                    <p class="terms-link text-center mt-2 mb-0">
+                        By continuing, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>
+                    </p>
+
+                    <div class="text-center mt-2">
+                        <a href="{% url 'vendor_forgot_password' %}" class="small text-secondary">Forgot password?</a>
+                    </div>
+
+                    <!-- App download section -->
+                    <div class="app-download-divider">
+                        <p class="app-download-text">For complete experience download our app</p>
+                        <div class="d-flex flex-wrap gap-2 justify-content-center">
+                            <a href="https://play.google.com/store/apps/details?id=in.webgrid.svindobusiness&pcampaignid=web_share"
+                               class="btn-app-store"
+                               target="_blank"
+                               rel="noopener noreferrer">
+                                <i class="bi bi-google-play"></i>
+                                <span>Play Store</span>
+                            </a>
+                            <a href="#" class="btn-app-store btn-disabled" onclick="return false;">
+                                <i class="bi bi-apple"></i>
+                                <span>App Store</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="signup-prompt">
+                        <button type="button" class="btn-signup" data-bs-toggle="modal" data-bs-target="#signupAppModal">
+                            New vendor? Signup via App
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-        {% if messages %}
-            <div class="messages">
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
-        <button type="submit" class="btn btn-purple w-100" style="color:black;">Login</button>
-    </form>
-    <div class="register-link">
-        <a href="{% url 'vendor_forgot_password' %}">Forgot password?</a>
     </div>
 </div>
 
-<!-- Bootstrap JS -->
+<!-- Signup App modal -->
+<div class="modal fade" id="signupAppModal" tabindex="-1" aria-labelledby="signupAppModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="signupAppModalLabel">Signup from App</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">For new vendors, signup is available only from the mobile app.</p>
+                <div class="d-grid gap-2 mb-3">
+                    <a href="https://play.google.com/store/apps/details?id=in.webgrid.svindobusiness&pcampaignid=web_share"
+                       class="btn btn-success d-flex align-items-center justify-content-center gap-2"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        <i class="bi bi-google-play fs-5"></i>
+                        Download on Google Play
+                    </a>
+                    <button type="button" class="btn btn-dark d-flex align-items-center justify-content-center gap-2" disabled>
+                        <i class="bi bi-apple fs-5"></i>
+                        Download on App Store (coming soon)
+                    </button>
+                </div>
+                <small class="text-muted d-block">
+                    Note: New users need to complete signup from the svindo Business mobile app. Once your account is created, you can log in here.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Password visibility toggle
     document.getElementById('togglePassword').addEventListener('click', function () {
         var passwordInput = document.getElementById('password');
         var eyeIcon = document.getElementById('eyeIcon');
@@ -189,21 +370,11 @@
         }
     });
 
-    // Mobile 10-digit validation
     var mobileInput = document.getElementById('mobile');
     var mobileError = document.getElementById('mobile-error');
     mobileInput.addEventListener('input', function () {
         this.value = this.value.replace(/\D/g, '').slice(0, 10);
-        if (this.value.length > 0 && this.value.length !== 10) {
-            mobileError.style.display = 'block';
-        } else {
-            mobileError.style.display = 'none';
-        }
-    });
-    mobileInput.addEventListener('invalid', function () {
-        if (this.value && this.value.length !== 10) {
-            mobileError.style.display = 'block';
-        }
+        mobileError.style.display = (this.value.length > 0 && this.value.length !== 10) ? 'block' : 'none';
     });
     document.querySelector('form').addEventListener('submit', function (e) {
         var val = mobileInput.value.replace(/\D/g, '');
@@ -213,7 +384,6 @@
             mobileInput.focus();
             return false;
         }
-        mobileError.style.display = 'none';
     });
 </script>
 </body>

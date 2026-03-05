@@ -3442,6 +3442,10 @@ def add_purchase(request):
 
     data = product.objects.filter(is_active=True, user=request.user)
 
+    # Composite scheme flag (no GST calculations when True)
+    tax_settings = getattr(request.user, "tax_settings", None)
+    composite_scheme = bool(getattr(tax_settings, "composite_scheme", False))
+
     if request.method == 'POST':
 
         
@@ -3482,6 +3486,7 @@ def add_purchase(request):
             context = {
                 'form': forms,
                 'data': data,
+                'composite_scheme': composite_scheme,
                 'existing_items': [],
                 'banks': vendor_bank.objects.filter(user=request.user),
             }
@@ -3496,6 +3501,7 @@ def add_purchase(request):
             'banks': vendor_bank.objects.filter(user=request.user),
             'data': data,
             'existing_items': [],
+            'composite_scheme': composite_scheme,
         }
         return render(request, 'add_purchase.html', context)
 
@@ -4112,6 +4118,13 @@ def pos(request):
     customer_form = vendor_customersForm()
     wholesale_form = pos_wholesaleForm(initial={'packaging_charges': 0, 'delivery_charges': 0})
 
+    # Default invoice terms from InvoiceSettings (used to prefill wholesale.terms)
+    inv_settings = InvoiceSettings.objects.filter(user=request.user).first()
+    invoice_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
+    # Composite scheme flag (no GST calculations when True)
+    tax_settings = getattr(request.user, "tax_settings", None)
+    composite_scheme = bool(getattr(tax_settings, "composite_scheme", False))
+
     # Pre-fill default company_profile for GET (and as initial on form)
     try:
         default_cp = CompanyProfile.objects.filter(user=request.user).first()
@@ -4141,6 +4154,8 @@ def pos(request):
                 "form": sale_form,
                 "customer_forms": customer_form,
                 "wholesale_forms": wholesale_form,
+                "invoice_terms": invoice_terms,
+                "composite_scheme": composite_scheme,
                 "saleitemform": SaleItemForm(),
                 "products": product.objects.filter(user=request.user, is_active=True),
                 "banks": vendor_bank.objects.filter(user=request.user),
@@ -4191,6 +4206,8 @@ def pos(request):
                     "form": sale_form,
                     "customer_forms": customer_form,
                     "wholesale_forms": wholesale_form,
+                    "invoice_terms": invoice_terms,
+                    "composite_scheme": composite_scheme,
                     "saleitemform": SaleItemForm(),
                     "products": product.objects.filter(user=request.user, is_active=True),
                     "banks": vendor_bank.objects.filter(user=request.user),
@@ -4204,6 +4221,8 @@ def pos(request):
         "banks": vendor_bank.objects.filter(user=request.user),
         "customer_forms": customer_form,
         "wholesale_forms": wholesale_form,
+        "invoice_terms": invoice_terms,
+        "composite_scheme": composite_scheme,
         "saleitemform": SaleItemForm(),
         "products": product.objects.filter(user=request.user, is_active=True),
         "existing_items": [],
@@ -4222,6 +4241,10 @@ def update_sale(request, sale_id):
         default_cp = CompanyProfile.objects.filter(user=request.user).first()
     except Exception:
         default_cp = None
+
+    # Default invoice terms from InvoiceSettings (used to prefill wholesale.terms)
+    inv_settings = InvoiceSettings.objects.filter(user=request.user).first()
+    invoice_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
 
     # ✅ Prepare dict list with amount calculation
     items_with_amount = []
@@ -4251,6 +4274,7 @@ def update_sale(request, sale_id):
                 "form": sale_form,
                 "customer_forms": customer_form,
                 "wholesale_forms": wholesale_form,
+                "invoice_terms": invoice_terms,
                 "saleitemform": SaleItemForm(),
                 "products": product.objects.filter(user=request.user, is_active=True),
                 "existing_items": items_with_amount,  # ✅ Use calculated data
@@ -4338,6 +4362,7 @@ def update_sale(request, sale_id):
             "form": sale_form,
             "customer_forms": customer_form,
             "wholesale_forms": wholesale_form,
+            "invoice_terms": invoice_terms,
             "saleitemform": SaleItemForm(),
             "products": product.objects.filter(user=request.user, is_active=True),
             "existing_items": items_with_amount,  # ✅ Use calculated
@@ -4609,8 +4634,13 @@ def sale_invoice(request, sale_id):
         })
 
     for hsn, data in hsn_summary.items():
-        data['sgst_amount'] = round(data['taxable_value'] * data['sgst_rate'] / 100, 2)
-        data['cgst_amount'] = round(data['taxable_value'] * data['cgst_rate'] / 100, 2)
+        # Use floats here to avoid mixing Decimal and float types
+        taxable_val = float(data.get('taxable_value', 0) or 0)
+        sgst_rate_val = float(data.get('sgst_rate', 0) or 0)
+        cgst_rate_val = float(data.get('cgst_rate', 0) or 0)
+
+        data['sgst_amount'] = round(taxable_val * sgst_rate_val / 100.0, 2)
+        data['cgst_amount'] = round(taxable_val * cgst_rate_val / 100.0, 2)
         data['total_tax'] = data['sgst_amount'] + data['cgst_amount']
         # Helpful for IGST proforma
         data['igst_rate'] = round((data['sgst_rate'] or 0) + (data['cgst_rate'] or 0), 2)
@@ -7688,7 +7718,7 @@ def invoice_setting(request):
         form = InvoiceSettingsForm(request.POST, instance=setting)
         if form.is_valid():
             form.save()
-            return redirect('online_store_setting')
+            return redirect('invoice_setting')
     else:
         form = InvoiceSettingsForm(instance=setting)
 

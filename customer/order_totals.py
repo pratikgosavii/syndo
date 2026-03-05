@@ -22,17 +22,19 @@ def get_order_invoice_totals(order):
     Expects order with items prefetched: items__product, items__print_job__add_ons.
     Returns dict with keys: item_total, tax_total, total_amount (Decimal).
     """
-    from vendor.models import CompanyProfile
+    from vendor.models import CompanyProfile, TaxSettings
 
     shipping_fee = Decimal(order.shipping_fee or 0)
     delivery_discount = Decimal(order.delivery_discount_amount or 0)
     coupon = Decimal(order.coupon or 0)
 
-    # Determine same_state for CGST/SGST vs IGST
+    # Determine same_state for CGST/SGST vs IGST and composite scheme (no GST under composite)
     vendor_state_name = None
     first_item = order.items.first()
+    vendor_user = None
     if first_item and first_item.product and first_item.product.user:
-        company_profile = CompanyProfile.objects.filter(user=first_item.product.user).first()
+        vendor_user = first_item.product.user
+        company_profile = CompanyProfile.objects.filter(user=vendor_user).first()
         if company_profile:
             if getattr(company_profile, "billing_state", None):
                 vendor_state_name = str(company_profile.billing_state)
@@ -45,6 +47,14 @@ def get_order_invoice_totals(order):
         vendor_state_name and customer_state_name
         and vendor_state_name.strip().lower() == customer_state_name.strip().lower()
     )
+
+    # Composite scheme: vendor opts out of GST - do not calculate or add any tax
+    composite_scheme = False
+    try:
+        if vendor_user and hasattr(vendor_user, "tax_settings") and vendor_user.tax_settings.composite_scheme:
+            composite_scheme = True
+    except Exception:
+        composite_scheme = False
 
     sum_taxable = Decimal(0)
     total_sgst = Decimal(0)
@@ -80,27 +90,33 @@ def get_order_invoice_totals(order):
 
         sum_taxable += taxable_val
 
-        # For print order: if product is GST inclusive, do not apply tax (price already includes GST).
-        tax_inclusive = bool(getattr(item.product, "tax_inclusive", False))
-        if not tax_inclusive:
-            any_non_inclusive = True
+        # For print order:
+        # - If composite scheme is ON: skip GST entirely.
+        # - Else, if product is GST inclusive, do not apply tax (price already includes GST).
+        if not composite_scheme:
+            tax_inclusive = bool(getattr(item.product, "tax_inclusive", False))
+            if not tax_inclusive:
+                any_non_inclusive = True
 
-            sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
-            cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
-            sgst_amt = (taxable_val * sgst_rate / Decimal(100)).quantize(Decimal("0.01"))
-            cgst_amt = (taxable_val * cgst_rate / Decimal(100)).quantize(Decimal("0.01"))
-            total_sgst += sgst_amt
-            total_cgst += cgst_amt
-            if same_state:
-                pass  # item_tax = sgst_amt + cgst_amt already counted
-            else:
-                item_tax = (
-                    taxable_val * Decimal(getattr(item.product, "gst", 0) or 0) / Decimal(100)
-                ).quantize(Decimal("0.01"))
-                total_igst += item_tax
+                sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
+                cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
+                sgst_amt = (taxable_val * sgst_rate / Decimal(100)).quantize(Decimal("0.01"))
+                cgst_amt = (taxable_val * cgst_rate / Decimal(100)).quantize(Decimal("0.01"))
+                total_sgst += sgst_amt
+                total_cgst += cgst_amt
+                if same_state:
+                    pass  # item_tax = sgst_amt + cgst_amt already counted
+                else:
+                    item_tax = (
+                        taxable_val * Decimal(getattr(item.product, "gst", 0) or 0) / Decimal(100)
+                    ).quantize(Decimal("0.01"))
+                    total_igst += item_tax
 
     item_total = sum_taxable
-    tax_total = total_sgst + total_cgst + total_igst
+    if composite_scheme:
+        tax_total = Decimal(0)
+    else:
+        tax_total = total_sgst + total_cgst + total_igst
 
     # Shipping tax (18% GST on shipping)
     shipping_taxable = shipping_fee / Decimal("1.18") if shipping_fee > 0 else Decimal(0)
@@ -108,8 +124,8 @@ def get_order_invoice_totals(order):
     shipping_sgst = Decimal(0)
     shipping_igst = Decimal(0)
 
-    # Only add GST on shipping when at least one product is tax-exclusive.
-    if shipping_fee > 0 and any_non_inclusive:
+    # Only add GST on shipping when not in composite scheme and at least one product is tax-exclusive.
+    if not composite_scheme and shipping_fee > 0 and any_non_inclusive:
         if same_state:
             shipping_cgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
             shipping_sgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))

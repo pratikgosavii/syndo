@@ -965,7 +965,7 @@ class PurchaseItem(models.Model):
     total_with_tax = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Final total including tax")
 
     def save(self, *args, **kwargs):
-        # Calculate GST like SaleItem, respecting tax_inclusive flag
+        # Calculate GST like SaleItem, respecting tax_inclusive flag and composite scheme
         from decimal import Decimal, ROUND_HALF_UP
         
         def _to_decimal(value):
@@ -978,7 +978,17 @@ class PurchaseItem(models.Model):
         
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
+
+        # Determine GST rate, honoring composite scheme (no GST under composite)
         gst_rate = _to_decimal(getattr(self.product, "gst", 0))
+        purchase = getattr(self, "purchase", None)
+        user = getattr(purchase, "user", None) if purchase else None
+        try:
+            if user and getattr(user, "tax_settings", None) and user.tax_settings.composite_scheme:
+                gst_rate = _to_decimal(0)
+        except Exception:
+            # If anything goes wrong, fall back to normal gst_rate
+            pass
         tax_inclusive = bool(getattr(self.product, "tax_inclusive", False))
 
         gross = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -1234,7 +1244,16 @@ class SaleItem(models.Model):
         # Convert inputs to Decimal safely
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
+
+        # Determine GST rate, honoring composite scheme (no GST under composite)
         gst_rate = _to_decimal(getattr(self.product, "gst", 0))
+        user = getattr(self, "user", None)
+        try:
+            if user and getattr(user, "tax_settings", None) and user.tax_settings.composite_scheme:
+                gst_rate = _to_decimal(0)
+        except Exception:
+            # If anything goes wrong, fall back to normal gst_rate
+            pass
         tax_inclusive = bool(getattr(self.product, "tax_inclusive", False))
 
         gross = (quantity * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

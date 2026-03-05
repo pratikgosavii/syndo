@@ -201,6 +201,7 @@
                     <div class="col-12">
                         <div class="list-column-headers">
                             <div class="col-bank">BANK / ACCOUNT</div>
+                            <div class="col-bank">Holder Name</div>
                             <div class="col-details">IFSC / BRANCH</div>
                             <div class="col-opening">OPENING (₹)</div>
                             <div class="col-balance">BALANCE (₹)</div>
@@ -220,6 +221,8 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="opening-col"> {{ i.account_holder }}</div>
+
                                         <div class="details-col">
                                             {% if i.ifsc_code %}<span><i class="bi bi-upc"></i> {{ i.ifsc_code }}</span>{% endif %}
                                             {% if i.branch %}<span><i class="bi bi-geo-alt"></i> {{ i.branch }}</span>{% endif %}
