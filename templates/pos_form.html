@@ -930,6 +930,7 @@
                     <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
                     <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
                     <div class="billing-summary-line">Total GST: <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
+                    <div class="billing-summary-line">Discount: <strong>₹<span id="discount-amount-display">0.00</span></strong> (<span id="discount-percent-display">0.00</span>%)</div>
                     <div id="wholesale-charges-summary" style="display: none;">
                         <div class="billing-summary-line"><span class="shipping-charges-label">Shipping / Delivery Charges:</span> <strong>₹<span id="delivery-charges-display">0.00</span></strong></div>
                         <div class="billing-summary-line"><span class="packaging-charges-label">Packaging Charges:</span> <strong>₹<span id="packaging-charges-display">0.00</span></strong></div>
@@ -1343,8 +1344,8 @@ function recalculateTotals() {
     });
 
     const totalBeforeDiscount = subtotal + gstAmount;
-    const discountPercentageField = document.getElementById('discount-percentage');
-    const discountAmountField = document.getElementById('discount-amount-input');
+    const discountPercentageField = document.getElementById('id_discount_percentage');
+    const discountAmountField = document.getElementById('id_discount_amount');
     const advanceAmountField = document.getElementById('id_advance_payment_amount');
     const isWholesale = document.getElementById('wholesale_selector')?.checked;
     const deliveryChargesEl = document.getElementById('id_delivery_charges');
@@ -1381,6 +1382,8 @@ function recalculateTotals() {
     if (el('total-gst-amount')) el('total-gst-amount').innerText = gstAmount.toFixed(2);
     if (el('delivery-charges-display')) el('delivery-charges-display').innerText = deliveryCharges.toFixed(2);
     if (el('packaging-charges-display')) el('packaging-charges-display').innerText = packagingCharges.toFixed(2);
+    if (el('discount-amount-display')) el('discount-amount-display').innerText = discountAmount.toFixed(2);
+    if (el('discount-percent-display')) el('discount-percent-display').innerText = discountPercentage.toFixed(2);
     if (el('total-amount-before-discount')) el('total-amount-before-discount').innerText = totalBeforeDiscount.toFixed(2);
     if (el('advance-amount')) el('advance-amount').innerText = advanceAmount.toFixed(2);
     if (el('advance-mode')) el('advance-mode').innerText = (document.getElementById('advance_payment_method') && document.getElementById('advance_payment_method').value) ? document.getElementById('advance_payment_method').value.charAt(0).toUpperCase() + document.getElementById('advance_payment_method').value.slice(1) : 'Cash';
@@ -1398,8 +1401,8 @@ function recalculateTotals() {
 
 
 
-  var discountPercentEl = document.getElementById('discount-percentage');
-  var discountAmountEl = document.getElementById('discount-amount-input');
+  var discountPercentEl = document.getElementById('id_discount_percentage');
+  var discountAmountEl = document.getElementById('id_discount_amount');
   var advanceEl = document.getElementById('id_advance_payment_amount');
   if (advanceEl) advanceEl.addEventListener('input', recalculateTotals);
   var deliveryChargesInput = document.getElementById('id_delivery_charges');

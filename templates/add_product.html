@@ -61,6 +61,11 @@
         text-decoration: none;
         border-radius: 4px;
     }
+    /* Low stock quantity and IMEI list are only visible when their toggles are enabled (also controlled in JS) */
+    #low_stock_quantity_wrapper,
+    #serial_imei_wrapper {
+        display: none;
+    }
     .use-default-link:hover { color: #fff !important; background-color: #d97706 !important; border-color: #d97706 !important; text-decoration: none; }
     /* Checkbox option in light grey rounded box (match reference image 2) */
     .option-box {
@@ -139,6 +144,35 @@
     .searchable-dropdown-item:hover, .searchable-dropdown-item.selected { background: #e7f1ff; }
     .searchable-dropdown-item:last-child { border-bottom: none; }
     .searchable-dropdown-empty { padding: 0.75rem; color: #6c757d; font-size: 0.875rem; }
+
+    /* Serial / IMEI section – enhanced UI */
+    #serial_imei_list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .serial-imei-row {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.4rem 0.6rem; background: #f8f9fa; border: 1px solid #e9ecef;
+        border-radius: 8px; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .serial-imei-row:hover { border-color: #ced4da; }
+    .serial-imei-row:focus-within { border-color: #775599; box-shadow: 0 0 0 2px rgba(119, 85, 153, 0.15); }
+    .serial-imei-row .serial-imei-input { flex: 1; border-radius: 6px; }
+    .serial-imei-row .btn-remove-imei {
+        flex-shrink: 0; width: 32px; height: 32px; padding: 0; border-radius: 8px;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #dc3545; background: transparent; border: 1px solid transparent;
+        transition: color 0.2s, background 0.2s, border-color 0.2s;
+    }
+    .serial-imei-row .btn-remove-imei:hover {
+        color: #fff; background: #dc3545; border-color: #dc3545;
+    }
+    #add-serial-imei-row {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500;
+        border: 1px dashed #775599; color: #775599; background: rgba(119, 85, 153, 0.06);
+        transition: all 0.2s;
+    }
+    #add-serial-imei-row:hover {
+        background: #775599; color: #fff; border-style: solid;
+    }
 </style>
 {% endblock extra_css %}
 
@@ -341,6 +375,22 @@
                                 <div class="col-md-6" id="low_stock_quantity_wrapper">
                                     <label for="id_low_stock_quantity" class="form-label">Low stock quantity</label>
                                     {{ form.low_stock_quantity }}
+                                </div>
+                                <!-- Serial / IMEI list – only relevant when 'Track serial numbers' is enabled -->
+                                <div class="col-12" id="serial_imei_wrapper">
+                                    <label class="form-label d-block">Serial / IMEI numbers</label>
+                                    <div id="serial_imei_list"></div>
+                                    <button type="button" id="add-serial-imei-row" class="btn btn-sm btn-add-imei mt-2">
+                                        <i class="bi bi-plus-lg me-1"></i>Add IMEI
+                                    </button>
+                                    <!-- Hidden field that will be populated from the dynamic IMEI inputs -->
+                                    <textarea name="serial_imei_no"
+                                              id="id_serial_imei_no"
+                                              class="d-none"
+                                              rows="3"></textarea>
+                                    <small class="text-muted d-block mt-1">
+                                        Used only when \"Track serial numbers\" is enabled. Each IMEI will be saved separately.
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -707,6 +757,9 @@
 {% endblock content %}
 
 {% block extra_js %}
+<script>
+    var existingImeis = {{ existing_imeis_json|default:"[]"|safe }};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1357,6 +1410,21 @@
 
 
 
+    // Helpers used by product settings logic
+    function setVisibleById(id, visible) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        // Use explicit 'block' for elements that have CSS display:none (serial_imei_wrapper, low_stock_quantity_wrapper)
+        // so we override the stylesheet; empty string would fall back to CSS and stay hidden
+        const forceBlock = ['serial_imei_wrapper', 'low_stock_quantity_wrapper'].includes(id);
+        el.style.display = visible ? (forceBlock ? 'block' : '') : 'none';
+        el.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = !visible);
+    }
+    function setCheckbox(id, value) {
+        const el = document.getElementById(id);
+        if (el && el.type === 'checkbox') el.checked = !!value;
+    }
+
     var productSettings = {{ product_settings_json|default:"{}"|safe }};
 
     function applyProductSettingsForOffline(settings) {
@@ -1373,10 +1441,12 @@
         setVisibleById('wholesale_price_wrapper', settings.wholesale_price);
         setVisibleById('opening_stock_wrapper', settings.stock);
         setVisibleById('low_stock_alert_wrapper', settings.stock);
-        setVisibleById('low_stock_quantity_wrapper', settings.stock && settings.low_stock_alert);
+        // Low stock quantity visibility is controlled directly by the checkbox in the UI
         setCheckbox('id_low_stock_alert', settings.low_stock_alert);
         setVisibleById('track_serial_numbers_wrapper', settings.imei);
-        setCheckbox('id_track_serial_numbers', settings.imei);
+        const trackCb = document.getElementById('id_track_serial_numbers');
+        setVisibleById('serial_imei_wrapper', settings.imei && trackCb && trackCb.checked);
+        // Do NOT force-check track_serial_numbers; leave default false unless user ticks it
         setVisibleById('tax_div', settings.tax);
         var foodWrapper = document.getElementById('foodOptionToggleWrapper');
         if (foodWrapper) { foodWrapper.style.display = settings.food ? '' : 'none'; setCheckbox('id_is_food', settings.food); }
@@ -1649,6 +1719,96 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Initialize on page load
     toggleGSTInput();
+
+    // Build hidden textarea value from dynamic IMEI inputs
+    function syncSerialTextarea() {
+        const list = document.getElementById('serial_imei_list');
+        const target = document.getElementById('id_serial_imei_no');
+        if (!list || !target) return;
+        const values = [];
+        list.querySelectorAll('.serial-imei-input').forEach(inp => {
+            const v = (inp.value || '').trim();
+            if (v) values.push(v);
+        });
+        // Join with newlines so backend split logic can treat it as an array
+        target.value = values.join('\n');
+    }
+
+    function addSerialInput(initialValue) {
+        const list = document.getElementById('serial_imei_list');
+        if (!list) return;
+        const row = document.createElement('div');
+        row.className = 'serial-imei-row';
+        const escapedVal = (initialValue || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        row.innerHTML = `
+            <input type="text" class="form-control form-control-sm serial-imei-input" placeholder="Enter IMEI" value="${escapedVal}" autocomplete="off">
+            <button type="button" class="btn btn-sm btn-remove-imei" aria-label="Remove IMEI" title="Remove">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        `;
+        const input = row.querySelector('.serial-imei-input');
+        const removeBtn = row.querySelector('.btn-remove-imei');
+        input.addEventListener('input', syncSerialTextarea);
+        removeBtn.addEventListener('click', function () {
+            row.remove();
+            syncSerialTextarea();
+        });
+        list.appendChild(row);
+        syncSerialTextarea();
+    }
+
+    // Low stock quantity visibility controlled by checkbox
+    const lowStockCheckbox = document.getElementById('id_low_stock_alert');
+    const lowStockQtyWrapper = document.getElementById('low_stock_quantity_wrapper');
+    function syncLowStockVisibility() {
+        if (!lowStockCheckbox || !lowStockQtyWrapper) return;
+        lowStockQtyWrapper.style.display = lowStockCheckbox.checked ? 'block' : 'none';
+    }
+    if (lowStockCheckbox && lowStockQtyWrapper) {
+        syncLowStockVisibility();
+        lowStockCheckbox.addEventListener('change', syncLowStockVisibility);
+    }
+
+    // Populate existing IMEIs BEFORE sync so we don't add an extra empty row
+    if (typeof existingImeis !== 'undefined' && existingImeis && existingImeis.length) {
+      existingImeis.forEach(function(v) { addSerialInput(v); });
+    }
+
+    // Serial/IMEI list visibility controlled by 'Track serial numbers'
+    const trackSerialCheckbox = document.getElementById('id_track_serial_numbers');
+    const serialWrapper = document.getElementById('serial_imei_wrapper');
+    function syncSerialVisibility() {
+        if (!trackSerialCheckbox || !serialWrapper) return;
+        const show = trackSerialCheckbox.checked;
+        serialWrapper.style.display = show ? 'block' : 'none';
+        // When enabling tracking and there are no rows yet, add one
+        if (show) {
+            const list = document.getElementById('serial_imei_list');
+            if (list && !list.querySelector('.serial-imei-input')) {
+                addSerialInput('');
+            }
+        }
+    }
+    if (trackSerialCheckbox && serialWrapper) {
+        syncSerialVisibility();
+        trackSerialCheckbox.addEventListener('change', syncSerialVisibility);
+    }
+
+    // Add IMEI row button
+    const addSerialBtn = document.getElementById('add-serial-imei-row');
+    if (addSerialBtn) {
+        addSerialBtn.addEventListener('click', function () {
+            addSerialInput('');
+        });
+    }
+
+    // Sync textarea before form submit so IMEIs are sent
+    var productForm = document.getElementById('product-form');
+    if (productForm) {
+      productForm.addEventListener('submit', function() {
+        if (typeof syncSerialTextarea === 'function') syncSerialTextarea();
+      });
+    }
   });
 
   // Color dropdown: update display swatch + hex value + form input (elements resolved at call time)
@@ -1839,17 +1999,6 @@ function handleCustomPrintToggleChange() {
 
 <script>
 
-    // Helpers to show/hide wrappers and set inputs
-    function setVisibleById(id, visible) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.style.display = visible ? '' : 'none';
-        el.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = !visible);
-    }
-    function setCheckbox(id, value) {
-        const el = document.getElementById(id);
-        if (el && el.type === 'checkbox') el.checked = !!value;
-    }
     function applyProductSettingsUI(settings) {
         // Structural/product fields
         setVisibleById('category_wrapper', settings.category);
@@ -1866,12 +2015,14 @@ function handleCustomPrintToggleChange() {
         // Stock related
         setVisibleById('opening_stock_wrapper', settings.stock);
         setVisibleById('low_stock_alert_wrapper', settings.stock);
-        setVisibleById('low_stock_quantity_wrapper', settings.stock && settings.low_stock_alert);
+        // Low stock quantity visibility is controlled by the checkbox in the UI
         setCheckbox('id_low_stock_alert', settings.low_stock_alert);
 
         // IMEI/serial tracking
         setVisibleById('track_serial_numbers_wrapper', settings.imei);
-        setCheckbox('id_track_serial_numbers', settings.imei);
+        const trackCb2 = document.getElementById('id_track_serial_numbers');
+        setVisibleById('serial_imei_wrapper', settings.imei && trackCb2 && trackCb2.checked);
+        // Do NOT force-check track_serial_numbers; leave default false unless user ticks it
 
         // Tax
         setVisibleById('tax_div', settings.tax);

@@ -1494,6 +1494,24 @@ def add_product(request, parent_id=None):
 
             product_instance.save()
 
+            # Save serial/IMEI numbers when tracking is enabled (from HTML form)
+            try:
+                if product_form.cleaned_data.get("track_serial_numbers"):
+                    raw_imeis = request.POST.get("serial_imei_no", "")
+                    if raw_imeis:
+                        import re
+                        from vendor.models import serial_imei_no as SerialImei
+                        seen = set()
+                        for v in re.split(r"[,\n\r]+", str(raw_imeis)):
+                            val = v.strip()
+                            if not val or val in seen:
+                                continue
+                            seen.add(val)
+                            SerialImei.objects.create(product=product_instance, value=val)
+            except Exception:
+                # Don't break product creation if IMEI parsing fails
+                pass
+
             # Process multiple gallery images
             gallery_files = request.FILES.getlist('gallery_images')
             for f in gallery_files:
@@ -1571,6 +1589,7 @@ def add_product(request, parent_id=None):
         'tax': settings_obj.tax,
         'food': settings_obj.food,
     })
+    existing_imeis = list(parent_instance.serial_imei_list.values_list('value', flat=True)) if parent_instance else []
     context = {
         'form': product_form,
         'formset': addon_formset,
@@ -1582,6 +1601,7 @@ def add_product(request, parent_id=None):
         'sizes_json': json.dumps(sizes),
         'has_gstin': has_gstin,
         'product_settings_json': product_settings_json,
+        'existing_imeis_json': json.dumps(existing_imeis),
     }
     return render(request, 'add_product.html', context)
 
@@ -1626,6 +1646,28 @@ def update_product(request, product_id):
             product_instance = product_form.save(commit=False)
             product_instance.user = request.user
             product_instance.save()
+
+            # Save serial/IMEI numbers when tracking is enabled (from HTML form)
+            try:
+                if product_form.cleaned_data.get("track_serial_numbers"):
+                    raw_imeis = request.POST.get("serial_imei_no", "")
+                    from vendor.models import serial_imei_no as SerialImei
+                    # Remove existing IMEIs and replace with new ones
+                    product_instance.serial_imei_list.all().delete()
+                    if raw_imeis:
+                        import re
+                        seen = set()
+                        for v in re.split(r"[,\n\r]+", str(raw_imeis)):
+                            val = v.strip()
+                            if not val or val in seen:
+                                continue
+                            seen.add(val)
+                            SerialImei.objects.create(product=product_instance, value=val)
+                else:
+                    # Tracking disabled - remove all IMEIs
+                    product_instance.serial_imei_list.all().delete()
+            except Exception:
+                pass
 
             # Process multiple gallery images (add to existing)
             gallery_files = request.FILES.getlist('gallery_images')
@@ -1676,6 +1718,7 @@ def update_product(request, product_id):
         'tax': settings_obj.tax,
         'food': settings_obj.food,
     })
+    existing_imeis = list(instance.serial_imei_list.values_list('value', flat=True))
     context = {
         'form': product_form,
         'formset': addon_formset,
@@ -1687,6 +1730,7 @@ def update_product(request, product_id):
         'sizes_json': json.dumps(sizes),
         'has_gstin': has_gstin,
         'product_settings_json': product_settings_json,
+        'existing_imeis_json': json.dumps(existing_imeis),
     }
     return render(request, 'add_product.html', context)
 
