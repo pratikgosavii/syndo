@@ -1652,20 +1652,30 @@ def update_product(request, product_id):
                 if product_form.cleaned_data.get("track_serial_numbers"):
                     raw_imeis = request.POST.get("serial_imei_no", "")
                     from vendor.models import serial_imei_no as SerialImei
-                    # Remove existing IMEIs and replace with new ones
-                    product_instance.serial_imei_list.all().delete()
+                    import re
+                    new_values = set()
                     if raw_imeis:
-                        import re
-                        seen = set()
                         for v in re.split(r"[,\n\r]+", str(raw_imeis)):
                             val = v.strip()
-                            if not val or val in seen:
-                                continue
-                            seen.add(val)
+                            if val:
+                                new_values.add(val)
+                    # Never delete sold IMEIs; only delete unsold ones not in new list
+                    for s in product_instance.serial_imei_list.all():
+                        if s.is_sold:
+                            new_values.discard(s.value)  # keep it, don't "add" again
+                        elif s.value not in new_values:
+                            s.delete()
+                    # Add new IMEIs (not already in DB)
+                    existing_values = set(
+                        product_instance.serial_imei_list.values_list('value', flat=True)
+                    )
+                    for val in new_values:
+                        if val not in existing_values:
                             SerialImei.objects.create(product=product_instance, value=val)
+                            existing_values.add(val)
                 else:
-                    # Tracking disabled - remove all IMEIs
-                    product_instance.serial_imei_list.all().delete()
+                    # Tracking disabled - remove only unsold IMEIs (keep sold for history)
+                    product_instance.serial_imei_list.filter(is_sold=False).delete()
             except Exception:
                 pass
 
@@ -1718,7 +1728,10 @@ def update_product(request, product_id):
         'tax': settings_obj.tax,
         'food': settings_obj.food,
     })
-    existing_imeis = list(instance.serial_imei_list.values_list('value', flat=True))
+    existing_imeis = [
+        {'value': s.value, 'is_sold': s.is_sold}
+        for s in instance.serial_imei_list.all()
+    ]
     context = {
         'form': product_form,
         'formset': addon_formset,

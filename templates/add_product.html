@@ -1734,25 +1734,30 @@ document.addEventListener("DOMContentLoaded", function () {
         target.value = values.join('\n');
     }
 
-    function addSerialInput(initialValue) {
+    function addSerialInput(initialValue, isSold) {
         const list = document.getElementById('serial_imei_list');
         if (!list) return;
         const row = document.createElement('div');
-        row.className = 'serial-imei-row';
-        const escapedVal = (initialValue || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        row.className = 'serial-imei-row' + (isSold ? ' serial-imei-sold' : '');
+        const val = (typeof initialValue === 'object' && initialValue && initialValue.value) ? initialValue.value : (initialValue || '');
+        const escapedVal = String(val).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const soldAttr = isSold ? ' readonly' : '';
+        const removeDisabled = isSold ? ' disabled title="Sold – cannot remove"' : ' title="Remove"';
         row.innerHTML = `
-            <input type="text" class="form-control form-control-sm serial-imei-input" placeholder="Enter IMEI" value="${escapedVal}" autocomplete="off">
-            <button type="button" class="btn btn-sm btn-remove-imei" aria-label="Remove IMEI" title="Remove">
+            <input type="text" class="form-control form-control-sm serial-imei-input" placeholder="Enter IMEI" value="${escapedVal}" autocomplete="off"${soldAttr}>
+            <button type="button" class="btn btn-sm btn-remove-imei" aria-label="Remove IMEI"${removeDisabled}>
                 <i class="bi bi-x-lg"></i>
             </button>
         `;
         const input = row.querySelector('.serial-imei-input');
         const removeBtn = row.querySelector('.btn-remove-imei');
-        input.addEventListener('input', syncSerialTextarea);
-        removeBtn.addEventListener('click', function () {
-            row.remove();
-            syncSerialTextarea();
-        });
+        if (!isSold) {
+            input.addEventListener('input', syncSerialTextarea);
+            removeBtn.addEventListener('click', function () {
+                row.remove();
+                syncSerialTextarea();
+            });
+        }
         list.appendChild(row);
         syncSerialTextarea();
     }
@@ -1770,8 +1775,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Populate existing IMEIs BEFORE sync so we don't add an extra empty row
+    // Update product: [{value, is_sold}, ...]; Add/duplicate: ["imei1", ...]
     if (typeof existingImeis !== 'undefined' && existingImeis && existingImeis.length) {
-      existingImeis.forEach(function(v) { addSerialInput(v); });
+      existingImeis.forEach(function(v) {
+        const isObj = typeof v === 'object' && v && v !== null && 'value' in v;
+        addSerialInput(v, isObj ? !!v.is_sold : false);
+      });
     }
 
     // Serial/IMEI list visibility controlled by 'Track serial numbers'
