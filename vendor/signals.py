@@ -1691,7 +1691,8 @@ def purchase_sms_to_customer_and_vendor(sender, instance, created, **kwargs):
 
 # signals.py
 from django.db.models.signals import post_save
-from django.db.models import F
+from django.db.models import F, Value
+from django.db.models.functions import Coalesce
 from django.dispatch import receiver
 from vendor.models import product
 from .models import PurchaseItem, StockTransaction, SaleItem, OnlineOrderLedger
@@ -1734,7 +1735,10 @@ def _recalculate_purchase_totals_and_trigger_ledger(purchase_obj):
 def increase_stock_on_purchase_create(sender, instance, created, **kwargs):
     """Handle stock increase when a new PurchaseItem is created."""
     if created:
-        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
+        product.objects.filter(id=instance.product.id).update(
+            stock_cached=Coalesce(F('stock_cached'), Value(0)) + instance.quantity,
+            stock=Coalesce(F('stock'), Value(0)) + instance.quantity,
+        )
         log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
     # Recalculate purchase totals & ledgers for both create and update
     _recalculate_purchase_totals_and_trigger_ledger(getattr(instance, "purchase", None))
@@ -1757,27 +1761,42 @@ def update_stock_on_purchase_edit(sender, instance, **kwargs):
 
     # If product changed, restore old product stock and increase new product stock
     if old_product and old_product != instance.product:
-        product.objects.filter(id=old_product.id).update(stock_cached=F('stock_cached') - old_qty)
+        product.objects.filter(id=old_product.id).update(
+            stock_cached=Coalesce(F('stock_cached'), Value(0)) - old_qty,
+            stock=Coalesce(F('stock'), Value(0)) - old_qty,
+        )
         log_stock_transaction(old_product, "purchase", -old_qty, ref_id=instance.pk)
 
-        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
+        product.objects.filter(id=instance.product.id).update(
+            stock_cached=Coalesce(F('stock_cached'), Value(0)) + instance.quantity,
+            stock=Coalesce(F('stock'), Value(0)) + instance.quantity,
+        )
         log_stock_transaction(instance.product, "purchase", instance.quantity, ref_id=instance.pk)
         return
 
     # If quantity changed, adjust stock accordingly
     if qty_diff > 0:
         # Quantity increased, increase stock
-        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + qty_diff)
+        product.objects.filter(id=instance.product.id).update(
+            stock_cached=Coalesce(F('stock_cached'), Value(0)) + qty_diff,
+            stock=Coalesce(F('stock'), Value(0)) + qty_diff,
+        )
         log_stock_transaction(instance.product, "purchase", qty_diff, ref_id=instance.pk)
     elif qty_diff < 0:
         # Quantity decreased, reduce stock
-        product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - abs(qty_diff))
+        product.objects.filter(id=instance.product.id).update(
+            stock_cached=Coalesce(F('stock_cached'), Value(0)) - abs(qty_diff),
+            stock=Coalesce(F('stock'), Value(0)) - abs(qty_diff),
+        )
         log_stock_transaction(instance.product, "purchase", -abs(qty_diff), ref_id=instance.pk)
 
 
 @receiver(post_delete, sender=PurchaseItem)
 def restore_stock_on_purchase_delete(sender, instance, **kwargs):
-    product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') - instance.quantity)
+    product.objects.filter(id=instance.product.id).update(
+        stock_cached=Coalesce(F('stock_cached'), Value(0)) - instance.quantity,
+        stock=Coalesce(F('stock'), Value(0)) - instance.quantity,
+    )
     log_stock_transaction(instance.product, "purchase", -instance.quantity, ref_id=instance.pk)
     _recalculate_purchase_totals_and_trigger_ledger(getattr(instance, "purchase", None))
 

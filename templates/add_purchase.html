@@ -582,10 +582,11 @@ document.getElementById('add-product').addEventListener('click', function () {
     updateSubtotal();
 });
 
-// Init Select2 on existing product rows (e.g. first row on new purchase, or rows on edit)
+// Init Select2 on existing product rows and vendor dropdown (searchable like POS)
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof $ !== 'undefined' && $.fn.select2) {
         $('.product-select').select2({placeholder: 'Select Product', width: '100%'});
+        $('#id_vendor').select2({placeholder: 'Select Vendor', width: '100%', allowClear: true});
     }
 });
 

@@ -927,7 +927,7 @@ def add_customer(request):
             forms = forms.save(commit=False)
             forms.user = request.user  # assign user here
             forms.save()
-            return redirect('list_vendor')
+            return redirect('list_customer')
         else:
             print(forms.errors)
             context = {
@@ -5995,7 +5995,13 @@ def daybook_report(request):
     from .models import ExpenseLedger
     expenses_total = abs(_sum_amount(ExpenseLedger.objects.filter(user=user, expense_date__range=(start.date(), end.date()))))
 
-    stock_count = StockTransaction.objects.filter(product__user=user, created_at__range=(start, end)).count()
+    # Total quantity moved (purchases + sales + returns) — sum of absolute values so we show activity, not net
+    from django.db.models import F
+    from django.db.models.functions import Abs
+    stock_agg = StockTransaction.objects.filter(
+        product__user=user, created_at__range=(start, end)
+    ).aggregate(total=Sum(Abs(F('quantity'))))
+    stock_count = int(stock_agg.get('total') or 0)
 
     last_cash_before = CashLedgerModel.objects.filter(user=user, created_at__lt=start).order_by('-created_at').first()
     opening_cash = int(getattr(last_cash_before, 'balance_after', 0) or 0)
