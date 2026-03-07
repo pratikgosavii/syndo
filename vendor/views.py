@@ -3639,7 +3639,8 @@ def delete_purchase(request, purchase_id):
 
 @login_required(login_url='login_admin')
 def list_purchase(request):
-    from django.db.models import Sum, Q
+    from django.db.models import Sum, Q, Case, When, F
+    from django.db.models.fields import DecimalField
     from decimal import Decimal
 
     qs = Purchase.objects.select_related('vendor').filter(user=request.user)
@@ -3659,9 +3660,21 @@ def list_purchase(request):
     data = qs.order_by('-purchase_date', '-id')
 
     total_value = qs.aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
+    # Total paid: for credit use advance_amount, for cash/upi/cheque use total_amount
+    total_paid = qs.aggregate(
+        s=Sum(Case(
+            When(payment_method='credit', then=F('advance_amount')),
+            default=F('total_amount'),
+            output_field=DecimalField()
+        ))
+    )['s'] or Decimal('0')
+    total_due = qs.aggregate(s=Sum('balance_amount'))['s'] or Decimal('0')
+
     context = {
         'data': data,
         'total_purchase_value': total_value,
+        'total_advance_paid': total_paid,
+        'total_due_amount': total_due,
         'date_from': date_from or '',
         'date_to': date_to or '',
         'search': search,

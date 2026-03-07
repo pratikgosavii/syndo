@@ -124,14 +124,14 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "%(asctime)s: %(levelname)s: %(message)s"
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
         },
     },
     "handlers": {
         "request_file": {
-            "level": "INFO",
+            "level": "DEBUG",
             "class": "logging.FileHandler",
-            # ✅ Use platform-safe path
+            # ✅ All logs (requests, services, errors, webhooks, signals) go here
             "filename": os.path.join(LOG_DIR, "requests.log"),
             "formatter": "verbose",
         },
@@ -176,12 +176,12 @@ LOGGING = {
             "propagate": False,
         },
         "razorpay_webhook": {
-            "handlers": ["webhook_file", "console"],
+            "handlers": ["webhook_file", "request_file", "console"],
             "level": "DEBUG",
             "propagate": False,
         },
         "cashfree_webhook": {
-            "handlers": ["webhook_file", "console"],
+            "handlers": ["webhook_file", "request_file", "console"],
             "level": "DEBUG",
             "propagate": False,
         },
@@ -191,7 +191,7 @@ LOGGING = {
             "propagate": False,
         },
         "vendor.signals": {
-            "handlers": ["signals_file", "console"],
+            "handlers": ["signals_file", "request_file", "console"],
             "level": "DEBUG",
             "propagate": False,
         },
@@ -206,15 +206,20 @@ LOGGING = {
             "propagate": False,
         },
         "integrations.uengage": {
-            "handlers": ["uengage_file", "console"],
+            "handlers": ["uengage_file", "request_file", "console"],
             "level": "DEBUG",
             "propagate": False,
         },
         "uengage_webhook": {
-            "handlers": ["uengage_file", "console"],
+            "handlers": ["uengage_file", "request_file", "console"],
             "level": "DEBUG",
             "propagate": False,
         },
+    },
+    # Root logger: catch all unconfigured loggers (vendor.*, customer.*, etc.) and send to requests.log
+    "root": {
+        "handlers": ["request_file", "console"],
+        "level": "INFO",
     },
 }
 

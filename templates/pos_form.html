@@ -930,7 +930,7 @@
                     <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
                     <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
                     <div class="billing-summary-line">Total GST: <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
-                    <div class="billing-summary-line">Discount: <strong>₹<span id="discount-amount-display">0.00</span></strong> (<span id="discount-percent-display">0.00</span>%)</div>
+                    <div class="billing-summary-line"><span>Discount: <span id="discount-percent-display">0.00</span>%</span><strong>₹<span id="discount-amount-display">0.00</span></strong></div>
                     <div id="wholesale-charges-summary" style="display: none;">
                         <div class="billing-summary-line"><span class="shipping-charges-label">Shipping / Delivery Charges:</span> <strong>₹<span id="delivery-charges-display">0.00</span></strong></div>
                         <div class="billing-summary-line"><span class="packaging-charges-label">Packaging Charges:</span> <strong>₹<span id="packaging-charges-display">0.00</span></strong></div>
@@ -1344,8 +1344,8 @@ function recalculateTotals() {
     });
 
     const totalBeforeDiscount = subtotal + gstAmount;
-    const discountPercentageField = document.getElementById('id_discount_percentage');
-    const discountAmountField = document.getElementById('id_discount_amount');
+    const discountPercentageField = document.getElementById('discount-percentage');
+    const discountAmountField = document.getElementById('discount-amount-input');
     const advanceAmountField = document.getElementById('id_advance_payment_amount');
     const isWholesale = document.getElementById('wholesale_selector')?.checked;
     const deliveryChargesEl = document.getElementById('id_delivery_charges');
@@ -1356,19 +1356,21 @@ function recalculateTotals() {
 
     let discountAmount = 0;
     let discountPercentage = 0;
+    var discountValueInput = document.getElementById('discount-value-input');
+    var isAmountMode = document.getElementById('discount-type-amount') && document.getElementById('discount-type-amount').classList.contains('btn-payment-active');
     if (discountPercentageField && discountAmountField) {
-        if (document.activeElement === discountPercentageField) {
-            discountPercentage = parseFloat(discountPercentageField.value) || 0;
-            discountAmount = totalBeforeDiscount * (discountPercentage / 100);
-            discountAmountField.value = discountAmount.toFixed(2);
-        } else if (document.activeElement === discountAmountField) {
-            discountAmount = parseFloat(discountAmountField.value) || 0;
+        if (isAmountMode) {
+            // In amount mode: use visible input as source (user types there), sync to hidden fields
+            discountAmount = parseFloat(discountValueInput && discountValueInput.value ? discountValueInput.value : discountAmountField.value) || 0;
+            if (discountAmountField) discountAmountField.value = discountAmount.toFixed(2);
             discountPercentage = (totalBeforeDiscount === 0) ? 0 : (discountAmount / totalBeforeDiscount) * 100;
-            discountPercentageField.value = discountPercentage.toFixed(2);
+            if (discountPercentageField) discountPercentageField.value = discountPercentage.toFixed(2);
         } else {
-            discountPercentage = parseFloat(discountPercentageField.value) || 0;
+            // In percent mode: use percent field, calculate amount
+            discountPercentage = parseFloat(discountValueInput && discountValueInput.value ? discountValueInput.value : discountPercentageField.value) || 0;
+            if (discountPercentageField) discountPercentageField.value = discountPercentage.toFixed(2);
             discountAmount = totalBeforeDiscount * (discountPercentage / 100);
-            discountAmountField.value = discountAmount.toFixed(2);
+            if (discountAmountField) discountAmountField.value = discountAmount.toFixed(2);
         }
     }
 
@@ -1401,8 +1403,8 @@ function recalculateTotals() {
 
 
 
-  var discountPercentEl = document.getElementById('id_discount_percentage');
-  var discountAmountEl = document.getElementById('id_discount_amount');
+  var discountPercentEl = document.getElementById('discount-percentage');
+  var discountAmountEl = document.getElementById('discount-amount-input');
   var advanceEl = document.getElementById('id_advance_payment_amount');
   if (advanceEl) advanceEl.addEventListener('input', recalculateTotals);
   var deliveryChargesInput = document.getElementById('id_delivery_charges');
@@ -1514,13 +1516,7 @@ function recalculateTotals() {
   recalculateTotals();
   updateSelectOptions();
 
-  setTimeout(() => {
-    // Remove focus from any element inside the modal
-    document.activeElement.blur();
-
-    const modalEl = document.getElementById('productSearchModal');
-    bootstrap.Modal.getInstance(modalEl).hide();
-  }, 50);
+  // Keep popup open so user can add more products; close manually when done
 }
   function addToPOS_barcode(pid, name, price, qtyToAdd = 1) {
   // Find existing row with this product
@@ -1734,7 +1730,9 @@ document.getElementById('add-item').addEventListener('click', () => {
     if (cloneSelect) cloneSelect.value = '';
   }
 
-  if (container.querySelector('.item-row') === orig) {
+  // When productVal is empty (e.g. add from catalog/barcode), append so new row is last-child
+  // and addToPOS can find it. Otherwise we'd insert after first and create empty rows in the middle.
+  if (productVal && container.querySelector('.item-row') === orig) {
     container.insertBefore(clone, orig.nextSibling);
   } else {
     container.appendChild(clone);
