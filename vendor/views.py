@@ -1200,6 +1200,7 @@ def vendor_ledger(request, vendor_id):
         "vendor_id": vendor_id,
         "vendor": vendor,
         "balance": balance,
+        "opening_balance": vendor.opening_balance or 0,
         "total_purchases": total_purchases,
         "ledger": ledger_entries,
         "transaction_type_choices": transaction_type_choices,
@@ -4267,6 +4268,15 @@ def pos(request):
                 if not getattr(sale_instance, "company_profile_id", None):
                     if default_cp:
                         sale_instance.company_profile = default_cp
+                # Map bank dropdown: UPI/Cheque use bank, Credit uses advance_bank
+                if sale_instance.payment_method in ('upi', 'cheque'):
+                    sale_instance.bank = sale_instance.advance_bank
+                    sale_instance.advance_bank = None
+                elif sale_instance.payment_method == 'credit':
+                    sale_instance.bank = None
+                else:
+                    sale_instance.bank = None
+                    sale_instance.advance_bank = None
                 sale_instance.save()
 
                 # Process Sale Items
@@ -4384,6 +4394,15 @@ def update_sale(request, sale_id):
                 # Fallback: set default company_profile when not provided in update
                 if not getattr(sale_instance, "company_profile_id", None) and default_cp:
                     sale_instance.company_profile = default_cp
+                # Map bank dropdown: UPI/Cheque use bank, Credit uses advance_bank
+                if sale_instance.payment_method in ('upi', 'cheque'):
+                    sale_instance.bank = sale_instance.advance_bank
+                    sale_instance.advance_bank = None
+                elif sale_instance.payment_method == 'credit':
+                    sale_instance.bank = None
+                else:
+                    sale_instance.bank = None
+                    sale_instance.advance_bank = None
                 sale_instance.save()
 
                 # 1. Delete marked items

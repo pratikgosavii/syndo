@@ -919,16 +919,17 @@
                   </div>
                   <div id="advance-bank-dropdown" class="bank-select mt-2 mb-2" style="display: none;">
                     <label class="form-label small">Select Bank (If Cheque/Online)</label>
-                    <select name="advance_bank" id="advance_bank" class="form-select form-select-sm" onchange="recalculateTotals()">
+                    <select name="advance_bank" id="advance_bank" class="form-select form-select-sm" onchange="recalculateTotals(); syncBankForUpiCheque();">
                       <option value="">Select Bank Account...</option>
                       {% for bank in banks %}
-                      <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
+                      <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}{% if form.instance.bank and form.instance.bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
                       {% endfor %}
                     </select>
+                    <input type="hidden" name="bank" id="bank" value="{% if form.instance.bank %}{{ form.instance.bank.id }}{% endif %}">
                   </div>
                    <div class="billing-summary-box">
                     <div class="billing-summary-line">Total Products: <strong id="total-items">0</strong></div>
-                    <div class="billing-summary-line">Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
+                    <div class="billing-summary-line">Product Subtotal: <strong>₹<span id="subtotal-amount">0.00</span></strong></div>
                     <div class="billing-summary-line">Total GST: <strong>₹<span id="total-gst-amount">0.00</span></strong></div>
                     <div class="billing-summary-line"><span>Discount: <span id="discount-percent-display">0.00</span>%</span><strong>₹<span id="discount-amount-display">0.00</span></strong></div>
                     <div id="wholesale-charges-summary" style="display: none;">
@@ -936,7 +937,6 @@
                         <div class="billing-summary-line"><span class="packaging-charges-label">Packaging Charges:</span> <strong>₹<span id="packaging-charges-display">0.00</span></strong></div>
                     </div>
                     <div id="advance_summary" class="billing-summary-line" style="display:none;">Advance: <strong>₹<span id="advance-amount">0.00</span></strong> (<span id="advance-mode">Cash</span> <span id="advance-bank-name" style="display:none;"></span>)</div>
-                    <div class="billing-summary-line total-amount-line">Total Amount: <strong>₹<span id="total-amount-before-discount">0.00</span></strong></div>
                   </div>
                 </div>
                 <div class="bill-footer">
@@ -1778,7 +1778,24 @@ document.querySelectorAll(".item-row").forEach(row => {
     rateInput.addEventListener("input", () => recalculateTotals());
   }
 
-  // Payment method selector
+  // Sync bank field for UPI/Cheque: Sale model expects "bank" for UPI/Cheque (bank ledger)
+  function syncBankForUpiCheque() {
+    var pm = document.getElementById('payment_method');
+    var bankInput = document.getElementById('bank');
+    var advanceBankSelect = document.getElementById('advance_bank');
+    if (!pm || !bankInput || !advanceBankSelect) return;
+    if (pm.value === 'upi' || pm.value === 'cheque') {
+      bankInput.value = advanceBankSelect.value || '';
+    } else {
+      bankInput.value = '';
+    }
+  }
+
+  // Sync bank before form submit so Sale.bank is set for UPI/Cheque (bank ledger)
+  document.getElementById('pos-form').addEventListener('submit', function() {
+    syncBankForUpiCheque();
+  });
+
   // Payment method selector
 function selectPayment(method, btn) {
   document.getElementById('payment_method').value = method;
@@ -1813,8 +1830,8 @@ function selectPayment(method, btn) {
     }
   }else{
     document.getElementById('advance_summary').style.display = "none";
-
   }
+  syncBankForUpiCheque();
 }
 
 
@@ -1839,11 +1856,19 @@ function selectAdvancePayment(method, btn) {
 
 }
 
+// Sync bank before form submit (UPI/Cheque need bank for ledger)
+document.getElementById('pos-form').addEventListener('submit', function() {
+  if (typeof syncBankForUpiCheque === 'function') syncBankForUpiCheque();
+});
+
 // Auto-run on page load to reflect existing value (for edit)
 document.addEventListener('DOMContentLoaded', function() {
     const method = document.getElementById('advance_payment_method').value;
     const btn = document.querySelector(`[onclick="selectAdvancePayment('${method}', this)"]`);
     if (btn) selectAdvancePayment(method, btn);
+    // Pre-fill bank from instance when editing UPI/Cheque sale
+    var pm = document.getElementById('payment_method');
+    if (pm && (pm.value === 'upi' || pm.value === 'cheque')) syncBankForUpiCheque();
 });
 
 

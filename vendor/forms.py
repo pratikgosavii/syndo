@@ -683,6 +683,7 @@ class SaleForm(forms.ModelForm):
             self.fields['customer'].label_from_instance = lambda obj: "{} ({})".format(obj.name, obj.contact or "")
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
             self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
+            self.fields['advance_bank'].queryset = vendor_bank.objects.filter(user=user)
 
 
 

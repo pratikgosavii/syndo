@@ -513,18 +513,20 @@ def sale_ledger(sender, instance, created, **kwargs):
             logger.debug(f"[SALE_LEDGER] Bank: {instance.bank}")
             logger.debug(f"[SALE_LEDGER] Advance Bank: {instance.advance_bank}")
 
-            if instance.payment_method in ("upi", "cheque") and instance.bank:
+            # UPI/Cheque: use bank (POS form may submit to advance_bank; view maps to bank)
+            bank_for_upi_cheque = instance.bank or instance.advance_bank
+            if instance.payment_method in ("upi", "cheque") and bank_for_upi_cheque:
                 bank_amt = Decimal(instance.total_amount or 0)
                 if bank_amt > 0:
                     create_ledger(
-                        instance.bank,
+                        bank_for_upi_cheque,
                         BankLedger,
                         "sale",
                         instance.id,
                         bank_amt,
                         f"Sale {sale_label} ({instance.payment_method.upper()})",
                     )
-                    logger.info(f"[SALE_LEDGER] Bank ledger created for Sale {sale_label} using bank: {instance.bank}")
+                    logger.info(f"[SALE_LEDGER] Bank ledger created for Sale {sale_label} using bank: {bank_for_upi_cheque}")
             elif instance.payment_method == "credit" and instance.advance_payment_method == "bank":
                 logger.info("[SALE_LEDGER] Credit sale with bank advance detected")
                 # Check both advance_amount and advance_payment_amount fields
