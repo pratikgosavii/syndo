@@ -3531,7 +3531,16 @@ def add_purchase(request):
             # Calculate total including delivery and packaging charges
             # This updates instance fields directly (like Sale._recalculate_totals does)
             forms.calculate_total()
-            
+
+            # Sync advance_payment_amount -> advance_amount and set balance_amount (list shows advance_amount)
+            from decimal import Decimal
+            adv = Decimal(str(forms.advance_payment_amount or 0))
+            forms.advance_amount = adv
+            if forms.payment_method == 'credit':
+                forms.balance_amount = max(Decimal('0'), (forms.total_amount or Decimal('0')) - adv)
+            else:
+                forms.balance_amount = Decimal('0')
+
             # Save to persist changes and trigger signal with correct total_amount for ledger creation
             forms.save()
 
@@ -3601,7 +3610,16 @@ def update_purchase(request, purchase_id):
             # Calculate total including delivery and packaging charges
             # This updates instance fields directly (like Sale._recalculate_totals does)
             instance.calculate_total()
-            
+
+            # Sync advance_payment_amount -> advance_amount and set balance_amount (list shows advance_amount)
+            from decimal import Decimal
+            adv = Decimal(str(instance.advance_payment_amount or 0))
+            instance.advance_amount = adv
+            if instance.payment_method == 'credit':
+                instance.balance_amount = max(Decimal('0'), (instance.total_amount or Decimal('0')) - adv)
+            else:
+                instance.balance_amount = Decimal('0')
+
             # Save to persist changes and trigger signal with correct total_amount for ledger creation
             instance.save()
 
@@ -3639,7 +3657,7 @@ def delete_purchase(request, purchase_id):
 
 @login_required(login_url='login_admin')
 def list_purchase(request):
-    from django.db.models import Sum, Q, Case, When, F
+    from django.db.models import Sum, Q, Case, When, F, Value
     from django.db.models.fields import DecimalField
     from decimal import Decimal
 
@@ -3668,7 +3686,14 @@ def list_purchase(request):
             output_field=DecimalField()
         ))
     )['s'] or Decimal('0')
-    total_due = qs.aggregate(s=Sum('balance_amount'))['s'] or Decimal('0')
+    # Total due: only for credit (fully paid = 0)
+    total_due = qs.aggregate(
+        s=Sum(Case(
+            When(payment_method='credit', then=F('balance_amount')),
+            default=Value(0),
+            output_field=DecimalField()
+        ))
+    )['s'] or Decimal('0')
 
     context = {
         'data': data,
@@ -4507,7 +4532,8 @@ def sale_bill_details(request, sale_id):
 from django.db.models import Prefetch
 
 def list_sale(request):
-    from django.db.models import Sum, Q
+    from django.db.models import Sum, Q, Case, When, F, Value
+    from django.db.models.fields import DecimalField
     from decimal import Decimal
 
     qs = Sale.objects.select_related('customer').prefetch_related(
@@ -4535,9 +4561,28 @@ def list_sale(request):
     data = qs.order_by('-created_at')
 
     total_value = qs.aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
+    # Total paid: for credit use advance_amount, for cash/upi/cheque use total_amount
+    total_paid = qs.aggregate(
+        s=Sum(Case(
+            When(payment_method='credit', then=F('advance_amount')),
+            default=F('total_amount'),
+            output_field=DecimalField()
+        ))
+    )['s'] or Decimal('0')
+    # Total due: only for credit (fully paid = 0)
+    total_due = qs.aggregate(
+        s=Sum(Case(
+            When(payment_method='credit', then=F('balance_amount')),
+            default=Value(0),
+            output_field=DecimalField()
+        ))
+    )['s'] or Decimal('0')
+
     context = {
         'data': data,
         'total_sale_value': total_value,
+        'total_advance_paid': total_paid,
+        'total_due_amount': total_due,
         'date_from': date_from or '',
         'date_to': date_to or '',
         'search': search,

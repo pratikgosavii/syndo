@@ -170,12 +170,28 @@
             <div class="container">
                 <h2 class="page-title">Sale Ledger</h2>
 
-                <div class="summary-card">
-                    <div>
-                        <div class="label">Total Sale Value</div>
-                        <div class="value">₹ {{ total_sale_value|default:0|floatformat:2 }}</div>
+                <div class="summary-cards-row" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+                    <div class="summary-card" style="flex: 1; min-width: 140px;">
+                        <div>
+                            <div class="label">Total Sale Value</div>
+                            <div class="value">₹ {{ total_sale_value|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="icon-wrap"><i class="bi bi-currency-rupee"></i></div>
                     </div>
-                    <div class="icon-wrap"><i class="bi bi-currency-rupee"></i></div>
+                    <div class="summary-card" style="flex: 1; min-width: 140px; background: #14532d;">
+                        <div>
+                            <div class="label">Advance Paid</div>
+                            <div class="value">₹ {{ total_advance_paid|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="icon-wrap" style="background: #bbf7d0; color: #166534;"><i class="bi bi-cash-coin"></i></div>
+                    </div>
+                    <div class="summary-card" style="flex: 1; min-width: 140px; background: #7f1d1d;">
+                        <div>
+                            <div class="label">Due Amount</div>
+                            <div class="value">₹ {{ total_due_amount|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="icon-wrap" style="background: #fecaca; color: #b91c1c;"><i class="bi bi-clock-history"></i></div>
+                    </div>
                 </div>
 
                 <div class="filter-bar">
@@ -209,10 +225,10 @@
                         <div class="col-label">Total Amount</div>
                         <div class="amount-total">₹ {{ sale.total_amount|default:0|floatformat:2 }}</div>
                         <div class="col-label mt-1">Paid Amount</div>
-                        <div class="amount-paid">₹ {{ sale.advance_amount|default:0|floatformat:2 }}</div>
+                        <div class="amount-paid">₹ {% if sale.payment_method == 'credit' %}{{ sale.advance_amount|default:0|floatformat:2 }}{% else %}{{ sale.total_amount|default:0|floatformat:2 }}{% endif %}</div>
                         <div class="col-label mt-1">Balance Due</div>
-                        <div class="amount-due {% if sale.balance_amount and sale.balance_amount > 0 %}has-due{% else %}zero{% endif %}">
-                            ₹ {{ sale.balance_amount|default:0|floatformat:2 }}
+                        <div class="amount-due {% if sale.payment_method == 'credit' and sale.balance_amount and sale.balance_amount > 0 %}has-due{% else %}zero{% endif %}">
+                            ₹ {% if sale.payment_method == 'credit' %}{{ sale.balance_amount|default:0|floatformat:2 }}{% else %}0.00{% endif %}
                         </div>
                     </div>
                     <div class="action-col">

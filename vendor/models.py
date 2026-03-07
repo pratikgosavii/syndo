@@ -944,7 +944,15 @@ class Purchase(models.Model):
         self.total_taxable_amount = total_taxable_amount
         self.total_gst_amount = total_gst_amount
         self.total_amount = new_total
-        
+
+        # Sync advance_payment_amount -> advance_amount (form uses advance_payment_amount, list shows advance_amount)
+        adv = Decimal(self.advance_payment_amount or 0)
+        self.advance_amount = adv
+        if self.payment_method == 'credit':
+            self.balance_amount = max(Decimal('0'), new_total - adv)
+        else:
+            self.balance_amount = Decimal('0')
+
         # Don't save here - let the caller save() to trigger signal with updated values
         # This matches how Sale._recalculate_totals() works - it sets fields then saves
 

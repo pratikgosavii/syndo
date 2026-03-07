@@ -137,7 +137,7 @@
 
         <div class="container">
           <div class="form-container">
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" id="purchase-form">
               {% csrf_token %}
               <!-- Transaction Details -->
               <div class="section-card">
@@ -333,7 +333,7 @@
                     <input type="hidden" name="payment_method" id="payment_method" value="{{ form.instance.payment_method|default:'cash' }}" required>
                   </div>
                   <div id="advance-bank-dropdown" class="mb-3" style="display: none;">
-                    <label class="form-label">Select Bank (If Cheque/Online)</label>
+                    <label class="form-label" id="advance-bank-label">Select Bank</label>
                     <select name="advance_bank" id="advance_bank" class="form-select">
                       <option value="">Select Bank Account</option>
                       {% for bank in banks %}
@@ -363,10 +363,10 @@
                       <div class="col-md-4">
                         <label class="form-label">Advance payment mode</label>
                         <div class="btn-group btn-group-sm" role="group">
-                          <button type="button" class="btn btn-payment btn-payment-active" onclick="selectAdvancePayment('cash', this)">Cash</button>
-                          <button type="button" class="btn btn-payment" onclick="selectAdvancePayment('bank', this)">Bank</button>
+                          <button type="button" class="btn btn-payment {% if form.instance.advance_mode != 'bank' %}btn-payment-active{% endif %}" onclick="selectAdvancePayment('cash', this)">Cash</button>
+                          <button type="button" class="btn btn-payment {% if form.instance.advance_mode == 'bank' %}btn-payment-active{% endif %}" onclick="selectAdvancePayment('bank', this)">Bank</button>
                         </div>
-                        <input type="hidden" name="advance_payment_method" id="advance_payment_method" value="cash" required>
+                        <input type="hidden" name="advance_mode" id="advance_mode" value="{{ form.instance.advance_mode|default:'cash' }}" required>
                       </div>
                     </div>
                     <div class="mb-3" id="due_date_wrapper" style="display: none;">
@@ -384,6 +384,10 @@
                     <div class="subtotal-row d-flex justify-content-between align-items-center">
                       <span>Total Amount:</span>
                       <strong class="fs-5">₹ <span id="total-amount-display">0.00</span></strong>
+                    </div>
+                    <div id="purchase-advance-summary" class="mt-2 pt-2 border-top" style="display: none;">
+                      <div class="d-flex justify-content-between align-items-center mb-2"><span>Advance Paid:</span><strong class="text-success">₹ <span id="advance-paid-display">0.00</span></strong></div>
+                      <div class="d-flex justify-content-between align-items-center"><span>Balance Due:</span><strong class="text-danger">₹ <span id="balance-due-display">0.00</span></strong></div>
                     </div>
                   </div>
                 </div>
@@ -717,6 +721,18 @@ function recalculateTotals() {
     if (el('shipping-display')) el('shipping-display').textContent = fmt(shipping);
     if (el('discount-display')) el('discount-display').textContent = fmt(discountAmount);
     if (el('total-amount-display')) el('total-amount-display').textContent = fmt(totalAmount);
+
+    // Advance summary (when Credit selected)
+    const paymentMethod = (document.getElementById('payment_method') || {}).value || 'cash';
+    const advanceSummaryEl = el('purchase-advance-summary');
+    const advanceInput = document.getElementById('id_advance_payment_amount');
+    const advanceAmount = (paymentMethod === 'credit' && advanceInput) ? (parseFloat(advanceInput.value) || 0) : 0;
+    const balanceDue = Math.max(0, totalAmount - advanceAmount);
+    if (advanceSummaryEl) {
+      advanceSummaryEl.style.display = paymentMethod === 'credit' ? 'block' : 'none';
+      if (el('advance-paid-display')) el('advance-paid-display').textContent = fmt(advanceAmount);
+      if (el('balance-due-display')) el('balance-due-display').textContent = fmt(balanceDue);
+    }
 }
 
 function updateSubtotal() { recalculateTotals(); }
@@ -727,10 +743,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const discountAmt = document.getElementById('discount-amount-input');
     const delivery = document.getElementById('id_delivery_shipping_charges');
     const packaging = document.getElementById('id_packaging_charges');
+    const advanceInput = document.getElementById('id_advance_payment_amount');
     if (discountPct) discountPct.addEventListener('input', recalculateTotals);
     if (discountAmt) discountAmt.addEventListener('input', recalculateTotals);
     if (delivery) delivery.addEventListener('input', recalculateTotals);
     if (packaging) packaging.addEventListener('input', recalculateTotals);
+    if (advanceInput) advanceInput.addEventListener('input', recalculateTotals);
 });
 </script>
 
@@ -738,7 +756,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
   // existing functions (keep as before), but ensure they also toggle .btn-outline-dark <-> .btn-warning
   function selectPayment(method, btn) {
-    console.log('ddfdfd')
     document.getElementById('payment_method').value = method;
 
     var group = btn.closest('.btn-group');
@@ -751,29 +768,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const bankDropdown = document.getElementById('advance-bank-dropdown');
     const bankSelect = document.getElementById('advance_bank');
+    const bankLabel = document.getElementById('advance-bank-label');
 
-    if (method !== 'cash') {
-    console.log(method)
-
-      bankDropdown.style.display = 'block';
-      bankSelect.setAttribute('required', 'required');
-    } else {
-    console.log(method)
-
-      bankDropdown.style.display = 'none';
-      bankSelect.removeAttribute('required');
-      bankSelect.value = ""; // reset when hidden
-    }
-
+    if (bankDropdown && bankSelect) {
       if (method === 'credit') {
-    const advanceCashBtn = document.querySelector(
-      "[onclick*=\"selectAdvancePayment('cash'\"]"
-    );
-    if (advanceCashBtn) {
-      advanceCashBtn.click(); // trigger JS + UI update
+        // Credit: bank dropdown only shows when advance mode is Bank (controlled by selectAdvancePayment)
+        bankDropdown.style.display = 'none';
+        bankSelect.removeAttribute('required');
+        bankSelect.value = '';
+        if (bankLabel) bankLabel.textContent = 'Select Bank (for advance)';
+        const advanceCashBtn = document.querySelector("[onclick*=\"selectAdvancePayment('cash'\"]");
+        if (advanceCashBtn) advanceCashBtn.click();
+      } else if (method === 'upi' || method === 'cheque') {
+        bankDropdown.style.display = 'block';
+        bankSelect.setAttribute('required', 'required');
+        if (bankLabel) bankLabel.textContent = 'Select Bank (If Cheque/Online)';
+      } else {
+        // Cash
+        bankDropdown.style.display = 'none';
+        bankSelect.removeAttribute('required');
+        bankSelect.value = '';
+      }
     }
-  }
-
+    if (typeof recalculateTotals === 'function') recalculateTotals();
   }
 
   function selectAdvanceMode(mode, btn) {
@@ -874,31 +891,52 @@ function recalculateTotals() {
 
 
 function selectAdvancePayment(method, btn) {
-    document.getElementById('advance_payment_method').value = method;
-    btn.closest('.btn-group').querySelectorAll('.btn-payment').forEach(function(b) {
-        b.classList.remove('btn-payment-active');
-    });
+    const advanceModeEl = document.getElementById('advance_mode');
+    if (advanceModeEl) advanceModeEl.value = method;
+
+    var group = btn.closest('.btn-group');
+    if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
     btn.classList.add('btn-payment-active');
 
-    // Show/hide bank dropdown
+    const bankDropdown = document.getElementById('advance-bank-dropdown');
+    const bankSelect = document.getElementById('advance_bank');
+
     if (method === 'bank') {
-        document.getElementById('advance-bank-dropdown').style.display = 'block';
-        
+        if (bankDropdown) bankDropdown.style.display = 'block';
+        if (bankSelect) {
+            bankSelect.setAttribute('required', 'required');
+        }
     } else {
-        document.getElementById('advance-bank-dropdown').style.display = 'none';
-        document.getElementById('advance_bank').value = ''; // clear bank
+        if (bankDropdown) bankDropdown.style.display = 'none';
+        if (bankSelect) {
+            bankSelect.removeAttribute('required');
+            bankSelect.value = '';
+        }
     }
-
-
+    if (typeof recalculateTotals === 'function') recalculateTotals();
 }
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    const method = document.getElementById('advance_payment_method').value;
+    const advanceModeEl = document.getElementById('advance_mode');
+    const method = (advanceModeEl && advanceModeEl.value) ? advanceModeEl.value : 'cash';
     const btn = document.querySelector(`[onclick="selectAdvancePayment('${method}', this)"]`);
     if (btn) selectAdvancePayment(method, btn);
-});
 
+    // Before submit: clear advance_bank when Credit + Cash (avoid validation issues)
+    const form = document.getElementById('purchase-form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            const pm = document.getElementById('payment_method');
+            const am = document.getElementById('advance_mode');
+            const ab = document.getElementById('advance_bank');
+            if (pm && am && ab && pm.value === 'credit' && am.value === 'cash') {
+                ab.removeAttribute('required');
+                ab.value = '';
+            }
+        });
+    }
+});
 
 
 

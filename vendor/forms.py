@@ -529,7 +529,15 @@ class PurchaseForm(forms.ModelForm):
             self.fields['vendor'].empty_label = "Select Vendor"
             self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
             self.fields['advance_bank'].queryset = vendor_bank.objects.filter(user=user)
+        self.fields['advance_bank'].required = False  # Only required when Credit + Bank; JS controls this
 
+    def clean(self):
+        cleaned = super().clean()
+        payment_method = cleaned.get('payment_method')
+        advance_mode = cleaned.get('advance_mode')
+        if payment_method == 'credit' and advance_mode == 'cash':
+            cleaned['advance_bank'] = None  # Clear when advance is Cash
+        return cleaned
 
     def generate_unique_code(self):
         prefix = "SVIN-PUR-"

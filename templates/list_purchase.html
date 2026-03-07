@@ -223,10 +223,10 @@
                         <div class="col-label">Total Amount</div>
                         <div class="amount-total">₹ {{ purchase.total_amount|default:0|floatformat:2 }}</div>
                         <div class="col-label mt-1">Advance Paid Amount</div>
-                        <div class="amount-paid">₹ {% if purchase.payment_method == 'credit' %}{{ purchase.advance_amount|default:0|floatformat:2 }}{% else %}{{ purchase.total_amount|default:0|floatformat:2 }}{% endif %}</div>
+                        <div class="amount-paid">₹ {% if purchase.payment_method == 'credit' %}{{ purchase.advance_amount|default:purchase.advance_payment_amount|default:0|floatformat:2 }}{% else %}{{ purchase.total_amount|default:0|floatformat:2 }}{% endif %}</div>
                         <div class="col-label mt-1">Balance Due</div>
-                        <div class="amount-due {% if purchase.balance_amount and purchase.balance_amount > 0 %}has-due{% else %}zero{% endif %}">
-                            ₹ {{ purchase.balance_amount|default:0|floatformat:2 }}
+                        <div class="amount-due {% if purchase.payment_method == 'credit' and purchase.balance_amount and purchase.balance_amount > 0 %}has-due{% else %}zero{% endif %}">
+                            ₹ {% if purchase.payment_method == 'credit' %}{{ purchase.balance_amount|default:0|floatformat:2 }}{% else %}0.00{% endif %}
                         </div>
                     </div>
                     <div class="action-col">
