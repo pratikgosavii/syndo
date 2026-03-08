@@ -362,11 +362,20 @@
                                             {{ form.track_serial_numbers }}
                                             <label class="form-check-label" for="id_track_serial_numbers">Track serial numbers</label>
                                         </div>
+                                        <div class="option-box" id="assign_barcode_toggle_wrapper">
+                                            <input type="checkbox" class="form-check-input" id="assign_barcode_toggle" {% if form.instance.assign_barcode %}checked{% endif %}>
+                                            <label class="form-check-label" for="assign_barcode_toggle">Assign barcode</label>
+                                        </div>
                                         <div class="option-box" id="low_stock_alert_wrapper">
                                             {{ form.low_stock_alert }}
                                             <label class="form-check-label" for="id_low_stock_alert">Low stock alert</label>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="col-md-6" id="assign_barcode_wrapper" style="display: none;">
+                                    <label for="id_assign_barcode" class="form-label">Barcode value</label>
+                                    {{ form.assign_barcode }}
+                                    {% if form.assign_barcode.errors %}<div class="invalid-feedback d-block">{{ form.assign_barcode.errors.0 }}</div>{% endif %}
                                 </div>
                                 <div class="col-md-6" id="opening_stock_wrapper">
                                     <label for="id_opening_stock" class="form-label">Opening stock</label>
@@ -1771,6 +1780,7 @@ changeMrpLabel("Selling Price");
 // -------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", function () {
+    const isEditProduct = {% if instance %}true{% else %}false{% endif %};
     const checkbox = document.getElementById("id_tax_inclusive");
     const gstInput = document.getElementById("tax_div");
 
@@ -1797,6 +1807,25 @@ document.addEventListener("DOMContentLoaded", function () {
         target.value = values.join('\n');
     }
 
+    function syncOpeningStockFromImeis() {
+        const openingStockInput = document.getElementById('id_opening_stock');
+        const trackSerialCheckbox = document.getElementById('id_track_serial_numbers');
+        if (!openingStockInput || !trackSerialCheckbox) return;
+        if (isEditProduct) {
+            openingStockInput.setAttribute('readonly', 'readonly');
+            return;
+        }
+        if (trackSerialCheckbox.checked) {
+            const imeiCount = Array.from(document.querySelectorAll('.serial-imei-input')).filter(function(inp) {
+                return (inp.value || '').trim() !== '';
+            }).length;
+            openingStockInput.value = imeiCount;
+            openingStockInput.setAttribute('readonly', 'readonly');
+        } else {
+            openingStockInput.removeAttribute('readonly');
+        }
+    }
+
     function addSerialInput(initialValue, isSold) {
         const list = document.getElementById('serial_imei_list');
         if (!list) return;
@@ -1808,6 +1837,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const removeDisabled = isSold ? ' disabled title="Sold – cannot remove"' : ' title="Remove"';
         row.innerHTML = `
             <input type="text" class="form-control form-control-sm serial-imei-input" placeholder="Enter IMEI" value="${escapedVal}" autocomplete="off"${soldAttr}>
+            ${isSold ? '<span class="badge bg-danger-subtle text-danger border align-self-center">Sold</span>' : ''}
             <button type="button" class="btn btn-sm btn-remove-imei" aria-label="Remove IMEI"${removeDisabled}>
                 <i class="bi bi-x-lg"></i>
             </button>
@@ -1815,14 +1845,19 @@ document.addEventListener("DOMContentLoaded", function () {
         const input = row.querySelector('.serial-imei-input');
         const removeBtn = row.querySelector('.btn-remove-imei');
         if (!isSold) {
-            input.addEventListener('input', syncSerialTextarea);
+            input.addEventListener('input', function() {
+                syncSerialTextarea();
+                syncOpeningStockFromImeis();
+            });
             removeBtn.addEventListener('click', function () {
                 row.remove();
                 syncSerialTextarea();
+                syncOpeningStockFromImeis();
             });
         }
         list.appendChild(row);
         syncSerialTextarea();
+        syncOpeningStockFromImeis();
     }
 
     // Low stock quantity visibility controlled by checkbox
@@ -1849,21 +1884,69 @@ document.addEventListener("DOMContentLoaded", function () {
     // Serial/IMEI list visibility controlled by 'Track serial numbers'
     const trackSerialCheckbox = document.getElementById('id_track_serial_numbers');
     const serialWrapper = document.getElementById('serial_imei_wrapper');
+    const barcodeToggle = document.getElementById('assign_barcode_toggle');
+    const barcodeWrapper = document.getElementById('assign_barcode_wrapper');
+    const barcodeInput = document.getElementById('id_assign_barcode');
+    function syncBarcodeMode(clearValue) {
+        if (!barcodeToggle || !barcodeWrapper || !barcodeInput) return;
+        const enabled = barcodeToggle.checked;
+        barcodeWrapper.style.display = enabled ? 'block' : 'none';
+        barcodeInput.disabled = !enabled;
+        barcodeInput.required = enabled;
+        if (!enabled && clearValue) {
+            barcodeInput.value = '';
+        }
+        if (enabled) {
+            if (trackSerialCheckbox) {
+                trackSerialCheckbox.checked = false;
+                trackSerialCheckbox.disabled = true;
+            }
+            if (serialWrapper) serialWrapper.style.display = 'none';
+            const serialTarget = document.getElementById('id_serial_imei_no');
+            if (serialTarget) serialTarget.value = '';
+            const openingStockInput = document.getElementById('id_opening_stock');
+            if (openingStockInput && !isEditProduct) {
+                openingStockInput.removeAttribute('readonly');
+            }
+        } else if (trackSerialCheckbox) {
+            trackSerialCheckbox.disabled = false;
+        }
+    }
     function syncSerialVisibility() {
         if (!trackSerialCheckbox || !serialWrapper) return;
-        const show = trackSerialCheckbox.checked;
+        const show = trackSerialCheckbox.checked && !(barcodeToggle && barcodeToggle.checked);
         serialWrapper.style.display = show ? 'block' : 'none';
         // When enabling tracking and there are no rows yet, add one
         if (show) {
+            if (barcodeToggle) {
+                barcodeToggle.checked = false;
+                barcodeToggle.disabled = true;
+            }
+            if (barcodeWrapper) barcodeWrapper.style.display = 'none';
+            if (barcodeInput) {
+                barcodeInput.value = '';
+                barcodeInput.disabled = true;
+                barcodeInput.required = false;
+            }
             const list = document.getElementById('serial_imei_list');
             if (list && !list.querySelector('.serial-imei-input')) {
                 addSerialInput('');
             }
+        } else if (barcodeToggle && !(barcodeToggle.checked)) {
+            barcodeToggle.disabled = false;
         }
+        syncOpeningStockFromImeis();
     }
     if (trackSerialCheckbox && serialWrapper) {
         syncSerialVisibility();
         trackSerialCheckbox.addEventListener('change', syncSerialVisibility);
+    }
+    if (barcodeToggle) {
+        syncBarcodeMode(false);
+        barcodeToggle.addEventListener('change', function() {
+            syncBarcodeMode(!barcodeToggle.checked ? true : false);
+            syncSerialVisibility();
+        });
     }
 
     // Add IMEI row button
@@ -1879,8 +1962,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (productForm) {
       productForm.addEventListener('submit', function() {
         if (typeof syncSerialTextarea === 'function') syncSerialTextarea();
+        syncBarcodeMode(false);
+        syncOpeningStockFromImeis();
       });
     }
+    syncOpeningStockFromImeis();
   });
 
   // Color dropdown: update display swatch + hex value + form input (elements resolved at call time)

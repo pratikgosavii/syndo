@@ -133,6 +133,7 @@ class product_Form(forms.ModelForm):
             'gst': forms.NumberInput(attrs={'class': 'form-control'}),
 
             'track_serial_numbers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'assign_barcode': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter barcode value'}),
             'opening_stock': forms.NumberInput(attrs={'class': 'form-control'}),
             'stock': forms.NumberInput(attrs={'class': 'form-control'}),
             'low_stock_alert': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -210,6 +211,9 @@ class product_Form(forms.ModelForm):
                 self.add_error('mrp', 'MRP is required for service/print.')
             if cleaned.get('sales_price') in (None, ''):
                 self.add_error('sales_price', 'Sales price is required for service/print.')
+        if cleaned.get('track_serial_numbers') and cleaned.get('assign_barcode') not in (None, ''):
+            self.add_error('track_serial_numbers', 'Track serial numbers and assign barcode cannot both be used.')
+            self.add_error('assign_barcode', 'Assign barcode and IMEI tracking cannot both be used.')
         return cleaned
 
 

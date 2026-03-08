@@ -812,6 +812,10 @@ class OrderSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"items": [f"Product with id {product_id} does not exist."]}
                 )
+            if not product1.can_sell_quantity(quantity):
+                raise serializers.ValidationError(
+                    {"items": [f"{product1.name} is out of stock."]}
+                )
 
             # Gather print job payload either from request item or from cart (fallback)
             item_print_job = item.get("print_job")

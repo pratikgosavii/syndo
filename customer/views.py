@@ -1878,6 +1878,10 @@ class CartViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         product_instance = serializer.validated_data["product"]
         quantity = serializer.validated_data.get("quantity", 1)
+        if not product_instance.can_sell_quantity(quantity):
+            raise serializers.ValidationError(
+                {"quantity": f"{product_instance.name} is out of stock."}
+            )
 
         # ✅ Create or update cart item
         cart_item, created = Cart.objects.get_or_create(
@@ -1886,7 +1890,12 @@ class CartViewSet(viewsets.ModelViewSet):
             defaults={"quantity": quantity},
         )
         if not created:
-            cart_item.quantity += quantity
+            new_qty = cart_item.quantity + quantity
+            if not product_instance.can_sell_quantity(new_qty):
+                raise serializers.ValidationError(
+                    {"quantity": f"{product_instance.name} is out of stock."}
+                )
+            cart_item.quantity = new_qty
             cart_item.save()
         else:
             # Send notification to vendor when item is first added to cart
@@ -1995,6 +2004,9 @@ class CartViewSet(viewsets.ModelViewSet):
         except product.DoesNotExist:
             return Response({"error": "Invalid product id."}, status=status.HTTP_404_NOT_FOUND)
 
+        if not product_instance.can_sell_quantity(quantity):
+            return Response({"error": f"{product_instance.name} is out of stock."}, status=status.HTTP_400_BAD_REQUEST)
+
         # Clear user's existing cart
         Cart.objects.filter(user=request.user).delete()
 
@@ -2098,6 +2110,9 @@ class CartViewSet(viewsets.ModelViewSet):
         if new_qty <= 0:
             cart_item.delete()
             return Response({"message": "Item removed from cart"}, status=200)
+
+        if not cart_item.product.can_sell_quantity(new_qty):
+            return Response({"error": f"{cart_item.product.name} is out of stock."}, status=400)
 
         cart_item.quantity = new_qty
         cart_item.save()

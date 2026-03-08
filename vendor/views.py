@@ -1510,6 +1510,11 @@ def add_product(request, parent_id=None):
                                 continue
                             seen.add(val)
                             SerialImei.objects.create(product=product_instance, value=val)
+                    total_imeis = product_instance.serial_imei_list.count()
+                    product_instance.opening_stock = total_imeis
+                    product_instance.stock = total_imeis
+                    product_instance.stock_cached = total_imeis
+                    product_instance.save(update_fields=["opening_stock", "stock", "stock_cached"])
             except Exception:
                 # Don't break product creation if IMEI parsing fails
                 pass
@@ -1677,6 +1682,10 @@ def update_product(request, product_id):
                         if val not in existing_values:
                             SerialImei.objects.create(product=product_instance, value=val)
                             existing_values.add(val)
+                    available_imeis = product_instance.serial_imei_list.filter(is_sold=False).count()
+                    product_instance.stock = available_imeis
+                    product_instance.stock_cached = available_imeis
+                    product_instance.save(update_fields=["stock", "stock_cached"])
                 else:
                     # Tracking disabled - remove only unsold IMEIs (keep sold for history)
                     product_instance.serial_imei_list.filter(is_sold=False).delete()
@@ -4292,6 +4301,19 @@ def pos(request):
                     sale_instance.advance_bank = None
                 sale_instance.save()
 
+                # Block POS sale for tracked-stock products that are now out of stock.
+                requested_qty_by_product = {}
+                for p, q in zip(products, quantities):
+                    if not (p and q):
+                        continue
+                    requested_qty_by_product[int(p)] = requested_qty_by_product.get(int(p), 0) + int(q)
+                for product_id, qty in requested_qty_by_product.items():
+                    prod = product.objects.get(id=product_id, user=request.user, is_active=True)
+                    if not prod.can_sell_quantity(qty):
+                        raise ValueError(
+                            f"{prod.name} is out of stock. Available stock is {int(prod.sale_available_stock or 0)}."
+                        )
+
                 # Process Sale Items
                 for p, q, pr in zip(products, quantities, prices):
                     if p and q and pr:
@@ -4429,6 +4451,22 @@ def update_sale(request, sale_id):
                 # 1. Delete marked items
                 if delete_item_ids:
                     SaleItem.objects.filter(id__in=delete_item_ids, sale=sale_instance).delete()
+
+                # Block POS sale update for tracked-stock products that are now out of stock.
+                requested_qty_by_product = {}
+                for p, q in zip(products, quantities):
+                    if not (p and q):
+                        continue
+                    requested_qty_by_product[int(p)] = requested_qty_by_product.get(int(p), 0) + int(q)
+                existing_qty_by_product = {}
+                for item in SaleItem.objects.filter(sale=sale_instance).exclude(id__in=delete_item_ids):
+                    existing_qty_by_product[item.product_id] = existing_qty_by_product.get(item.product_id, 0) + int(item.quantity or 0)
+                for product_id, qty in requested_qty_by_product.items():
+                    prod = product.objects.get(id=product_id, user=request.user, is_active=True)
+                    extra_available = existing_qty_by_product.get(product_id, 0)
+                    if not prod.can_sell_quantity(qty, extra_available=extra_available):
+                        available = int(prod.sale_available_stock or 0) + int(extra_available or 0)
+                        raise ValueError(f"{prod.name} is out of stock. Available stock is {available}.")
 
                 # 2. Iterate through rows
                 for idx, (p, q, pr) in enumerate(zip(products, quantities, prices)):

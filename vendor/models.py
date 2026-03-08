@@ -696,8 +696,27 @@ class product(models.Model):
     @property
     def current_stock(self):
         if self.track_serial_numbers:
-            return self.serials.filter(is_sold=False).count()
+            return self.serial_imei_list.filter(is_sold=False).count()
         return self.stock or 0
+
+    @property
+    def sale_available_stock(self):
+        if self.track_serial_numbers:
+            return self.serial_imei_list.filter(is_sold=False).count()
+        return self.stock_cached if self.stock_cached is not None else (self.stock or 0)
+
+    @property
+    def blocks_sales_when_out_of_stock(self):
+        return bool((self.opening_stock or 0) > 0)
+
+    def can_sell_quantity(self, quantity, extra_available=0):
+        qty = int(quantity or 0)
+        if qty <= 0:
+            return True
+        if not self.blocks_sales_when_out_of_stock:
+            return True
+        available = int(self.sale_available_stock or 0) + int(extra_available or 0)
+        return available >= qty
 
 
 class ProductSerial(models.Model):
