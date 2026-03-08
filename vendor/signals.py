@@ -252,6 +252,29 @@ def _get_invoice_label(transaction_type, reference_id):
     return f"#{reference_id}"
 
 
+def _customer_balance_total(customer):
+    return Decimal(
+        CustomerLedger.objects.filter(customer=customer).aggregate(total=Sum("amount"))["total"] or 0
+    )
+
+
+def _vendor_balance_total(vendor):
+    credit_purchase_total = (
+        VendorLedger.objects.filter(
+            vendor=vendor,
+            transaction_type="purchase",
+            description__contains="(Credit)",
+        ).aggregate(total=Sum("amount"))["total"] or 0
+    )
+    payment_adjustment_total = (
+        VendorLedger.objects.filter(
+            vendor=vendor,
+            transaction_type__in=["payment", "refund"],
+        ).aggregate(total=Sum("amount"))["total"] or 0
+    )
+    return Decimal(credit_purchase_total or 0) + Decimal(payment_adjustment_total or 0)
+
+
 def _group_existing_by_parent(ledger_model, transaction_type, reference_id):
     """
     Return mapping of { parent_or_user: total_amount } for entries matching transaction & ref.
@@ -434,9 +457,7 @@ def sale_ledger(sender, instance, created, **kwargs):
         # Customer balance = opening_balance + sum of all ledger entries
         if instance.customer:
             customer = vendor_customers.objects.get(pk=instance.customer.pk)
-            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
+            ledger_total = _customer_balance_total(customer)
             # Customer balance = opening_balance + sum of ledger entries
             customer.balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total or 0)
             customer.save(update_fields=['balance'])
@@ -481,9 +502,7 @@ def sale_ledger(sender, instance, created, **kwargs):
             customer = vendor_customers.objects.get(pk=instance.customer.pk)
             
             customer.refresh_from_db()
-            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
+            ledger_total = _customer_balance_total(customer)
             opening_balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total)
 
             if instance.payment_method == 'credit' and balance_amt > 0:
@@ -852,29 +871,12 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         VendorLedger,
                         "purchase",
                         instance.id,
-                        total_amt,
+                        Decimal("0"),
                         f"Purchase {purchase_label}",
+                        total_bill_amount=total_amt,
                     )
             
-            # Reset vendor running balance from opening + sum(ONLY credit purchase ledger entries)
-            # Only credit purchases affect vendor balance - non-credit purchases are already paid
-            # Credit entries are identified by description containing "(Credit)"
-            credit_ledger_total = (
-                VendorLedger.objects.filter(
-                    vendor=vendor,
-                    description__contains="(Credit)"
-                ).aggregate(total=Sum("amount"))["total"] or 0
-            )
-            # Also include payment entries (which reduce credit balance)
-            payment_ledger_total = (
-                VendorLedger.objects.filter(
-                    vendor=vendor,
-                    transaction_type="payment"
-                ).aggregate(total=Sum("amount"))["total"] or 0
-            )
-            # Total credit balance = opening_balance + credit purchases - payments
-            opening_balance = Decimal(vendor.opening_balance or 0) + Decimal(credit_ledger_total or 0) + Decimal(payment_ledger_total or 0)
-            vendor.balance = opening_balance
+            vendor.balance = Decimal(vendor.opening_balance or 0) + _vendor_balance_total(vendor)
             vendor.save(update_fields=["balance"])
 
         # Cash/Bank ledger for purchases
@@ -1067,9 +1069,7 @@ def payment_ledger(sender, instance, created, **kwargs):
         # Customer balance = opening_balance + sum of all ledger entries
         if instance.customer:
             customer = vendor_customers.objects.get(pk=instance.customer.pk)
-            ledger_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
+            ledger_total = _customer_balance_total(customer)
             # Customer balance = opening_balance + sum of ledger entries
             customer.balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total or 0)
             customer.save(update_fields=['balance'])
@@ -1077,9 +1077,7 @@ def payment_ledger(sender, instance, created, **kwargs):
 
         if instance.vendor:
             vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-            ledger_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
+            ledger_total = _vendor_balance_total(vendor)
             # Vendor balance = opening_balance + sum of ledger entries
             vendor.balance = Decimal(vendor.opening_balance or 0) + Decimal(ledger_total or 0)
             vendor.save(update_fields=['balance'])
@@ -1346,9 +1344,7 @@ def sale_delete_ledger(sender, instance, **kwargs):
     # Recalculate balances from ALL remaining ledger entries
     if instance.customer:
         customer = vendor_customers.objects.get(pk=instance.customer.pk)
-        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
+        remaining_total = _customer_balance_total(customer)
         customer.balance = Decimal(customer.opening_balance or 0) + Decimal(remaining_total or 0)
         customer.save(update_fields=['balance'])
 
@@ -1389,10 +1385,7 @@ def purchase_delete_ledger(sender, instance, **kwargs):
     # Recalculate balances from ALL remaining ledger entries
     if instance.vendor:
         vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
-        # Vendor balance = opening_balance + sum(all vendor ledger entries)
+        remaining_total = _vendor_balance_total(vendor)
         vendor.balance = Decimal(vendor.opening_balance or 0) + Decimal(remaining_total or 0)
         vendor.save(update_fields=['balance'])
 
@@ -1463,17 +1456,13 @@ def payment_delete_ledger(sender, instance, **kwargs):
     # Recalculate balances from ALL remaining ledger entries
     if instance.customer:
         customer = vendor_customers.objects.get(pk=instance.customer.pk)
-        remaining_total = CustomerLedger.objects.filter(customer=customer).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
+        remaining_total = _customer_balance_total(customer)
         customer.balance = Decimal(customer.opening_balance or 0) + Decimal(remaining_total or 0)
         customer.save(update_fields=['balance'])
 
     if instance.vendor:
         vendor = vendor_vendors.objects.get(pk=instance.vendor.pk)
-        remaining_total = VendorLedger.objects.filter(vendor=vendor).aggregate(
-            total=Sum('amount')
-        )['total'] or 0
+        remaining_total = _vendor_balance_total(vendor)
         vendor.balance = Decimal(vendor.opening_balance or 0) + Decimal(remaining_total or 0)
         vendor.save(update_fields=['balance'])
 

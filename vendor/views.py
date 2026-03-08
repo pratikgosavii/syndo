@@ -4390,6 +4390,8 @@ def update_sale(request, sale_id):
     # Default invoice terms from InvoiceSettings (used to prefill wholesale.terms)
     inv_settings = InvoiceSettings.objects.filter(user=request.user).first()
     invoice_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
+    tax_settings = getattr(request.user, "tax_settings", None)
+    composite_scheme = bool(getattr(tax_settings, "composite_scheme", False))
 
     # ✅ Prepare dict list with amount calculation
     items_with_amount = []
@@ -4403,7 +4405,7 @@ def update_sale(request, sale_id):
         })
 
     if request.method == "POST":
-        sale_form = SaleForm(request.POST, instance=sale_instance)
+        sale_form = SaleForm(request.POST, instance=sale_instance, user=request.user)
         customer_form = vendor_customersForm(request.POST)
         wholesale_instance = getattr(sale_instance, 'pos_wholesale', None)
         wholesale_form = pos_wholesaleForm(request.POST, request.FILES, instance=wholesale_instance)
@@ -4420,8 +4422,10 @@ def update_sale(request, sale_id):
                 "customer_forms": customer_form,
                 "wholesale_forms": wholesale_form,
                 "invoice_terms": invoice_terms,
+                "composite_scheme": composite_scheme,
                 "saleitemform": SaleItemForm(),
                 "products": product.objects.filter(user=request.user, is_active=True),
+                "banks": vendor_bank.objects.filter(user=request.user),
                 "existing_items": items_with_amount,  # ✅ Use calculated data
                 "error_message": "Please correct the errors below.",
             }
@@ -4515,15 +4519,18 @@ def update_sale(request, sale_id):
                 "form": sale_form,
                 "customer_forms": customer_form,
                 "wholesale_forms": wholesale_form,
+                "invoice_terms": invoice_terms,
+                "composite_scheme": composite_scheme,
                 "saleitemform": SaleItemForm(),
                 "products": product.objects.filter(user=request.user, is_active=True),
+                "banks": vendor_bank.objects.filter(user=request.user),
                 "existing_items": items_with_amount,  # ✅ Keep calculated
                 "error_message": str(e),
             }
             return render(request, "pos_form.html", context)
 
     else:
-        sale_form = SaleForm(instance=sale_instance)
+        sale_form = SaleForm(instance=sale_instance, user=request.user)
         customer_form = vendor_customersForm()
         wholesale_instance = getattr(sale_instance, 'pos_wholesale', None)
         wholesale_form = pos_wholesaleForm(instance=wholesale_instance)
@@ -4539,8 +4546,10 @@ def update_sale(request, sale_id):
             "customer_forms": customer_form,
             "wholesale_forms": wholesale_form,
             "invoice_terms": invoice_terms,
+            "composite_scheme": composite_scheme,
             "saleitemform": SaleItemForm(),
             "products": product.objects.filter(user=request.user, is_active=True),
+            "banks": vendor_bank.objects.filter(user=request.user),
             "existing_items": items_with_amount,  # ✅ Use calculated
         }
         return render(request, "pos_form.html", context)
