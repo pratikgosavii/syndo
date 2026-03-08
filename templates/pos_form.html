@@ -1853,6 +1853,9 @@ function selectPayment(method, btn) {
   // toggle bank dropdown (for UPI/Cheque = main payment bank; for Credit = advance bank, only when advance mode is Bank)
   const bankDropdown = document.getElementById('advance-bank-dropdown');
   const bankSelect = document.getElementById('advance_bank');
+  const advanceAmountInput = document.getElementById('id_advance_payment_amount');
+  const dueDateInput = document.getElementById('id_due_date');
+  const advanceModeInput = document.getElementById('advance_payment_method');
 
   if (method === 'credit') {
     bankDropdown.style.display = 'none';
@@ -1860,20 +1863,46 @@ function selectPayment(method, btn) {
       bankSelect.removeAttribute('required');
       bankSelect.value = '';
     }
+    if (advanceAmountInput) advanceAmountInput.removeAttribute('disabled');
+    if (dueDateInput) dueDateInput.removeAttribute('disabled');
   } else if (method === 'upi' || method === 'cheque') {
     bankDropdown.style.display = 'block';
     if (bankSelect) bankSelect.setAttribute('required', 'required');
+    if (advanceAmountInput) {
+      advanceAmountInput.removeAttribute('required');
+      advanceAmountInput.value = '';
+      advanceAmountInput.setAttribute('disabled', 'disabled');
+    }
+    if (dueDateInput) {
+      dueDateInput.removeAttribute('required');
+      dueDateInput.value = '';
+      dueDateInput.setAttribute('disabled', 'disabled');
+    }
+    if (advanceModeInput) advanceModeInput.value = 'cash';
   } else {
     bankDropdown.style.display = 'none';
     if (bankSelect) {
       bankSelect.removeAttribute('required');
       bankSelect.value = '';
     }
+    if (advanceAmountInput) {
+      advanceAmountInput.removeAttribute('required');
+      advanceAmountInput.value = '';
+      advanceAmountInput.setAttribute('disabled', 'disabled');
+    }
+    if (dueDateInput) {
+      dueDateInput.removeAttribute('required');
+      dueDateInput.value = '';
+      dueDateInput.setAttribute('disabled', 'disabled');
+    }
+    if (advanceModeInput) advanceModeInput.value = 'cash';
   }
 
   // if credit is selected, reset advance payment mode to cash (bank dropdown hidden until user picks Bank)
   if (method === 'credit') {
     document.getElementById('advance_summary').style.display = "block";
+    if (advanceAmountInput) advanceAmountInput.removeAttribute('disabled');
+    if (dueDateInput) dueDateInput.removeAttribute('disabled');
     const advanceCashBtn = document.querySelector(
       "[onclick*=\"selectAdvancePayment('cash'\"]"
     );
@@ -1921,9 +1950,28 @@ document.getElementById('pos-form').addEventListener('submit', function() {
   var pm = document.getElementById('payment_method');
   var advMode = document.getElementById('advance_payment_method');
   var ab = document.getElementById('advance_bank');
+  var advInput = document.getElementById('id_advance_payment_amount');
+  var dueDateInput = document.getElementById('id_due_date');
   if (pm && advMode && ab && pm.value === 'credit' && advMode.value === 'cash') {
     ab.removeAttribute('required');
     ab.value = '';
+  }
+  if (pm && pm.value !== 'credit') {
+    if (ab) {
+      ab.removeAttribute('required');
+      ab.value = '';
+    }
+    if (advInput) {
+      advInput.removeAttribute('required');
+      advInput.value = '';
+      advInput.setAttribute('disabled', 'disabled');
+    }
+    if (dueDateInput) {
+      dueDateInput.removeAttribute('required');
+      dueDateInput.value = '';
+      dueDateInput.setAttribute('disabled', 'disabled');
+    }
+    if (advMode) advMode.value = 'cash';
   }
 });
 
