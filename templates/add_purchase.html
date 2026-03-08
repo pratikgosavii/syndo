@@ -387,7 +387,11 @@
                     </div>
                     <div id="purchase-advance-summary" class="mt-2 pt-2 border-top" style="display: none;">
                       <div class="d-flex justify-content-between align-items-center mb-2"><span>Advance Paid:</span><strong class="text-success">₹ <span id="advance-paid-display">0.00</span></strong></div>
-                      <div class="d-flex justify-content-between align-items-center"><span>Balance Due:</span><strong class="text-danger">₹ <span id="balance-due-display">0.00</span></strong></div>
+                      <div class="d-flex justify-content-between align-items-center mb-2"><span>Balance Due:</span><strong class="text-danger">₹ <span id="balance-due-display">0.00</span></strong></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-2">
+                      <span class="fw-bold">Amount to Pay:</span>
+                      <strong class="fs-5 text-primary">₹ <span id="amount-to-pay-display">0.00</span></strong>
                     </div>
                   </div>
                 </div>
@@ -509,6 +513,10 @@ function displaySelectedImages() {
   
 </script>
 
+<script>
+  // Composite scheme from backend: when true, no GST in summary (matches backend)
+  window.PURCHASE_COMPOSITE_SCHEME = {{ composite_scheme|default:False|yesno:"true,false" }};
+</script>
 <script>
 function createProductRow() {
     const row = document.createElement('div');
@@ -668,8 +676,9 @@ function recalculateTotals() {
 
         let baseAmount = grossAmount;
         let rowGst = 0;
+        const isCompositeScheme = !!(window.PURCHASE_COMPOSITE_SCHEME);
 
-        if (gstRate > 0) {
+        if (!isCompositeScheme && gstRate > 0) {
             if (isTaxInclusive) {
                 // Purchase price is GST inclusive: split into base + tax so summary shows tax but
                 // base + tax still equals grossAmount.
@@ -733,6 +742,9 @@ function recalculateTotals() {
       if (el('advance-paid-display')) el('advance-paid-display').textContent = fmt(advanceAmount);
       if (el('balance-due-display')) el('balance-due-display').textContent = fmt(balanceDue);
     }
+    // Bottom line: Amount to Pay = Total when not credit, Balance Due when credit (total − advance)
+    const amountToPay = paymentMethod === 'credit' ? balanceDue : totalAmount;
+    if (el('amount-to-pay-display')) el('amount-to-pay-display').textContent = fmt(amountToPay);
 }
 
 function updateSubtotal() { recalculateTotals(); }
@@ -779,15 +791,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (bankLabel) bankLabel.textContent = 'Select Bank (for advance)';
         const advanceCashBtn = document.querySelector("[onclick*=\"selectAdvancePayment('cash'\"]");
         if (advanceCashBtn) advanceCashBtn.click();
-      } else if (method === 'upi' || method === 'cheque') {
-        bankDropdown.style.display = 'block';
-        bankSelect.setAttribute('required', 'required');
-        if (bankLabel) bankLabel.textContent = 'Select Bank (If Cheque/Online)';
       } else {
-        // Cash
-        bankDropdown.style.display = 'none';
-        bankSelect.removeAttribute('required');
-        bankSelect.value = '';
+        // Cash / UPI / Cheque: clear advance so amount to pay resets to full total
+        var advInput = document.getElementById('id_advance_payment_amount');
+        if (advInput) advInput.value = '';
+        if (method === 'upi' || method === 'cheque') {
+          bankDropdown.style.display = 'block';
+          bankSelect.setAttribute('required', 'required');
+          if (bankLabel) bankLabel.textContent = 'Select Bank (If Cheque/Online)';
+        } else {
+          bankDropdown.style.display = 'none';
+          bankSelect.removeAttribute('required');
+          bankSelect.value = '';
+        }
       }
     }
     if (typeof recalculateTotals === 'function') recalculateTotals();

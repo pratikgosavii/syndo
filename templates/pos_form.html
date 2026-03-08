@@ -1291,6 +1291,10 @@
 </script>
 
 <script>
+  // Composite scheme from backend: when true, no GST is calculated (UI and backend stay in sync)
+  window.POS_COMPOSITE_SCHEME = {{ composite_scheme|yesno:"true,false" }};
+</script>
+<script>
   // Helper: recalculate one row
   function recalcRow(row) {
     const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
@@ -1375,7 +1379,8 @@ function recalculateTotals() {
     }
 
     const amountAfterDiscount = totalBeforeDiscount - discountAmount;
-    const advanceAmount = advanceAmountField ? (parseFloat(advanceAmountField.value) || 0) : 0;
+    const paymentMethod = (document.getElementById('payment_method') || {}).value || 'cash';
+    const advanceAmount = (paymentMethod === 'credit' && advanceAmountField) ? (parseFloat(advanceAmountField.value) || 0) : 0;
     const netPayable = amountAfterDiscount + shippingCharges - advanceAmount;
 
     const el = function(id) { const e = document.getElementById(id); return e ? e : null; };
@@ -1806,20 +1811,28 @@ function selectPayment(method, btn) {
   // toggle credit time section
   document.getElementById('credit_time').style.display = method === 'credit' ? 'block' : 'none';
 
-  // toggle bank dropdown
+  // toggle bank dropdown (for UPI/Cheque = main payment bank; for Credit = advance bank, only when advance mode is Bank)
   const bankDropdown = document.getElementById('advance-bank-dropdown');
   const bankSelect = document.getElementById('advance_bank');
 
-  if (method !== 'cash') {
+  if (method === 'credit') {
+    bankDropdown.style.display = 'none';
+    if (bankSelect) {
+      bankSelect.removeAttribute('required');
+      bankSelect.value = '';
+    }
+  } else if (method === 'upi' || method === 'cheque') {
     bankDropdown.style.display = 'block';
-    bankSelect.setAttribute('required', 'required');
+    if (bankSelect) bankSelect.setAttribute('required', 'required');
   } else {
     bankDropdown.style.display = 'none';
-    bankSelect.removeAttribute('required');
-    bankSelect.value = ""; // reset when hidden
+    if (bankSelect) {
+      bankSelect.removeAttribute('required');
+      bankSelect.value = '';
+    }
   }
 
-  // if credit is selected, reset advance payment mode to cash
+  // if credit is selected, reset advance payment mode to cash (bank dropdown hidden until user picks Bank)
   if (method === 'credit') {
     document.getElementById('advance_summary').style.display = "block";
     const advanceCashBtn = document.querySelector(
@@ -1830,8 +1843,11 @@ function selectPayment(method, btn) {
     }
   }else{
     document.getElementById('advance_summary').style.display = "none";
+    var advInput = document.getElementById('id_advance_payment_amount');
+    if (advInput) advInput.value = '';
   }
   syncBankForUpiCheque();
+  if (typeof recalculateTotals === 'function') recalculateTotals();
 }
 
 
@@ -1843,22 +1859,33 @@ function selectAdvancePayment(method, btn) {
     if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
     btn.classList.add('btn-payment-active');
 
-    // Show/hide bank dropdown
+    var bankDropdown = document.getElementById('advance-bank-dropdown');
+    var bankSelect = document.getElementById('advance_bank');
     if (method === 'bank') {
-        document.getElementById('advance-bank-dropdown').style.display = 'block';
-        
+        if (bankDropdown) bankDropdown.style.display = 'block';
+        if (bankSelect) bankSelect.setAttribute('required', 'required');
     } else {
-        document.getElementById('advance-bank-dropdown').style.display = 'none';
-        document.getElementById('advance_bank').value = ''; // clear bank
+        if (bankDropdown) bankDropdown.style.display = 'none';
+        if (bankSelect) {
+            bankSelect.removeAttribute('required');
+            bankSelect.value = '';
+        }
     }
 
-      recalculateTotals();
-
+    if (typeof recalculateTotals === 'function') recalculateTotals();
 }
 
 // Sync bank before form submit (UPI/Cheque need bank for ledger)
 document.getElementById('pos-form').addEventListener('submit', function() {
   if (typeof syncBankForUpiCheque === 'function') syncBankForUpiCheque();
+  // Credit + Cash advance: remove required and clear advance_bank so hidden field does not block submit
+  var pm = document.getElementById('payment_method');
+  var advMode = document.getElementById('advance_payment_method');
+  var ab = document.getElementById('advance_bank');
+  if (pm && advMode && ab && pm.value === 'credit' && advMode.value === 'cash') {
+    ab.removeAttribute('required');
+    ab.value = '';
+  }
 });
 
 // Auto-run on page load to reflect existing value (for edit)

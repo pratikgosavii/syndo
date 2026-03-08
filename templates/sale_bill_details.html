@@ -91,7 +91,7 @@
                                     <span class="name">{% if sale.customer %}{{ sale.customer.name }}{% else %}—{% endif %}</span><br>
                                     {% if sale.customer %}{% if sale.customer.company_name %}{{ sale.customer.company_name }}<br>{% endif %}
                                     {% if sale.customer.gst_number %}GSTIN: {{ sale.customer.gst_number }}<br>{% endif %}
-                                    Ph: {{ sale.customer.contact|default:"—" }}{% else %}Ph: —{% endif %}
+                                    Mobile No: {{ sale.customer.contact|default:"—" }}{% else %}Mobile No: —{% endif %}
                                 </div>
                             </div>
                         </div>
@@ -181,7 +181,7 @@
                                 <div class="info-card-content">
                                     <span class="name">{% if sale.customer %}{{ sale.customer.name }}{% else %}Walk-in Customer{% endif %}</span><br>
                                     {% if sale.customer %}{{ sale.customer.company_name|default:"Walk-in Customer" }}{% else %}Walk-in Customer{% endif %}<br>
-                                    Ph: {% if sale.customer %}{{ sale.customer.contact|default:"—" }}{% else %}—{% endif %}
+                                    Mobile No: {% if sale.customer %}{{ sale.customer.contact|default:"—" }}{% else %}—{% endif %}
                                 </div>
                             </div>
                         </div>

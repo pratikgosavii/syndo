@@ -153,7 +153,7 @@
                                                 {% endwith %}
                                             </td>
                                             <td class="text-end">₹ {{ entry.opening_balance|floatformat:2|intcomma }}</td>
-                                            <td class="text-end {% if entry.amount >= 0 %}amount-in{% else %}amount-out{% endif %}">{% if entry.amount >= 0 %}+ {% else %}− {% endif %} {{ entry.amount|abs_amount|floatformat:2|intcomma }}</td>
+                                            <td class="text-end {% if entry.display_amount >= 0 %}amount-in{% else %}amount-out{% endif %}">{% if entry.display_amount >= 0 %}+ {% else %}− {% endif %} {{ entry.display_amount|abs_amount|floatformat:2|intcomma }}</td>
                                             <td class="text-end">₹ {{ entry.balance_after|floatformat:2|intcomma }}</td>
                                         </tr>
                                         {% endfor %}

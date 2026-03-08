@@ -423,6 +423,13 @@ class CustomerLedger(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    @property
+    def display_amount(self):
+        """For sales, show total_bill_amount (full bill) so the ledger shows sale value; balance still uses `amount` (due)."""
+        if self.transaction_type == "sale" and (self.total_bill_amount or 0) > 0:
+            return self.total_bill_amount
+        return self.amount
+
     def __str__(self):
         return f"{self.customer} | {self.transaction_type} | {self.amount}"
 
@@ -442,10 +449,18 @@ class VendorLedger(models.Model):
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     balance_after = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_bill_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True, blank=True, help_text="Full bill amount for credit purchases")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
+
+    @property
+    def display_amount(self):
+        """For purchases, show total_bill_amount (full bill) when set; balance still uses `amount` (due)."""
+        if self.transaction_type == "purchase" and (self.total_bill_amount or 0) > 0:
+            return self.total_bill_amount
+        return self.amount
 
     def __str__(self):
         return f"{self.vendor} | {self.transaction_type} | {self.amount}"
@@ -987,8 +1002,9 @@ class PurchaseItem(models.Model):
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
 
-        # Determine GST rate, honoring composite scheme (no GST under composite)
-        gst_rate = _to_decimal(getattr(self.product, "gst", 0))
+        # Determine GST rate: match purchase UI default (18% when product.gst is not set / zero)
+        raw_gst = getattr(self.product, "gst", None)
+        gst_rate = _to_decimal(18 if not raw_gst else raw_gst)
         purchase = getattr(self, "purchase", None)
         user = getattr(purchase, "user", None) if purchase else None
         try:
@@ -1253,8 +1269,9 @@ class SaleItem(models.Model):
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
 
-        # Determine GST rate, honoring composite scheme (no GST under composite)
-        gst_rate = _to_decimal(getattr(self.product, "gst", 0))
+        # Determine GST rate: match POS UI default (18% when product.gst is not set / zero)
+        raw_gst = getattr(self.product, "gst", None)
+        gst_rate = _to_decimal(18 if not raw_gst else raw_gst)
         user = getattr(self, "user", None)
         try:
             if user and getattr(user, "tax_settings", None) and user.tax_settings.composite_scheme:

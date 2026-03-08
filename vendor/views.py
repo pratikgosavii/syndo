@@ -11,6 +11,7 @@ from vendor.filters import productFilter
 
 
 from .models import *
+from .models import vendor_bank  # Explicit import for pos/update_sale (avoids UnboundLocalError)
 from .forms import *
 from django.contrib.auth.decorators import login_required
 
@@ -28,7 +29,7 @@ from rest_framework.views import APIView
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import ValidationError
 from integrations.uengage import notify_delivery_event, create_delivery_task
-from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDiscount, VendorNotification
+from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDiscount, VendorNotification, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank, vendor_bank
 
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -3578,6 +3579,8 @@ def add_purchase(request):
 def update_purchase(request, purchase_id):
     data = product.objects.filter(is_active=True, user=request.user)
     instance = Purchase.objects.get(id=purchase_id)
+    tax_settings = getattr(request.user, "tax_settings", None)
+    composite_scheme = bool(getattr(tax_settings, "composite_scheme", False))
 
     if request.method == 'POST':
         form = PurchaseForm(request.POST, request.FILES, instance=instance, user=request.user)
@@ -3640,6 +3643,7 @@ def update_purchase(request, purchase_id):
         'existing_items': existing_items,
         'data': data,
         'banks': vendor_bank.objects.filter(user=request.user),
+        'composite_scheme': composite_scheme,
     }
     return render(request, 'add_purchase.html', context)
 
@@ -4209,7 +4213,6 @@ def get_next_invoice_number_api(request):
 
 @login_required
 def pos(request):
-
     sale_form = SaleForm(user=request.user)
     customer_form = vendor_customersForm()
     wholesale_form = pos_wholesaleForm(initial={'packaging_charges': 0, 'delivery_charges': 0})
@@ -4271,6 +4274,14 @@ def pos(request):
                 # Map bank dropdown: UPI/Cheque use bank, Credit uses advance_bank
                 if sale_instance.payment_method in ('upi', 'cheque'):
                     sale_instance.bank = sale_instance.advance_bank
+                    # POST fallback if form didn't bind advance_bank (e.g. custom select)
+                    if not sale_instance.bank:
+                        bank_id = request.POST.get('advance_bank') or request.POST.get('bank')
+                        if bank_id:
+                            try:
+                                sale_instance.bank = vendor_bank.objects.get(id=bank_id, user=request.user)
+                            except (ValueError, vendor_bank.DoesNotExist):
+                                pass
                     sale_instance.advance_bank = None
                 elif sale_instance.payment_method == 'credit':
                     sale_instance.bank = None
@@ -4397,6 +4408,14 @@ def update_sale(request, sale_id):
                 # Map bank dropdown: UPI/Cheque use bank, Credit uses advance_bank
                 if sale_instance.payment_method in ('upi', 'cheque'):
                     sale_instance.bank = sale_instance.advance_bank
+                    # POST fallback if form didn't bind advance_bank (e.g. custom select)
+                    if not sale_instance.bank:
+                        bank_id = request.POST.get('advance_bank') or request.POST.get('bank')
+                        if bank_id:
+                            try:
+                                sale_instance.bank = vendor_bank.objects.get(id=bank_id, user=request.user)
+                            except (ValueError, vendor_bank.DoesNotExist):
+                                pass
                     sale_instance.advance_bank = None
                 elif sale_instance.payment_method == 'credit':
                     sale_instance.bank = None
