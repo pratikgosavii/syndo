@@ -654,6 +654,11 @@ class SaleItemForm(forms.ModelForm):
 
 class SaleForm(forms.ModelForm):
 
+    due_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        required=False
+    )
+
    
    
 
@@ -691,6 +696,10 @@ class SaleForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super(SaleForm, self).__init__(*args, **kwargs)
+
+        self.fields['advance_payment_amount'].required = False
+        self.fields['advance_bank'].required = False
+        self.fields['due_date'].required = False
         
         if user:
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)
@@ -700,6 +709,21 @@ class SaleForm(forms.ModelForm):
             self.fields['company_profile'].queryset = CompanyProfile.objects.filter(user=user)
             self.fields['bank'].queryset = vendor_bank.objects.filter(user=user)
             self.fields['advance_bank'].queryset = vendor_bank.objects.filter(user=user)
+
+    def clean(self):
+        cleaned = super().clean()
+        payment_method = cleaned.get('payment_method')
+        advance_payment_method = cleaned.get('advance_payment_method')
+
+        if payment_method != 'credit':
+            cleaned['advance_payment_amount'] = 0
+            cleaned['advance_payment_method'] = None
+            cleaned['advance_bank'] = None
+            cleaned['due_date'] = None
+        elif advance_payment_method == 'cash':
+            cleaned['advance_bank'] = None
+
+        return cleaned
 
 
 
