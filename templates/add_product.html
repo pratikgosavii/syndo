@@ -299,7 +299,7 @@
                                     <label for="id_sales_price" class="form-label">Sales price</label>
                                     {{ form.sales_price }}
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-6" id="mrp_wrapper">
                                     <label for="id_mrp" class="form-label">MRP</label>
                                     {{ form.mrp }}
                                 </div>
@@ -1158,7 +1158,7 @@
 
     const addVariantBtn2 = document.getElementById("add-customize-print-variant");
     const variantContainer2 = document.getElementById("customize-print-variant-formset");
-    const variantTotalForms2 = document.getElementById("id_print_variants-TOTAL_FORMS");
+    const variantTotalForms2 = document.getElementById("id_customize_print_variants-TOTAL_FORMS");
 
     addVariantBtn2?.addEventListener("click", function () {
         const currentFormCount = parseInt(variantTotalForms2.value);
@@ -1932,9 +1932,17 @@ function handleCustomPrintToggleChange() {
     const selectedType = productTypeEl?.value;
     const stdWrapper = document.getElementById('standardPrintWrapper');
     const custWrapper = document.getElementById('customPrintWrapper');
+    const mrpWrapper = document.getElementById('mrp_wrapper');
+    const mrpInput = document.getElementById('id_mrp');
     const select = stdWrapper?.querySelector('select');
 
     if (isCustom) {
+        if (selectedType === 'print' && mrpWrapper) {
+            mrpWrapper.style.display = 'none';
+        }
+        if (mrpInput) {
+            mrpInput.required = false;
+        }
         if (stdWrapper) {
             stdWrapper.style.display = 'none';
             stdWrapper.querySelectorAll('input, select, textarea').forEach(el => {
@@ -1950,6 +1958,12 @@ function handleCustomPrintToggleChange() {
             });
         }
     } else {
+        if (selectedType === 'print' && mrpWrapper) {
+            mrpWrapper.style.display = '';
+        }
+        if (selectedType === 'print' && mrpInput) {
+            mrpInput.required = true;
+        }
         if (custWrapper) {
             custWrapper.style.display = 'none';
             custWrapper.querySelectorAll('input, select, textarea').forEach(el => {
