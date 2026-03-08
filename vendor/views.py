@@ -1130,8 +1130,10 @@ def customer_ledger(request, customer_id):
 
     ledger_entries = CustomerLedger.objects.filter(customer_id=customer_id)
     customer = None
+    opening_balance = 0
     try:
         customer = vendor_customers.objects.get(id=customer_id)
+        opening_balance = customer.opening_balance or 0
         balance = customer.balance or 0
     except vendor_customers.DoesNotExist:
         balance = ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
@@ -1159,6 +1161,7 @@ def customer_ledger(request, customer_id):
     return render(request, "customer_ledger.html", {
         "customer_id": customer_id,
         "customer": customer,
+        "opening_balance": opening_balance,
         "balance": balance,
         "total_sales": total_sales,
         "ledger": ledger_entries,
@@ -2526,9 +2529,13 @@ def list_payment(request):
     data = qs.order_by('-payment_date', '-id')
 
     total_value = qs.aggregate(s=Sum('amount'))['s'] or Decimal('0')
+    total_gave = qs.filter(type='gave').aggregate(s=Sum('amount'))['s'] or Decimal('0')
+    total_received = qs.filter(type='received').aggregate(s=Sum('amount'))['s'] or Decimal('0')
     context = {
         'data': data,
         'total_payment_value': total_value,
+        'total_gave_value': total_gave,
+        'total_received_value': total_received,
         'date_from': date_from or '',
         'date_to': date_to or '',
         'search': search,
@@ -4270,11 +4277,12 @@ def pos(request):
                 "products": product.objects.filter(user=request.user, is_active=True),
                 "banks": vendor_bank.objects.filter(user=request.user),
                 "existing_items": [],
+                "error_message": "Please correct the form errors and try again.",
             }
             return render(request, "pos_form.html", context)
 
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 # Save sale
                 sale_instance = sale_form.save(commit=False)
                 sale_instance.user = request.user
@@ -4338,23 +4346,20 @@ def pos(request):
                 _update_sale_totals(sale_instance, invoice)
 
                 return redirect("sale_bill_details", sale_id=sale_instance.id)
-
-            except Exception as e:
-                # Catch-all for any errors in atomic block
-                transaction.set_rollback(True)
-                context = {
-                    "form": sale_form,
-                    "customer_forms": customer_form,
-                    "wholesale_forms": wholesale_form,
-                    "invoice_terms": invoice_terms,
-                    "composite_scheme": composite_scheme,
-                    "saleitemform": SaleItemForm(),
-                    "products": product.objects.filter(user=request.user, is_active=True),
-                    "banks": vendor_bank.objects.filter(user=request.user),
-                    "existing_items": [],
-                    "error_message": str(e),
-                }
-                return render(request, "pos_form.html", context)
+        except Exception as e:
+            context = {
+                "form": sale_form,
+                "customer_forms": customer_form,
+                "wholesale_forms": wholesale_form,
+                "invoice_terms": invoice_terms,
+                "composite_scheme": composite_scheme,
+                "saleitemform": SaleItemForm(),
+                "products": product.objects.filter(user=request.user, is_active=True),
+                "banks": vendor_bank.objects.filter(user=request.user),
+                "existing_items": [],
+                "error_message": str(e),
+            }
+            return render(request, "pos_form.html", context)
 
     return render(request, "pos_form.html", {
         "form": sale_form,
@@ -4422,8 +4427,8 @@ def update_sale(request, sale_id):
             }
             return render(request, "pos_form.html", context)
 
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 sale_instance = sale_form.save(commit=False)
                 sale_instance.user = request.user
                 # Fallback: set default company_profile when not provided in update
@@ -4503,21 +4508,19 @@ def update_sale(request, sale_id):
                 _update_sale_totals(sale_instance, invoice)
 
                 return redirect("sale_bill_details", sale_id=sale_instance.id)
-
-            except Exception as e:
-                print("IntegrityError:", e)  # Will show exact DB constraint error
-                messages.error(request, f"Error: {e}")
-                transaction.set_rollback(True)
-                context = {
-                    "form": sale_form,
-                    "customer_forms": customer_form,
-                    "wholesale_forms": wholesale_form,
-                    "saleitemform": SaleItemForm(),
-                    "products": product.objects.filter(user=request.user, is_active=True),
-                    "existing_items": items_with_amount,  # ✅ Keep calculated
-                    "error_message": str(e),
-                }
-                return render(request, "pos_form.html", context)
+        except Exception as e:
+            print("IntegrityError:", e)  # Will show exact DB constraint error
+            messages.error(request, f"Error: {e}")
+            context = {
+                "form": sale_form,
+                "customer_forms": customer_form,
+                "wholesale_forms": wholesale_form,
+                "saleitemform": SaleItemForm(),
+                "products": product.objects.filter(user=request.user, is_active=True),
+                "existing_items": items_with_amount,  # ✅ Keep calculated
+                "error_message": str(e),
+            }
+            return render(request, "pos_form.html", context)
 
     else:
         sale_form = SaleForm(instance=sale_instance)

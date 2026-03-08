@@ -1,6 +1,6 @@
 """
 Utility functions for generating document serial numbers.
-Format: YY-YY/MM/MONTH/PREFIX-0001
+Format: YY-YY/DD/MONTH/PREFIX-0001
 Example: 24-25/05/NOV/SAL-0001
 """
 from datetime import datetime
@@ -33,27 +33,27 @@ def get_financial_year(date=None):
     return f"{start_year:02d}-{end_year:02d}"
 
 
-def get_month_info(date=None):
+def get_day_month_info(date=None):
     """
-    Get month number and abbreviated month name
-    Returns: (month_number, month_name) e.g., (05, 'NOV')
+    Get day of month and abbreviated month name.
+    Returns: (day_number, month_name) e.g., (05, 'NOV')
     """
     if date is None:
         date = timezone.now().date()
     
-    month_number = date.month
+    day_number = date.day
     month_names = [
         '', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
         'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
     ]
-    month_name = month_names[month_number]
+    month_name = month_names[date.month]
     
-    return f"{month_number:02d}", month_name
+    return f"{day_number:02d}", month_name
 
 
 def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwargs=None):
     """
-    Generate serial number in format: YY-YY/MM/MONTH/PREFIX-0001
+    Generate serial number in format: YY-YY/DD/MONTH/PREFIX-0001
     
     Args:
         prefix: Document prefix (e.g., 'SAL', 'PUR', 'ONL')
@@ -69,7 +69,7 @@ def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwa
         date = timezone.now().date()
     
     fy = get_financial_year(date)
-    month_num, month_name = get_month_info(date)
+    day_num, month_name = get_day_month_info(date)
     
     # Build filter for finding last document in current FY and month
     filter_dict = {}
@@ -78,11 +78,17 @@ def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwa
     if filter_kwargs:
         filter_dict.update(filter_kwargs)
     
-    # Get the field name that stores the serial number
-    # Try common field names
+    # Get the field name that stores the document number.
+    # Important: prefer actual invoice/code fields before generic serial_number.
     serial_field = None
-    for field_name in ['serial_number', 'invoice_number', 'purchase_code', 'order_id', 'payment_number']:
-        if hasattr(model_class, field_name):
+    model_field_names = set()
+    try:
+        model_field_names = {field.name for field in model_class._meta.get_fields() if getattr(field, "name", None)}
+    except Exception:
+        model_field_names = set()
+
+    for field_name in ['invoice_number', 'purchase_code', 'order_id', 'payment_number', 'transaction_id', 'serial_number']:
+        if field_name in model_field_names:
             serial_field = field_name
             break
     
@@ -91,9 +97,9 @@ def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwa
         last_doc = model_class.objects.filter(**filter_dict).order_by('-id').first()
         last_number = last_doc.id if last_doc else 0
     else:
-        # Find last document with matching FY and month
-        # Pattern: YY-YY/MM/MONTH/PREFIX-XXXX
-        pattern_start = f"{fy}/{month_num}/{month_name}/{prefix}-"
+        # Find last document with matching FY, day and month
+        # Pattern: YY-YY/DD/MONTH/PREFIX-XXXX
+        pattern_start = f"{fy}/{day_num}/{month_name}/{prefix}-"
         
         # Use database query with startswith for better performance
         # Query documents where serial_field starts with pattern_start
@@ -108,7 +114,7 @@ def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwa
                 if serial_value:
                     try:
                         # Extract number part (everything after the last '-')
-                        # Format: YY-YY/MM/MONTH/PREFIX-XXXX
+                        # Format: YY-YY/DD/MONTH/PREFIX-XXXX
                         number_part = serial_value.split('-')[-1]
                         number = int(number_part)
                         if number > last_number:
@@ -124,7 +130,7 @@ def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwa
     
     # Generate new serial number
     next_number = last_number + 1
-    serial_number = f"{fy}/{month_num}/{month_name}/{prefix}-{next_number:04d}"
+    serial_number = f"{fy}/{day_num}/{month_name}/{prefix}-{next_number:04d}"
     
     return serial_number
 

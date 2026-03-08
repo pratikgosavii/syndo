@@ -581,6 +581,7 @@ class ExpenseForm(forms.ModelForm):
         model = Expense
         fields = '__all__'
         widgets = {
+            'transaction_id': forms.TextInput(attrs={'class': 'form-control fw-bold', 'readonly': 'readonly'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00'}),
             'expense_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date', 'placeholder': 'mm/dd/yyyy'}),
             'category': forms.Select(attrs={'class': 'form-control form-select expense-category-select'}),
@@ -607,6 +608,12 @@ class ExpenseForm(forms.ModelForm):
             if 'category' in self.fields:
                 self.fields['category'].queryset = expense_category.objects.filter(user=user).order_by('name')
                 self.fields['category'].empty_label = 'Select Category'
+        if 'transaction_id' in self.fields:
+            self.fields['transaction_id'].required = False
+            if self.instance and self.instance.pk:
+                self.fields['transaction_id'].widget.attrs['placeholder'] = ''
+            else:
+                self.fields['transaction_id'].widget.attrs['placeholder'] = 'Auto-generated on save'
 
 
 

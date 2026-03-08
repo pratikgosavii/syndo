@@ -88,19 +88,8 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
     
     q2 = Decimal("0.01")
 
-    # Refresh parent from database to get latest balance
-    if parent:
-        parent.refresh_from_db()
-        opening_balance = Decimal(parent.balance or 0).quantize(q2)
-        logger.debug(f"[CREATE_LEDGER] Parent balance (from DB): {opening_balance}")
-    else:
-        opening_balance = Decimal(0).quantize(q2)   # CashLedger has no parent FK
-        logger.debug(f"[CREATE_LEDGER] No parent (CashLedger) - opening balance: {opening_balance}")
-    
     amount = Decimal(amount or 0).quantize(q2)
-    balance_after = (opening_balance + amount).quantize(q2)
     logger.debug(f"[CREATE_LEDGER] Amount (Decimal): {amount}")
-    logger.debug(f"[CREATE_LEDGER] Balance After: {balance_after}")
 
     # >>> NEW : Special case for CashLedger (no FK field)
     if ledger_model.__name__ == "CashLedger":
@@ -161,6 +150,21 @@ def create_ledger(parent, ledger_model, transaction_type, reference_id, amount, 
     else:
         logger.debug(f"[CREATE_LEDGER] Processing {ledger_model.__name__}...")
         parent_field = ledger_model.__name__.replace("Ledger", "").lower()
+        if parent:
+            parent.refresh_from_db()
+            existing_total = (
+                ledger_model.objects.filter(**{parent_field: parent}).aggregate(total=Sum("amount"))["total"] or 0
+            )
+            base_opening_balance = Decimal(getattr(parent, "opening_balance", 0) or 0)
+            opening_balance = (base_opening_balance + Decimal(existing_total or 0)).quantize(q2)
+            logger.debug(
+                f"[CREATE_LEDGER] Computed opening balance from opening_balance + existing ledger total: "
+                f"{base_opening_balance} + {existing_total} = {opening_balance}"
+            )
+        else:
+            opening_balance = Decimal(0).quantize(q2)
+            logger.debug(f"[CREATE_LEDGER] No parent - opening balance: {opening_balance}")
+        balance_after = (opening_balance + amount).quantize(q2)
         logger.debug(f"[CREATE_LEDGER] Parent field name: {parent_field}")
         logger.debug(f"[CREATE_LEDGER] Parent object: {parent}")
         if parent:
@@ -238,9 +242,11 @@ def _get_invoice_label(transaction_type, reference_id):
             inv = Purchase.objects.filter(pk=reference_id).values_list("purchase_code", flat=True).first()
             return inv or f"#{reference_id}"
         if transaction_type == "expense":
-            return f"EXP-#{reference_id}"
-        if transaction_type in ("payment", "deposit", "withdrawal"):
-            return f"PAY-#{reference_id}"
+            inv = Expense.objects.filter(pk=reference_id).values_list("transaction_id", flat=True).first()
+            return inv or f"EXP-#{reference_id}"
+        if transaction_type in ("payment", "refund", "deposit", "withdrawal"):
+            inv = Payment.objects.filter(pk=reference_id).values_list("payment_number", flat=True).first()
+            return inv or f"PAY-#{reference_id}"
     except Exception:
         pass
     return f"#{reference_id}"
@@ -1027,6 +1033,7 @@ def expense_ledger(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Payment)
 def payment_ledger(sender, instance, created, **kwargs):
     amt = Decimal(instance.amount or 0)
+    payment_label = _get_invoice_label("payment", instance.id)
     
     # Get payment_type display name (Cash, UPI, Cheque) - calculate once for reuse
     payment_type_display = instance.get_payment_type_display() if hasattr(instance, 'get_payment_type_display') else instance.payment_type.upper()
@@ -1106,7 +1113,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "payment",
                     instance.id,
                     -amt,  # Negative amount to decrease customer balance
-                    f"Payment Received ({payment_type_display}) #{instance.id}"
+                    f"Payment Received {payment_label} ({payment_type_display})"
                 )
                 logger.info(f"[PAYMENT_LEDGER] Customer ledger created with amount: -{amt}")
             elif instance.type == "gave":
@@ -1122,7 +1129,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "refund",
                     instance.id,
                     amt,  # Positive amount to increase customer balance
-                    f"Refund Given ({payment_type_display}) #{instance.id}"
+                    f"Refund Given {payment_label} ({payment_type_display})"
                 )
                 logger.info(f"[PAYMENT_LEDGER] Customer ledger created with amount: {amt}")
 
@@ -1154,7 +1161,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "payment",
                     instance.id,
                     -amt,  # Negative amount in vendor ledger means you owe less (vendor balance increases)
-                    f"Payment Given ({payment_type_display}) #{instance.id}"
+                    f"Payment Given {payment_label} ({payment_type_display})"
                 )
                 logger.info(f"[PAYMENT_LEDGER] Vendor ledger created with amount: -{amt}")
             elif instance.type == "received":
@@ -1170,7 +1177,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "refund",
                     instance.id,
                     amt,  # Positive amount in vendor ledger means you owe more (vendor balance decreases)
-                    f"Refund Received ({payment_type_display}) #{instance.id}"
+                    f"Refund Received {payment_label} ({payment_type_display})"
                 )
                 logger.info(f"[PAYMENT_LEDGER] Vendor ledger created with amount: {amt}")
 
@@ -1190,7 +1197,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "deposit",
                     instance.id,
                     amt,  # Positive amount to INCREASE balance
-                    f"Cash Payment Received #{instance.id}",
+                    f"Cash Payment Received {payment_label}",
                     user=instance.user
                 )
                 logger.info(f"[PAYMENT_LEDGER] Cash ledger created with amount: {amt} (INCREASE)")
@@ -1203,7 +1210,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "payment",
                     instance.id,
                     -amt,  # Negative amount to DECREASE balance
-                    f"Cash Payment Given #{instance.id}",
+                    f"Cash Payment Given {payment_label}",
                     user=instance.user
                 )
                 logger.info(f"[PAYMENT_LEDGER] Cash ledger created with amount: -{amt} (DECREASE)")
@@ -1229,7 +1236,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "deposit",
                     instance.id,
                     amt,  # Positive amount to INCREASE balance
-                    f"Bank Payment Received ({instance.payment_type}) #{instance.id}"
+                    f"Bank Payment Received {payment_label} ({payment_type_display})"
                 )
                 logger.info(f"[PAYMENT_LEDGER] Bank ledger created with amount: {amt} (INCREASE)")
             elif instance.type == "gave":
@@ -1243,7 +1250,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     "withdrawal",
                     instance.id,
                     -amt,  # Negative amount to DECREASE balance
-                    f"Bank Payment Given ({instance.payment_type}) #{instance.id}"
+                    f"Bank Payment Given {payment_label} ({payment_type_display})"
                 )
                 logger.info(f"[PAYMENT_LEDGER] Bank ledger created with amount: -{amt} (DECREASE)")
         else:

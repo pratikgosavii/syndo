@@ -9,11 +9,16 @@
     <style>
         body { background-color: #f1f5f9; color: #334155; }
         .ledger-page .page-title { font-weight: 700; color: #1e293b; font-size: 1.5rem; margin-bottom: 1rem; margin-top: 1rem;}
+        .ledger-page .summary-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
         .ledger-page .summary-card {
             background: #151e31;
             border-radius: 10px;
             padding: 1.25rem 1.5rem;
-            margin-bottom: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -213,6 +218,9 @@
         .ledger-page .icon-actions a:hover { background: #f1f5f9; }
         .ledger-page .icon-actions .edit:hover { color: #ea580c; }
         .ledger-page .icon-actions .delete:hover { color: #dc2626; }
+        @media (max-width: 991.98px) {
+            .ledger-page .summary-strip { grid-template-columns: 1fr; }
+        }
     </style>
 {% endblock extra_css %}
 
@@ -223,12 +231,28 @@
             <div class="container">
                 <h2 class="page-title">Payment Ledger</h2>
 
-                <div class="summary-card">
-                    <div>
-                        <div class="label">Total Payment Value</div>
-                        <div class="value">₹ {{ total_payment_value|default:0|floatformat:2 }}</div>
+                <div class="summary-strip">
+                    <div class="summary-card">
+                        <div>
+                            <div class="label">Total Payment Value</div>
+                            <div class="value">₹ {{ total_payment_value|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="icon-wrap"><i class="bi bi-currency-rupee"></i></div>
                     </div>
-                    <div class="icon-wrap"><i class="bi bi-currency-rupee"></i></div>
+                    <div class="summary-card">
+                        <div>
+                            <div class="label">Total You Gave</div>
+                            <div class="value">₹ {{ total_gave_value|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="icon-wrap"><i class="bi bi-arrow-up-circle"></i></div>
+                    </div>
+                    <div class="summary-card">
+                        <div>
+                            <div class="label">Total You Received</div>
+                            <div class="value">₹ {{ total_received_value|default:0|floatformat:2 }}</div>
+                        </div>
+                        <div class="icon-wrap"><i class="bi bi-arrow-down-circle"></i></div>
+                    </div>
                 </div>
 
                 <div class="filter-bar">

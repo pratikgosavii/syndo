@@ -191,7 +191,7 @@
                     <div class="col-category">
                         <div class="col-label">Category</div>
                         <div class="category-name">{{ expense.category.name|default:"—" }}</div>
-                        <div class="ref-text">Ref: {{ expense.description|truncatewords:6|default:expense.get_payment_method_display|default:"—" }}</div>
+                        <div class="ref-text">Ref: {{ expense.transaction_id|default:expense.description|truncatewords:6|default:expense.get_payment_method_display|default:"—" }}</div>
                     </div>
                     <div class="col-amounts">
                         <div class="col-label">Amount</div>

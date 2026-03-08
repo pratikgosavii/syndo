@@ -1186,6 +1186,7 @@ class Expense(models.Model):
     bank = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
     expense_date = models.DateField()
     category = models.ForeignKey("masters.expense_category", on_delete=models.CASCADE)
     is_paid = models.BooleanField(default=False)
@@ -1194,8 +1195,20 @@ class Expense(models.Model):
     description = models.TextField(blank=True)
     attachment = models.FileField(upload_to='expenses/', null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            from .utils import generate_serial_number
+            from django.utils import timezone
+            self.transaction_id = generate_serial_number(
+                prefix='EXP',
+                model_class=Expense,
+                date=self.expense_date or timezone.now().date(),
+                user=self.user
+            )
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.category} - {self.amount}"
+        return self.transaction_id or f"{self.category} - {self.amount}"
 
 
         

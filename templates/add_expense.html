@@ -133,6 +133,11 @@
                         <div class="expense-section-header">01. TRANSACTION DETAILS</div>
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
+                                <label for="id_transaction_id" class="form-label">Transaction ID</label>
+                                {{ form.transaction_id }}
+                                {% if form.transaction_id.errors %}<div class="invalid-feedback d-block">{{ form.transaction_id.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-4">
                                 <label for="id_amount" class="form-label">Total Amount (₹)</label>
                                 {{ form.amount }}
                                 {% if form.amount.errors %}<div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>{% endif %}
