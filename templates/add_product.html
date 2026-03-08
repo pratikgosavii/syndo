@@ -371,6 +371,9 @@
                                 <div class="col-md-6" id="opening_stock_wrapper">
                                     <label for="id_opening_stock" class="form-label">Opening stock</label>
                                     {{ form.opening_stock }}
+                                    {% if form.opening_stock.help_text %}
+                                    <small class="text-muted d-block mt-1">{{ form.opening_stock.help_text }}</small>
+                                    {% endif %}
                                 </div>
                                 <div class="col-md-6" id="low_stock_quantity_wrapper">
                                     <label for="id_low_stock_quantity" class="form-label">Low stock quantity</label>
@@ -472,7 +475,15 @@
                                         <span class="upload-text">Upload multiple images</span>
                                         <input type="file" name="gallery_images" id="gallery_images_input" class="form-control" accept="image/*" multiple>
                                     </label>
-                                    <div id="gallery-preview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                                    <div id="gallery-preview" class="d-flex flex-wrap gap-2 mt-2">
+                                        {% if instance %}
+                                            {% for gi in instance.gallery_images.all %}
+                                                {% if gi.image %}
+                                                <img src="{{ gi.image.url }}" class="image-preview" style="max-height: 60px; width: auto;" alt="Gallery Image">
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1305,6 +1316,7 @@
     hiddenInput.name = 'sale_type';
     hiddenInput.value = 'online';
     saleType.parentNode.appendChild(hiddenInput);
+    saleType.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 
@@ -1331,6 +1343,7 @@
         }
         var pt = document.getElementById('productType') || document.getElementById('id_product_type');
         if (pt) { pt.removeAttribute('disabled'); pt.style.pointerEvents = ''; }
+        saleType.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
 
@@ -1361,10 +1374,47 @@
             sales.required = true;
             if (wholesale) wholesale.required = false;
             if (mrp) mrp.required = false;
-        } else if (productType === 'service' || productType === 'print') {
+        } else if (productType === 'service') {
             if (wholesale) wholesale.required = true;
             if (mrp) mrp.required = true;
             sales.required = true;
+        } else if (productType === 'print') {
+            if (wholesale) wholesale.required = false;
+            if (mrp) mrp.required = true;
+            sales.required = false;
+        }
+    }
+
+    function syncPricingVisibility(productType, saleTypeValue) {
+        const wholesaleWrapper = document.getElementById('wholesale_price_wrapper');
+        const wholesale = document.getElementById('id_wholesale_price');
+        const salesWrapper = document.getElementById('sales_price_wrapper');
+        const sales = document.getElementById('id_sales_price');
+
+        if (productType === 'print') {
+            if (wholesaleWrapper) wholesaleWrapper.style.display = 'none';
+            if (wholesale) {
+                wholesale.disabled = true;
+                wholesale.required = false;
+            }
+            if (salesWrapper) salesWrapper.style.display = 'none';
+            if (sales) {
+                sales.disabled = true;
+                sales.required = false;
+            }
+            return;
+        }
+
+        if (salesWrapper) salesWrapper.style.display = '';
+        if (sales) sales.disabled = false;
+
+        if (wholesaleWrapper && wholesale) {
+            if (productType === 'product' && saleTypeValue === 'offline' && productSettings) {
+                setVisibleById('wholesale_price_wrapper', productSettings.wholesale_price);
+            } else {
+                wholesaleWrapper.style.display = '';
+                wholesale.disabled = false;
+            }
         }
     }
 
@@ -1516,6 +1566,18 @@
                 description: 'hide',
                 image: 'hide',
                 gallery_images: 'hide'
+            },
+            'print_online': {
+                category: 'required',
+                sub_category: 'required',
+                brand_name: 'hide',
+                color: 'hide',
+                size: 'hide',
+                batch_number: 'hide',
+                expiry_date: 'hide',
+                description: 'hide',
+                image: 'hide',
+                gallery_images: 'hide'
             }
         };
 
@@ -1580,6 +1642,7 @@
         }
         // Pricing: product = only sales price required; service/print = wholesale, MRP and sales price required
         setPricingRequired(productType);
+        syncPricingVisibility(productType, saleType);
     }
 
     if (saleType) saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product

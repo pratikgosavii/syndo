@@ -312,13 +312,13 @@
                                 </div>
                                 <div class="product-section product-section-pricing">
                                     <div class="label-muted">Sales Price</div>
-                                    <div class="price-value">{% if i.sales_price %}₹{{ i.sales_price|floatformat:2 }}{% else %}₹{{ i.wholesale_price|floatformat:2 }}{% endif %}</div>
+                                    <div class="price-value">{% if i.sales_price %}₹{{ i.sales_price|floatformat:2 }}{% else %}₹{{ i.effective_wholesale_price|floatformat:2 }}{% endif %}</div>
                                     <div class="label-muted mt-2">MRP</div>
                                     <div class="mrp-value">{% if i.mrp %}₹{{ i.mrp|floatformat:2 }}{% else %}—{% endif %}</div>
                                 </div>
                                 <div class="product-section product-section-stock">
                                     <div class="label-muted">Wholesale</div>
-                                    <div class="price-value">₹{{ i.wholesale_price|floatformat:2 }}</div>
+                                    <div class="price-value">₹{{ i.effective_wholesale_price|floatformat:2 }}</div>
                                     <div class="label-muted mt-2">Stock</div>
                                     {% with stock=i.current_stock|default:0 %}
                                     <div class="{% if stock > 0 %}{% if i.low_stock_alert and i.low_stock_quantity and stock <= i.low_stock_quantity %}stock-low{% else %}stock-ok{% endif %}{% else %}stock-low{% endif %}">

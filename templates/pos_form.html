@@ -687,7 +687,7 @@
                       <select name="product[]" class="form-select product-select" placeholder="Search Product">
                         <option value="">Search Product</option>
                         {% for p in products %}
-                          <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
+                          <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -730,7 +730,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}" {% if p.id == item.product.id %}selected{% endif %}>{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}" {% if p.id == item.product.id %}selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -755,7 +755,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -980,14 +980,14 @@
               <div class="card h-100 shadow-sm product-card" 
                   data-id="{{ product.id }}"
                   data-name="{{ product.name }}"
-                  data-price="{{ product.sales_price }}"
+                  data-price="{{ product.sales_price|default:product.effective_wholesale_price }}"
                   data-image="{{ product.image.url }}">
                 <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
             {% else %}
               <div class="card h-100 shadow-sm product-card" 
                   data-id="{{ product.id }}"
                   data-name="{{ product.name }}"
-                  data-price="{{ product.sales_price }}"
+                  data-price="{{ product.sales_price|default:product.effective_wholesale_price }}"
                   data-image="">
                 <img src="{% static 'images/default product image.jpeg' %}" class="card-img-top" alt="{{ product.name }}">
             {% endif %}
@@ -995,13 +995,13 @@
 
               <div class="card-body text-center">
                 <h6 class="card-title">{{ product.name }}</h6>
-                <p>₹{{ product.sales_price }}</p>
+                <p>₹{{ product.sales_price|default:product.effective_wholesale_price }}</p>
                 <div class="input-group mb-2 justify-content-center">
                   <button class="btn btn-outline-secondary" onclick="adjustQty('{{ product.id }}', -1)">-</button>
                   <input type="text" class="form-control text-center" value="0" id="qty-{{ product.id }}" readonly>
                   <button class="btn btn-outline-secondary" onclick="adjustQty('{{ product.id }}', 1)">+</button>
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" onclick="addToPOS({{ product.id }}, '{{ product.name }}', {{ product.sales_price }}, {{ product.wholesale_price }}, 'qty-{{ product.id }}')">Add to POS</button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="addToPOS({{ product.id }}, '{{ product.name }}', {{ product.sales_price|default:product.effective_wholesale_price }}, {{ product.effective_wholesale_price }}, 'qty-{{ product.id }}')">Add to POS</button>
               </div>
             </div>
           </div>

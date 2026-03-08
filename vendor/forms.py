@@ -182,6 +182,9 @@ class product_Form(forms.ModelForm):
         self.fields['wholesale_price'].required = False
         self.fields['mrp'].required = False
         self.fields['sales_price'].required = False
+        if self.instance and self.instance.pk:
+            self.fields['opening_stock'].widget.attrs['readonly'] = 'readonly'
+            self.fields['opening_stock'].help_text = 'Opening stock can only be set while creating the product.'
 
     def clean(self):
         cleaned = super().clean()
@@ -192,9 +195,11 @@ class product_Form(forms.ModelForm):
             # Product type: only sales_price is required
             if cleaned.get('sales_price') in (None, ''):
                 self.add_error('sales_price', 'Sales price is required for product type.')
-            # Allow wholesale_price and mrp to be empty; set default for DB (model requires wholesale_price)
+            # wholesale/purchase price are optional; when absent, fall back to MRP
             if cleaned.get('wholesale_price') in (None, ''):
-                cleaned['wholesale_price'] = 0
+                cleaned['wholesale_price'] = cleaned.get('mrp') or 0
+            if cleaned.get('purchase_price') in (None, '') and cleaned.get('mrp') not in (None, ''):
+                cleaned['purchase_price'] = cleaned.get('mrp')
             if cleaned.get('mrp') in (None, ''):
                 cleaned['mrp'] = None  # model allows null for mrp
         elif product_type in ('service', 'print'):

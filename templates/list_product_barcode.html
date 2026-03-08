@@ -364,7 +364,7 @@
                                             <span class="dot">•</span><span>SKU: {{ i.assign_barcode|default:"—" }}</span>
                                         </div>
                                         <div class="product-price-stock mt-1">
-                                            <span>PRICE ₹{{ i.sales_price|default:i.wholesale_price|floatformat:0 }}</span>
+                                            <span>PRICE ₹{{ i.sales_price|default:i.effective_wholesale_price|floatformat:0 }}</span>
                                             <span>STOCK {{ i.current_stock|default:0 }}</span>
                                         </div>
                                     </div>

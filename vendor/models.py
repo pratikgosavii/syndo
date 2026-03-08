@@ -664,16 +664,31 @@ class product(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def effective_wholesale_price(self):
+        return self.wholesale_price or self.mrp or 0
+
+    @property
+    def effective_purchase_price(self):
+        return self.purchase_price or self.mrp or 0
     
     def save(self, *args, **kwargs):
+        if not self.wholesale_price and self.mrp:
+            self.wholesale_price = self.mrp
+        if not self.purchase_price and self.mrp:
+            self.purchase_price = self.mrp
         if self.gst is not None:
             half_gst = round(self.gst / 2, 2)
             self.sgst_rate = half_gst
             self.cgst_rate = half_gst
         
-        # Set stock_cached to opening_stock when product is first created
+        # Opening stock is a one-time initial stock value.
+        # On create, copy it into both stock fields when stock was not set explicitly.
         if self.pk is None and self.opening_stock is not None:
             self.stock_cached = self.opening_stock
+            if self.stock is None:
+                self.stock = self.opening_stock
         
         super().save(*args, **kwargs)
 

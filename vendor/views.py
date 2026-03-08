@@ -1320,8 +1320,8 @@ def add_to_super_catalogue(request, product_id):
         "sub_category": getattr(p, "sub_category", None),
 
         # pricing
-        "wholesale_price": p.wholesale_price,
-        "purchase_price": p.purchase_price,
+        "wholesale_price": p.effective_wholesale_price,
+        "purchase_price": p.effective_purchase_price,
         "sales_price": p.sales_price,
         "mrp": p.mrp,
 
@@ -1647,6 +1647,8 @@ def update_product(request, product_id):
         if product_form.is_valid() and addon_formset.is_valid() and variant_formset_valid and customize_variant_formset.is_valid():
             product_instance = product_form.save(commit=False)
             product_instance.user = request.user
+            # Opening stock is create-only; keep the original value on edit even if the client posts a different one.
+            product_instance.opening_stock = instance.opening_stock
             product_instance.save()
 
             # Save serial/IMEI numbers when tracking is enabled (from HTML form)
@@ -2181,7 +2183,7 @@ def generate_barcode(request):
         for _ in range(copies):
             item_name = prod.name or "The big product name here"
             mrp = int(prod.mrp) if prod.mrp is not None else 0
-            discount = int(prod.wholesale_price) if prod.wholesale_price is not None else 0
+            discount = int(prod.effective_wholesale_price) if prod.effective_wholesale_price is not None else 0
             sale_price = int(prod.sales_price) if prod.sales_price is not None else discount
             package_date = datetime.now().strftime("%d/%m/%Y")
 
@@ -4645,7 +4647,7 @@ def get_product_price(request):
         product_instance = product.objects.get(
             id=product_id, is_active=True, user=request.user
         )
-        price = getattr(product_instance, 'purchase_price', 0) or 0
+        price = product_instance.effective_purchase_price
         return JsonResponse({'price': str(price)})
     except product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
@@ -8059,7 +8061,7 @@ def barcode_lookup(request):
         pid = barcode[6:]
         try:
             prod = product.objects.get(id=pid, is_active=True)
-            price = getattr(prod, price_attr, None) or prod.sales_price
+            price = prod.effective_wholesale_price if price_attr == 'wholesale_price' else (prod.sales_price or prod.effective_wholesale_price)
             return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
         except product.DoesNotExist:
             return JsonResponse({'success': False})
@@ -8067,7 +8069,7 @@ def barcode_lookup(request):
     # Case 2: direct product barcode field
     prod = product.objects.filter(assign_barcode=barcode, is_active=True).first()
     if prod:
-        price = getattr(prod, price_attr, None) or prod.sales_price
+        price = prod.effective_wholesale_price if price_attr == 'wholesale_price' else (prod.sales_price or prod.effective_wholesale_price)
         return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
 
     # Case 3: serial/IMEI resolves to product
@@ -8076,7 +8078,7 @@ def barcode_lookup(request):
         serial = serial_imei_no.objects.select_related('product').filter(value=barcode).first()
         if serial and serial.product_id:
             prod = serial.product
-            price = getattr(prod, price_attr, None) or prod.sales_price
+            price = prod.effective_wholesale_price if price_attr == 'wholesale_price' else (prod.sales_price or prod.effective_wholesale_price)
             return JsonResponse({'success': True, 'id': prod.id, 'name': prod.name, 'price': float(price)})
     except Exception:
         pass
