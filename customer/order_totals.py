@@ -64,14 +64,15 @@ def get_order_invoice_totals(order):
             continue
         unit_price = Decimal(item.price or 0)
         quantity = int(item.quantity or 0)
-        # Line total = quantity × item price (not quantity × sales_price).
-        item_line_total = unit_price * quantity
         sales_price = getattr(item.product, "sales_price", None)
         sales_price_val = Decimal(str(sales_price)) if sales_price is not None else None
 
         addon_total = Decimal(0)
         print_job = getattr(item, "print_job", None)
+        item_line_total = unit_price * quantity
         try:
+            if print_job and getattr(print_job, "total_amount", None):
+                item_line_total = Decimal(str(print_job.total_amount or 0))
             if print_job and hasattr(print_job, "add_ons"):
                 for addon in print_job.add_ons.all():
                     addon_total += Decimal(str(getattr(addon, "price_per_unit", 0) or 0))

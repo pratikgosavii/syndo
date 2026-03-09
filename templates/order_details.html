@@ -319,7 +319,15 @@
                             <div class="order-item-body">
                                 <div class="order-item-name">{{ item.product.name }}</div>
                                 <div class="order-item-desc">{{ item.product.description|default:"No description" }}</div>
-                                <div class="order-item-price">₹ {{ item.price }}</div>
+                                <div class="order-item-price">
+                                    ₹ {% if item.print_job and item.print_job.print_variant and item.print_job.print_variant.price is not None %}
+                                        {{ item.print_job.print_variant.price|floatformat:2 }}
+                                    {% elif item.print_job and item.print_job.customize_variant and item.print_job.customize_variant.price is not None %}
+                                        {{ item.print_job.customize_variant.price|floatformat:2 }}
+                                    {% else %}
+                                        {{ item.price|floatformat:2 }}
+                                    {% endif %}
+                                </div>
                                 {% if data.status == 'accepted' and item.status == 'intransit' or data.status == 'accepted' and item.status == 'delivered' or data.status == 'accepted' and item.status == 'pending' %}
                                 <form action="{% url 'update_order_item_status' item.id %}" method="post" class="mt-2 d-flex align-items-center gap-2">
                                     {% csrf_token %}
