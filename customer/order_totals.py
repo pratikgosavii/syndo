@@ -6,7 +6,7 @@ Invoice-style order totals for print online order:
 - If product is GST inclusive (tax_inclusive=True): do not add any tax.
 - total_amount = item_total + tax_total + shipping_fee + shipping_tax - delivery_discount - coupon.
 """
-from decimal import Decimal, ROUND_CEILING
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 import logging
 
 logger = logging.getLogger("request")
@@ -83,19 +83,27 @@ def get_order_invoice_totals(order):
             base_total = sales_price_val
         else:
             base_total = item_line_total
-        taxable_val = base_total + addon_total
+        gross_line_total = base_total + addon_total
+
+        # Match POS GST behavior:
+        # - Inclusive: split gross line total into taxable value + GST
+        # - Exclusive: keep line total as taxable value and add GST on top
+        taxable_val = gross_line_total
+        line_tax = Decimal("0.00")
+        if not composite_scheme:
+            gst_rate = Decimal(str(getattr(item.product, "gst", 0) or 0))
+            tax_inclusive = bool(getattr(item.product, "tax_inclusive", False))
+            if gst_rate > 0:
+                if tax_inclusive:
+                    divisor = Decimal("1") + (gst_rate / Decimal("100"))
+                    taxable_val = (gross_line_total / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    line_tax = (gross_line_total - taxable_val).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                else:
+                    taxable_val = gross_line_total
+                    line_tax = (taxable_val * gst_rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         sum_taxable += taxable_val
-
-        # Keep item_total/tax_total in decimals; only round the final payable amount.
-        # Tax total should follow the same rule as normal order creation.
-        if not composite_scheme:
-            tax_inclusive = bool(getattr(item.product, "tax_inclusive", False))
-            if not tax_inclusive:
-                gst_rate = Decimal(str(getattr(item.product, "gst", 0) or 0))
-                if gst_rate > 0:
-                    line_tax = (taxable_val * gst_rate / Decimal("100")).quantize(Decimal("0.01"))
-                    tax_total += line_tax
+        tax_total += line_tax
 
     item_total = sum_taxable
     total_amount = item_total + tax_total + shipping_fee - delivery_discount - coupon

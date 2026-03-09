@@ -935,18 +935,26 @@ class OrderSerializer(serializers.ModelSerializer):
                 print(_msg)
                 _req_log.info(_msg)
             
-            item_total += line_total
-
-            # Add GST to tax_total only if product price is NOT tax inclusive
+            # Match POS GST behavior:
+            # - Inclusive: split line total into taxable amount + GST
+            # - Exclusive: add GST on top of taxable amount
             try:
                 gst_rate = Decimal(str(getattr(product1, "gst", 0) or 0))
             except Exception:
                 gst_rate = Decimal("0")
-            if not getattr(product1, "tax_inclusive", False) and gst_rate > 0:
-                line_tax = (line_total * gst_rate / Decimal("100"))
-                # Round to 2 decimals for currency
-                line_tax = line_tax.quantize(Decimal("0.01"))
-                tax_total += line_tax
+            tax_inclusive = bool(getattr(product1, "tax_inclusive", False))
+            taxable_line_total = line_total
+            line_tax = Decimal("0.00")
+            if gst_rate > 0:
+                if tax_inclusive:
+                    divisor = Decimal("1") + (gst_rate / Decimal("100"))
+                    taxable_line_total = (line_total / divisor).quantize(Decimal("0.01"))
+                    line_tax = (line_total - taxable_line_total).quantize(Decimal("0.01"))
+                else:
+                    line_tax = (line_total * gst_rate / Decimal("100")).quantize(Decimal("0.01"))
+
+            item_total += taxable_line_total
+            tax_total += line_tax
 
             # Store the calculated unit_price (variant price for print products, sales_price for regular)
             order_items.append(
