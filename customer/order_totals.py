@@ -6,7 +6,7 @@ Invoice-style order totals for print online order:
 - If product is GST inclusive (tax_inclusive=True): do not add any tax.
 - total_amount = item_total + tax_total + shipping_fee + shipping_tax - delivery_discount - coupon.
 """
-from decimal import Decimal
+from decimal import Decimal, ROUND_CEILING
 import logging
 
 logger = logging.getLogger("request")
@@ -57,10 +57,7 @@ def get_order_invoice_totals(order):
         composite_scheme = False
 
     sum_taxable = Decimal(0)
-    total_sgst = Decimal(0)
-    total_cgst = Decimal(0)
-    total_igst = Decimal(0)
-    any_non_inclusive = False  # track if any line is tax-exclusive
+    tax_total = Decimal(0)
 
     for item in order.items.all():
         if not item.product:
@@ -90,52 +87,19 @@ def get_order_invoice_totals(order):
 
         sum_taxable += taxable_val
 
-        # For print order:
-        # - If composite scheme is ON: skip GST entirely.
-        # - Else, if product is GST inclusive, do not apply tax (price already includes GST).
+        # Keep item_total/tax_total in decimals; only round the final payable amount.
+        # Tax total should follow the same rule as normal order creation.
         if not composite_scheme:
             tax_inclusive = bool(getattr(item.product, "tax_inclusive", False))
             if not tax_inclusive:
-                any_non_inclusive = True
-
-                sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
-                cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
-                sgst_amt = (taxable_val * sgst_rate / Decimal(100)).quantize(Decimal("0.01"))
-                cgst_amt = (taxable_val * cgst_rate / Decimal(100)).quantize(Decimal("0.01"))
-                total_sgst += sgst_amt
-                total_cgst += cgst_amt
-                if same_state:
-                    pass  # item_tax = sgst_amt + cgst_amt already counted
-                else:
-                    item_tax = (
-                        taxable_val * Decimal(getattr(item.product, "gst", 0) or 0) / Decimal(100)
-                    ).quantize(Decimal("0.01"))
-                    total_igst += item_tax
+                gst_rate = Decimal(str(getattr(item.product, "gst", 0) or 0))
+                if gst_rate > 0:
+                    line_tax = (taxable_val * gst_rate / Decimal("100")).quantize(Decimal("0.01"))
+                    tax_total += line_tax
 
     item_total = sum_taxable
-    if composite_scheme:
-        tax_total = Decimal(0)
-    else:
-        tax_total = total_sgst + total_cgst + total_igst
-
-    # Shipping tax (18% GST on shipping)
-    shipping_taxable = shipping_fee / Decimal("1.18") if shipping_fee > 0 else Decimal(0)
-    shipping_cgst = Decimal(0)
-    shipping_sgst = Decimal(0)
-    shipping_igst = Decimal(0)
-
-    # Only add GST on shipping when not in composite scheme and at least one product is tax-exclusive.
-    if not composite_scheme and shipping_fee > 0 and any_non_inclusive:
-        if same_state:
-            shipping_cgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
-            shipping_sgst = (shipping_taxable * Decimal("9") / Decimal("100")).quantize(Decimal("0.01"))
-        else:
-            shipping_igst = (shipping_taxable * Decimal("18") / Decimal("100")).quantize(Decimal("0.01"))
-
-    total_amount = (
-        item_total + tax_total + shipping_fee + shipping_cgst + shipping_sgst + shipping_igst
-        - delivery_discount - coupon
-    )
+    total_amount = item_total + tax_total + shipping_fee - delivery_discount - coupon
+    total_amount = total_amount.to_integral_value(rounding=ROUND_CEILING).quantize(Decimal("0.01"))
     return {
         "item_total": item_total,
         "tax_total": tax_total,

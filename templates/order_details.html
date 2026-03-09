@@ -414,9 +414,10 @@
 
                         <div class="order-summary-block">
                             <div class="order-summary-line"><span>Item Total</span><span>₹ {{ data.item_total }}</span></div>
+                            <div class="order-summary-line"><span>GST</span><span>₹ {{ data.tax_total|default:0 }}</span></div>
                             <div class="order-summary-line"><span>Shipping Fee</span><span>₹ {{ data.shipping_fee }}</span></div>
-                            <div class="order-summary-line"><span>Cashback</span><span>₹ {{ data.delivery_discount_amount|default:0 }}</span></div>
-                            <div class="order-summary-line"><span>Coupon</span><span>- ₹ {{ data.coupon }}</span></div>
+                            <div class="order-summary-line"><span>Cashback</span><span>- ₹ {{ data.delivery_discount_amount|default:0 }}</span></div>
+                            <div class="order-summary-line"><span>Coupon</span><span>- ₹ {{ data.coupon|default:0 }}</span></div>
                         </div>
 
                         <div class="order-summary-block order-summary-total-block">

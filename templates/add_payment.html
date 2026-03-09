@@ -312,8 +312,8 @@ document.addEventListener("DOMContentLoaded", function() {
   // Party type toggle
   var customerDropdown = document.getElementById("customer-dropdown");
   var vendorDropdown = document.getElementById("vendor-dropdown");
-  var customerSelect = document.getElementById("customer");
-  var vendorSelect = document.getElementById("vendor");
+  var customerSelect = document.getElementById("id_customer");
+  var vendorSelect = document.getElementById("id_vendor");
   function applyPartyType(value) {
     document.querySelectorAll(".btn-party").forEach(function(l) { l.classList.remove("btn-party-active"); });
     var activeLabel = document.querySelector("label[for='" + (value === "vendor" ? "party-vendor" : "party-customer") + "']");
