@@ -82,6 +82,10 @@
                             <div class="balance-label">Opening Balance</div>
                             <div class="balance-value">₹ {{ opening_balance|floatformat:2|intcomma }}</div>
                         </div>
+                        <div class="summary-card">
+                            <div class="balance-label">Total Purchase Amount</div>
+                            <div class="balance-value">₹ {{ total_purchases_amount|floatformat:2|intcomma }}</div>
+                        </div>
                         <div class="summary-card closing-card">
                             <div class="balance-label">Closing Balance</div>
                             <div class="balance-value">₹ {{ balance|floatformat:2|intcomma }}</div>

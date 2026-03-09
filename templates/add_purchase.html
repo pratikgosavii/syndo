@@ -33,10 +33,26 @@
         .payment-section-card .payment-section-body .form-label { color: #495057; }
         .payment-section-card .payment-section-body .form-control,
         .payment-section-card .payment-section-body .form-select { border: 1px solid #CED4DA; background: #fff; border-radius: 5px; }
-        /* Payment buttons: inactive white, active light blue */
-        .btn-payment { background: #fff; border: 1px solid #CED4DA; color: #333; border-radius: 5px; }
-        .btn-payment.btn-payment-active { background-color: #E0F2F7; border-color: #E0F2F7; color: #151e31; }
-        .btn-payment:not(.btn-payment-active):hover { border-color: #adb5bd; color: #495057; background: #fff; }
+        /* Payment/advance toggle buttons: same active visibility as POS */
+        .btn-payment {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            color: #6b7280;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .btn-payment.btn-payment-active {
+            background-color: #FEF3C7 !important;
+            border-color: #F59E0B !important;
+            color: #92400e !important;
+            box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.12);
+        }
+        .btn-payment:not(.btn-payment-active):hover {
+            border-color: #cbd5e0;
+            color: #475569;
+            background: #f8fafc;
+        }
 
         textarea[name="references"], textarea[name="notes"], textarea[name="terms"] { min-height: 80px; resize: vertical; width: 100%; border: 1px solid #CED4DA; border-radius: 5px; }
         .btn-primary { background-color: #151e31; border-color: #151e31; }

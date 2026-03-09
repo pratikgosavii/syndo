@@ -241,6 +241,7 @@ urlpatterns = [
     path('cash-adjust-history/', CashAdjustHistoryAPIView.as_view(), name='cash_adjust_history'),
     path('cash-adjust-history-fb/', cash_adjust_history_view, name='cash_adjust_history_fb'),
     path('cash-in-hand/transfer/', bank_transfer, name='bank_transfer'),
+    path('cash-in-hand/bank-to-bank-transfer/', bank_to_bank_transfer, name='bank_to_bank_transfer'),
 
     path('tax-setting/', tax_setting, name='tax_setting'),
     path('invoice-setting/', invoice_setting, name='invoice_setting'),

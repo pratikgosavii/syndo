@@ -81,26 +81,44 @@
   .btn-transaction:not(.btn-transaction-active):hover { border-color: #9ca3af; }
   /* Party type buttons */
   .btn-party {
-    background: #eef2f7;
-    border: 1px solid #e5e7eb;
+    background: #fff;
+    border: 1px solid #e2e8f0;
     color: #64748b;
     border-radius: 8px;
     font-weight: 600;
     min-height: 40px;
+    transition: 0.2s;
   }
-  .btn-party.btn-party-active { background: #fff; border-color: #cbd5e1; color: #111827; }
-  .btn-party:not(.btn-party-active):hover { border-color: #9ca3af; }
-  /* Payment mode - Cash blue when active */
-  .btn-payment {
+  .btn-party.btn-party-active {
+    background: #FEF3C7 !important;
+    border-color: #F59E0B !important;
+    color: #92400e;
+  }
+  .btn-party:not(.btn-party-active):hover {
+    border-color: #cbd5e0;
     background: #f8fafc;
-    border: 1px solid #e5e7eb;
+    color: #475569;
+  }
+  /* Payment mode - same palette as POS */
+  .btn-payment {
+    background: #fff;
+    border: 1px solid #e2e8f0;
     color: #6b7280;
     border-radius: 8px;
     min-height: 40px;
     font-weight: 600;
+    transition: 0.2s;
   }
-  .btn-payment.btn-payment-active { background: #151e31; border-color: #151e31; color: #fff; }
-  .btn-payment:not(.btn-payment-active):hover { border-color: #9ca3af; color: #374151; }
+  .btn-payment.btn-payment-active {
+    background: #FEF3C7;
+    border-color: #F59E0B;
+    color: #92400e;
+  }
+  .btn-payment:not(.btn-payment-active):hover {
+    border-color: #cbd5e0;
+    background: #f8fafc;
+    color: #475569;
+  }
   /* File upload */
   .payment-file-upload {
     border: 2px dashed #d1d5db;
@@ -181,17 +199,17 @@
                 <div class="mb-3">
                   <label class="form-label d-block">Party Type</label>
                   <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="party_type" id="party-customer" value="customer" checked>
-                    <label class="btn btn-party btn-party-active" for="party-customer">Customer</label>
-                    <input type="radio" class="btn-check" name="party_type" id="party-vendor" value="vendor">
-                    <label class="btn btn-party" for="party-vendor">Vendor</label>
+                    <input type="radio" class="btn-check" name="party_type" id="party-customer" value="customer" {% if selected_party_type != 'vendor' %}checked{% endif %}>
+                    <label class="btn btn-party {% if selected_party_type != 'vendor' %}btn-party-active{% endif %}" for="party-customer">Customer</label>
+                    <input type="radio" class="btn-check" name="party_type" id="party-vendor" value="vendor" {% if selected_party_type == 'vendor' %}checked{% endif %}>
+                    <label class="btn btn-party {% if selected_party_type == 'vendor' %}btn-party-active{% endif %}" for="party-vendor">Vendor</label>
                   </div>
                 </div>
-                <div class="mb-3" id="customer-dropdown">
+                <div class="mb-3" id="customer-dropdown" {% if selected_party_type == 'vendor' %}style="display:none;"{% endif %}>
                   <label class="form-label">Select Party</label>
                   {{ form.customer }}
                 </div>
-                <div class="mb-3" id="vendor-dropdown" style="display:none;">
+                <div class="mb-3" id="vendor-dropdown" {% if selected_party_type != 'vendor' %}style="display:none;"{% endif %}>
                   <label class="form-label">Select Party</label>
                   {{ form.vendor }}
                 </div>
@@ -296,28 +314,39 @@ document.addEventListener("DOMContentLoaded", function() {
   var vendorDropdown = document.getElementById("vendor-dropdown");
   var customerSelect = document.getElementById("customer");
   var vendorSelect = document.getElementById("vendor");
+  function applyPartyType(value) {
+    document.querySelectorAll(".btn-party").forEach(function(l) { l.classList.remove("btn-party-active"); });
+    var activeLabel = document.querySelector("label[for='" + (value === "vendor" ? "party-vendor" : "party-customer") + "']");
+    if (activeLabel) activeLabel.classList.add("btn-party-active");
+    if (value === "customer") {
+      if (customerDropdown) customerDropdown.style.display = "block";
+      if (vendorDropdown) vendorDropdown.style.display = "none";
+      if (vendorSelect) { vendorSelect.value = ""; vendorSelect.disabled = true; }
+      if (customerSelect) customerSelect.disabled = false;
+      var customerRadio = document.getElementById("party-customer");
+      if (customerRadio) customerRadio.checked = true;
+    } else {
+      if (customerDropdown) customerDropdown.style.display = "none";
+      if (vendorDropdown) vendorDropdown.style.display = "block";
+      if (customerSelect) { customerSelect.value = ""; customerSelect.disabled = true; }
+      if (vendorSelect) vendorSelect.disabled = false;
+      var vendorRadio = document.getElementById("party-vendor");
+      if (vendorRadio) vendorRadio.checked = true;
+    }
+  }
   document.querySelectorAll("input[name='party_type']").forEach(function(radio) {
     radio.addEventListener("change", function() {
-      document.querySelectorAll(".btn-party").forEach(function(l) { l.classList.remove("btn-party-active"); });
-      document.querySelector("label[for='" + this.id + "']").classList.add("btn-party-active");
-      if (this.value === "customer") {
-        customerDropdown.style.display = "block";
-        vendorDropdown.style.display = "none";
-        if (vendorSelect) { vendorSelect.value = ""; vendorSelect.disabled = true; }
-        if (customerSelect) customerSelect.disabled = false;
-      } else {
-        customerDropdown.style.display = "none";
-        vendorDropdown.style.display = "block";
-        if (customerSelect) { customerSelect.value = ""; customerSelect.disabled = true; }
-        if (vendorSelect) vendorSelect.disabled = false;
-      }
+      applyPartyType(this.value);
     });
   });
-  // On load: disable the non-selected party field so only one is submitted
-  var partyChecked = document.querySelector("input[name='party_type']:checked");
-  if (partyChecked) {
-    if (partyChecked.value === "customer" && vendorSelect) vendorSelect.disabled = true;
-    else if (partyChecked.value === "vendor" && customerSelect) customerSelect.disabled = true;
+  // On load: use checked radio first, then fall back to selected values
+  var checkedParty = document.querySelector("input[name='party_type']:checked");
+  if (checkedParty) {
+    applyPartyType(checkedParty.value);
+  } else if (vendorSelect && vendorSelect.value) {
+    applyPartyType("vendor");
+  } else {
+    applyPartyType("customer");
   }
 
   // Payment type on load

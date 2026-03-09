@@ -94,13 +94,13 @@
             padding: 0.65rem 1rem;
             margin-bottom: 0.65rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: minmax(170px, 1.1fr) minmax(220px, 1.4fr) minmax(210px, 1fr) minmax(96px, auto);
             align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
+            gap: 1rem;
         }
-        .ledger-page .entry-card .col-date { min-width: 90px; }
+        .ledger-page .entry-card > div { min-width: 0; }
+        .ledger-page .entry-card .col-date { min-width: 0; }
         .ledger-page .entry-card .date-bold { font-weight: 700; color: #1e293b; font-size: 0.85rem; }
         .ledger-page .entry-card .id-badge {
             display: inline-block;
@@ -111,14 +111,14 @@
             font-size: 0.72rem;
             margin-top: 0.2rem;
         }
-        .ledger-page .entry-card .col-category { min-width: 120px; }
+        .ledger-page .entry-card .col-category { min-width: 0; }
         .ledger-page .entry-card .col-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: #64748b; }
         .ledger-page .entry-card .category-name { font-weight: 700; color: #1e293b; font-size: 0.85rem; }
         .ledger-page .entry-card .ref-text { font-size: 0.78rem; color: #64748b; }
-        .ledger-page .entry-card .col-amounts { text-align: right; font-size: 0.8rem; }
+        .ledger-page .entry-card .col-amounts { text-align: right; font-size: 0.8rem; justify-self: end; }
         .ledger-page .entry-card .amount-total { font-weight: 700; color: #1e293b; font-size: 0.85rem; }
         .ledger-page .entry-card .col-payment { font-size: 0.78rem; color: #64748b; }
-        .ledger-page .entry-card .col-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+        .ledger-page .entry-card .col-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; justify-self: end; }
         .ledger-page .btn-view {
             background: #FFC107;
             color: #1e293b;
@@ -148,6 +148,17 @@
         .ledger-page .icon-actions a:hover { background: #f1f5f9; }
         .ledger-page .icon-actions .edit:hover { color: #ea580c; }
         .ledger-page .icon-actions .delete:hover { color: #dc2626; }
+        @media (max-width: 991.98px) {
+            .ledger-page .entry-card {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+            .ledger-page .entry-card .col-amounts,
+            .ledger-page .entry-card .col-actions {
+                justify-self: auto;
+            }
+        }
     </style>
 {% endblock extra_css %}
 
@@ -187,11 +198,13 @@
                 <div class="entry-card">
                     <div class="col-date">
                         <div class="date-bold">{{ expense.expense_date|date:"M d, Y" }}</div>
+                        <div class="date-bold">{{ expense.transaction_id|default:"—" }}</div>
+                        
                     </div>
                     <div class="col-category">
                         <div class="col-label">Category</div>
                         <div class="category-name">{{ expense.category.name|default:"—" }}</div>
-                        <div class="ref-text">Ref: {{ expense.transaction_id|default:expense.description|truncatewords:6|default:expense.get_payment_method_display|default:"—" }}</div>
+                        <div class="ref-text">Ref: {{ expense.description|truncatewords:6|default:expense.get_payment_method_display|default:"—" }}</div>
                     </div>
                     <div class="col-amounts">
                         <div class="col-label">Amount</div>

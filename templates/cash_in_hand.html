@@ -139,9 +139,19 @@
                     </div>
                 </div>
 
-                <!-- Two cards side by side -->
+                {% if messages %}
+                <div class="mb-3">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Three cards -->
                 <div class="row g-4 mb-4">
-                    <div class="col-md-6">
+                    <div class="col-lg-4">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h6 class="card-header-custom">
@@ -162,7 +172,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-lg-4">
                         <div class="card h-100">
                             <div class="card-body">
                                 <h6 class="card-header-custom">
@@ -184,6 +194,45 @@
                                         <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="Enter amount to deposit" required>
                                     </div>
                                     <input type="submit" class="btn btn-confirm-transfer w-100" value="Confirm Transfer">
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-header-custom">
+                                    <i class="bi bi-arrow-left-right"></i>Bank to Bank Transfer
+                                </h6>
+                                <form method="POST" action="{% url 'bank_to_bank_transfer' %}">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label class="form-label">From Bank</label>
+                                        <select name="from_bank" class="form-select" required>
+                                            <option value="">Select Source Bank</option>
+                                            {% for account in bank_accounts %}
+                                            <option value="{{ account.id }}">{{ account.name }} - {{ account.account_number }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">To Bank</label>
+                                        <select name="to_bank" class="form-select" required>
+                                            <option value="">Select Destination Bank</option>
+                                            {% for account in bank_accounts %}
+                                            <option value="{{ account.id }}">{{ account.name }} - {{ account.account_number }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Transfer Amount (₹)</label>
+                                        <input type="number" name="amount" step="0.01" min="0.01" class="form-control" placeholder="Enter transfer amount" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Note / Reason</label>
+                                        <input type="text" name="notes" class="form-control" placeholder="Optional transfer note">
+                                    </div>
+                                    <input type="submit" class="btn btn-confirm-transfer w-100" value="Transfer Between Banks">
                                 </form>
                             </div>
                         </div>

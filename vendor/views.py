@@ -1155,7 +1155,7 @@ def customer_ledger(request, customer_id):
             ledger_entries = ledger_entries.filter(description__icontains=search)
     ledger_entries = ledger_entries.order_by("-created_at")
 
-    total_sales = Sale.objects.filter(customer_id=customer_id).aggregate(total=Sum("total_amount"))["total"] or 0
+    total_sales_amount = Sale.objects.filter(customer_id=customer_id).aggregate(total=Sum("total_amount"))["total"] or 0
     transaction_type_choices = [("", "All Transactions")] + list(CustomerLedger.TRANSACTION_TYPES)
 
     return render(request, "customer_ledger.html", {
@@ -1163,7 +1163,7 @@ def customer_ledger(request, customer_id):
         "customer": customer,
         "opening_balance": opening_balance,
         "balance": balance,
-        "total_sales": total_sales,
+        "total_sales_amount": total_sales_amount,
         "ledger": ledger_entries,
         "transaction_type_choices": transaction_type_choices,
         "from_date": from_date,
@@ -1179,7 +1179,7 @@ def vendor_ledger(request, vendor_id):
     vendor = get_object_or_404(vendor_vendors, pk=vendor_id)
     ledger_entries = VendorLedger.objects.filter(vendor_id=vendor_id)
     balance = vendor.balance or ledger_entries.aggregate(total=Sum("amount"))["total"] or 0
-    total_purchases = Purchase.objects.filter(vendor_id=vendor_id).aggregate(total=Sum("total_amount"))["total"] or 0
+    total_purchases_amount = Purchase.objects.filter(vendor_id=vendor_id).aggregate(total=Sum("total_amount"))["total"] or 0
 
     from_date = request.GET.get("from_date", "").strip()
     to_date = request.GET.get("to_date", "").strip()
@@ -1205,7 +1205,7 @@ def vendor_ledger(request, vendor_id):
         "vendor": vendor,
         "balance": balance,
         "opening_balance": vendor.opening_balance or 0,
-        "total_purchases": total_purchases,
+        "total_purchases_amount": total_purchases_amount,
         "ledger": ledger_entries,
         "transaction_type_choices": transaction_type_choices,
         "from_date": from_date,
@@ -2436,6 +2436,10 @@ class get_addon(ListAPIView):
 
 @login_required(login_url='login_admin')
 def add_payment(request):
+    def _selected_party_type(form):
+        if getattr(form, "is_bound", False):
+            return "vendor" if form.data.get("party_type") == "vendor" else "customer"
+        return "vendor" if getattr(form.instance, "vendor_id", None) else "customer"
 
     if request.method == 'POST':
 
@@ -2450,7 +2454,12 @@ def add_payment(request):
             return redirect('list_payment')
         else:
             print(forms.errors)
-            context = {'form': forms, 'payment_id': 'PAY-TBD', 'payment_date': None}
+            context = {
+                'form': forms,
+                'payment_id': 'PAY-TBD',
+                'payment_date': None,
+                'selected_party_type': _selected_party_type(forms),
+            }
             return render(request, 'add_payment.html', context)
     
     else:
@@ -2460,6 +2469,7 @@ def add_payment(request):
             'form': forms,
             'payment_id': 'PAY-' + str(date.today().year) + '-001',
             'payment_date': date.today(),
+            'selected_party_type': _selected_party_type(forms),
         }
         return render(request, 'add_payment.html', context)
 
@@ -2467,12 +2477,14 @@ def add_payment(request):
 
 @login_required(login_url='login_admin')
 def update_payment(request, payment_id):
+    def _selected_party_type(form):
+        if getattr(form, "is_bound", False):
+            return "vendor" if form.data.get("party_type") == "vendor" else "customer"
+        return "vendor" if getattr(form.instance, "vendor_id", None) else "customer"
 
+    instance = Payment.objects.get(id=payment_id)
     if request.method == 'POST':
-
-        instance = Payment.objects.get(id=payment_id)
-
-        forms = PaymentForm(request.POST, request.FILES, instance=instance)
+        forms = PaymentForm(request.POST, request.FILES, instance=instance, user=request.user)
 
         if forms.is_valid():
             forms = forms.save(commit=False)
@@ -2481,7 +2493,12 @@ def update_payment(request, payment_id):
             return redirect('list_payment')
         else:
             print(forms.errors)
-            context = {'form': forms, 'payment_id': getattr(instance, 'payment_number', 'PAY-TBD'), 'payment_date': getattr(instance, 'payment_date', None)}
+            context = {
+                'form': forms,
+                'payment_id': getattr(instance, 'payment_number', 'PAY-TBD'),
+                'payment_date': getattr(instance, 'payment_date', None),
+                'selected_party_type': _selected_party_type(forms),
+            }
             return render(request, 'add_payment.html', context)
 
     else:
@@ -2491,6 +2508,7 @@ def update_payment(request, payment_id):
             'form': forms,
             'payment_id': instance.payment_number or 'PAY-TBD',
             'payment_date': instance.payment_date,
+            'selected_party_type': _selected_party_type(forms),
         }
         return render(request, 'add_payment.html', context)
 
@@ -5608,7 +5626,7 @@ def auto_assign_delivery(request):
 
 
 
-from .models import CashBalance, vendor_bank, CashTransfer
+from .models import CashBalance, vendor_bank, CashTransfer, BankTransfer
 
 @login_required
 def cash_in_hand(request):
@@ -5697,6 +5715,41 @@ def bank_transfer(request):
                 messages.success(request, "Transfer request submitted.")
         except Exception as e:
             print('Error while adjusting cash:', str(e))
+
+    return redirect('cash_in_hand')
+
+
+@login_required
+def bank_to_bank_transfer(request):
+    if request.method == 'POST':
+        from_bank_id = request.POST.get('from_bank')
+        to_bank_id = request.POST.get('to_bank')
+        amount = request.POST.get('amount')
+        notes = (request.POST.get('notes') or '').strip()
+
+        try:
+            amount = float(amount or 0)
+            from_bank = vendor_bank.objects.get(id=from_bank_id, user=request.user)
+            to_bank = vendor_bank.objects.get(id=to_bank_id, user=request.user)
+
+            if from_bank.id == to_bank.id:
+                messages.error(request, "Source and destination bank must be different.")
+            elif amount <= 0:
+                messages.error(request, "Transfer amount must be greater than zero.")
+            else:
+                BankTransfer.objects.create(
+                    user=request.user,
+                    from_bank=from_bank,
+                    to_bank=to_bank,
+                    amount=amount,
+                    notes=notes or None,
+                )
+                messages.success(request, "Bank to bank transfer submitted.")
+        except vendor_bank.DoesNotExist:
+            messages.error(request, "Selected bank account is invalid.")
+        except Exception as e:
+            print('Error while transferring bank to bank:', str(e))
+            messages.error(request, "Something went wrong while processing bank transfer.")
 
     return redirect('cash_in_hand')
 

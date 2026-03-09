@@ -82,6 +82,10 @@
                             <div class="balance-label">Opening Balance</div>
                             <div class="balance-value">₹ {{ opening_balance|floatformat:2|intcomma }}</div>
                         </div>
+                        <div class="summary-card">
+                            <div class="balance-label">Total Sales Amount</div>
+                            <div class="balance-value">₹ {{ total_sales_amount|floatformat:2|intcomma }}</div>
+                        </div>
                         <div class="summary-card closing-card">
                             <div class="balance-label">Closing Balance</div>
                             <div class="balance-value">₹ {{ balance|floatformat:2|intcomma }}</div>
@@ -153,7 +157,7 @@
                                                 {% endwith %}
                                             </td>
                                             <td class="text-end">₹ {{ entry.opening_balance|floatformat:2|intcomma }}</td>
-                                            <td class="text-end {% if entry.display_amount >= 0 %}amount-in{% else %}amount-out{% endif %}">{% if entry.display_amount >= 0 %}+ {% else %}− {% endif %} {{ entry.display_amount|abs_amount|floatformat:2|intcomma }}</td>
+                                            <td class="text-end {% if entry.display_amount >= 0 %}amount-in{% else %}amount-out{% endif %}">{{ entry.display_amount|abs_amount|floatformat:2|intcomma }}</td>
                                             <td class="text-end">₹ {{ entry.balance_after|floatformat:2|intcomma }}</td>
                                         </tr>
                                         {% endfor %}

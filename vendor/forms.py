@@ -179,7 +179,7 @@ class product_Form(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Required for pricing is set in clean() by product_type (product: only sales_price; service/print: all three)
+        # Pricing fields are optional; defaults/fallbacks are handled in clean()/model save.
         self.fields['wholesale_price'].required = False
         self.fields['mrp'].required = False
         self.fields['sales_price'].required = False
@@ -192,25 +192,17 @@ class product_Form(forms.ModelForm):
         product_type = cleaned.get('product_type')
         if not product_type:
             return cleaned
-        if product_type == 'product':
-            # Product type: only sales_price is required
-            if cleaned.get('sales_price') in (None, ''):
-                self.add_error('sales_price', 'Sales price is required for product type.')
-            # wholesale/purchase price are optional; when absent, fall back to MRP
-            if cleaned.get('wholesale_price') in (None, ''):
-                cleaned['wholesale_price'] = cleaned.get('mrp') or 0
-            if cleaned.get('purchase_price') in (None, '') and cleaned.get('mrp') not in (None, ''):
-                cleaned['purchase_price'] = cleaned.get('mrp')
-            if cleaned.get('mrp') in (None, ''):
-                cleaned['mrp'] = None  # model allows null for mrp
-        elif product_type in ('service', 'print'):
-            # Service/print: wholesale price, MRP and sales price are required
-            if cleaned.get('wholesale_price') in (None, ''):
-                self.add_error('wholesale_price', 'Wholesale price is required for service/print.')
-            if cleaned.get('mrp') in (None, ''):
-                self.add_error('mrp', 'MRP is required for service/print.')
-            if cleaned.get('sales_price') in (None, ''):
-                self.add_error('sales_price', 'Sales price is required for service/print.')
+        # wholesale price is optional; when absent, fall back to MRP or 0 for model compatibility
+        if cleaned.get('wholesale_price') in (None, ''):
+            cleaned['wholesale_price'] = cleaned.get('mrp') or 0
+        # purchase price is optional; if absent, reuse MRP when available
+        if cleaned.get('purchase_price') in (None, '') and cleaned.get('mrp') not in (None, ''):
+            cleaned['purchase_price'] = cleaned.get('mrp')
+        # MRP and sales price are optional
+        if cleaned.get('mrp') in (None, ''):
+            cleaned['mrp'] = None
+        if cleaned.get('sales_price') in ('',):
+            cleaned['sales_price'] = None
         if cleaned.get('track_serial_numbers') and cleaned.get('assign_barcode') not in (None, ''):
             self.add_error('track_serial_numbers', 'Track serial numbers and assign barcode cannot both be used.')
             self.add_error('assign_barcode', 'Assign barcode and IMEI tracking cannot both be used.')

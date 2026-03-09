@@ -133,7 +133,6 @@
                                         <th class="text-end">Debit (Out)</th>
                                         <th class="text-end">Credit (In)</th>
                                         <th>Time</th>
-                                        <th>Ref</th>
                                         <th>Description</th>
                                     </tr>
                                 </thead>
@@ -159,7 +158,6 @@
                                         <td class="text-end">{% if e.debit %}₹ {{ e.debit|intcomma }}{% else %}-{% endif %}</td>
                                         <td class="text-end">{% if e.credit %}₹ {{ e.credit|intcomma }}{% else %}-{% endif %}</td>
                                         <td>{{ e.time|time:"g:i A" }}</td>
-                                        <td>{{ e.reference_id|default:"-" }}</td>
                                         <td>{{ e.description|default:"-" }}</td>
                                     </tr>
                                     {% empty %}

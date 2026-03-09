@@ -1379,19 +1379,9 @@
         const mrp = document.getElementById('id_mrp');
         const sales = document.getElementById('id_sales_price');
         if (!sales) return;
-        if (productType === 'product') {
-            sales.required = true;
-            if (wholesale) wholesale.required = false;
-            if (mrp) mrp.required = false;
-        } else if (productType === 'service') {
-            if (wholesale) wholesale.required = true;
-            if (mrp) mrp.required = true;
-            sales.required = true;
-        } else if (productType === 'print') {
-            if (wholesale) wholesale.required = false;
-            if (mrp) mrp.required = true;
-            sales.required = false;
-        }
+        if (wholesale) wholesale.required = false;
+        if (mrp) mrp.required = false;
+        sales.required = false;
     }
 
     function syncPricingVisibility(productType, saleTypeValue) {
@@ -1573,8 +1563,8 @@
                 batch_number: 'hide',
                 expiry_date: 'hide',
                 description: 'hide',
-                image: 'hide',
-                gallery_images: 'hide'
+                image: 'optional',
+                gallery_images: 'optional'
             },
             'print_online': {
                 category: 'required',
@@ -1585,8 +1575,8 @@
                 batch_number: 'hide',
                 expiry_date: 'hide',
                 description: 'hide',
-                image: 'hide',
-                gallery_images: 'hide'
+                image: 'optional',
+                gallery_images: 'optional'
             }
         };
 

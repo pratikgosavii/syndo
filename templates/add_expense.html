@@ -16,8 +16,21 @@
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
             border: 1px solid #e9ecef;
             padding: 1.25rem;
+            position: relative;
         }
         .expense-form-title { font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 1rem; }
+        .expense-info-box {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            color: #92400e;
+            padding: 0.42rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
         .expense-section-header {
             font-size: 1rem;
             font-weight: 600;
@@ -127,16 +140,15 @@
                         </div>
                         {% endif %}
 
+                        <div class="expense-info-box">
+                            Transaction ID: {{ form.instance.transaction_id|default:"Auto-generated" }} | Date: {% if form.instance.expense_date %}{{ form.instance.expense_date|date:"d-m-Y" }}{% else %}Today{% endif %}
+                        </div>
+
                         <h5 class="expense-form-title">Add Expense</h5>
 
                         <!-- 01. TRANSACTION DETAILS -->
                         <div class="expense-section-header">01. TRANSACTION DETAILS</div>
                         <div class="row g-3 mb-4">
-                            <div class="col-md-4">
-                                <label for="id_transaction_id" class="form-label">Transaction ID</label>
-                                {{ form.transaction_id }}
-                                {% if form.transaction_id.errors %}<div class="invalid-feedback d-block">{{ form.transaction_id.errors.0 }}</div>{% endif %}
-                            </div>
                             <div class="col-md-4">
                                 <label for="id_amount" class="form-label">Total Amount (₹)</label>
                                 {{ form.amount }}

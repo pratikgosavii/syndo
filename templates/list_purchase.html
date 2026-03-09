@@ -94,13 +94,13 @@
             padding: 0.65rem 1rem;
             margin-bottom: 0.65rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: minmax(170px, 1.1fr) minmax(220px, 1.4fr) minmax(230px, 1fr) minmax(110px, auto);
             align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
+            gap: 1rem;
         }
-        .ledger-page .entry-card .col-date { min-width: 90px; }
+        .ledger-page .entry-card > div { min-width: 0; }
+        .ledger-page .entry-card .col-date { min-width: 0; }
         .ledger-page .entry-card .date-bold { font-weight: 700; color: #1e293b; font-size: 0.85rem; }
         .ledger-page .entry-card .id-badge {
             display: inline-block;
@@ -111,23 +111,23 @@
             font-size: 0.72rem;
             margin-top: 0.2rem;
         }
-        .ledger-page .entry-card .col-vendor { min-width: 120px; }
+        .ledger-page .entry-card .col-vendor { min-width: 0; }
         .ledger-page .entry-card .col-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: #64748b; }
         .ledger-page .entry-card .vendor-name { font-weight: 700; color: #1e293b; font-size: 0.85rem; }
         .ledger-page .entry-card .ref-text { font-size: 0.78rem; color: #64748b; }
-        .ledger-page .entry-card .col-amounts { text-align: right; font-size: 0.8rem; }
+        .ledger-page .entry-card .col-amounts { text-align: right; font-size: 0.8rem; justify-self: end; }
         .ledger-page .entry-card .amount-total { font-weight: 700; color: #1e293b; font-size: 0.85rem; }
         .ledger-page .entry-card .amount-paid { font-weight: 600; color: #16a34a; font-size: 0.8rem; }
         .ledger-page .entry-card .amount-due { font-weight: 600; font-size: 0.8rem; }
         .ledger-page .entry-card .amount-due.has-due { color: #dc2626; }
         .ledger-page .entry-card .amount-due.zero { color: #64748b; }
         .ledger-page .entry-card .action-col {
-            /* flex: 0.4; */
             min-width: 90px;
             display: flex;
-            /* flex-direction: column; */
+            flex-direction: column;
             gap: 0.5rem;
             align-items: flex-end;
+            justify-self: end;
         }
         .ledger-page .btn-view-ledger {
             background: #fef3c7 !important;
@@ -160,6 +160,17 @@
         .ledger-page .action-btn:hover { background: #f9fafb; color: #111; }
         .ledger-page .action-btn.edit:hover { color: #FCA311; }
         .ledger-page .action-btn.delete:hover { color: #ef4444; }
+        @media (max-width: 991.98px) {
+            .ledger-page .entry-card {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+            .ledger-page .entry-card .col-amounts,
+            .ledger-page .entry-card .action-col {
+                justify-self: auto;
+            }
+        }
     </style>
 {% endblock extra_css %}
 
