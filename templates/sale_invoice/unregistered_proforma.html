@@ -172,7 +172,14 @@
         </tr>
         <tr>
             <td colspan="2" class="terms"><b>Terms & Conditions</b><br>{{ display_terms|default:""|safe }}</td>
-            <td style="text-align:right; vertical-align:bottom;">Signature</td>
+            <td style="text-align:right; vertical-align:bottom;">
+                <b>Authorized Signatory</b><br>
+                {% if company_signature_data_uri %}
+                    <img src="{{ company_signature_data_uri }}" alt="Signature" style="max-width:150px;max-height:80px;"><br>
+                {% elif sale_instance.company_profile and sale_instance.company_profile.signature %}
+                    <img src="{{ sale_instance.company_profile.signature.url }}" alt="Signature" style="max-width:150px;max-height:80px;"><br>
+                {% endif %}
+            </td>
         </tr>
     </table>
 

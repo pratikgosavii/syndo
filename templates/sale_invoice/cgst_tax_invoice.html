@@ -140,9 +140,7 @@
             </td>
             <!-- Right side QR code -->
             <td style="width:30%; text-align:center; vertical-align:middle;">
-                {% if payment_qr_data_uri %}
-                <img src="{{ payment_qr_data_uri }}" alt="QR" class="qr-box">
-                {% elif sale_instance.company_profile.payment_qr %}
+                {% if sale_instance.company_profile.payment_qr %}
                 <img src="{{ sale_instance.company_profile.payment_qr.url }}" alt="QR" class="qr-box">
                 {% else %}
                 <div class="qr-box">QR CODE</div>
@@ -154,9 +152,20 @@
 
     <!-- Footer -->
     <div class="footer">
-        <p><strong>Terms & Conditions:</strong><br>
-        {{ display_terms|default:""|safe }}<br>
-        <strong>This is a computer-generated invoice.</strong></p>
+        <div style="float:left; max-width:70%;">
+            <p><strong>Terms & Conditions:</strong><br>
+            {{ display_terms|default:""|safe }}<br>
+            <strong>This is a computer-generated invoice.</strong></p>
+        </div>
+        <div style="float:right; text-align:right;">
+            <b>Authorized Signatory</b><br>
+            {% if company_signature_data_uri %}
+                <img src="{{ company_signature_data_uri }}" alt="Signature" style="max-width:150px;max-height:80px;"><br>
+            {% elif sale_instance.company_profile and sale_instance.company_profile.signature %}
+                <img src="{{ sale_instance.company_profile.signature.url }}" alt="Signature" style="max-width:150px;max-height:80px;"><br>
+            {% endif %}
+        </div>
+        <div style="clear:both;"></div>
     </div>
 
 </body>

@@ -84,8 +84,10 @@
     <div class="section">
         <div class="two-col">
             <div>
-                <div>Invoice no: {{ wholesale.invoice_number|default:sale_instance.invoice_number|default:sale_instance.id }}</div>
-                <div>Order Type: On-Shop</div>
+                <div style="display:flex; justify-content:space-between; gap:8px;">
+                    <span>Invoice no: {{ wholesale.invoice_number|default:sale_instance.invoice_number|default:sale_instance.id }}</span>
+                    <span>Order Type: On-Shop</span>
+                </div>
                 <div>Customer Name : {{ sale_instance.customer.name|default:"Walk-in Customer" }}</div>
                 <div>Ph : {% if sale_instance.customer %}{{ sale_instance.customer.contact|default:"—" }}{% else %}—{% endif %}</div>
             </div>
@@ -138,7 +140,7 @@
         <div class="summary-row grand">Grand Amount<span>₹ {{ rounded_total|floatformat:0 }}</span></div>
     </div>
 
-    <div class="footer">Powered by Syndo</div>
+    <div class="footer">Powered by Svindo</div>
 </div>
 </body>
 </html>

@@ -4835,6 +4835,27 @@ def get_product_price(request):
 from num2words import num2words  # make sure you installed: pip install num2words
 import math
 
+def _amount_in_words_inr(amount):
+    """
+    Return amount in Indian Rupees words, e.g.
+    275.50 -> 'Two Hundred Seventy Five Rupees And Fifty Paise Only'
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+
+    try:
+        amt = Decimal(str(amount or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except Exception:
+        amt = Decimal("0.00")
+    rupees = int(amt)
+    paise = int((amt - Decimal(rupees)) * 100)
+
+    rupees_words = num2words(rupees, lang="en_IN").title()
+    if paise:
+        paise_words = num2words(paise, lang="en_IN").title()
+        return f"{rupees_words} Rupees And {paise_words} Paise Only"
+    return f"{rupees_words} Rupees Only"
+
+
 def sale_invoice(request, sale_id):
     
     sale = (
@@ -4985,10 +5006,12 @@ def sale_invoice(request, sale_id):
         data['igst_rate'] = round((data['sgst_rate'] or 0) + (data['cgst_rate'] or 0), 2)
         data['igst_amount'] = round(data['total_tax'], 2)
 
-    total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
+    total_in_words = _amount_in_words_inr(rounded_total)
 
     paid_amount = float(sale.advance_amount or 0)
-    balance_amount = round(rounded_total - paid_amount, 2)
+    balance_raw = round(rounded_total - paid_amount, 2)
+    # Do not show negative balance if overpaid/settled
+    balance_amount = balance_raw if balance_raw > 0 else 0.0
 
     # Terms: use wholesale.terms if present, else InvoiceSettings.terms_and_conditions
     term_from_sale = getattr(wholesale, 'terms', None) or ''
@@ -5001,10 +5024,10 @@ def sale_invoice(request, sale_id):
     vendor_pan = None
     vendor_gstin = None
     vendor_fssai = None
-    company_logo_data_uri = None
-    # Base64 logo / QR for PDF rendering (used by all invoice templates)
+    # Base64 logo / QR / signature for PDF rendering (used by all invoice templates)
     company_logo_data_uri = None
     payment_qr_data_uri = None
+    company_signature_data_uri = None
     cp = sale.company_profile
     try:
         import base64
@@ -5026,9 +5049,19 @@ def sale_invoice(request, sale_id):
                 payment_qr_data_uri = f"data:{mime_qr};base64,{qr_b64}"
             except Exception:
                 payment_qr_data_uri = None
+        if cp and cp.signature:
+            try:
+                with cp.signature.open('rb') as f:
+                    sig_b64 = base64.b64encode(f.read()).decode('ascii')
+                ext_sig = cp.signature.name.split('.')[-1].lower() if cp.signature.name else 'jpeg'
+                mime_sig = 'image/png' if ext_sig == 'png' else 'image/jpeg'
+                company_signature_data_uri = f"data:{mime_sig};base64,{sig_b64}"
+            except Exception:
+                company_signature_data_uri = None
     except Exception:
         company_logo_data_uri = None
         payment_qr_data_uri = None
+        company_signature_data_uri = None
 
     if use_thermal:
         store = vendor_store.objects.filter(user=user).first()
@@ -5058,6 +5091,7 @@ def sale_invoice(request, sale_id):
         'balance_amount': balance_amount,
         'company_logo_data_uri': company_logo_data_uri,
         'payment_qr_data_uri': payment_qr_data_uri,
+        'company_signature_data_uri': company_signature_data_uri,
         'items_with_tax': items_with_tax,
         'vendor_pan': vendor_pan,
         'vendor_gstin': vendor_gstin,
@@ -8479,10 +8513,11 @@ class customer_sale_invoice(APIView):
             data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
             data["igst_amount"] = data["total_tax"]
 
-        total_in_words = num2words(rounded_total, to='currency', lang='en_IN').title()
+        total_in_words = _amount_in_words_inr(rounded_total)
 
         paid_amount = Decimal(sale.advance_amount or 0)
-        balance_amount = (Decimal(rounded_total) - paid_amount).quantize(Decimal("0.01"))
+        balance_raw = (Decimal(rounded_total) - paid_amount).quantize(Decimal("0.01"))
+        balance_amount = balance_raw if balance_raw > 0 else Decimal("0.00")
 
         # Terms: use wholesale.terms if present, else InvoiceSettings.terms_and_conditions
         term_from_sale = getattr(wholesale, 'terms', None) or ''

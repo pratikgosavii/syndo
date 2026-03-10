@@ -616,13 +616,11 @@ class OnlineOrderInvoiceAPIView(APIView):
             data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
             data["igst_amount"] = data["total_tax"]
 
-        # Convert to INR format: "Rupees [amount] Only"
+        # Convert to INR words: "Two Hundred Seventy Five Rupees Only"
         try:
-            # Use num2words with INR currency
-            amount_words = num2words(rounded_total, lang='en_IN').title()
-            total_in_words = f"Rupees {amount_words} Only"
+            amount_words = num2words(rounded_total, lang="en_IN").title()
+            total_in_words = f"{amount_words} Rupees Only"
         except Exception:
-            # Fallback if num2words fails
             total_in_words = f"Rupees {rounded_total} Only"
 
         # Calculate shipping tax for display (assuming 18% GST on shipping)

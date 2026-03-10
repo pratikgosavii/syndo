@@ -215,7 +215,14 @@
 <p><strong>Notes:</strong> {{ wholesale.notes|default:"-" }}</p>
 <p><strong>Terms & Conditions:</strong><br>{{ display_terms|default:"-"|safe }}</p>
 
-<div class="signature">Authorized Signature</div>
+<div class="signature">
+  <span>Authorized Signature</span><br>
+  {% if company_signature_data_uri %}
+  <img src="{{ company_signature_data_uri }}" alt="Signature" style="max-width:150px;max-height:80px;">
+  {% elif sale_instance.company_profile and sale_instance.company_profile.signature %}
+  <img src="{{ sale_instance.company_profile.signature.url }}" alt="Signature" style="max-width:150px;max-height:80px;">
+  {% endif %}
+</div>
 
 </body>
 </html>
