@@ -179,7 +179,9 @@ class Order(models.Model):
         ('on_shop_order', 'On-shop Order'),
     ]
 
-    order_id = models.CharField(max_length=100, unique=True)
+    # Invoice / online order number. Indexed for fast lookup, but not globally unique
+    # so different vendors/customers can reuse the same running numbers (e.g. ONL-0001).
+    order_id = models.CharField(max_length=100, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUS, default='not_accepted')
     payment_mode = models.CharField(max_length=50, default='COD')
@@ -224,55 +226,26 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Generate a collision-safe order_id.
-
-        We use the existing FY/MONTH serial format, but retry on UNIQUE collisions
-        (possible under concurrency) to avoid IntegrityError: UNIQUE constraint failed.
+        Generate an order_id using the standard FY/DAY/MONTH/ONL-0001 pattern.
+        
+        We no longer enforce global uniqueness at the database level, so we don't
+        need to append random hex suffixes. Serial numbers are generated per user
+        (customer/vendor) by vendor.utils.generate_serial_number.
         """
         if self.order_id:
             return super().save(*args, **kwargs)
 
-        from django.db import IntegrityError, transaction
         from django.utils import timezone
         from vendor.utils import generate_serial_number
-        import logging
-        import secrets
 
-        logger = logging.getLogger(__name__)
-
-        last_exc = None
-        for _attempt in range(10):
-            base = generate_serial_number(
-                prefix="ONL",
-                model_class=Order,
-                date=timezone.now().date(),
-                user=self.user,
-            )
-            # First attempt uses the clean serial. If it collides (concurrency),
-            # add a tiny random suffix to guarantee uniqueness without relying on
-            # committed rows being visible yet.
-            if _attempt == 0:
-                candidate = base
-            else:
-                candidate = f"{base}-{secrets.token_hex(2)}"  # e.g. .../ONL-0001-a3f9
-
-            # Keep within field max_length
-            self.order_id = candidate[:100]
-            try:
-                with transaction.atomic():
-                    return super().save(*args, **kwargs)
-            except IntegrityError as e:
-                # Collision on unique order_id: clear and retry
-                last_exc = e
-                self.order_id = ""
-                if "order_id" in str(e) or "UNIQUE constraint failed" in str(e):
-                    logger.warning(f"[Order.save] order_id collision, retrying (attempt={_attempt + 1})")
-                    continue
-                raise
-
-        # If we still collide after retries, raise last exception
-        if last_exc:
-            raise last_exc
+        base = generate_serial_number(
+            prefix="ONL",
+            model_class=Order,
+            date=timezone.now().date(),
+            user=self.user,
+        )
+        # Keep within field max_length
+        self.order_id = base[:100]
         return super().save(*args, **kwargs)
 
     # Payment logic handled via service layer (customer/payments/cashfree.py)

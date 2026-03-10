@@ -280,11 +280,11 @@ def calculate_coupon_discount_amount(coupon_id, item_total, user=None):
     return discount_amount, coupon_instance, None
 
 
-def calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipping_fee):
+def calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipping_fee, coupon_discount):
     """
     Calculate delivery discount amount based on vendor's delivery discount settings.
-    Discount is calculated as percentage of order total (item_total + tax_total + shipping_fee).
-    Same calculation logic used in cart and order creation.
+    Discount is calculated as percentage of (item_total + tax_total), then capped by shipping_fee.
+    Shipping amount itself is not part of the discount base.
     
     Args:
         vendor_user: The vendor user who owns the products
@@ -300,8 +300,11 @@ def calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipp
     
     delivery_discount_amount = Decimal("0.00")
     
-    # Calculate order total (item + tax + shipping) before any discounts
-    order_total = item_total + tax_total + shipping_fee
+    # Calculate order total for discount base:
+    # (items + tax) AFTER coupon discount, excluding shipping.
+    # Coupon is always applied on items only, so we reduce item_total here.
+    discounted_item_total = max(Decimal("0.00"), item_total - (coupon_discount or Decimal("0.00")))
+    order_total = discounted_item_total + tax_total
     
     if vendor_user and order_total > 0:
         try:
@@ -1073,9 +1076,12 @@ class OrderSerializer(serializers.ModelSerializer):
             else:
                 logger.info(f"[ORDER_SERIALIZER] No coupon provided - coupon_id: {coupon_id}, coupon amount: {coupon_amount}")
 
-        # Calculate delivery discount using the same calculation logic as cart
-        logger.info(f"[ORDER_SERIALIZER] Calculating delivery discount - Vendor: {vendor_user.id if vendor_user else None}, Item Total: {item_total}, Tax: {tax_total}, Shipping Fee: {shipping_fee}")
-        delivery_discount_amount = calculate_delivery_discount_amount(vendor_user, item_total, tax_total, shipping_fee)
+        # Calculate delivery discount on the already discounted total (after coupon),
+        # excluding shipping from the discount base but capping the discount by shipping_fee.
+        logger.info(f"[ORDER_SERIALIZER] Calculating delivery discount - Vendor: {vendor_user.id if vendor_user else None}, Item Total: {item_total}, Tax: {tax_total}, Shipping Fee: {shipping_fee}, Coupon Discount: {coupon_discount}")
+        delivery_discount_amount = calculate_delivery_discount_amount(
+            vendor_user, item_total, tax_total, shipping_fee, coupon_discount
+        )
         logger.info(f"[ORDER_SERIALIZER] ✅ Delivery discount calculated: {delivery_discount_amount}")
 
         # calculate final total (subtract coupon and delivery discount)
