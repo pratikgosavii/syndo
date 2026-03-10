@@ -102,6 +102,8 @@
     <th>Media</th>
     <th>Description</th>
     <th>Product</th>
+    <th>Shop Name</th>
+    <th>Vendor</th>
     <th>Boost Post</th>
     <th>Budget</th>
     <th>Created At</th>
@@ -122,6 +124,22 @@
             </td>
             <td>{{ i.description|truncatewords:20 }}</td>
             <td>{% if i.product %}{{ i.product.name }}{% else %}N/A{% endif %}</td>
+            <td>
+                {% with store=i.user.vendor_store.all.0 %}
+                    {% if store %}
+                        {{ store.name }}
+                    {% else %}
+                        —
+                    {% endif %}
+                {% endwith %}
+            </td>
+            <td>
+                {% if i.user %}
+                    {{ i.user.get_full_name|default:i.user.username }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
             <td>
                 {% if i.boost_post %}
                     <span class="badge bg-success">Yes</span>

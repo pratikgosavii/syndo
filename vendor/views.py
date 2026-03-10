@@ -264,7 +264,10 @@ def delete_coupon(request, coupon_id):
 @login_required(login_url='login_admin')
 def list_coupon(request):
 
-    data = coupon.objects.filter(user = request.user)
+    if request.user.is_superuser:
+        data = coupon.objects.all()
+    else:
+        data = coupon.objects.filter(user=request.user)
     context = {
         'data': data
     }
@@ -506,7 +509,10 @@ def delete_bannercampaign(request, bannercampaign_id):
 @login_required(login_url='login_admin')
 def list_bannercampaign(request):
 
-    data = BannerCampaign.objects.filter(user = request.user)
+    if request.user.is_superuser:
+        data = BannerCampaign.objects.all()
+    else:
+        data = BannerCampaign.objects.filter(user=request.user)
     context = {
         'data': data
     }
@@ -515,7 +521,15 @@ def list_bannercampaign(request):
 
 @login_required(login_url='login_admin')
 def list_post(request):
-    data = Post.objects.filter(user=request.user).order_by('-created_at')
+    if request.user.is_superuser:
+        data = Post.objects.select_related('user').prefetch_related('user__vendor_store').order_by('-created_at')
+    else:
+        data = (
+            Post.objects.filter(user=request.user)
+            .select_related('user')
+            .prefetch_related('user__vendor_store')
+            .order_by('-created_at')
+        )
     context = {
         'data': data
     }
@@ -530,7 +544,15 @@ def delete_post(request, post_id):
 
 @login_required(login_url='login_admin')
 def list_reel(request):
-    data = Reel.objects.filter(user=request.user).order_by('-created_at')
+    if request.user.is_superuser:
+        data = Reel.objects.select_related('user').prefetch_related('user__vendor_store').order_by('-created_at')
+    else:
+        data = (
+            Reel.objects.filter(user=request.user)
+            .select_related('user')
+            .prefetch_related('user__vendor_store')
+            .order_by('-created_at')
+        )
     context = {
         'data': data
     }
@@ -1652,10 +1674,22 @@ def add_product(request, parent_id=None):
         'food': settings_obj.food,
     })
     existing_imeis = list(parent_instance.serial_imei_list.values_list('value', flat=True)) if parent_instance else []
-    catalogue_options = [
-        {"id": sc.id, "name": sc.name}
-        for sc in super_catalogue.objects.filter(is_active=True).order_by("name")
-    ]
+    catalogue_options = []
+    for sc in super_catalogue.objects.filter(is_active=True).order_by("name"):
+        # choose display price: sales_price > mrp > wholesale_price
+        display_price = sc.sales_price or sc.mrp or sc.wholesale_price
+        image_url = sc.image.url if getattr(sc.image, "name", None) else None
+        catalogue_options.append(
+            {
+                "id": sc.id,
+                "name": sc.name,
+                "brand_name": getattr(sc, "brand_name", "") or "",
+                "color": getattr(sc, "color", "") or "",
+                "size": getattr(sc, "size", "") or "",
+                "price": str(display_price or ""),
+                "image": image_url,
+            }
+        )
     context = {
         'form': product_form,
         'formset': addon_formset,

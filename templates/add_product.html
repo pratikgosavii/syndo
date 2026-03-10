@@ -170,6 +170,19 @@
         color: #6b7280;
         margin-top: 0.35rem;
     }
+    .catalogue-select-btn {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border: 1px solid #000000 !important;
+    }
+    .catalogue-select-btn:hover,
+    .catalogue-select-btn:focus,
+    .catalogue-select-btn:active {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-color: #000000 !important;
+        box-shadow: none !important;
+    }
     .catalogue-select-input-group .form-select {
         background-color: #fff;
     }
@@ -250,21 +263,32 @@
                                     <i class="bi bi-box"></i>
                                     <span>* Select Catalogue Product</span>
                                 </div>
-                                <div class="mt-2">
-                                    <div class="input-group input-group-sm catalogue-select-input-group">
-                                        <span class="input-group-text border-end-0">
-                                            <i class="bi bi-search"></i>
-                                        </span>
-                                        <select id="catalogue-select" class="form-select form-select-sm border-start-0">
-                                            <option value="">Select Catalogue Product</option>
+                                <div class="mt-2 d-flex flex-column flex-sm-row align-items-sm-center gap-2">
+                                    <button type="button"
+                                            class="btn btn-sm d-flex align-items-center gap-1 catalogue-select-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#catalogueModal">
+                                        <i class="bi bi-search"></i>
+                                        <span>Select Catalogue Product</span>
+                                    </button>
+                                    {% if selected_catalogue_id %}
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="badge bg-soft-primary text-dark">
+                                            Loaded from:
                                             {% for c in super_catalogue_list %}
-                                            <option value="{{ c.id }}" {% if selected_catalogue_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                                                {% if c.id == selected_catalogue_id %}{{ c.name }}{% endif %}
                                             {% endfor %}
-                                        </select>
+                                        </span>
+                                        <button type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                id="clearCatalogueSelection">
+                                            Remove
+                                        </button>
                                     </div>
-                                    <div class="catalogue-select-helper">
-                                        Select a catalogue product to auto-fill details
-                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="catalogue-select-helper">
+                                    Select a catalogue product to auto-fill details
                                 </div>
                             </div>
                             {% endif %}
@@ -833,32 +857,126 @@
         {% include 'partials/footer.html' %}
     {% endblock footer %}
 </div>
+    {% if super_catalogue_list %}
+    <!-- Catalogue selection modal -->
+    <div class="modal fade" id="catalogueModal" tabindex="-1" aria-labelledby="catalogueModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="catalogueModalLabel">Select Catalogue Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="catalogue-modal-search" class="form-control" placeholder="Search products...">
+                        </div>
+                    </div>
+                    <div id="catalogue-modal-list">
+                        <div class="row g-3">
+                            {% for c in super_catalogue_list %}
+                            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                                <div class="card h-100 shadow-sm border-0 catalogue-modal-item"
+                                     role="button"
+                                     data-id="{{ c.id }}"
+                                     data-name="{{ c.name }}"
+                                     data-search="{{ c.name }} {{ c.brand_name }} {{ c.size }} {{ c.color }}">
+                                    <div class="card-img-top p-3 pb-0 d-flex justify-content-center">
+                                        {% if c.image %}
+                                        <img src="{{ c.image }}" alt="{{ c.name }}" class="img-fluid rounded" style="max-height:90px; object-fit:contain;">
+                                        {% else %}
+                                        <div class="d-flex align-items-center justify-content-center bg-light rounded" style="width:100%; height:90px; font-size:1.5rem; color:#9ca3af;">
+                                            <i class="bi bi-image"></i>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-body py-2 px-3 d-flex flex-column">
+                                        <div class="fw-semibold text-truncate" title="{{ c.name }}">{{ c.name }}</div>
+                                        <div class="text-muted small mt-1">
+                                            {% if c.brand_name %}<span>{{ c.brand_name }}</span>{% endif %}
+                                            {% if c.size %}{% if c.brand_name %} · {% endif %}<span>{{ c.size }}</span>{% endif %}
+                                            {% if c.color %}{% if c.brand_name or c.size %} · {% endif %}<span>{{ c.color }}</span>{% endif %}
+                                        </div>
+                                        {% if c.price %}
+                                        <div class="fw-bold mt-1">₹ {{ c.price }}</div>
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-warning btn-sm w-100 select-catalogue-btn">
+                                                Use in form
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 {% endblock content %}
 
 {% block extra_js %}
 <script>
-// Load from catalogue: when user picks a catalogue product, reload form with its data as initial
+// Load from catalogue: when user selects a catalogue item in the modal, reload form with its data as initial
 document.addEventListener('DOMContentLoaded', function () {
-    var select = document.getElementById('catalogue-select');
-    if (!select) return;
-    select.addEventListener('change', function () {
-        var id = this.value;
-        var url = window.location.pathname;
-        var params = new URLSearchParams(window.location.search);
-        if (id) {
-            params.set('catalogue_id', id);
-        } else {
+    function attachCatalogueHandlers() {
+        document.querySelectorAll('.catalogue-modal-item').forEach(function (card) {
+            var selectBtn = card.querySelector('.select-catalogue-btn');
+            if (!selectBtn) return;
+            selectBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var id = card.getAttribute('data-id');
+                var url = window.location.pathname;
+                var params = new URLSearchParams(window.location.search);
+                if (id) {
+                    params.set('catalogue_id', id);
+                } else {
+                    params.delete('catalogue_id');
+                }
+                var query = params.toString();
+                if (query) {
+                    url += '?' + query;
+                }
+                window.location.href = url;
+            });
+        });
+    }
+
+    attachCatalogueHandlers();
+
+    var searchInput = document.getElementById('catalogue-modal-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            var q = this.value.toLowerCase();
+            document.querySelectorAll('.catalogue-modal-item').forEach(function (card) {
+                var searchText = (card.getAttribute('data-search') || card.getAttribute('data-name') || '').toLowerCase();
+                var match = searchText.indexOf(q) !== -1;
+                card.parentElement.style.display = match ? '' : 'none';
+            });
+        });
+    }
+
+    var clearBtn = document.getElementById('clearCatalogueSelection');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            var url = window.location.pathname;
+            var params = new URLSearchParams(window.location.search);
             params.delete('catalogue_id');
-        }
-        var query = params.toString();
-        if (query) {
-            url += '?' + query;
-        }
-        window.location.href = url;
-    });
+            var query = params.toString();
+            if (query) {
+                url += '?' + query;
+            }
+            window.location.href = url;
+        });
+    }
 });
-</script>
-    var existingImeis = {{ existing_imeis_json|default:"[]"|safe }};
 </script>
 <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
 <script>

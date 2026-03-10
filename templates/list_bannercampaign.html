@@ -75,6 +75,8 @@
                                                 <th>#</th>
                                                 <th>Banner</th>
                                                 <th>Campaign Name</th>
+                                                <th>Shop Name</th>
+                                                <th>Vendor</th>
                                                 <th>Approved</th>
                                                 <th>Created At</th>
                                                 <th>Action</th>
@@ -93,6 +95,20 @@
                                                             {% endif %}
                                                         </td>
                                                         <td>{{ banner.campaign_name }}</td>
+                                                        <td>
+                                                            {% if banner.store %}
+                                                                {{ banner.store.name }}
+                                                            {% else %}
+                                                                —
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if banner.user %}
+                                                                {{ banner.user.get_full_name|default:banner.user.username }}
+                                                            {% else %}
+                                                                —
+                                                            {% endif %}
+                                                        </td>
                                                         <td>{{ banner.is_approved|yesno:"Yes,No" }}</td>
                                                         <td>{{ banner.created_at|date:"d M Y" }}</td>
                                                         <td>

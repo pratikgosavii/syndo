@@ -1578,7 +1578,7 @@ from .serializers import VendorStoreLiteSerializer
 class VendorStoreListAPIView(mixins.ListModelMixin,
                              mixins.RetrieveModelMixin,
                              generics.GenericAPIView):
-    queryset = vendor_store.objects.filter(is_active=True)
+    queryset = vendor_store.objects.filter(is_active=True, user__is_active=True)
     serializer_class = VendorStoreSerializer  # ✅ USE NEW ONE HERE
     filter_backends = [filters.SearchFilter]
     search_fields = ["user__first_name", "user__last_name", "user__username"]
@@ -1588,7 +1588,7 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         return {"request": self.request}  # ✅ needed for following field
 
     def get_queryset(self):
-        qs = vendor_store.objects.filter(is_active=True, is_online=True)
+        qs = vendor_store.objects.filter(is_active=True, is_online=True, user__is_active=True)
         
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
@@ -1617,7 +1617,7 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
         try:
             from vendor.models import StoreVisit
             
-            store = vendor_store.objects.get(id=store_id, is_active=True)
+            store = vendor_store.objects.get(id=store_id, is_active=True, user__is_active=True)
             
             # Only track if user is authenticated
             if request.user.is_authenticated:
@@ -1671,6 +1671,7 @@ class ListProducts(ListAPIView):
         qs = product.objects.filter(
             is_active=True,
             sale_type__in=["online", "both"],
+            user__is_active=True,
             user__vendor_store__is_active=True,
             user__vendor_store__is_online=True,
         )
@@ -1724,6 +1725,7 @@ class ListPosts(ListAPIView):
 
     def get_queryset(self):
         qs = Post.objects.filter(
+            user__is_active=True,
             user__vendor_store__is_active=True,
             user__vendor_store__is_online=True,
         )
@@ -2141,7 +2143,16 @@ class RandomBannerAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = BannerCampaign.objects.filter(is_approved = True)
+        qs = BannerCampaign.objects.filter(
+            is_approved=True,
+            user__is_active=True,
+            store__isnull=True,
+        ) | BannerCampaign.objects.filter(
+            is_approved=True,
+            user__is_active=True,
+            store__is_active=True,
+            store__user__is_active=True,
+        )
         count = qs.count()
 
         if count == 0:
@@ -2233,9 +2244,13 @@ class FavouriteStoreViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=["get"])
     def my_favourites(self, request):
-        favourites = FavouriteStore.objects.filter(user=request.user).select_related('store')
-        stores = [fav.store for fav in favourites]
-        serializer = VendorStoreSerializer(stores, many=True)
+        favourites = FavouriteStore.objects.filter(user=request.user).select_related('store', 'store__user')
+        stores = [
+            fav.store
+            for fav in favourites
+            if fav.store and fav.store.is_active and fav.store.user and fav.store.user.is_active
+        ]
+        serializer = VendorStoreSerializer(stores, many=True, context={'request': request})
         return Response(serializer.data)
     
 
@@ -2247,6 +2262,7 @@ class SpotlightProductView(APIView):
 
     def get(self, request):
         products = SpotlightProduct.objects.filter(
+            user__is_active=True,
             user__vendor_store__is_active=True,
             user__vendor_store__is_online=True,
         )
@@ -2273,6 +2289,7 @@ class reelsView(APIView):
 
     def get(self, request):
         reels = Reel.objects.filter(
+            user__is_active=True,
             user__vendor_store__is_active=True,
             user__vendor_store__is_online=True,
         )
@@ -2299,6 +2316,7 @@ class offersView(APIView):
 
     def get(self, request):
         products = Reel.objects.filter(
+            user__is_active=True,
             user__vendor_store__is_active=True,
             user__vendor_store__is_online=True,
         )
@@ -2669,6 +2687,7 @@ class HomeScreenView(APIView):
                 category_id__in=category_ids,
                 is_active=True,
                 sale_type__in=["online", "both"],
+                user__is_active=True,
                 user__vendor_store__is_active=True,
                 user__vendor_store__is_online=True,
             )

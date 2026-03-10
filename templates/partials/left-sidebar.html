@@ -311,7 +311,9 @@ body[data-sidebar-size=sm] .sidebar-logout-wrap {
                                     <span data-key="t-authentication">Coupon</span>
                                 </a>
                                 <ul class="sub-menu" aria-expanded="false">
+                                    {% if not request.user.is_superuser %}
                                     <li><a href="{% url 'add_coupon' %}">Add Coupon</a></li>
+                                    {% endif %}
                                     <li><a href="{% url 'list_coupon' %}">Coupon List</a></li>
                                 </ul>
                             </li>
@@ -378,10 +380,8 @@ body[data-sidebar-size=sm] .sidebar-logout-wrap {
                                 <span data-key="t-authentication">Banner</span>
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
-                                <li><a href="{% url 'add_home_banner' %}">Banner Add</a></li>
-                                <li><a href="{% url 'list_home_banner' %}">Banner List</a></li>
+                                
                                 <li><a href="{% url 'admin_vendor_list_bannercampaign' %}">Vendor Banner List</a></li>
-
                             </ul>
                         </li>
 

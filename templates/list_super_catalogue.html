@@ -1,63 +1,194 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Product List{% endblock title %}
+{% block title %}Catalogue List{% endblock title %}
 
 {% block extra_css %}
 <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
 <style>
-    body {
-        background-color: gainsboro;
-        color: #775599;
-    }
+    body { background-color: #f3f6f9; color: #1a1d21; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-    .card {
-        background-color: #ffffff;
+    .catalogue-list-page .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.75rem;
+        margin-top: 1rem;
+    }
+    .catalogue-list-page .page-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: #1a1d21;
+        margin: 0;
+    }
+    .catalogue-list-page .search-wrap {
+        position: relative;
+        flex: 1;
+        min-width: 160px;
+        max-width: 320px;
+    }
+    .catalogue-list-page .search-wrap .bi-search {
+        position: absolute;
+        left: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+    .catalogue-list-page .search-wrap input {
+        width: 100%;
+        padding: 0.4rem 0.5rem 0.4rem 1.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+    }
+    .catalogue-list-page .filter-select {
+        padding: 0.4rem 1.5rem 0.4rem 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        color: #374151;
+        background-color: #fff;
+        min-width: 100px;
+    }
+    .catalogue-list-page .btn-add-catalogue {
+        background-color: #FFC107 !important;
+        color: #000 !important;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 6px;
         border: none;
+    }
+    .catalogue-list-page .btn-add-catalogue:hover { background-color: #e6ac00 !important; color: #000 !important; }
+
+    .catalogue-list-page .catalogue-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
         border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.6rem;
     }
-
-    .card-header {
-        background-color: #775599;
-        color: #ffffff;
-        border-radius: 8px 8px 0 0;
-        padding: 20px;
+    .catalogue-list-page .catalogue-card-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 1rem;
     }
+    .catalogue-list-page .section { flex: 1; min-width: 0; }
+    .catalogue-list-page .section-srno { min-width: 36px; flex: 0 0 auto; font-weight: 600; color: #6b7280; font-size: 0.8125rem; }
+    .catalogue-list-page .section-ident { min-width: 220px; }
+    .catalogue-list-page .section-pricing { min-width: 120px; }
+    .catalogue-list-page .section-flags { min-width: 140px; }
+    .catalogue-list-page .section-actions { min-width: 160px; text-align: right; }
 
-    .table thead {
-        background-color: gray;
-        color: white;
-    }
-
-    .table tbody tr {
-        background-color: white;
-        color: black;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f0d28c;
-        color: #775599;
-    }
-
-    .product-img {
-        height: 60px;
-        width: 60px;
+    .catalogue-list-page .product-thumb {
+        width: 90px;
+        height: 90px;
         object-fit: cover;
-        border-radius: 5px;
+        border-radius: 6px;
+        background: #f3f4f6;
+    }
+    .catalogue-list-page .product-thumb-placeholder {
+        width: 90px;
+        height: 90px;
+        border-radius: 6px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+        font-size: 0.75rem;
+    }
+    .catalogue-list-page .product-name {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #1a1d21;
+        margin: 0.15rem 0 0.1rem 0;
+    }
+    .catalogue-list-page .category-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-bottom: 0.2rem;
+    }
+    .catalogue-list-page .category-pill {
+        display: inline-block;
+        padding: 0.15rem 0.35rem;
+        border-radius: 9999px;
+        background: #f3f4f6;
+        color: #6b7280;
+        font-size: 0.6875rem;
+    }
+    .catalogue-list-page .meta {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-bottom: 0.1rem;
+    }
+    .catalogue-list-page .variant {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    .catalogue-list-page .variant .color-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        vertical-align: middle;
+        margin-right: 0.2rem;
+    }
+    .catalogue-list-page .ident {
+        font-size: 0.6875rem;
+        color: #9ca3af;
     }
 
-    .action-icons {
-        font-size: 18px;
-        margin-right: 10px;
-        cursor: pointer;
+    .catalogue-list-page .label-muted {
+        font-size: 0.625rem;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        margin-bottom: 0.15rem;
     }
+    .catalogue-list-page .price-value {
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: #2563eb;
+    }
+    .catalogue-list-page .mrp-value { font-size: 0.8125rem; color: #1a1d21; }
+
+    .catalogue-list-page .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-bottom: 0.35rem;
+        font-size: 0.6875rem;
+    }
+    .catalogue-list-page .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.15rem 0.35rem;
+        border-radius: 9999px;
+        font-size: 0.6875rem;
+    }
+    .catalogue-list-page .pill-service { background: #dbeafe; color: #1d4ed8; }
+    .catalogue-list-page .pill-policy { background: #d1fae5; color: #047857; }
+    .catalogue-list-page .pill-off { background: #f3f4f6; color: #9ca3af; }
+
+    .catalogue-list-page .action-icons {
+        font-size: 1rem;
+        cursor: pointer;
+        opacity: 0.85;
+    }
+    .catalogue-list-page .action-icons:hover { opacity: 1; }
 
     @media (max-width: 768px) {
-        .table-responsive {
-            overflow-x: auto;
-        }
+        .catalogue-list-page .catalogue-card-inner { flex-direction: column; }
+        .catalogue-list-page .section { min-width: 100%; }
     }
 </style>
 {% endblock extra_css %}
@@ -65,114 +196,135 @@
 {% block content %}
 <div class="main-content">
     <div class="page-content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18">Catalogue List</h4>
-                    </div>
-                </div>
-            </div>
-
+        <div class="container-fluid catalogue-list-page">
             <div class="container">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table id="datatable" class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Image</th>
-                                                <th>Name</th>
-                                                <th>Category</th>
-                                                <th>Sub Category</th>
-                                                <th>Brand</th>
-                                                <th>Color</th>
-                                                <th>Size</th>
-                                                <th>Unit</th>
-                                                <th>HSN</th>
-                                                <th>GST (%)</th>
-                                                <th>Track Serial No.</th>
-                                                <th>Instant Delivery</th>
-                                                <th>Self Pickup</th>
-                                                <th>General Delivery</th>
-                                                <th>Return Policy</th>
-                                                <th>COD</th>
-                                                <th>Replacement</th>
-                                                <th>Shop Exchange</th>
-                                                <th>Shop Warranty</th>
-                                                <th>Brand Warranty</th>
-                                                <th>Is Popular</th>
-                                                <th>Is Featured</th>
-                                                <th>Is Active</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% if data %}
-                                                {% for i in data %}
-                                                <tr>
-                                                    <td>{{ forloop.counter }}</td>
-                                                    <td>
-                                                        {% if i.image %}
-                                                            <img src="{{ i.image.url }}" class="product-img" alt="product image" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
-                                                        {% else %}
-                                                            <img src="{% static 'images/default product image.jpeg' %}" class="product-img" alt="product image">
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>{{ i.name }}</td>
-                                                    <td>{{ i.category }}</td>
-                                                    <td>{{ i.sub_category }}</td>
-                                                    <td>{{ i.brand_name }}</td>
-                                                    <td>{{ i.color }}</td>
-                                                    <td>{{ i.size }}</td>
-                                                    <td>{{ i.unit }}</td>
-                                                    <td>{{ i.hsn }}</td>
-                                                    <td>{{ i.gst }}</td>
-                                                    <td>{{ i.track_serial_numbers }}</td>
-                                                    <td>{{ i.instant_delivery }}</td>
-                                                    <td>{{ i.self_pickup }}</td>
-                                                    <td>{{ i.general_delivery }}</td>
-                                                    <td>{{ i.return_policy }}</td>
-                                                    <td>{{ i.cod }}</td>
-                                                    <td>{{ i.replacement }}</td>
-                                                    <td>{{ i.shop_exchange }}</td>
-                                                    <td>{{ i.shop_warranty }}</td>
-                                                    <td>{{ i.brand_warranty }}</td>
-                                                    <td>{{ i.is_popular }}</td>
-                                                    <td>{{ i.is_featured }}</td>
-                                                    <td>
-                                                        {% if i.is_active %}
-                                                            ✅
-                                                        {% else %}
-                                                            ❌
-                                                        {% endif %}
-                                                    </td>
-                                                    <td>
+                <div class="page-header">
+                    <h1 class="page-title">Catalogue List</h1>
+                    <div class="search-wrap">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="catalogue-search" class="form-control" placeholder="Search by Name, Category, Brand..." autocomplete="off">
+                    </div>
+                    <select class="filter-select" id="filter-category" aria-label="Category">
+                        <option value="">Category: All</option>
+                        {% for c in data|dictsort:"category__name" %}
+                        {% endfor %}
+                    </select>
+                    <a href="{% url 'add_super_catalogue' %}" class="btn btn-add-catalogue d-flex align-items-center gap-1">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Add to Catalogue</span>
+                    </a>
+                </div>
 
-                                                        <a href="{% url 'update_super_catalogue' i.id %}">
-                                                            <i class="bi bi-pencil-square text-primary action-icons edit" title="Edit"></i>
-                                                        </a>
-                                                        <a href="{% url 'delete_super_catalogue' i.id %}">
-                                                            <i class="bi bi-trash text-danger action-icons delete" title="Delete"></i>
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            {% else %}
-                                                <tr>
-                                                    <td colspan="34" class="text-center">No products available.</td>
-                                                </tr>
+                <div id="catalogue-list">
+                    {% if data %}
+                        {% for i in data %}
+                        <div class="catalogue-card catalogue-row"
+                             data-name="{{ i.name|default_if_none:'' }} {{ i.brand_name|default_if_none:'' }} {{ i.category.name|default_if_none:'' }}"
+                             data-category="{{ i.category.name|default_if_none:'' }}">
+                            <div class="catalogue-card-inner">
+                                <div class="section section-srno">
+                                    {{ forloop.counter|stringformat:"02d" }}
+                                </div>
+                                <div class="section section-ident d-flex gap-3">
+                                    <div>
+                                        {% if i.image %}
+                                            <img src="{{ i.image.url }}" alt="{{ i.name }}" class="product-thumb">
+                                        {% else %}
+                                            <div class="product-thumb-placeholder">
+                                                <span>No Image</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="product-name">{{ i.name }}</div>
+                                        <div class="category-pills">
+                                            {% if i.category %}
+                                            <span class="category-pill">{{ i.category.name }}</span>
                                             {% endif %}
-                                        </tbody>
-                                    </table>
-                                    
+                                            {% if i.sub_category %}
+                                            <span class="category-pill">{{ i.sub_category }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="meta">
+                                            {% if i.brand_name %}Brand: {{ i.brand_name }}{% endif %}
+                                            {% if i.size %}{% if i.brand_name %} · {% endif %}Size: {{ i.size }}{% endif %}
+                                            {% if i.color %}{% if i.brand_name or i.size %} · {% endif %}Color: {{ i.color }}{% endif %}
+                                        </div>
+                                        <div class="ident">
+                                            {% if i.unit %}Unit: {{ i.unit }}{% endif %}
+                                            {% if i.hsn %} · HSN: {{ i.hsn }}{% endif %}
+                                            {% if i.gst %} · GST: {{ i.gst }}%{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="section section-pricing">
+                                    <div class="label-muted">Pricing</div>
+                                    {% if i.sales_price %}
+                                        <div class="price-value">₹ {{ i.sales_price }}</div>
+                                    {% endif %}
+                                    {% if i.mrp %}
+                                        <div class="mrp-value">MRP: ₹ {{ i.mrp }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="section section-flags">
+                                    <div class="label-muted">Services</div>
+                                    <div class="pill-row">
+                                        <span class="pill {% if i.instant_delivery %}pill-service{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-lightning-charge"></i> Instant
+                                        </span>
+                                        <span class="pill {% if i.self_pickup %}pill-service{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-bag-check"></i> Self pickup
+                                        </span>
+                                        <span class="pill {% if i.general_delivery %}pill-service{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-truck"></i> Delivery
+                                        </span>
+                                    </div>
+                                    <div class="label-muted mt-1">Policies</div>
+                                    <div class="pill-row">
+                                        <span class="pill {% if i.return_policy %}pill-policy{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Return
+                                        </span>
+                                        <span class="pill {% if i.cod %}pill-policy{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-cash-coin"></i> COD
+                                        </span>
+                                        <span class="pill {% if i.replacement %}pill-policy{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-arrow-left-right"></i> Replacement
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="section section-actions">
+                                    <div class="label-muted">Status</div>
+                                    <div class="pill-row">
+                                        <span class="pill {% if i.is_popular %}pill-policy{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-star-fill"></i> Popular
+                                        </span>
+                                        <span class="pill {% if i.is_featured %}pill-policy{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-stars"></i> Featured
+                                        </span>
+                                        <span class="pill {% if i.is_active %}pill-policy{% else %}pill-off{% endif %}">
+                                            <i class="bi bi-toggle-on"></i> Active
+                                        </span>
+                                    </div>
+                                    <div class="mt-2 d-flex justify-content-end gap-2">
+                                        <a href="{% url 'update_super_catalogue' i.id %}" class="text-decoration-none">
+                                            <i class="bi bi-pencil-square text-primary action-icons" title="Edit"></i>
+                                        </a>
+                                        <a href="{% url 'delete_super_catalogue' i.id %}" class="text-decoration-none">
+                                            <i class="bi bi-trash text-danger action-icons" title="Delete"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-light border mt-3" role="alert">
+                            No catalogue products available.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -187,14 +339,17 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    setTimeout(() => {
-        const toastElement = document.getElementById("toast");
-        if (toastElement) {
-            toastElement.classList.remove("show");
-            setTimeout(() => {
-                toastElement.remove();
-            }, 500);
+    document.addEventListener('DOMContentLoaded', function () {
+        var searchInput = document.getElementById('catalogue-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                var q = this.value.toLowerCase();
+                document.querySelectorAll('.catalogue-row').forEach(function (row) {
+                    var name = (row.getAttribute('data-name') || '').toLowerCase();
+                    row.style.display = name.indexOf(q) !== -1 ? '' : 'none';
+                });
+            });
         }
-    }, 5000);
+    });
 </script>
 {% endblock extra_js %}
