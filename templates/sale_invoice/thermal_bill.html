@@ -133,9 +133,12 @@
         <div class="summary-row">Subtotal<span>{{ sale_instance.total_amount_before_discount|default:sale_instance.total_taxable_amount|default:0|floatformat:2 }}</span></div>
         <div class="summary-row">Delivery Charges<span>{{ wholesale.delivery_charges|default:0|floatformat:2 }}</span></div>
         <div class="summary-row">Discount<span>{{ sale_instance.discount_amount|default:0|floatformat:2 }}</span></div>
-        {% if sum_cgst %}<div class="summary-row">CGST (%)<span>{{ sum_cgst|floatformat:2 }}</span></div>{% endif %}
-        {% if sum_sgst %}<div class="summary-row">UT/SGST (%)<span>{{ sum_sgst|floatformat:2 }}</span></div>{% endif %}
-        {% if sum_igst %}<div class="summary-row">IGST (%)<span>{{ sum_igst|floatformat:2 }}</span></div>{% endif %}
+        {% if store_gst == "cgst" %}
+            {% if sum_cgst %}<div class="summary-row">CGST<span>{{ sum_cgst|floatformat:2 }}</span></div>{% endif %}
+            {% if sum_sgst %}<div class="summary-row">UT/SGST<span>{{ sum_sgst|floatformat:2 }}</span></div>{% endif %}
+        {% else %}
+            {% if sum_igst %}<div class="summary-row">IGST<span>{{ sum_igst|floatformat:2 }}</span></div>{% endif %}
+        {% endif %}
         <div class="summary-row">Round off<span>{{ round_off_value|floatformat:2 }}</span></div>
         <div class="summary-row grand">Grand Amount<span>₹ {{ rounded_total|floatformat:0 }}</span></div>
     </div>
