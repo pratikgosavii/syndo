@@ -538,7 +538,11 @@ def list_post(request):
 
 @login_required(login_url='login_admin')
 def delete_post(request, post_id):
-    Post.objects.get(id=post_id, user=request.user).delete()
+    qs = Post.objects.filter(id=post_id)
+    if not request.user.is_superuser:
+        qs = qs.filter(user=request.user)
+    post = get_object_or_404(qs)
+    post.delete()
     return HttpResponseRedirect(reverse('list_post'))
 
 
@@ -561,7 +565,11 @@ def list_reel(request):
 
 @login_required(login_url='login_admin')
 def delete_reel(request, reel_id):
-    Reel.objects.get(id=reel_id, user=request.user).delete()
+    qs = Reel.objects.filter(id=reel_id)
+    if not request.user.is_superuser:
+        qs = qs.filter(user=request.user)
+    reel = get_object_or_404(qs)
+    reel.delete()
     return HttpResponseRedirect(reverse('list_reel'))
 
 
