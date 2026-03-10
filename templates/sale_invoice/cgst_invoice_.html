@@ -103,10 +103,10 @@
                 <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
                 {% if sale_instance.user.tax_settings.composite_scheme %}
                     <b>Composite Scheme</b><br>
-                {% else %}
-                    <b>Regular Scheme</b><br>
                 {% endif %}
-                <b>Due Date:</b> {{ sale_instance.due_date|date:"d/m/Y" }}
+                {% if sale_instance.due_date %}
+                    <b>Due Date:</b> {{ sale_instance.due_date|date:"d/m/Y" }}
+                {% endif %}
             </td>
         </tr>
     </table>

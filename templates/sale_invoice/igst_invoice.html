@@ -48,8 +48,12 @@
                 GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>
                 <b>Invoice Date:</b> {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br>
                 <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
-                <b>Composite Scheme</b><br>
-                <b>Due Date:</b> {{ sale_instance.due_date|date:"d/m/Y" }}
+                {% if sale_instance.user.tax_settings.composite_scheme %}
+                    <b>Composite Scheme</b><br>
+                {% endif %}
+                {% if sale_instance.due_date %}
+                    <b>Due Date:</b> {{ sale_instance.due_date|date:"d/m/Y" }}
+                {% endif %}
             </td>
         </tr>
     </table>
