@@ -853,10 +853,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
             # Calculate pricing based on product type
             if is_print_product and item_print_job:
-                # Prefer the print-job total sent by the app. Fall back to page-based
-                # reconstruction only if that total is missing.
+                # Always calculate server-side from variant/customize price and pages.
                 unit_price = None
-                print_job_total = Decimal(str(item_print_job.get("total_amount") or 0))
 
                 # Check for print_variant first
                 print_variant_id = item_print_job.get("print_variant")
@@ -889,20 +887,17 @@ class OrderSerializer(serializers.ModelSerializer):
                 if unit_price is None:
                     unit_price = Decimal(str(product1.sales_price))
 
-                if print_job_total > 0:
-                    line_total = print_job_total
-                else:
-                    # For print products: calculate based on total pages
-                    # Total pages = sum of (page_count * number_of_copies) for all files
-                    total_pages = Decimal("0")
-                    files_data = item_print_job.get("files", [])
-                    for file_data in files_data:
-                        page_count = Decimal(str(file_data.get("page_count", 0)))
-                        number_of_copies = Decimal(str(file_data.get("number_of_copies", 1)))
-                        total_pages += page_count * number_of_copies
+                # For print products: calculate based on total pages
+                # Total pages = sum of (page_count * number_of_copies) for all files
+                total_pages = Decimal("0")
+                files_data = item_print_job.get("files", [])
+                for file_data in files_data:
+                    page_count = Decimal(str(file_data.get("page_count", 0)))
+                    number_of_copies = Decimal(str(file_data.get("number_of_copies", 1)))
+                    total_pages += page_count * number_of_copies
 
-                    # Use variant price (or product sales_price) per page * total_pages
-                    line_total = unit_price * total_pages
+                # Use variant price (or product sales_price) per page * total_pages
+                line_total = unit_price * total_pages
             else:
                 # For regular products: use sales_price * quantity
                 unit_price = Decimal(str(product1.sales_price))

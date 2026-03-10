@@ -62,24 +62,51 @@ def get_order_invoice_totals(order):
     for item in order.items.all():
         if not item.product:
             continue
-        unit_price = Decimal(item.price or 0)
+        product = item.product
         quantity = int(item.quantity or 0)
-        sales_price = getattr(item.product, "sales_price", None)
+        sales_price = getattr(product, "sales_price", None)
         sales_price_val = Decimal(str(sales_price)) if sales_price is not None else None
 
         addon_total = Decimal(0)
         print_job = getattr(item, "print_job", None)
-        item_line_total = unit_price * quantity
+
+        # SERVER-SIDE print total:
+        # - If print job exists: use variant/customize price × total pages
+        # - Else: fallback to item.price × quantity
+        is_print_product = getattr(product, "product_type", None) == "print"
+        if is_print_product and print_job:
+            unit_price = None
+            if getattr(print_job, "print_variant", None) and getattr(print_job.print_variant, "price", None) is not None:
+                unit_price = Decimal(str(print_job.print_variant.price))
+            elif getattr(print_job, "customize_variant", None) and getattr(print_job.customize_variant, "price", None) is not None:
+                unit_price = Decimal(str(print_job.customize_variant.price))
+            elif sales_price is not None:
+                unit_price = Decimal(str(sales_price))
+            else:
+                unit_price = Decimal(item.price or 0)
+
+            total_pages = Decimal("0")
+            try:
+                for f in print_job.files.all():
+                    total_pages += Decimal(str(getattr(f, "page_count", 0) or 0)) * Decimal(
+                        str(getattr(f, "number_of_copies", 1) or 1)
+                    )
+            except Exception:
+                total_pages = Decimal(quantity)
+
+            item_line_total = unit_price * total_pages
+        else:
+            unit_price = Decimal(item.price or 0)
+            item_line_total = unit_price * quantity
+
         try:
-            if print_job and getattr(print_job, "total_amount", None):
-                item_line_total = Decimal(str(print_job.total_amount or 0))
             if print_job and hasattr(print_job, "add_ons"):
                 for addon in print_job.add_ons.all():
                     addon_total += Decimal(str(getattr(addon, "price_per_unit", 0) or 0))
         except Exception:
             pass
 
-        # If (quantity × item price) total is less than product sales_price, use sales_price as item total.
+        # If computed line total is less than product sales_price, use sales_price as floor.
         if sales_price_val is not None and item_line_total < sales_price_val:
             base_total = sales_price_val
         else:
