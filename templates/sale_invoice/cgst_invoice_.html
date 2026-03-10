@@ -99,7 +99,7 @@
             </td>
             <td style="text-align:right;">
                 GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>
-                <b>Invoice Date:</b> {{ wholesale.date|date:"d/m/Y" }}<br>
+                <b>Invoice Date:</b> {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br>
                 <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
                 {% if sale_instance.user.tax_settings.composite_scheme %}
                     <b>Composite Scheme</b><br>

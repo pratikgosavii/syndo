@@ -140,15 +140,11 @@
             </td>
             <!-- Right side QR code -->
             <td style="width:30%; text-align:center; vertical-align:middle;">
-                <div class="qr-box">
-                    {% if sale_instance.company_profile and sale_instance.company_profile.payment_qr %}
-                        <img src="{{ sale_instance.company_profile.payment_qr.url }}"
-                             alt="Payment QR"
-                             style="max-width:100%; max-height:100%; object-fit:contain;">
-                    {% else %}
-                        <span>QR CODE</span>
-                    {% endif %}
-                </div>
+                {% if sale_instance.company_profile.payment_qr %}
+                <img src="{{ sale_instance.company_profile.payment_qr.url }}" alt="QR" class="qr-box">
+                {% else %}
+                <div class="qr-box">QR CODE</div>
+                {% endif %}
             </td>
         </tr>
     </table>
