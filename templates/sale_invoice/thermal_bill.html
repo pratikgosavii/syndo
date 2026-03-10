@@ -82,12 +82,12 @@
 
     <!-- Invoice & Customer -->
     <div class="section">
+        <!-- Full-width invoice number so long IDs fit on one line -->
+        <div>Invoice No: {{ wholesale.invoice_number|default:sale_instance.invoice_number|default:sale_instance.id }}</div>
+
         <div class="two-col">
             <div>
-                <div style="display:flex; justify-content:space-between; gap:8px;">
-                    <span>Invoice no: {{ wholesale.invoice_number|default:sale_instance.invoice_number|default:sale_instance.id }}</span>
-                    <span>Order Type: On-Shop</span>
-                </div>
+                <div>Order Type: On-Shop</div>
                 <div>Customer Name : {{ sale_instance.customer.name|default:"Walk-in Customer" }}</div>
                 <div>Ph : {% if sale_instance.customer %}{{ sale_instance.customer.contact|default:"—" }}{% else %}—{% endif %}</div>
             </div>

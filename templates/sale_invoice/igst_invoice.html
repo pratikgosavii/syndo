@@ -133,7 +133,9 @@
                     <tr><td>Round off: ₹ {{ round_off_value|floatformat:2 }}</td></tr>
                     <tr class="bold"><td>Total Amount: ₹ {{ rounded_total|floatformat:2 }}</td></tr>
                     <tr><td>Paid: ₹ {{ paid_amount|floatformat:2 }}</td></tr>
+                    {% if balance_amount > 0 %}
                     <tr class="bold"><td style="color:red;">Balance: ₹ {{ balance_amount|floatformat:2 }}</td></tr>
+                    {% endif %}
                 </table>
             </td>
         </tr>

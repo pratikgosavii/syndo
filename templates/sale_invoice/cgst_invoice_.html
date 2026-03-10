@@ -203,8 +203,10 @@
                     <tr><td>Discount ({{ sale_instance.discount_percentage }}%) : ₹ {{ sale_instance.discount_amount|floatformat:2 }}</td></tr>
                     <tr><td>Round off</td></tr>
                     <tr class="bold"><td>Total Amount: ₹ {{ total_amount|floatformat:2 }}</td></tr>
-                    <tr><td>Paid: ₹ {{ sale_instance.advance_amount|floatformat:2 }}</td></tr>
-                    <tr class="bold"><td style="color:red;">Balance: ₹ {{ sale_instance.balance_amount|floatformat:2 }}</td></tr>
+                    <tr><td>Paid: ₹ {{ paid_amount|floatformat:2 }}</td></tr>
+                    {% if balance_amount > 0 %}
+                    <tr class="bold"><td style="color:red;">Balance: ₹ {{ balance_amount|floatformat:2 }}</td></tr>
+                    {% endif %}
                 </table>
             </td>
         </tr>

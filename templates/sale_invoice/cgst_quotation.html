@@ -154,7 +154,9 @@
         <tr><td>Round off</td><td>{{ round_off_value|floatformat:2 }}</td></tr>
         <tr><td><strong>Total Amount</strong></td><td><strong>{{ rounded_total|floatformat:2 }}</strong></td></tr>
         <tr><td>Paid</td><td>{{ paid_amount|floatformat:2 }}</td></tr>
+        {% if balance_amount > 0 %}
         <tr><td><strong>Balance</strong></td><td><strong>{{ balance_amount|floatformat:2 }}</strong></td></tr>
+        {% endif %}
       </table>
     </td>
   </tr>

@@ -249,7 +249,7 @@
           {% if wholesale.reverse_charges %}<b>Reverse Charge</b>{% endif %}
         </div>
         <div class="invoice-details">
-          <h3>PROFORMA INVOICE</h3>
+        <h3>{{ doc_title|default:"PROFORMA INVOICE" }}</h3>
           ORIGINAL FOR RECIPIENT<br />
           Invoice Date: {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br />
           Invoice No: {{ wholesale.invoice_number }}

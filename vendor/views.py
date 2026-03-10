@@ -4918,6 +4918,14 @@ def sale_invoice(request, sale_id):
         # Fallback
         template_name = "sale_invoice/online_invoice.html"
 
+    # For wholesale-rate sales, use detailed wholesale layouts for TAX INVOICE
+    if sale.is_wholesale_rate and sale_type == "invoice":
+        wholesale_template_map = {
+            "cgst": "sale_invoice/cgst_proforma.html",
+            "igst": "sale_invoice/igst_proforma.html",
+        }
+        template_name = wholesale_template_map.get(store_gst, template_name)
+
     # --- Thermal bill for retail: when thermal_print is True, use thermal template for retail POS bills ---
     user = sale.user or request.user
     inv_settings = InvoiceSettings.objects.filter(user=user).first()
@@ -5069,6 +5077,18 @@ def sale_invoice(request, sale_id):
         vendor_gstin = (cp.gstin if cp else None) or (store.gstin if store else None)
         vendor_fssai = store.fssai_number if store else None
 
+    # Document title for templates (TAX INVOICE vs Proforma, etc.)
+    if sale_type == "invoice":
+        doc_title = "TAX INVOICE"
+    elif sale_type == "proforma":
+        doc_title = "PROFORMA INVOICE"
+    elif sale_type == "quotation":
+        doc_title = "QUOTATION"
+    elif sale_type == "delivery_challan":
+        doc_title = "DELIVERY CHALLAN"
+    else:
+        doc_title = sale_type.replace("_", " ").title()
+
     context = {
         'sale_instance': sale,
         'wholesale': wholesale,
@@ -5092,6 +5112,7 @@ def sale_invoice(request, sale_id):
         'company_logo_data_uri': company_logo_data_uri,
         'payment_qr_data_uri': payment_qr_data_uri,
         'company_signature_data_uri': company_signature_data_uri,
+        'doc_title': doc_title,
         'items_with_tax': items_with_tax,
         'vendor_pan': vendor_pan,
         'vendor_gstin': vendor_gstin,

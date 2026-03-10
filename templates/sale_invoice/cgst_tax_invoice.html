@@ -152,20 +152,9 @@
 
     <!-- Footer -->
     <div class="footer">
-        <div style="float:left; max-width:70%;">
-            <p><strong>Terms & Conditions:</strong><br>
-            {{ display_terms|default:""|safe }}<br>
-            <strong>This is a computer-generated invoice.</strong></p>
-        </div>
-        <div style="float:right; text-align:right;">
-            <b>Authorized Signatory</b><br>
-            {% if company_signature_data_uri %}
-                <img src="{{ company_signature_data_uri }}" alt="Signature" style="max-width:150px;max-height:80px;"><br>
-            {% elif sale_instance.company_profile and sale_instance.company_profile.signature %}
-                <img src="{{ sale_instance.company_profile.signature.url }}" alt="Signature" style="max-width:150px;max-height:80px;"><br>
-            {% endif %}
-        </div>
-        <div style="clear:both;"></div>
+        <p><strong>Terms & Conditions:</strong><br>
+        {{ display_terms|default:""|safe }}<br>
+        <strong>This is a computer-generated invoice.</strong></p>
     </div>
 
 </body>
