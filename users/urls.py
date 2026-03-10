@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import *
+from .views import (
+    # ... existing imports ...
+    verify_vendor,
+    verify_vendor_gst,
+    verify_vendor_bank,
+    unverify_vendor_gst,
+    unverify_vendor_bank,
+)
 
 from django.urls import path
 
@@ -40,6 +47,8 @@ urlpatterns = [
     path('verify-vendor/<int:store_id>/', verify_vendor, name='verify_vendor'),
     path('verify-vendor-gst/', verify_vendor_gst, name='verify_vendor_gst'),
     path('verify-vendor-bank/', verify_vendor_bank, name='verify_vendor_bank'),
+    path('unverify-vendor-gst/', unverify_vendor_gst, name='unverify_vendor_gst'),
+    path('unverify-vendor-bank/', unverify_vendor_bank, name='unverify_vendor_bank'),
 
     path('roles/create/', role_create, name='role_create'),
     path('roles/<int:pk>/edit/', role_update, name='role_update'),

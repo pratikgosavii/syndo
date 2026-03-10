@@ -6,6 +6,7 @@ from django.utils import timezone
 from decimal import Decimal
 
 from vendor.models import Sale, Purchase, Expense, Payment, product, vendor_customers, vendor_vendors
+from customer.models import Order
 
 
 @login_required(login_url='login_admin')
@@ -89,16 +90,30 @@ def dashboard(request):
     total_customers = customer_qs.count()
     total_vendors_count = vendor_qs.count()
 
-    # Today's activity
+    # Today's activity (POS)
     today_sales_count = sale_qs.filter(created_at__date=today).count()
     today_sales_amount = sale_qs.filter(created_at__date=today).aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
     today_purchases_count = purchase_qs.filter(purchase_date=today).count()
     today_purchases_amount = purchase_qs.filter(purchase_date=today).aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
 
-    # This month
+    # This month (POS)
     start_of_month = today.replace(day=1)
     month_sales = sale_qs.filter(created_at__date__gte=start_of_month, created_at__date__lte=today).aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
     month_purchases = purchase_qs.filter(purchase_date__gte=start_of_month, purchase_date__lte=today).aggregate(s=Sum('total_amount'))['s'] or Decimal('0')
+
+    # --- Online order metrics (for admin dashboard) ---
+    online_today_count = 0
+    online_today_amount = Decimal("0")
+    online_month_count = 0
+    online_month_amount = Decimal("0")
+    if is_admin:
+        online_today_qs = Order.objects.filter(created_at__date=today)
+        online_today_count = online_today_qs.count()
+        online_today_amount = online_today_qs.aggregate(s=Sum("total_amount"))["s"] or Decimal("0")
+
+        online_month_qs = Order.objects.filter(created_at__date__gte=start_of_month, created_at__date__lte=today)
+        online_month_count = online_month_qs.count()
+        online_month_amount = online_month_qs.aggregate(s=Sum("total_amount"))["s"] or Decimal("0")
 
     context = {
         'is_admin': is_admin,
@@ -126,6 +141,10 @@ def dashboard(request):
         'today_purchases_amount': today_purchases_amount,
         'month_sales': month_sales,
         'month_purchases': month_purchases,
+        'online_today_count': online_today_count,
+        'online_today_amount': online_today_amount,
+        'online_month_count': online_month_count,
+        'online_month_amount': online_month_amount,
     }
 
     return render(request, 'adminDashboard.html', context)

@@ -333,6 +333,16 @@ body[data-sidebar-size=sm] .sidebar-logout-wrap {
                             </li>
                         <li>
 
+                        <li>
+                            <a href="javascript: void(0);" class="has-arrow">
+                                <i data-feather="shopping-bag"></i>
+                                <span data-key="t-authentication">Order management</span>
+                            </a>
+                            <ul class="sub-menu" aria-expanded="false">
+                                <li><a href="{% url 'order_list' %}">Online orders</a></li>
+                            </ul>
+                        </li>
+
                         {% comment %} <li>
                             <li>
                                 <a href="javascript: void(0);" class="has-arrow">

@@ -739,6 +739,23 @@ def verify_vendor_gst(request):
 
 
 @login_required(login_url='login_admin')
+def unverify_vendor_gst(request):
+    """POST: set is_gstin_verified=False for the given store_id."""
+    if request.method != 'POST':
+        return redirect('list_user_vendor')
+    store_id = request.POST.get('store_id')
+    if not store_id:
+        messages.error(request, 'Store ID is required.')
+        return redirect('list_user_vendor')
+    store = get_object_or_404(vendor_store, pk=store_id)
+    store.is_gstin_verified = False
+    store.gstin_verified_at = None
+    store.save(update_fields=['is_gstin_verified', 'gstin_verified_at'])
+    messages.success(request, 'GST unverified for this vendor.')
+    return redirect('verify_vendor', store_id=store.id)
+
+
+@login_required(login_url='login_admin')
 def verify_vendor_bank(request):
     """POST: set is_bank_verified=True for the given store_id."""
     if request.method != 'POST':
@@ -753,4 +770,21 @@ def verify_vendor_bank(request):
     store.bank_verified_at = timezone.now()
     store.save(update_fields=['is_bank_verified', 'bank_verified_at'])
     messages.success(request, 'Bank verified for this vendor.')
+    return redirect('verify_vendor', store_id=store.id)
+
+
+@login_required(login_url='login_admin')
+def unverify_vendor_bank(request):
+    """POST: set is_bank_verified=False for the given store_id."""
+    if request.method != 'POST':
+        return redirect('list_user_vendor')
+    store_id = request.POST.get('store_id')
+    if not store_id:
+        messages.error(request, 'Store ID is required.')
+        return redirect('list_user_vendor')
+    store = get_object_or_404(vendor_store, pk=store_id)
+    store.is_bank_verified = False
+    store.bank_verified_at = None
+    store.save(update_fields=['is_bank_verified', 'bank_verified_at'])
+    messages.success(request, 'Bank unverified for this vendor.')
     return redirect('verify_vendor', store_id=store.id)

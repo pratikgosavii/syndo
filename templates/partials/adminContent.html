@@ -18,7 +18,47 @@
                 </div>
             </div>
 
-            <!-- Summary Cards Row 1: Main Metrics -->
+            {% if is_admin %}
+            <!-- Admin: show only online order summary -->
+            <div class="row g-3 mb-4">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #775599 !important;">
+                        <div class="card-body">
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.7rem;">Online orders today</span>
+                            <h4 class="mb-1 mt-1 fw-bold">{{ online_today_count }} orders</h4>
+                            <div class="text-nowrap">
+                                <span class="text-primary fw-semibold">₹ {{ online_today_amount|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0d6efd !important;">
+                        <div class="card-body">
+                            <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.7rem;">Online orders (this month)</span>
+                            <h4 class="mb-1 mt-1 fw-bold">{{ online_month_count }} orders</h4>
+                            <div class="text-nowrap">
+                                <span class="text-success fw-semibold">₹ {{ online_month_amount|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div>
+                                <span class="text-muted text-uppercase fw-semibold" style="font-size: 0.7rem;">Go to orders</span>
+                                <p class="mb-1 small text-muted">View and manage all online orders.</p>
+                            </div>
+                            <a href="{% url 'order_list' %}" class="btn btn-sm btn-primary" style="background-color: #775599; border-color: #775599;">
+                                <i data-feather="shopping-bag" class="me-1" style="width:14px;height:14px;"></i>Online order list
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Summary Cards Row 1: Main Metrics (Vendor) -->
             <div class="row g-3 mb-4">
                 <div class="col-xl-3 col-md-6">
                     <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #775599 !important;">
@@ -96,6 +136,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
             <!-- Row 2: Today & This Week -->
             <div class="row g-3 mb-4">
@@ -145,7 +186,8 @@
                 </div>
             </div>
 
-            <!-- Quick Links -->
+            {% if not is_admin %}
+            <!-- Quick Links (vendor only) -->
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="d-flex flex-wrap gap-2">
@@ -176,6 +218,7 @@
                 </div>
             </div>
 
+            {% if not is_admin %}
             <div class="row g-4">
                 <!-- Recent Sales -->
                 <div class="col-xl-8">
@@ -261,11 +304,15 @@
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
 
-            <!-- Spacer for fixed Quick Actions bar -->
+            <!-- Spacer for fixed Quick Actions bar (vendor only) -->
+            {% if not is_admin %}
             <div class="mb-5" style="height: 80px;"></div>
+            {% endif %}
         </div>
     </div>
+    {% if not is_admin %}
     <!-- Quick Actions - Fixed at bottom -->
     <div class="quick-actions-fixed border-top bg-white shadow" style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1030; padding: 12px 24px;">
         <div class="container-fluid d-flex flex-wrap align-items-center justify-content-center gap-2">
@@ -279,6 +326,7 @@
             {% endif %}
         </div>
     </div>
+    {% endif %}
     {% block footer %}
     {% include 'partials/footer.html' %}
     {% endblock footer %}

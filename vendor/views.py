@@ -5104,14 +5104,17 @@ def pos_wholesaless(request, sale_id):
 
 
 def order_details(request, order_id):
-    # Load order with delivery_boy, user (customer), and print job files; restrict to vendor's orders
-    order = (
-        Order.objects.filter(id=order_id, items__product__user=request.user)
+    # Load order with delivery_boy, user (customer), and print job files
+    # Admin can see any order; vendor only orders containing their products
+    qs = (
+        Order.objects.filter(id=order_id)
         .select_related('delivery_boy', 'address', 'user')
         .prefetch_related('items__product', 'items__print_job__files', 'items__print_job__add_ons')
         .distinct()
-        .first()
     )
+    if not request.user.is_superuser:
+        qs = qs.filter(items__product__user=request.user)
+    order = qs.first()
     if not order:
         raise Http404("Order not found")
     delivery_boy_data = DeliveryBoy.objects.filter(user=request.user)
@@ -5182,15 +5185,13 @@ def order_invoice_pdf(request, order_id):
 from customer.models import *
 
 
+@login_required(login_url='login_admin')
 def order_list(request):
     from django.db.models import Q
-    # Vendor sees orders that contain their products
-    qs = (
-        Order.objects.filter(items__product__user=request.user)
-        .select_related("user", "address")
-        .distinct()
-        .order_by("-created_at")
-    )
+    # Admin sees all orders; vendor sees orders that contain their products
+    qs = Order.objects.all().select_related("user", "address").distinct().order_by("-created_at")
+    if not request.user.is_superuser:
+        qs = qs.filter(items__product__user=request.user)
     # Optional filters (GET)
     status_filter = request.GET.get("status", "").strip()
     paid_filter = request.GET.get("paid", "")  # paid | unpaid | all
