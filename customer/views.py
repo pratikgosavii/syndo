@@ -2525,7 +2525,13 @@ class ProductSearchAPIView(ListAPIView):
 
     def get_queryset(self):
         search_term = self.request.query_params.get("q")  # use ?q=shirt
-        qs = product.objects.filter(is_active=True, sale_type__in = ["online", "both"])
+        qs = product.objects.filter(
+            is_active=True,
+            sale_type__in=["online", "both"],
+            user__is_active=True,
+            user__vendor_store__is_active=True,
+            user__vendor_store__is_online=True,
+        )
 
          # Filter by customer pincode
           # Get pincode from ?pincode=XXXX in URL
@@ -2574,13 +2580,22 @@ class StoreBySubCategoryView(APIView):
 
         # Get distinct user IDs who have products in this subcategory
         user_ids = (
-            product.objects.filter(sub_category_id=subcategory_id, is_active=True)
+            product.objects.filter(
+                sub_category_id=subcategory_id,
+                is_active=True,
+                user__is_active=True,
+            )
             .values_list('user_id', flat=True)
             .distinct()
         )
 
-        # Get all vendor stores of those users
-        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True, is_online=True).distinct()
+        # Get all vendor stores of those users (only active vendors with active/online stores)
+        stores = vendor_store.objects.filter(
+            user_id__in=user_ids,
+            is_active=True,
+            is_online=True,
+            user__is_active=True,
+        ).distinct()
 
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
@@ -2618,13 +2633,22 @@ class StoreByCategoryView(APIView):
 
         # Get distinct user IDs who have products in this category
         user_ids = (
-            product.objects.filter(category_id=category_id, is_active=True)
+            product.objects.filter(
+                category_id=category_id,
+                is_active=True,
+                user__is_active=True,
+            )
             .values_list('user_id', flat=True)
             .distinct()
         )
 
-        # Get all vendor stores of those users
-        stores = vendor_store.objects.filter(user_id__in=user_ids, is_active=True, is_online=True).distinct()
+        # Get all vendor stores of those users (only active vendors with active/online stores)
+        stores = vendor_store.objects.filter(
+            user_id__in=user_ids,
+            is_active=True,
+            is_online=True,
+            user__is_active=True,
+        ).distinct()
 
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
@@ -2805,7 +2829,11 @@ class HomeScreenView(APIView):
             # then pick up to 6 random stores for this main category
             # -------------------------
             user_ids = set([p.user_id for p in products if p.user_id])
-            stores_qs = vendor_store.objects.filter(user_id__in=user_ids, is_active=True).only('id', 'name', 'profile_image', 'private_catalog', 'user')
+            stores_qs = vendor_store.objects.filter(
+                user_id__in=user_ids,
+                is_active=True,
+                user__is_active=True,
+            ).only('id', 'name', 'profile_image', 'private_catalog', 'user')
             stores_list = list(stores_qs)
             
             # Filter stores based on private_catalog setting
