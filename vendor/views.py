@@ -1312,7 +1312,6 @@ def add_to_super_catalogue(request, product_id):
 
     # Clone fields from product -> super_catalogue (1:1 as far as possible)
     clone_data = {
-        "user": request.user,
         "parent": p.parent,  # keep variant grouping if needed
         "product_type": p.product_type,
         "sale_type": p.sale_type,
@@ -1486,6 +1485,59 @@ def add_product(request, parent_id=None):
     if parent_id:
         parent_instance = get_object_or_404(product, id=parent_id)
 
+    # Optional: load defaults from super catalogue for new product form
+    selected_catalogue_id = request.GET.get("catalogue_id")
+    catalogue_initial = None
+    if request.method != "POST" and selected_catalogue_id:
+        try:
+            sc = super_catalogue.objects.get(id=selected_catalogue_id, is_active=True)
+            catalogue_initial = {
+                # core classification
+                "product_type": getattr(sc, "product_type", None),
+                "sale_type": getattr(sc, "sale_type", None),
+                "food_type": getattr(sc, "food_type", None),
+                "name": sc.name,
+                "category": sc.category,
+                # pricing
+                "purchase_price": getattr(sc, "purchase_price", None),
+                "wholesale_price": getattr(sc, "wholesale_price", None),
+                "sales_price": getattr(sc, "sales_price", None),
+                "mrp": getattr(sc, "mrp", None),
+                # tax / uom
+                "hsn": getattr(sc, "hsn", None),
+                "gst": getattr(sc, "gst", None),
+                "unit": getattr(sc, "unit", None),
+                # stock
+                "track_serial_numbers": getattr(sc, "track_serial_numbers", False),
+                "track_stock": getattr(sc, "track_stock", False),
+                "opening_stock": getattr(sc, "opening_stock", None),
+                "low_stock_alert": getattr(sc, "low_stock_alert", False),
+                "low_stock_quantity": getattr(sc, "low_stock_quantity", None),
+                "stock": getattr(sc, "stock", None),
+                # descriptive
+                "brand_name": getattr(sc, "brand_name", None),
+                "color": getattr(sc, "color", None),
+                # delivery & policies
+                "is_customize": getattr(sc, "is_customize", False),
+                "instant_delivery": getattr(sc, "instant_delivery", False),
+                "self_pickup": getattr(sc, "self_pickup", False),
+                "general_delivery": getattr(sc, "general_delivery", False),
+                "is_on_shop": getattr(sc, "is_on_shop", False),
+                "return_policy": getattr(sc, "return_policy", False),
+                "cod": getattr(sc, "cod", False),
+                "replacement": getattr(sc, "replacement", False),
+                "shop_exchange": getattr(sc, "shop_exchange", False),
+                "shop_warranty": getattr(sc, "shop_warranty", False),
+                "brand_warranty": getattr(sc, "brand_warranty", False),
+                # flags
+                "is_food": getattr(sc, "is_food", False),
+                "tax_inclusive": getattr(sc, "tax_inclusive", False),
+                "is_online": getattr(sc, "is_online", False),
+                "description": getattr(sc, "description", None),
+            }
+        except super_catalogue.DoesNotExist:
+            catalogue_initial = None
+
     if request.method == 'POST':
         product_form = product_Form(request.POST, request.FILES)
 
@@ -1571,7 +1623,7 @@ def add_product(request, parent_id=None):
             customize_variant_formset = CustomizePrintVariantFormSet(request.POST, request.FILES, prefix='customize_print_variants')
 
     else:
-        product_form = product_Form()
+        product_form = product_Form(initial=catalogue_initial) if catalogue_initial else product_Form()
         addon_formset = AddonFormSet(prefix='addon', form_kwargs={'user': request.user})
         variant_formset = VariantFormSet(prefix='print_variants')
         customize_variant_formset = CustomizePrintVariantFormSet(prefix='customize_print_variants')
@@ -1600,6 +1652,10 @@ def add_product(request, parent_id=None):
         'food': settings_obj.food,
     })
     existing_imeis = list(parent_instance.serial_imei_list.values_list('value', flat=True)) if parent_instance else []
+    catalogue_options = [
+        {"id": sc.id, "name": sc.name}
+        for sc in super_catalogue.objects.filter(is_active=True).order_by("name")
+    ]
     context = {
         'form': product_form,
         'formset': addon_formset,
@@ -1612,6 +1668,8 @@ def add_product(request, parent_id=None):
         'has_gstin': has_gstin,
         'product_settings_json': product_settings_json,
         'existing_imeis_json': json.dumps(existing_imeis),
+        'super_catalogue_list': catalogue_options,
+        'selected_catalogue_id': int(selected_catalogue_id) if selected_catalogue_id else None,
     }
     return render(request, 'add_product.html', context)
 

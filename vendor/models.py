@@ -485,47 +485,96 @@ class addon(models.Model):
 
 
 class super_catalogue(models.Model):
-    
+    """
+    Central product catalogue template.
+    Structured to be close to `product` so that cloning in both
+    directions is straightforward.
+    """
+
     TYPE_CHOICES = (
-        ('product', 'Product'),
-        ('service', 'Service'),
-        ('print', 'Print'),
+        ("product", "Product"),
+        ("service", "Service"),
+        ("print", "Print"),
     )
 
     SALE_TYPE_CHOICES = (
-        ('offline', 'Offline Only'),
-        ('both', 'Both Online & Offline'),
+        ("offline", "Offline Only"),
+        ("online", "Online Only"),
+        ("both", "Both Online & Offline"),
     )
 
-    product_type  = models.CharField(max_length=10, choices=TYPE_CHOICES, default='product')
-    sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES, default='offline')
+    FOOD_TYPE_CHOICES = (
+        ("veg", "Veg"),
+        ("non_veg", "Non Veg"),
+    )
+
+    # Ownership / grouping
+    user = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="super_catalogue_items",
+        null=True,
+        blank=True,
+    )
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="variants",
+    )
+
+    # Basic classification
+    product_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default="product")
+    sale_type = models.CharField(max_length=10, choices=SALE_TYPE_CHOICES, default="offline")
+    food_type = models.CharField(max_length=10, choices=FOOD_TYPE_CHOICES, null=True, blank=True)
 
     name = models.CharField(max_length=255)
-    category = models.ForeignKey("masters.product_category", on_delete=models.SET_NULL, null=True, blank=True)
+    category = models.ForeignKey(
+        "masters.product_category",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    # Keep sub_category as a simple label; product uses FK and mapping already coerces.
     sub_category = models.CharField(max_length=255, null=True, blank=True)
 
-   
+    # Pricing details
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sales_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    mrp = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
     unit = models.CharField(max_length=50, null=True, blank=True)
     hsn = models.CharField(max_length=50, null=True, blank=True)
     gst = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    # Stock
+    # Stock-level settings
     track_serial_numbers = models.BooleanField(default=False)
+    track_stock = models.BooleanField(default=False)
+    opening_stock = models.IntegerField(null=True, blank=True)
+    low_stock_alert = models.BooleanField(default=False)
+    low_stock_quantity = models.IntegerField(null=True, blank=True)
+    stock = models.IntegerField(null=True, blank=True)
 
-    # Optional
+    # Optional visual attributes
     brand_name = models.CharField(max_length=255, null=True, blank=True)
     color = models.CharField(max_length=50, null=True, blank=True)
     size = models.CharField(max_length=50, null=True, blank=True)
 
     description = models.TextField(null=True, blank=True)
-    image = models.ImageField(upload_to='product_images/', null=True, blank=True)
+    image = models.ImageField(upload_to="product_images/", null=True, blank=True)
     # Multiple gallery images via M2M to ProductImage
-    gallery_images = models.ManyToManyField('ProductImage', blank=True, related_name='products')
+    gallery_images = models.ManyToManyField(
+        "ProductImage", blank=True, related_name="super_catalogue_products"
+    )
 
     # Delivery & Policies
+    is_customize = models.BooleanField(default=False)
     instant_delivery = models.BooleanField(default=False)
     self_pickup = models.BooleanField(default=False)
     general_delivery = models.BooleanField(default=False)
+    is_on_shop = models.BooleanField(default=False)
 
     return_policy = models.BooleanField(default=False)
     cod = models.BooleanField(default=False)
@@ -535,9 +584,12 @@ class super_catalogue(models.Model):
     brand_warranty = models.BooleanField(default=False)
 
     # Flags
+    is_food = models.BooleanField(default=False)
+    tax_inclusive = models.BooleanField(default=False)
     is_popular = models.BooleanField(default=False)
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_online = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

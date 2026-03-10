@@ -145,6 +145,39 @@
     .searchable-dropdown-item:last-child { border-bottom: none; }
     .searchable-dropdown-empty { padding: 0.75rem; color: #6c757d; font-size: 0.875rem; }
 
+    /* Catalogue select UI */
+    .catalogue-select-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+        background: #f9fafb;
+        margin-bottom: 1rem;
+    }
+    .catalogue-select-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #111827;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .catalogue-select-title .bi {
+        color: #7c3aed;
+        font-size: 1rem;
+    }
+    .catalogue-select-helper {
+        font-size: 0.78rem;
+        color: #6b7280;
+        margin-top: 0.35rem;
+    }
+    .catalogue-select-input-group .form-select {
+        background-color: #fff;
+    }
+    .catalogue-select-input-group .input-group-text {
+        background-color: #f3f4f6;
+        border-right: 0;
+    }
+
     /* Serial / IMEI section – enhanced UI */
     #serial_imei_list { display: flex; flex-direction: column; gap: 0.5rem; }
     .serial-imei-row {
@@ -211,7 +244,33 @@
 
                         <!-- Basic information -->
                         <div class="section-card">
-                            <div class="section-title"><i class="bi bi-info-circle"></i>Basic information</div>
+                            {% if super_catalogue_list %}
+                            <div class="catalogue-select-card mb-3">
+                                <div class="catalogue-select-title">
+                                    <i class="bi bi-box"></i>
+                                    <span>* Select Catalogue Product</span>
+                                </div>
+                                <div class="mt-2">
+                                    <div class="input-group input-group-sm catalogue-select-input-group">
+                                        <span class="input-group-text border-end-0">
+                                            <i class="bi bi-search"></i>
+                                        </span>
+                                        <select id="catalogue-select" class="form-select form-select-sm border-start-0">
+                                            <option value="">Select Catalogue Product</option>
+                                            {% for c in super_catalogue_list %}
+                                            <option value="{{ c.id }}" {% if selected_catalogue_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="catalogue-select-helper">
+                                        Select a catalogue product to auto-fill details
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="section-card-header-row">
+                                <div class="section-title mb-0"><i class="bi bi-info-circle"></i>Basic information</div>
+                            </div>
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label for="id_product_type" class="form-label">Product type</label>
@@ -778,6 +837,27 @@
 
 {% block extra_js %}
 <script>
+// Load from catalogue: when user picks a catalogue product, reload form with its data as initial
+document.addEventListener('DOMContentLoaded', function () {
+    var select = document.getElementById('catalogue-select');
+    if (!select) return;
+    select.addEventListener('change', function () {
+        var id = this.value;
+        var url = window.location.pathname;
+        var params = new URLSearchParams(window.location.search);
+        if (id) {
+            params.set('catalogue_id', id);
+        } else {
+            params.delete('catalogue_id');
+        }
+        var query = params.toString();
+        if (query) {
+            url += '?' + query;
+        }
+        window.location.href = url;
+    });
+});
+</script>
     var existingImeis = {{ existing_imeis_json|default:"[]"|safe }};
 </script>
 <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
