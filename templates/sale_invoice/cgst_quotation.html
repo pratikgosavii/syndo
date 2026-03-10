@@ -57,7 +57,9 @@
 
 <div class="header">
   <div class="header-left">
-    {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+    {% if company_logo_data_uri %}
+    <img src="{{ company_logo_data_uri }}" width="60"><br>
+    {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
     <img src="{{ sale_instance.company_profile.profile_image.url }}" width="60"><br>
     {% endif %}
     <strong>{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</strong><br>

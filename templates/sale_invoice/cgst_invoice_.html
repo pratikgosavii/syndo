@@ -87,7 +87,9 @@
     <table class="no-border">
         <tr>
             <td style="width:60px; text-align:center;">
-                {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+                {% if company_logo_data_uri %}
+                    <img src="{{ company_logo_data_uri }}" width="50" height="50">
+                {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
                     <img src="{{ sale_instance.company_profile.profile_image.url }}" width="50" height="50">
                 {% else %}
                     <div class="company-logo">Logo</div>
@@ -178,7 +180,9 @@
         <tr>
             <td style="width:40%; text-align:left;"><b>Total value in words :</b> {{ total_in_words }}</td>
             <td style="width:20%; text-align:center;">
-                {% if sale_instance.company_profile.payment_qr %}
+                {% if payment_qr_data_uri %}
+                    <img src="{{ payment_qr_data_uri }}" width="80" height="80"><br>
+                {% elif sale_instance.company_profile.payment_qr %}
                     <img src="{{ sale_instance.company_profile.payment_qr.url }}" width="80" height="80"><br>
                 {% else %}
                     <img src="{% static 'qr.png' %}" width="80" height="80"><br>
@@ -213,7 +217,7 @@
 </div>
 
 <div class="footer">
-    Website - {{ sale_instance.company_profile.website|default:"www.companydomain.com" }}<br>
+    Website - {{ sale_instance.company_profile.website|default:"www.svindo.com" }}<br>
     Page no. 1
 </div>
 

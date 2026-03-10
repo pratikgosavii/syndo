@@ -117,7 +117,9 @@
     <!-- Header -->
     <div class="header">
       <div class="logo">
-        {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+        {% if company_logo_data_uri %}
+        <img src="{{ company_logo_data_uri }}" alt="Logo" style="width:70px;height:70px;border-radius:50%;object-fit:cover;" />
+        {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
         <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Logo" style="width:70px;height:70px;border-radius:50%;object-fit:cover;" />
         {% else %}Logo{% endif %}
       </div>
@@ -221,7 +223,9 @@
       Branch : {{ sale_instance.advance_bank.branch|default:"-" }}<br>
       UPI Id : {{ sale_instance.company_profile.upi_id|default:"-" }}
       <div class="qr">
-        {% if sale_instance.company_profile.payment_qr %}
+        {% if payment_qr_data_uri %}
+        <img src="{{ payment_qr_data_uri }}" alt="QR" style="width:80px;height:80px;object-fit:cover;" />
+        {% elif sale_instance.company_profile.payment_qr %}
         <img src="{{ sale_instance.company_profile.payment_qr.url }}" alt="QR" style="width:80px;height:80px;object-fit:cover;" />
         {% else %}QR{% endif %}
       </div>

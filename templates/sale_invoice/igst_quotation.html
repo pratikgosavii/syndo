@@ -117,7 +117,9 @@
     <!-- Header -->
     <div class="header">
       <div class="logo">
-        {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+        {% if company_logo_data_uri %}
+        <img src="{{ company_logo_data_uri }}" alt="Logo" style="width:70px;height:70px;border-radius:50%;object-fit:cover;" />
+        {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
         <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Logo" style="width:70px;height:70px;border-radius:50%;object-fit:cover;" />
         {% else %}Logo{% endif %}
       </div>

@@ -4730,9 +4730,18 @@ def sale_bill_details(request, sale_id):
         _update_sale_totals(sale, wholesale)
         sale.refresh_from_db()
 
+    # Terms & Conditions (same logic as invoice PDFs)
+    inv_settings = InvoiceSettings.objects.filter(user=sale.user).first()
+    term_from_sale = getattr(wholesale, 'terms', None) or ''
+    if term_from_sale and str(term_from_sale).strip():
+        display_terms = term_from_sale
+    else:
+        display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
+
     context = {
         'sale': sale,
         'wholesale': wholesale,
+        'display_terms': display_terms,
     }
     return render(request, 'sale_bill_details.html', context)
 
@@ -4993,14 +5002,12 @@ def sale_invoice(request, sale_id):
     vendor_gstin = None
     vendor_fssai = None
     company_logo_data_uri = None
-    if use_thermal:
+    # Base64 logo / QR for PDF rendering (used by all invoice templates)
+    company_logo_data_uri = None
+    payment_qr_data_uri = None
+    cp = sale.company_profile
+    try:
         import base64
-        store = vendor_store.objects.filter(user=user).first()
-        cp = sale.company_profile
-        vendor_pan = (cp.pan if cp else None) or (store.pan_number if store else None)
-        vendor_gstin = (cp.gstin if cp else None) or (store.gstin if store else None)
-        vendor_fssai = store.fssai_number if store else None
-        # Embed company logo as base64 so html2pdf.app (external service) can render it
         if cp and cp.profile_image:
             try:
                 with cp.profile_image.open('rb') as f:
@@ -5009,7 +5016,25 @@ def sale_invoice(request, sale_id):
                 mime = 'image/png' if ext == 'png' else 'image/jpeg'
                 company_logo_data_uri = f"data:{mime};base64,{logo_b64}"
             except Exception:
-                pass
+                company_logo_data_uri = None
+        if cp and cp.payment_qr:
+            try:
+                with cp.payment_qr.open('rb') as f:
+                    qr_b64 = base64.b64encode(f.read()).decode('ascii')
+                ext_qr = cp.payment_qr.name.split('.')[-1].lower() if cp.payment_qr.name else 'jpeg'
+                mime_qr = 'image/png' if ext_qr == 'png' else 'image/jpeg'
+                payment_qr_data_uri = f"data:{mime_qr};base64,{qr_b64}"
+            except Exception:
+                payment_qr_data_uri = None
+    except Exception:
+        company_logo_data_uri = None
+        payment_qr_data_uri = None
+
+    if use_thermal:
+        store = vendor_store.objects.filter(user=user).first()
+        vendor_pan = (cp.pan if cp else None) or (store.pan_number if store else None)
+        vendor_gstin = (cp.gstin if cp else None) or (store.gstin if store else None)
+        vendor_fssai = store.fssai_number if store else None
 
     context = {
         'sale_instance': sale,
@@ -5031,6 +5056,8 @@ def sale_invoice(request, sale_id):
         'discount_amount': sale.discount_amount or 0,
         'paid_amount': paid_amount,
         'balance_amount': balance_amount,
+        'company_logo_data_uri': company_logo_data_uri,
+        'payment_qr_data_uri': payment_qr_data_uri,
         'items_with_tax': items_with_tax,
         'vendor_pan': vendor_pan,
         'vendor_gstin': vendor_gstin,

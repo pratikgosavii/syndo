@@ -231,7 +231,9 @@
       <!-- HEADER -->
       <div class="header">
         <div class="logo">
-          {% if sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+          {% if company_logo_data_uri %}
+          <img src="{{ company_logo_data_uri }}" alt="Logo" style="width:80px;height:80px;border-radius:50%;object-fit:cover;" />
+          {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
           <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Logo" style="width:80px;height:80px;border-radius:50%;object-fit:cover;" />
           {% else %}
           Logo
@@ -332,7 +334,9 @@
               UPI Id : {{ sale_instance.company_profile.upi_id|default:"-" }}
             </div>
             <div class="qr-box">
-              {% if sale_instance.company_profile and sale_instance.company_profile.payment_qr %}
+              {% if payment_qr_data_uri %}
+              <img src="{{ payment_qr_data_uri }}" alt="QR" style="width:90px;height:90px;object-fit:cover;margin:auto;" />
+              {% elif sale_instance.company_profile and sale_instance.company_profile.payment_qr %}
               <img src="{{ sale_instance.company_profile.payment_qr.url }}" alt="QR" style="width:90px;height:90px;object-fit:cover;margin:auto;" />
               {% else %}
               <div>QR</div>

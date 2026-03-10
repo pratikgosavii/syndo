@@ -220,7 +220,11 @@
                         <div class="col-md-6">
                             <div class="info-card">
                                 <div class="info-card-title">Remarks</div>
-                                <div class="remarks-box">{% if wholesale and wholesale.notes %}{{ wholesale.notes }}{% else %}Items purchased in good condition. No return / exchange on discounted items.{% endif %}</div>
+                                <div class="remarks-box">{{ wholesale.notes }}</div>
+                                {% if display_terms %}
+                                <div class="info-card-title mt-3">Terms &amp; Conditions</div>
+                                <div class="remarks-box">{{ display_terms|safe }}</div>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-md-6">
