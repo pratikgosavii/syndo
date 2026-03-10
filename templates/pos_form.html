@@ -726,7 +726,7 @@
                       <select name="product[]" class="form-select product-select" placeholder="Search Product">
                         <option value="">Search Product</option>
                         {% for p in products %}
-                          <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
+                          <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:0 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -769,7 +769,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}" {% if p.id == item.product.id %}selected{% endif %}>{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:0 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}" {% if p.id == item.product.id %}selected{% endif %}>{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -794,7 +794,7 @@
                   <select name="product[]" class="form-select product-select">
                     <option value="">Select product</option>
                     {% for p in products %}
-                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
+                      <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:0 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
                     {% endfor %}
                   </select>
                 </div>

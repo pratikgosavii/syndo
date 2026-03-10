@@ -4919,8 +4919,15 @@ def sale_invoice(request, sale_id):
             continue
             
         hsn = getattr(item.product, "hsn", None) or "N/A"
-        sgst_rate = getattr(item.product, "sgst_rate", None) or 9
-        cgst_rate = getattr(item.product, "cgst_rate", None) or 9
+        # If no GST is configured on the product, do not apply any default GST
+        product_gst = getattr(item.product, "gst", None)
+        if not product_gst:
+            sgst_rate = 0
+            cgst_rate = 0
+        else:
+            # Fallback to per-side rates or 9% each when GST exists but sides are missing
+            sgst_rate = getattr(item.product, "sgst_rate", None) or 9
+            cgst_rate = getattr(item.product, "cgst_rate", None) or 9
         taxable_val = float(item.amount)
 
         if hsn not in hsn_summary:

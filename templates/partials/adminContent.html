@@ -218,7 +218,6 @@
                 </div>
             </div>
 
-            {% if not is_admin %}
             <div class="row g-4">
                 <!-- Recent Sales -->
                 <div class="col-xl-8">
@@ -305,14 +304,12 @@
                 </div>
             </div>
             {% endif %}
-
-            <!-- Spacer for fixed Quick Actions bar (vendor only) -->
-            {% if not is_admin %}
-            <div class="mb-5" style="height: 80px;"></div>
-            {% endif %}
         </div>
     </div>
     {% if not is_admin %}
+    <!-- Spacer for fixed Quick Actions bar (vendor only) -->
+    <div class="mb-5" style="height: 80px;"></div>
+
     <!-- Quick Actions - Fixed at bottom -->
     <div class="quick-actions-fixed border-top bg-white shadow" style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1030; padding: 12px 24px;">
         <div class="container-fluid d-flex flex-wrap align-items-center justify-content-center gap-2">
