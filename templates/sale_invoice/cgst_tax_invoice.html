@@ -1,161 +1,237 @@
+
+
+
+
+
+
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Tax Invoice</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 13px;
-            color: #000;
-            margin: 20px;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        th, td {
-            border: 1px solid #000;
-            padding: 6px;
-            text-align: left;
-        }
-        .no-border td, .no-border th {
-            border: none;
-        }
-        .header, .footer {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        .title {
-            font-size: 16px;
-            font-weight: bold;
-            text-decoration: underline;
-        }
-        .qr-box {
-            border: 1px solid #000;
-            width: 120px;
-            height: 120px;
-            margin: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .totals td {
-            border: none;
-            padding: 4px;
-        }
-        .totals strong {
-            font-size: 14px;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Invoice - {{ wholesale.invoice_number }}</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        margin: 0;
+        padding: 0;
+        color: #000;
+    }
+    .invoice-box {
+        width: 800px;
+        margin: auto;
+        border: 1px solid #000;
+        padding: 10px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 5px;
+        vertical-align: top;
+        text-align: center;
+    }
+    .no-border td {
+        border: none !important;
+        padding: 3px;
+    }
+    .header-title {
+        text-align: center;
+        font-weight: bold;
+        color: blue;
+        padding: 5px;
+    }
+    .company-logo {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #ccc;
+        text-align: center;
+        line-height: 50px;
+        font-size: 12px;
+        margin-right: 10px;
+    }
+    .summary td {
+        border: none;
+        text-align: right;
+        padding: 3px 6px;
+    }
+    .terms {
+        height: 60px;
+        font-size: 11px;
+        text-align: left;
+        padding: 5px;
+    }
+    .footer {
+        text-align: center;
+        font-size: 11px;
+        margin-top: 5px;
+    }
+    .bold { font-weight: bold; }
+</style>
 </head>
 <body>
 
-    <!-- Header -->
-    <div class="header">
-        <div class="title">TAX INVOICE (CGST)</div>
-        <p>
-            <strong>{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</strong><br>
-            {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }},{% endif %}
-            {% if sale_instance.company_profile.address_line_2 %} {{ sale_instance.company_profile.address_line_2 }},{% endif %}
-            {% if sale_instance.company_profile.state %} {{ sale_instance.company_profile.state }}{% endif %}<br>
-            GSTIN: {{ sale_instance.company_profile.gstin|default:"Unregistered" }}
-        </p>
-    </div>
+<div class="invoice-box">
 
-    <!-- Customer & Invoice Info -->
-    <table>
-        <tr>
-            <td><strong>Invoice No:</strong> {{ wholesale.invoice_number }}</td>
-            <td><strong>Date:</strong> {{ wholesale.date|default:sale_instance.created_at|date:"d-M-Y" }}</td>
-        </tr>
-        <tr>
-            <td><strong>Billed To:</strong><br>
-                {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}<br>
-                {% if sale_instance.customer.billing_address_line1 %}{{ sale_instance.customer.billing_address_line1 }}{% endif %}
-                {% if sale_instance.customer.billing_city %}, {{ sale_instance.customer.billing_city }}{% endif %}
-                {% if sale_instance.customer.billing_state %}, {{ sale_instance.customer.billing_state }}{% endif %}
-                {% if sale_instance.customer.billing_pincode %} - {{ sale_instance.customer.billing_pincode }}{% endif %}<br>
-                GSTIN: {{ sale_instance.customer.gst_number|default:"-" }}
-            </td>
-            <td><strong>Shipped To:</strong><br>
-                {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}<br>
-                {% if sale_instance.customer.dispatch_address_line1 %}{{ sale_instance.customer.dispatch_address_line1 }}{% endif %}
-                {% if sale_instance.customer.dispatch_city %}, {{ sale_instance.customer.dispatch_city }}{% endif %}
-                {% if sale_instance.customer.dispatch_state %}, {{ sale_instance.customer.dispatch_state }}{% endif %}
-                {% if sale_instance.customer.dispatch_pincode %} - {{ sale_instance.customer.dispatch_pincode }}{% endif %}
-            </td>
-        </tr>
+    <!-- Title -->
+    <table class="no-border">
+        <tr><td class="header-title">TAX INVOICE</td></tr>
     </table>
-    <br>
 
-    <!-- Items Table -->
-    <table>
-        <thead>
-            <tr>
-                <th>Sr</th>
-                <th>Description</th>
-                <th>HSN</th>
-                <th>Qty</th>
-                <th>Rate</th>
-                <th>Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items_with_tax %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ item.name }}</td>
-                <td>{{ item.hsn }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.price|floatformat:2 }}</td>
-                <td>{{ item.taxable_value|floatformat:2 }}</td>
-            </tr>
-            {% endfor %}
-            <tr>
-                <td colspan="5" style="text-align:right;"><strong>Subtotal</strong></td>
-                <td>{{ sum_taxable|floatformat:2 }}</td>
-            </tr>
-        </tbody>
-    </table>
-    <br>
-
-    <!-- Totals + QR Code in same row -->
-    <table>
+    <!-- Company Info -->
+    <table class="no-border">
         <tr>
-            <!-- Left side totals -->
-            <td style="width:70%; vertical-align:top;">
-                <table class="totals">
-                    <tr><td>Taxable Amount: ₹ {{ sum_taxable|floatformat:2 }}</td></tr>
-                    <tr><td>SGST: ₹ {{ sum_sgst|floatformat:2 }}</td></tr>
-                    <tr><td>CGST: ₹ {{ sum_cgst|floatformat:2 }}</td></tr>
-                    <tr><td>Discount ({{ discount_percentage|default:"0" }}%): ₹ {{ discount_amount|floatformat:2 }}</td></tr>
-                    <tr><td>Delivery Charges: ₹ {{ wholesale.delivery_charges|default:"0.00" }}</td></tr>
-                    <tr><td>Package Charges: ₹ {{ wholesale.packaging_charges|default:"0.00" }}</td></tr>
-                    <tr><td><strong>Round Off: ₹ {{ round_off_value|floatformat:2 }}</strong></td></tr>
-                    <tr><td><strong>Total Amount: ₹ {{ rounded_total|floatformat:2 }}</strong></td></tr>
-                    <tr><td>Paid: ₹ {{ paid_amount|floatformat:2 }}</td></tr>
-                    <tr><td><strong>Balance: ₹ {{ balance_amount|floatformat:2 }}</strong></td></tr>
-                </table>
-            </td>
-            <!-- Right side QR code -->
-            <td style="width:30%; text-align:center; vertical-align:middle;">
-                {% if sale_instance.company_profile.payment_qr %}
-                <img src="{{ sale_instance.company_profile.payment_qr.url }}" alt="QR" class="qr-box">
+            <td style="width:60px; text-align:center;">
+                {% if company_logo_data_uri %}
+                    <img src="{{ company_logo_data_uri }}" width="50" height="50">
+                {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+                    <img src="{{ sale_instance.company_profile.profile_image.url }}" width="50" height="50">
                 {% else %}
-                <div class="qr-box">QR CODE</div>
+                    <div class="company-logo">Logo</div>
+                {% endif %}
+            </td>
+            <td style="text-align:left;">
+                <div class="bold">{{ sale_instance.company_profile.name }}</div>
+                {{ sale_instance.company_profile.address }}<br>
+            </td>
+            <td style="text-align:right;">
+                GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>
+                <b>Invoice Date:</b> {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br>
+                <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
+                {% if sale_instance.user.tax_settings.composite_scheme %}
+                    <b>Composite Scheme</b><br>
+                {% endif %}
+                {% if sale_instance.due_date %}
+                    <b>Due Date:</b> {{ sale_instance.due_date|date:"d/m/Y" }}
                 {% endif %}
             </td>
         </tr>
     </table>
-    <br>
 
-    <!-- Footer -->
-    <div class="footer">
-        <p><strong>Terms & Conditions:</strong><br>
-        {{ display_terms|default:""|safe }}<br>
-        <strong>This is a computer-generated invoice.</strong></p>
-    </div>
+    <!-- Customer Info -->
+    <table>
+        <tr>
+            <td style="text-align:left;">
+                <b>Customer Name :</b>
+                {% if sale_instance.customer %}
+                    {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}
+                {% else %}
+                    Walk-in Customer
+                {% endif %}
+            </td>
+            <td style="text-align:left;">
+                <b>Mobile No :</b>
+                {% if sale_instance.customer %}{{ sale_instance.customer.contact|default:"—" }}{% else %}—{% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <!-- Product Table -->
+    <table border="1" cellspacing="0" cellpadding="5" width="100%" 
+       style="border-collapse: collapse; text-align: center; font-size: 12px;">
+    <thead>
+        <tr>
+            <th rowspan="2">S.No.</th>
+            <th rowspan="2">Product / Service</th>
+            <th rowspan="2">HSN<br>SAC</th>
+            <th rowspan="2">Rate</th>
+            <th rowspan="2">Dis</th>
+            <th rowspan="2">Qty</th>
+            <th rowspan="2">Taxable<br>Value</th>
+            <th colspan="4">GST</th>
+            <th rowspan="2">Total</th>
+        </tr>
+        <tr>
+            <th>SGST %</th>
+            <th>SGST Amt</th>
+            <th>CGST %</th>
+            <th>CGST Amt</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items_with_tax %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.hsn }}</td>
+            <td>{{ item.price|floatformat:2 }}</td>
+            <td>{{ discount_percentage|default:"0" }}%</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.taxable_value|floatformat:2 }}</td>
+            <td>{{ item.sgst_percent }}%</td>
+            <td>{{ item.sgst_amount|floatformat:2 }}</td>
+            <td>{{ item.cgst_percent }}%</td>
+            <td>{{ item.cgst_amount|floatformat:2 }}</td>
+            <td>{{ item.total_with_tax|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="6" style="text-align:right;"><b>Total</b></td>
+            <td><b>{{ sum_taxable|floatformat:2 }}</b></td>
+            <td></td>
+            <td><b>{{ sum_sgst|floatformat:2 }}</b></td>
+            <td></td>
+            <td><b>{{ sum_cgst|floatformat:2 }}</b></td>
+            <td><b>{{ rounded_total|floatformat:2 }}</b></td>
+        </tr>
+    </tfoot>
+</table>
+
+
+    <!-- Total + QR + Summary -->
+    <table>
+        <tr>
+            <td style="width:40%; text-align:left;"><b>Total value in words :</b> {{ total_in_words }}</td>
+            <td style="width:20%; text-align:center;">
+                {% if payment_qr_data_uri %}
+                    <img src="{{ payment_qr_data_uri }}" width="80" height="80"><br>
+                {% elif sale_instance.company_profile.payment_qr %}
+                    <img src="{{ sale_instance.company_profile.payment_qr.url }}" width="80" height="80"><br>
+                {% else %}
+                    <img src="{% static 'qr.png' %}" width="80" height="80"><br>
+                {% endif %}
+                Pay using UPI
+            </td>
+            <td style="width:40%;">
+                <table class="summary" style="width:100%;">
+                    <tr><td>Taxable Amount: ₹ {{ sale_instance.total_amount_before_discount|floatformat:2 }}</td></tr>
+                    <tr><td>Total Tax: ₹ 
+                        {% with 0 as total_tax %}
+                        {% for hsn,data in hsn_summary %}
+                            {% widthratio data.total_tax 1 1 as tax %}
+                            {% if not forloop.first %}+{% endif %}{{ tax }}
+                        {% endfor %}
+                        {% endwith %}
+                    </td></tr>
+                    <tr><td>Discount ({{ sale_instance.discount_percentage }}%) : ₹ {{ sale_instance.discount_amount|floatformat:2 }}</td></tr>
+                    <tr><td>Round off</td></tr>
+                    <tr class="bold"><td>Total Amount: ₹ {{ total_amount|floatformat:2 }}</td></tr>
+                    <tr><td>Paid: ₹ {{ paid_amount|floatformat:2 }}</td></tr>
+                    {% if balance_amount > 0 %}
+                    <tr class="bold"><td style="color:red;">Balance: ₹ {{ balance_amount|floatformat:2 }}</td></tr>
+                    {% endif %}
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" class="terms"><b>Terms & Conditions</b><br>{{ display_terms|default:""|safe }}</td>
+            <td style="text-align:right; vertical-align:bottom;">Signature</td>
+        </tr>
+    </table>
+
+</div>
+
+<div class="footer">
+    Website - {{ sale_instance.company_profile.website|default:"www.svindo.com" }}<br>
+    Page no. 1
+</div>
 
 </body>
 </html>

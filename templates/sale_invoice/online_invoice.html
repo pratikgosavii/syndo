@@ -42,9 +42,17 @@
         </td>
         <td width="50%">
             <div class="section-title">Billing Address :</div>
-            <p><b>{{ sale_instance.customer.name }}</b><br>
-            {{ sale_instance.customer.billing_address }}<br>
-            State/UT Code: {{ sale_instance.customer.state_code }}</p>
+            <p>
+                <b>
+                {% if sale_instance.customer %}
+                    {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}
+                {% else %}
+                    Walk-in Customer
+                {% endif %}
+                </b><br>
+                {% if sale_instance.customer %}{{ sale_instance.customer.billing_address }}{% endif %}<br>
+                {% if sale_instance.customer %}State/UT Code: {{ sale_instance.customer.state_code }}{% endif %}
+            </p>
         </td>
     </tr>
     <tr>
@@ -57,9 +65,17 @@
         </td>
         <td>
             <div class="section-title">Shipping Address :</div>
-            <p><b>{{ sale_instance.customer.name }}</b><br>
-            {{ sale_instance.customer.shipping_address }}<br>
-            State/UT Code: {{ sale_instance.customer.state_code }}</p>
+            <p>
+                <b>
+                {% if sale_instance.customer %}
+                    {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}
+                {% else %}
+                    Walk-in Customer
+                {% endif %}
+                </b><br>
+                {% if sale_instance.customer %}{{ sale_instance.customer.shipping_address }}{% endif %}<br>
+                {% if sale_instance.customer %}State/UT Code: {{ sale_instance.customer.state_code }}{% endif %}
+            </p>
         </td>
     </tr>
 </table>

@@ -5016,10 +5016,16 @@ def sale_invoice(request, sale_id):
 
     total_in_words = _amount_in_words_inr(rounded_total)
 
-    paid_amount = float(sale.advance_amount or 0)
-    balance_raw = round(rounded_total - paid_amount, 2)
-    # Do not show negative balance if overpaid/settled
-    balance_amount = balance_raw if balance_raw > 0 else 0.0
+    # Paid / balance logic:
+    # - For credit sales: balance = total - advance
+    # - For all other payment methods: treat as fully paid (no pending balance)
+    if sale.payment_method == "credit":
+        paid_amount = float(sale.advance_amount or 0)
+        balance_raw = round(rounded_total - paid_amount, 2)
+        balance_amount = balance_raw if balance_raw > 0 else 0.0
+    else:
+        paid_amount = float(rounded_total)
+        balance_amount = 0.0
 
     # Terms: use wholesale.terms if present, else InvoiceSettings.terms_and_conditions
     term_from_sale = getattr(wholesale, 'terms', None) or ''
@@ -5039,7 +5045,12 @@ def sale_invoice(request, sale_id):
     cp = sale.company_profile
     try:
         import base64
-        if cp and cp.profile_image:
+        from django.conf import settings
+
+        # Limit inline image size to avoid 413 from html2pdf / nginx
+        max_inline_bytes = getattr(settings, "PDF_INLINE_IMAGE_MAX_BYTES", 200 * 1024)
+
+        if cp and cp.profile_image and getattr(cp.profile_image, "size", 0) <= max_inline_bytes:
             try:
                 with cp.profile_image.open('rb') as f:
                     logo_b64 = base64.b64encode(f.read()).decode('ascii')
@@ -5048,7 +5059,8 @@ def sale_invoice(request, sale_id):
                 company_logo_data_uri = f"data:{mime};base64,{logo_b64}"
             except Exception:
                 company_logo_data_uri = None
-        if cp and cp.payment_qr:
+
+        if cp and cp.payment_qr and getattr(cp.payment_qr, "size", 0) <= max_inline_bytes:
             try:
                 with cp.payment_qr.open('rb') as f:
                     qr_b64 = base64.b64encode(f.read()).decode('ascii')
@@ -5057,7 +5069,8 @@ def sale_invoice(request, sale_id):
                 payment_qr_data_uri = f"data:{mime_qr};base64,{qr_b64}"
             except Exception:
                 payment_qr_data_uri = None
-        if cp and cp.signature:
+
+        if cp and cp.signature and getattr(cp.signature, "size", 0) <= max_inline_bytes:
             try:
                 with cp.signature.open('rb') as f:
                     sig_b64 = base64.b64encode(f.read()).decode('ascii')
@@ -8536,9 +8549,14 @@ class customer_sale_invoice(APIView):
 
         total_in_words = _amount_in_words_inr(rounded_total)
 
-        paid_amount = Decimal(sale.advance_amount or 0)
-        balance_raw = (Decimal(rounded_total) - paid_amount).quantize(Decimal("0.01"))
-        balance_amount = balance_raw if balance_raw > 0 else Decimal("0.00")
+        # For credit sales, balance = total - advance; otherwise treat as fully paid
+        if sale.payment_method == "credit":
+            paid_amount = Decimal(sale.advance_amount or 0)
+            balance_raw = (Decimal(rounded_total) - paid_amount).quantize(Decimal("0.01"))
+            balance_amount = balance_raw if balance_raw > 0 else Decimal("0.00")
+        else:
+            paid_amount = Decimal(rounded_total)
+            balance_amount = Decimal("0.00")
 
         # Terms: use wholesale.terms if present, else InvoiceSettings.terms_and_conditions
         term_from_sale = getattr(wholesale, 'terms', None) or ''

@@ -116,8 +116,18 @@
     <!-- Customer Info -->
     <table>
         <tr>
-            <td style="text-align:left;"><b>Customer Name :</b> {{ sale_instance.customer.name }}</td>
-            <td style="text-align:left;"><b>Mobile No :</b> {{ sale_instance.customer.phone }}</td>
+            <td style="text-align:left;">
+                <b>Customer Name :</b>
+                {% if sale_instance.customer %}
+                    {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}
+                {% else %}
+                    Walk-in Customer
+                {% endif %}
+            </td>
+            <td style="text-align:left;">
+                <b>Mobile No :</b>
+                {% if sale_instance.customer %}{{ sale_instance.customer.contact|default:"—" }}{% else %}—{% endif %}
+            </td>
         </tr>
     </table>
 
