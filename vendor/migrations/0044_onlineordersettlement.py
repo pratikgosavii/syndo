@@ -3,13 +3,19 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
-def cleanup_orphan_product_fk_rows(apps, schema_editor):
+def cleanup_orphan_fk_rows(apps, schema_editor):
     """
-    Run before CreateModel so SQLite check_constraints passes (orphan stock rows etc.).
+    Run before CreateModel so SQLite check_constraints passes.
+    Cleans: product FKs, then auth user FKs (e.g. notifications after force-delete user).
     """
+    from django.contrib.auth import get_user_model
     from django.db import connection
 
-    tables = [
+    User = get_user_model()
+    user_table = User._meta.db_table
+    qn = connection.ops.quote_name
+
+    product_refs = [
         ("vendor_stocktransaction", "product_id"),
         ("vendor_saleitem", "product_id"),
         ("vendor_purchaseitem", "product_id"),
@@ -18,22 +24,43 @@ def cleanup_orphan_product_fk_rows(apps, schema_editor):
         ("vendor_product_addon", "product_id"),
     ]
 
+    # Rows pointing at deleted users (common after raw delete / SQLite FK off)
+    user_refs = [
+        ("vendor_vendornotification", "user_id"),
+        ("vendor_ordernotificationmessage", "user_id"),
+    ]
+
     with connection.cursor() as cursor:
         if "sqlite" in connection.settings_dict["ENGINE"]:
             cursor.execute("PRAGMA foreign_keys = OFF")
 
-        for table, col in tables:
+        for table, col in product_refs:
             try:
                 cursor.execute(
                     f"""
-                    DELETE FROM {table}
-                    WHERE {col} IS NOT NULL
-                      AND {col} NOT IN (SELECT id FROM vendor_product)
+                    DELETE FROM {qn(table)}
+                    WHERE {qn(col)} IS NOT NULL
+                      AND {qn(col)} NOT IN (SELECT id FROM {qn("vendor_product")})
                     """
                 )
                 n = cursor.rowcount
                 if n and n > 0:
                     print(f"0044: cleaned {n} orphan row(s) from {table}.{col}")
+            except Exception as e:
+                print(f"0044: skip {table}.{col}: {e}")
+
+        for table, col in user_refs:
+            try:
+                cursor.execute(
+                    f"""
+                    DELETE FROM {qn(table)}
+                    WHERE {qn(col)} IS NOT NULL
+                      AND {qn(col)} NOT IN (SELECT id FROM {qn(user_table)})
+                    """
+                )
+                n = cursor.rowcount
+                if n and n > 0:
+                    print(f"0044: cleaned {n} orphan row(s) from {table}.{col} (missing user)")
             except Exception as e:
                 print(f"0044: skip {table}.{col}: {e}")
 
@@ -53,7 +80,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(cleanup_orphan_product_fk_rows, noop_reverse),
+        migrations.RunPython(cleanup_orphan_fk_rows, noop_reverse),
         migrations.CreateModel(
             name="OnlineOrderSettlement",
             fields=[
