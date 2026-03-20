@@ -2520,8 +2520,17 @@ def restore_stock_on_order_delete(sender, instance, **kwargs):
             return
     except Exception:
         return
-    product.objects.filter(id=instance.product.id).update(stock_cached=F('stock_cached') + instance.quantity)
-    log_stock_transaction(instance.product, "sale", instance.quantity, ref_id=instance.pk)
+    # If product row is already gone (e.g. users.User.delete() removes vendor products in step 6
+    # then deletes OrderItems in step 11), skip — otherwise log_stock_transaction would insert
+    # StockTransaction rows with invalid product_id (SQLite FK off during that delete makes it worse).
+    pid = getattr(instance, "product_id", None)
+    if not pid:
+        return
+    prod = product.objects.filter(pk=pid).first()
+    if not prod:
+        return
+    product.objects.filter(id=pid).update(stock_cached=F("stock_cached") + instance.quantity)
+    log_stock_transaction(prod, "sale", instance.quantity, ref_id=instance.pk)
 
 
 # -------------------------------
