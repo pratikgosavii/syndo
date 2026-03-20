@@ -1,7 +1,7 @@
 {% extends "partials/adminBase.html" %}
 {% load static %}
 
-{% block title %}Categories List{% endblock title %}
+{% block title %}Vendor List{% endblock title %}
 
 
 {% block extra_css %}
@@ -13,21 +13,18 @@
             rel="stylesheet"
     />
     <style>
-        body {
-            background-color: gainsboro;
-            color: #775599;;
-        }
+        
 
         .card {
-            background-color: #ffffff;
-            border: none;
+            background-color: #ffffff !important;
+            border: none !important;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .card-header {
-            background-color: #775599;;
-            color: #ffffff;
+            background-color:rgb(75, 150, 31) !important;
+            color: #ffffff !important;
             border-radius: 8px 8px 0 0;
             padding: 20px;
         }
@@ -41,33 +38,94 @@
         }
 
         .table thead {
-            background-color: gray;
-            color: white;
+            background-color: gray !important;
+            color: white !important;
         }
 
         .table tbody tr {
-            background-color: white;
-            color: black;
+            background-color: white !important;
+            color: black !important;
         }
 
         .table tbody tr:hover {
-            background-color: #f0d28c;
-            color: #775599;;
+            background-color: #f0d28c !important;
+            color: #775599 !important;
         }
 
         .status-approved {
-            color: rgb(80, 244, 80);
-            font-weight: bold;
+            color: rgb(80, 244, 80) !important;
+            font-weight: bold !important;
         }
 
         .status-pending {
-            color: blue;
-            font-weight: bold;
+            color: blue !important;
+            font-weight: bold !important;
         }
 
         .status-not-approved {
-            color: red;
-            font-weight: bold;
+            color: red !important;
+            font-weight: bold !important;
+        }
+
+        .summary-metric {
+            border-left: 4px solid #775599 !important;
+            background-color: #ffffff !important;
+        }
+
+        .summary-metric-online {
+            border-left-color: #0d6efd !important;
+            background-color: #e0f2fe !important;
+        }
+
+        .summary-metric-settled {
+            border-left-color: #16a34a !important;
+            background-color: #dcfce7 !important;
+        }
+
+        .summary-metric-pending {
+            border-left-color: #f97316 !important;
+            background-color: #ffedd5 !important;
+        }
+
+        .summary-metric-last {
+            border-left-color: #6b7280 !important;
+            background-color: #e5e7eb !important;
+        }
+
+        .summary-metric .metric-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748b !important;
+            font-weight: 700;
+        }
+
+        .summary-metric .metric-value {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #1f2937;
+        }
+
+        .summary-metric .metric-sub {
+            font-size: 0.72rem;
+            color: #94a3b8 !important;
+        }
+
+        .btn-settle {
+            background: #775599 !important;
+            border-color: #775599 !important;
+            color: #fff !important;
+        }
+
+        .btn-settle:hover {
+            background: #5f447a !important;
+            border-color: #5f447a !important;
+            color: #fff!important;
+        }
+
+        .settlement-history-card .table thead {
+            background: #f3f4f6 !important;
+            color: #374151 !important;
         }
 
         @media (max-width: 768px) {
@@ -90,10 +148,62 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 class="mb-sm-0 font-size-18">List Users</h4>
+                            <h4 class="mb-sm-0 font-size-18">Vendor List</h4>
                         </div>
                     </div>
                 </div>
+                {% if request.user.is_superuser %}
+                <div class="row g-3 mb-3">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card summary-metric summary-metric-online">
+                            <div class="card-body py-3">
+                                <div class="metric-label">Total online amount</div>
+                                <div class="metric-value">₹ {{ overall_online_total|default:0|floatformat:2 }}</div>
+                                <div class="metric-sub">All vendor online collections</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card summary-metric summary-metric-settled">
+                            <div class="card-body py-3">
+                                <div class="metric-label">Total settled</div>
+                                <div class="metric-value">₹ {{ overall_settled_total|default:0|floatformat:2 }}</div>
+                                <div class="metric-sub">Settlements recorded so far</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card summary-metric summary-metric-pending">
+                            <div class="card-body py-3">
+                                <div class="metric-label">Pending amount</div>
+                                <div class="metric-value">₹ {{ overall_pending_total|default:0|floatformat:2 }}</div>
+                                <div class="metric-sub">Online amount not settled yet</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card summary-metric summary-metric-last">
+                            <div class="card-body py-3">
+                                <div class="metric-label">Last settlement</div>
+                                <div class="metric-value">
+                                    {% if last_settlement %}
+                                        {{ last_settlement.created_at|date:"d/m/Y" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </div>
+                                <div class="metric-sub">
+                                    {% if last_settlement %}
+                                        {{ last_settlement.vendor.first_name|default:last_settlement.vendor.mobile }}
+                                    {% else %}
+                                        No settlement yet
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 <div class="container">
                     <div class="row">
                         <div class="col-12">
@@ -118,6 +228,10 @@
     <th>Store Status</th>
     <th>User Status</th>
     <th>Global Supplier</th>
+    <th>Online Amount</th>
+    <th>Settled</th>
+    <th>Pending</th>
+    <th>Last Settlement</th>
     <th>Action</th>
 </tr>
 </thead>
@@ -193,11 +307,37 @@
             {% endif %}
         </td>
         <td>
+            ₹ {{ i.online_total_amount|default:0|floatformat:2 }}
+        </td>
+        <td>
+            ₹ {{ i.settled_total_amount|default:0|floatformat:2 }}
+        </td>
+        <td>
+            <strong class="{% if i.pending_online_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                ₹ {{ i.pending_online_amount|default:0|floatformat:2 }}
+            </strong>
+        </td>
+        <td>
+            {% if i.last_settlement %}
+                {{ i.last_settlement.created_at|date:"d/m/Y H:i" }}
+            {% else %}
+                —
+            {% endif %}
+        </td>
+        <td>
             <button class="btn btn-sm {% if i.is_active %}btn-danger{% else %}btn-success{% endif %}" 
                     onclick="toggleUserStatus({{ i.id }}, {{ i.is_active|yesno:'false,true' }})">
                 {% if i.is_active %}Disable{% else %}Enable{% endif %}
             </button>
             {% if store %}
+                {% if request.user.is_superuser %}
+                <a
+                    href="{% url 'vendor_settlement' i.id %}"
+                    class="btn btn-sm btn-settle mt-1"
+                >
+                    Settlement
+                </a>
+                {% endif %}
                 <a href="{% url 'verify_vendor' store.id %}" class="btn btn-sm btn-warning mt-1" title="Verify GST & Bank">
                     Verify
                 </a>
@@ -213,7 +353,7 @@
     {% endfor %}
 {% else %}
     <tr>
-        <td colspan="13" class="text-center text-muted">No vendors found.</td>
+        <td colspan="17" class="text-center text-muted">No vendors found.</td>
     </tr>
 {% endif %}
 </tbody>
@@ -306,6 +446,7 @@
                 alert('An error occurred while updating global supplier status');
             });
         }
+
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

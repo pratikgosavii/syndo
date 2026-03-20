@@ -1088,9 +1088,11 @@ class PurchaseItem(models.Model):
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
 
-        # Determine GST rate: match purchase UI default (18% when product.gst is not set / zero)
+        # GST only when product has an explicit positive rate (no default tax)
         raw_gst = getattr(self.product, "gst", None)
-        gst_rate = _to_decimal(18 if not raw_gst else raw_gst)
+        gst_rate = _to_decimal(raw_gst)
+        if gst_rate <= 0:
+            gst_rate = Decimal("0")
         purchase = getattr(self, "purchase", None)
         user = getattr(purchase, "user", None) if purchase else None
         try:
@@ -1368,9 +1370,11 @@ class SaleItem(models.Model):
         quantity = _to_decimal(self.quantity)
         price = _to_decimal(self.price)
 
-        # Determine GST rate: match POS UI default (18% when product.gst is not set / zero)
+        # GST only when product has an explicit positive rate (matches POS: no GST unless set on product)
         raw_gst = getattr(self.product, "gst", None)
-        gst_rate = _to_decimal(18 if not raw_gst else raw_gst)
+        gst_rate = _to_decimal(raw_gst)
+        if gst_rate <= 0:
+            gst_rate = Decimal("0")
         user = getattr(self, "user", None)
         try:
             if user and getattr(user, "tax_settings", None) and user.tax_settings.composite_scheme:
@@ -1888,6 +1892,32 @@ class OnlineOrderLedger(models.Model):
 
     def __str__(self):
         return f"OrderItem #{self.order_item_id} | {self.product.name} | {self.status}"
+
+
+class OnlineOrderSettlement(models.Model):
+    """Admin settlement records for online order collections per vendor."""
+    vendor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="online_order_settlements",
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.TextField(blank=True, null=True)
+    settled_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_online_order_settlements",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.vendor} | ₹{self.amount} | {self.created_at:%d-%m-%Y %H:%M}"
 
 
 # -------------------------------

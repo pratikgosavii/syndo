@@ -1,0 +1,172 @@
+{% extends "partials/adminBase.html" %}
+{% load static %}
+
+{% block title %}Vendor Settlement{% endblock title %}
+
+{% block extra_css %}
+<style>
+    .settlement-stat {
+        border-left: 4px solid #775599 !important;
+    }
+    .settlement-stat .label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b !important;
+        font-weight: 700 !important;
+    }
+    .settlement-stat .value {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #1f2937 !important;
+    }
+    .settlement-stat .sub {
+        font-size: 0.72rem;
+        color: #94a3b8 !important;
+    }
+    .btn-settle {
+        background: #775599 !important;
+        border-color: #775599 !important;
+        color: #fff !important;
+    }
+    .btn-settle:hover {
+        background: #5f447a !important;
+        border-color: #5f447a !important;
+        color: #fff !important;
+    }
+    .history-card .table thead {
+        background: #f3f4f6 !important;
+        color: #374151 !important;
+    }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="main-content">
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="row mb-3">
+                <div class="col-12 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">Vendor Settlement</h4>
+                        <div class="text-muted">
+                            {{ company.company_name|default:store.name|default:vendor_user.first_name|default:vendor_user.mobile }}
+                        </div>
+                    </div>
+                    <a href="{% url 'list_user_vendor' %}" class="btn btn-outline-secondary btn-sm">← Back to Vendor List</a>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card settlement-stat">
+                        <div class="card-body py-3">
+                            <div class="label">Total online amount</div>
+                            <div class="value">₹ {{ online_total_amount|floatformat:2 }}</div>
+                            <div class="sub">All recorded online order receipts</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card settlement-stat">
+                        <div class="card-body py-3">
+                            <div class="label">Total settled</div>
+                            <div class="value">₹ {{ settled_total_amount|floatformat:2 }}</div>
+                            <div class="sub">Settled till now</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card settlement-stat">
+                        <div class="card-body py-3">
+                            <div class="label">Pending amount</div>
+                            <div class="value">₹ {{ pending_online_amount|floatformat:2 }}</div>
+                            <div class="sub">Available for settlement</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card settlement-stat">
+                        <div class="card-body py-3">
+                            <div class="label">Last settlement</div>
+                            <div class="value">{% if last_settlement %}{{ last_settlement.created_at|date:"d/m/Y" }}{% else %}—{% endif %}</div>
+                            <div class="sub">{% if last_settlement %}{{ last_settlement.amount|floatformat:2 }}{% else %}No settlement yet{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Create Settlement</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="settle_online_amount">
+                                <div class="mb-3">
+                                    <label class="form-label">Vendor</label>
+                                    <input type="text" class="form-control" value="{{ company.company_name|default:store.name|default:vendor_user.first_name|default:vendor_user.mobile }}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" name="amount" step="0.01" min="0" max="{{ pending_online_amount|floatformat:2 }}" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea name="description" rows="4" class="form-control" placeholder="Add settlement description..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-settle">Save Settlement</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="card history-card">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <h5 class="card-title mb-0">Settlement History</h5>
+                            <span class="small text-white-50">Admin only</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Date / Time</th>
+                                            <th class="text-end">Amount</th>
+                                            <th>Description</th>
+                                            <th>Settled By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if settlement_history %}
+                                            {% for item in settlement_history %}
+                                            <tr>
+                                                <td>{{ forloop.counter }}</td>
+                                                <td>{{ item.created_at|date:"d/m/Y H:i" }}</td>
+                                                <td class="text-end">₹ {{ item.amount|floatformat:2 }}</td>
+                                                <td>{{ item.description|default:"—" }}</td>
+                                                <td>{{ item.settled_by.first_name|default:item.settled_by.mobile|default:"Admin" }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted py-4">No settlements recorded yet.</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% block footer %}{% include 'partials/footer.html' %}{% endblock footer %}
+    </div>
+</div>
+{% endblock content %}

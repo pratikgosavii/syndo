@@ -6,9 +6,6 @@ from django.contrib import messages
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
-from vendor.models import vendor_store
-
-
 from .forms import *
 
 
@@ -42,6 +39,9 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User  # Your custom user model
+from decimal import Decimal
+from django.db.models import Sum
+from vendor.models import vendor_store, OnlineOrderLedger, OnlineOrderSettlement
 
 
 class SignupView(APIView):
@@ -518,10 +518,136 @@ def list_user_customer(request):
     return render(request, 'list_user_customer.html', { 'data' : data})
 
 def list_user_vendor(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Only admin can access vendor settlements.")
+        return redirect('dashboard')
+
+    if request.method == 'POST' and request.POST.get('action') == 'settle_online_amount':
+        vendor_id = request.POST.get('vendor_id')
+        settle_amount = Decimal(str(request.POST.get('amount') or '0')).quantize(Decimal('0.01'))
+        settle_description = (request.POST.get('description') or '').strip()
+        vendor_user = get_object_or_404(User, id=vendor_id, is_vendor=True)
+
+        online_total = OnlineOrderLedger.objects.filter(user=vendor_user).exclude(status='returned').aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        settled_total = OnlineOrderSettlement.objects.filter(vendor=vendor_user).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        pending_amount = (online_total - settled_total).quantize(Decimal('0.01'))
+
+        if settle_amount <= 0:
+            messages.error(request, "Settlement amount must be greater than zero.")
+        elif settle_amount > pending_amount:
+            messages.error(request, "Settlement amount cannot be greater than pending online amount.")
+        else:
+            OnlineOrderSettlement.objects.create(
+                vendor=vendor_user,
+                amount=settle_amount,
+                description=settle_description,
+                settled_by=request.user,
+            )
+            messages.success(
+                request,
+                f"Settlement of ₹{settle_amount} saved for {vendor_user.first_name or vendor_user.mobile}."
+            )
+        return redirect('list_user_vendor')
 
     data = User.objects.filter(is_vendor=True).select_related('user_company_profile').prefetch_related('vendor_store')
 
-    return render(request, 'list_user_vendor.html', { 'data' : data})
+    for vendor_user in data:
+        online_total = OnlineOrderLedger.objects.filter(user=vendor_user).exclude(status='returned').aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        settled_total = OnlineOrderSettlement.objects.filter(vendor=vendor_user).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        last_settlement = OnlineOrderSettlement.objects.filter(vendor=vendor_user).order_by('-created_at').first()
+        vendor_user.online_total_amount = online_total
+        vendor_user.settled_total_amount = settled_total
+        vendor_user.pending_online_amount = (online_total - settled_total).quantize(Decimal('0.01'))
+        vendor_user.last_settlement = last_settlement
+
+    overall_online_total = OnlineOrderLedger.objects.exclude(status='returned').aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0.00')
+    overall_settled_total = OnlineOrderSettlement.objects.aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0.00')
+    overall_pending_total = (overall_online_total - overall_settled_total).quantize(Decimal('0.01'))
+    last_settlement = OnlineOrderSettlement.objects.select_related('vendor', 'settled_by').order_by('-created_at').first()
+    settlement_history = OnlineOrderSettlement.objects.select_related('vendor', 'settled_by').order_by('-created_at')
+
+    return render(request, 'list_user_vendor.html', {
+        'data': data,
+        'overall_online_total': overall_online_total,
+        'overall_settled_total': overall_settled_total,
+        'overall_pending_total': overall_pending_total,
+        'last_settlement': last_settlement,
+        'settlement_history': settlement_history,
+    })
+
+
+def vendor_settlement(request, vendor_id):
+    if not request.user.is_superuser:
+        messages.error(request, "Only admin can access vendor settlements.")
+        return redirect('dashboard')
+
+    vendor_user = get_object_or_404(
+        User.objects.select_related('user_company_profile').prefetch_related('vendor_store'),
+        id=vendor_id,
+        is_vendor=True,
+    )
+    store = vendor_user.vendor_store.first()
+    company = getattr(vendor_user, 'user_company_profile', None)
+
+    def _get_totals():
+        online_total = OnlineOrderLedger.objects.filter(user=vendor_user).exclude(status='returned').aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        settled_total = OnlineOrderSettlement.objects.filter(vendor=vendor_user).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        pending_amount = (online_total - settled_total).quantize(Decimal('0.01'))
+        last_settlement = OnlineOrderSettlement.objects.filter(vendor=vendor_user).order_by('-created_at').first()
+        history = OnlineOrderSettlement.objects.filter(vendor=vendor_user).select_related('settled_by').order_by('-created_at')
+        return online_total, settled_total, pending_amount, last_settlement, history
+
+    if request.method == 'POST' and request.POST.get('action') == 'settle_online_amount':
+        settle_amount = Decimal(str(request.POST.get('amount') or '0')).quantize(Decimal('0.01'))
+        settle_description = (request.POST.get('description') or '').strip()
+        online_total, settled_total, pending_amount, _, _ = _get_totals()
+
+        if settle_amount <= 0:
+            messages.error(request, "Settlement amount must be greater than zero.")
+        elif settle_amount > pending_amount:
+            messages.error(request, "Settlement amount cannot be greater than pending online amount.")
+        else:
+            OnlineOrderSettlement.objects.create(
+                vendor=vendor_user,
+                amount=settle_amount,
+                description=settle_description,
+                settled_by=request.user,
+            )
+            messages.success(
+                request,
+                f"Settlement of ₹{settle_amount} saved for {vendor_user.first_name or vendor_user.mobile}."
+            )
+        return redirect('vendor_settlement', vendor_id=vendor_user.id)
+
+    online_total, settled_total, pending_amount, last_settlement, settlement_history = _get_totals()
+
+    context = {
+        'vendor_user': vendor_user,
+        'store': store,
+        'company': company,
+        'online_total_amount': online_total,
+        'settled_total_amount': settled_total,
+        'pending_online_amount': pending_amount,
+        'last_settlement': last_settlement,
+        'settlement_history': settlement_history,
+    }
+    return render(request, 'vendor_settlement.html', context)
 
 
 

@@ -101,11 +101,12 @@ class User(AbstractUser):
                 
                 # 2. Delete ledgers that reference transactions (must be deleted before transactions)
                 try:
-                    from vendor.models import ExpenseLedger, OnlineOrderLedger
+                    from vendor.models import ExpenseLedger, OnlineOrderLedger, OnlineOrderSettlement
                     # ExpenseLedger references Expense, so delete it before Expense
                     ExpenseLedger.objects.filter(user=self).delete()
                     # OnlineOrderLedger references OrderItem, so delete it early (both vendor and customer cases)
                     OnlineOrderLedger.objects.filter(user=self).delete()
+                    OnlineOrderSettlement.objects.filter(vendor=self).delete()
                     # Also delete OnlineOrderLedgers for orders placed by this user (if user is a customer)
                     try:
                         from customer.models import OrderItem
