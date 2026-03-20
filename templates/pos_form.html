@@ -688,7 +688,9 @@
                   <h4 class="pos-page-title"><i class="bi bi-bag me-2"></i>Sales & POS</h4>
                   <div class="pos-mode-toggle" role="group" aria-label="Sale mode">
                     <label class="pos-mode-switch" for="wholesale_selector">
-                      <input type="checkbox" name="wholesale_selector" id="wholesale_selector" class="pos-mode-checkbox d-none" aria-hidden="true">
+                      {# Wholesale toggle must match Sale.is_wholesale_rate (not in SaleForm POST by default) #}
+                      <input type="checkbox" name="wholesale_selector" id="wholesale_selector" class="pos-mode-checkbox d-none" aria-hidden="true"
+                        {% if request.method == 'POST' and request.POST.wholesale_selector %}checked{% elif request.method != 'POST' and form.instance.pk and form.instance.is_wholesale_rate %}checked{% endif %}>
                       <span class="pos-mode-label pos-mode-label-retail">Retail</span>
                       <span class="pos-mode-track">
                         <span class="pos-mode-handle"></span>
@@ -721,12 +723,14 @@
                 </div>
 
                 <!-- Product entry row: Product Name, Qty, Price, Total, Add -->
+                {# Top row is JS-only quick entry — do NOT use name="product[]" etc. or POST order breaks edit mode #}
+                {# (existing_item_ids[i] must align 1:1 with items-container rows only). #}
                 <div class="section-card product-entry-card">
                   <div class="section-title">Product</div>
-                  <div class="row g-2 align-items-end pos-product-row mb-2">
+                  <div class="row g-2 align-items-end pos-product-row mb-2" data-pos-entry-row="1">
                     <div class="col">
                       <label class="form-label small mb-1">Product Name</label>
-                      <select name="product[]" class="form-select product-select" placeholder="Search Product">
+                      <select class="form-select product-select" placeholder="Search Product" autocomplete="off">
                         <option value="">Search Product</option>
                         {% for p in products %}
                           <option value="{{ p.id }}" data-sale="{{ p.sales_price }}" data-wholesale="{{ p.effective_wholesale_price }}" data-gst="{{ p.gst|default:0 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>
@@ -735,15 +739,15 @@
                     </div>
                     <div class="col-auto" style="width: 100px;">
                       <label class="form-label small mb-1">Qty</label>
-                      <input type="number" class="form-control qty-input" name="quantity[]" value="1" min="1">
+                      <input type="number" class="form-control qty-input" value="1" min="1" autocomplete="off">
                     </div>
                     <div class="col-auto" style="width: 120px;">
                       <label class="form-label small mb-1">Price</label>
-                      <input type="number" class="form-control rate-input" name="price[]" value="0.00" step="0.01" min="0">
+                      <input type="number" class="form-control rate-input" value="0.00" step="0.01" min="0" autocomplete="off">
                     </div>
                     <div class="col-auto" style="width: 120px;">
                       <label class="form-label small mb-1">Total</label>
-                      <input type="text" class="form-control amount" name="amount[]" value="0.00" readonly>
+                      <input type="text" class="form-control amount" value="0.00" readonly>
                     </div>
                     <div class="col-auto align-self-end" style="background: #FFC107;
     font-weight: 600;
@@ -858,7 +862,7 @@
                         {{ wholesale_forms.transport_name }}
                       </div>
                       <div class="col-md-4">
-                        <label class="form-label">Vehicle No.</label>
+                        <label class="form-label">Vehicle No. <span class="text-muted small">(optional)</span></label>
                         {{ wholesale_forms.vehicle_number }}
                       </div>
                       <div class="col-md-4">
@@ -868,11 +872,11 @@
                     </div>
                     <div class="row g-3 mb-2">
                       <div class="col-md-4">
-                        <label class="form-label">E-way Bill No.</label>
+                        <label class="form-label">E-way Bill No. <span class="text-muted small">(optional)</span></label>
                         {{ wholesale_forms.eway_bill_number }}
                       </div>
                       <div class="col-md-4">
-                        <label class="form-label">No. of Parcels</label>
+                        <label class="form-label">No. of Parcels <span class="text-muted small">(optional)</span></label>
                         {{ wholesale_forms.number_of_parcels }}
                       </div>
                       <div class="col-md-4 d-flex align-items-end pb-2">
@@ -1995,6 +1999,24 @@ document.getElementById('pos-form').addEventListener('submit', function() {
     }
     if (advMode) advMode.value = 'cash';
   }
+  // Quick-entry row has no name="product[]" (must align existing_item_ids[] with #items-container only).
+  // If user selected a product there but didn't click Add, flush into the list before submit.
+  try {
+    var entryRowEl = document.querySelector('.product-entry-card [data-pos-entry-row="1"]');
+    var addBtnEl = document.getElementById('add-item');
+    if (entryRowEl && addBtnEl) {
+      var psel = entryRowEl.querySelector('.product-select');
+      var entryVal = '';
+      if (typeof jQuery !== 'undefined' && psel && jQuery(psel).hasClass('select2-hidden-accessible')) {
+        entryVal = jQuery(psel).val() || '';
+      } else if (psel) {
+        entryVal = psel.value || '';
+      }
+      if (entryVal) {
+        addBtnEl.click();
+      }
+    }
+  } catch (err) { /* non-fatal */ }
 });
 
 // Auto-run on page load to reflect existing value (for edit)
@@ -2243,11 +2265,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 <script>
+  // Vehicle No., E-way Bill, No. of Parcels are always optional (no HTML5 required).
   const fieldRules = {
     invoice: {
-      id_eway_bill_number: true,
-      vehicle_number: true,
-      number_of_parcels: true,
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
       transport_name: true,
       delivery_city: true,
       id_reverse_charge: true,
@@ -2269,9 +2292,9 @@ document.addEventListener('DOMContentLoaded', function () {
       id_reverse_charge: false,
     },
     delivery_challan: {
-      id_eway_bill_number: true,
-      vehicle_number: true,
-      number_of_parcels: true,
+      id_eway_bill_number: false,
+      vehicle_number: false,
+      number_of_parcels: false,
       id_transport_name: true,
       id_delivery_city: true,
       id_reverse_charge: true,
