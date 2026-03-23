@@ -115,7 +115,6 @@
                                 <th>HSN</th>
                                 <th class="text-end">Qty</th>
                                 <th class="text-end">Price</th>
-                                <th class="text-end">Disc</th>
                                 <th class="text-end">Total</th>
                             </tr>
                         </thead>
@@ -132,7 +131,6 @@
                                 <td>{{ item.product.hsn|default:"—" }}</td>
                                 <td class="text-end">{{ item.quantity }}</td>
                                 <td class="text-end">{{ item.price|floatformat:2 }}</td>
-                                <td class="text-end">{{ sale.discount_percentage|default:0 }}%</td>
                                 <td class="text-end">{{ item.amount|floatformat:2 }}</td>
                             </tr>
                             {% endfor %}
@@ -154,10 +152,102 @@
                         <div class="col-md-6">
                             <div class="bill-summary">
                                 <div class="info-card-title">Bill Summary</div>
-                                <div class="bill-summary-row">Item Total<span>{{ sale.total_taxable_amount|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row">Item Total<span>{{ sale.total_amount_before_discount|default:sale.total_taxable_amount|default:0|floatformat:2 }}</span></div>
+                                <div class="bill-summary-row">Discount<span>{{ sale.discount_amount|default:0|floatformat:2 }}</span></div>
                                 <div class="bill-summary-row orange">Delivery Charges<span>{{ wholesale.delivery_charges|default:0|floatformat:2 }}</span></div>
                                 <div class="bill-summary-row orange">Packaging Charges<span>{{ wholesale.packaging_charges|default:0|floatformat:2 }}</span></div>
                                 <div class="bill-summary-row grand">Grand Total<span>₹ {{ sale.total_amount|default:0|floatformat:2 }}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1 mb-4">
+                        <div class="col-md-12">
+                            <div class="info-card">
+                                <div class="info-card-title">Remarks</div>
+                                <div class="remarks-box">{{ wholesale.notes }}</div>
+                                {% if display_terms %}
+                                <div class="info-card-title mt-3">Terms &amp; Conditions</div>
+                                <div class="remarks-box">{{ display_terms|safe }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2 mb-4">
+                        <div class="col-md-12">
+                            <div class="info-card">
+                                <div class="info-card-title">Wholesale / Transport Details</div>
+                                <div class="info-card-content">
+                                    <div class="bill-summary-row">
+                                        Invoice Type
+                                        <span>{{ wholesale.get_invoice_type_display }}</span>
+                                    </div>
+                                    <div class="bill-summary-row">
+                                        Invoice No
+                                        <span>{{ wholesale.invoice_number }}</span>
+                                    </div>
+                                    {% if wholesale.date %}
+                                    <div class="bill-summary-row">
+                                        Invoice Date
+                                        <span>{{ wholesale.date|date:"d/m/Y" }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.transport_name %}
+                                    <div class="bill-summary-row">
+                                        Transport Name
+                                        <span>{{ wholesale.transport_name }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.vehicle_number %}
+                                    <div class="bill-summary-row">
+                                        Vehicle No
+                                        <span>{{ wholesale.vehicle_number }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.eway_bill_number %}
+                                    <div class="bill-summary-row">
+                                        E-way Bill No
+                                        <span>{{ wholesale.eway_bill_number }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.lr_number %}
+                                    <div class="bill-summary-row">
+                                        LR No
+                                        <span>{{ wholesale.lr_number }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.number_of_parcels %}
+                                    <div class="bill-summary-row">
+                                        No. of Parcels
+                                        <span>{{ wholesale.number_of_parcels }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.dispatch_address or wholesale.delivery_city %}
+                                    <div class="bill-summary-row">
+                                        Dispatch / Delivery
+                                        <span>
+                                            {% if wholesale.dispatch_address %}{{ wholesale.dispatch_address }}{% endif %}
+                                            {% if wholesale.delivery_city %}{% if wholesale.dispatch_address %}, {% endif %}{{ wholesale.delivery_city }}{% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.references %}
+                                    <div class="bill-summary-row">
+                                        Reference
+                                        <span>{{ wholesale.references }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if wholesale.delivery_charges or wholesale.packaging_charges %}
+                                    <div class="bill-summary-row">
+                                        Delivery / Packaging
+                                        <span>
+                                            {% if wholesale.delivery_charges %}Del: ₹ {{ wholesale.delivery_charges|floatformat:2 }}{% endif %}
+                                            {% if wholesale.packaging_charges %}{% if wholesale.delivery_charges %} / {% endif %}Pack: ₹ {{ wholesale.packaging_charges|floatformat:2 }}{% endif %}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -237,85 +327,7 @@
                             </div>
                         </div>
                     </div>
-                    {% if wholesale %}
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-12">
-                            <div class="info-card">
-                                <div class="info-card-title">Wholesale / Transport Details</div>
-                                <div class="info-card-content">
-                                    <div class="bill-summary-row">
-                                        Invoice Type
-                                        <span>{{ wholesale.get_invoice_type_display }}</span>
-                                    </div>
-                                    <div class="bill-summary-row">
-                                        Invoice No
-                                        <span>{{ wholesale.invoice_number }}</span>
-                                    </div>
-                                    {% if wholesale.date %}
-                                    <div class="bill-summary-row">
-                                        Invoice Date
-                                        <span>{{ wholesale.date|date:"d/m/Y" }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.transport_name %}
-                                    <div class="bill-summary-row">
-                                        Transport Name
-                                        <span>{{ wholesale.transport_name }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.vehicle_number %}
-                                    <div class="bill-summary-row">
-                                        Vehicle No
-                                        <span>{{ wholesale.vehicle_number }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.eway_bill_number %}
-                                    <div class="bill-summary-row">
-                                        E-way Bill No
-                                        <span>{{ wholesale.eway_bill_number }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.lr_number %}
-                                    <div class="bill-summary-row">
-                                        LR No
-                                        <span>{{ wholesale.lr_number }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.number_of_parcels %}
-                                    <div class="bill-summary-row">
-                                        No. of Parcels
-                                        <span>{{ wholesale.number_of_parcels }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.dispatch_address or wholesale.delivery_city %}
-                                    <div class="bill-summary-row">
-                                        Dispatch / Delivery
-                                        <span>
-                                            {% if wholesale.dispatch_address %}{{ wholesale.dispatch_address }}{% endif %}
-                                            {% if wholesale.delivery_city %}{% if wholesale.dispatch_address %}, {% endif %}{{ wholesale.delivery_city }}{% endif %}
-                                        </span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.references %}
-                                    <div class="bill-summary-row">
-                                        Reference
-                                        <span>{{ wholesale.references }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if wholesale.delivery_charges or wholesale.packaging_charges %}
-                                    <div class="bill-summary-row">
-                                        Delivery / Packaging
-                                        <span>
-                                            {% if wholesale.delivery_charges %}Del: ₹ {{ wholesale.delivery_charges|floatformat:2 }}{% endif %}
-                                            {% if wholesale.packaging_charges %}{% if wholesale.delivery_charges %} / {% endif %}Pack: ₹ {{ wholesale.packaging_charges|floatformat:2 }}{% endif %}
-                                        </span>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
+
                     {% endif %}
 
                     <!-- Payment Information (optional) -->

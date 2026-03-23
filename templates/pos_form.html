@@ -1445,7 +1445,10 @@ function recalculateTotals() {
     const amountAfterDiscount = totalBeforeDiscount - discountAmount;
     const paymentMethod = (document.getElementById('payment_method') || {}).value || 'cash';
     const advanceAmount = (paymentMethod === 'credit' && advanceAmountField) ? (parseFloat(advanceAmountField.value) || 0) : 0;
-    const netPayable = amountAfterDiscount + shippingCharges - advanceAmount;
+    
+    // Round final total matching backend Ledger (ROUND_HALF_UP)
+    const finalTotalRounded = Math.round(amountAfterDiscount + shippingCharges);
+    const netPayable = finalTotalRounded - advanceAmount;
 
     const el = function(id) { const e = document.getElementById(id); return e ? e : null; };
     if (el('total-items')) el('total-items').innerText = totalItems;

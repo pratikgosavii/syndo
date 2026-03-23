@@ -1040,6 +1040,10 @@ class Purchase(models.Model):
         # Final total includes: items (after discount) + GST + delivery + packaging (like Sale)
         new_total = base_total_amount + total_gst_amount + delivery_charges + packaging_charges
         
+        # Round the final total (half up) to ensure integer values are passed to ledgers
+        from decimal import ROUND_HALF_UP
+        new_total = new_total.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        
         # Update instance fields directly (like Sale._recalculate_totals does)
         # This ensures instance is updated in memory, then caller can save() to trigger signal
         self.total_taxable_amount = total_taxable_amount

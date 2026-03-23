@@ -4708,6 +4708,10 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
     discount_amount = getattr(sale_instance, 'discount_amount', None) or Decimal('0')
     total_amount = total_amount_before_discount - discount_amount
 
+    # Round the final total (half up) to ensure integer values are passed to ledgers
+    from decimal import ROUND_HALF_UP
+    total_amount = total_amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+
     # Credit: advance is partial payment; balance is what remains.
     # Cash / UPI / Cheque: full amount is collected at POS — advance fields are often left 0,
     # so do not show the full bill as "balance due".

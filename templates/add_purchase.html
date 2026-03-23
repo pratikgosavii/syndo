@@ -205,7 +205,7 @@
                   </a>
                 </div>
                 <select id="product-options" style="display:none;">
-                  {% for p in data %}<option value="{{ p.id }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>{% endfor %}
+                  {% for p in data %}<option value="{{ p.id }}" data-gst="{{ p.gst|default:0 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}">{{ p.name }}</option>{% endfor %}
                 </select>
                 <div class="row fw-bold border-bottom pb-2 mb-2 text-uppercase small" style="color: #495057;">
                   <div class="col-md-4">Product</div>
@@ -221,7 +221,7 @@
                       <select name="products" class="form-control product-select">
                         <option value="">Select Product</option>
                         {% for p in data %}
-                          <option value="{{ p.id }}" data-gst="{{ p.gst|default:18 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}" {% if p.id == item.product_id %}selected{% endif %}>{{ p.name }}</option>
+                          <option value="{{ p.id }}" data-gst="{{ p.gst|default:0 }}" data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}" {% if p.id == item.product_id %}selected{% endif %}>{{ p.name }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -246,7 +246,7 @@
                         {% for p in data %}
                           <option
                             value="{{ p.id }}"
-                            data-gst="{{ p.gst|default:18 }}"
+                            data-gst="{{ p.gst|default:0 }}"
                             data-tax-inclusive="{{ p.tax_inclusive|yesno:'1,0' }}"
                           >
                             {{ p.name }}
@@ -737,7 +737,9 @@ function recalculateTotals() {
         }
     }
 
-    const totalAmount = (subtotal - discountAmount) + gstTotal + shipping;
+    const rawTotalAmount = (subtotal - discountAmount) + gstTotal + shipping;
+    // Round final total matching backend Ledger (ROUND_HALF_UP)
+    const totalAmount = Math.round(rawTotalAmount);
     const fmt = (n) => (n || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     const el = function(id) { return document.getElementById(id); };
     if (el('total-products')) el('total-products').textContent = totalProducts;
