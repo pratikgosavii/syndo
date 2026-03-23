@@ -688,9 +688,8 @@
                   <h4 class="pos-page-title"><i class="bi bi-bag me-2"></i>Sales & POS</h4>
                   <div class="pos-mode-toggle" role="group" aria-label="Sale mode">
                     <label class="pos-mode-switch" for="wholesale_selector">
-                      {# Wholesale toggle must match Sale.is_wholesale_rate (not in SaleForm POST by default) #}
                       <input type="checkbox" name="wholesale_selector" id="wholesale_selector" class="pos-mode-checkbox d-none" aria-hidden="true"
-                        {% if request.method == 'POST' and request.POST.wholesale_selector %}checked{% elif request.method != 'POST' and form.instance.pk and form.instance.is_wholesale_rate %}checked{% endif %}>
+                        {% if request.method == 'POST' and request.POST.wholesale_selector %}checked{% elif form.instance.pk and form.instance.is_wholesale_rate %}checked{% endif %}>
                       <span class="pos-mode-label pos-mode-label-retail">Retail</span>
                       <span class="pos-mode-track">
                         <span class="pos-mode-handle"></span>
@@ -862,7 +861,7 @@
                         {{ wholesale_forms.transport_name }}
                       </div>
                       <div class="col-md-4">
-                        <label class="form-label">Vehicle No. <span class="text-muted small">(optional)</span></label>
+                        <label class="form-label">Vehicle No.</label>
                         {{ wholesale_forms.vehicle_number }}
                       </div>
                       <div class="col-md-4">
@@ -872,11 +871,11 @@
                     </div>
                     <div class="row g-3 mb-2">
                       <div class="col-md-4">
-                        <label class="form-label">E-way Bill No. <span class="text-muted small">(optional)</span></label>
+                        <label class="form-label">E-way Bill No.</label>
                         {{ wholesale_forms.eway_bill_number }}
                       </div>
                       <div class="col-md-4">
-                        <label class="form-label">No. of Parcels <span class="text-muted small">(optional)</span></label>
+                        <label class="form-label">No. of Parcels</label>
                         {{ wholesale_forms.number_of_parcels }}
                       </div>
                       <div class="col-md-4 d-flex align-items-end pb-2">
@@ -2265,12 +2264,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 <script>
-  // Vehicle No., E-way Bill, No. of Parcels are always optional (no HTML5 required).
   const fieldRules = {
     invoice: {
-      id_eway_bill_number: false,
-      vehicle_number: false,
-      number_of_parcels: false,
+      id_eway_bill_number: true,
+      vehicle_number: true,
+      number_of_parcels: true,
       transport_name: true,
       delivery_city: true,
       id_reverse_charge: true,
@@ -2292,9 +2290,9 @@ document.addEventListener('DOMContentLoaded', function () {
       id_reverse_charge: false,
     },
     delivery_challan: {
-      id_eway_bill_number: false,
-      vehicle_number: false,
-      number_of_parcels: false,
+      id_eway_bill_number: true,
+      vehicle_number: true,
+      number_of_parcels: true,
       id_transport_name: true,
       id_delivery_city: true,
       id_reverse_charge: true,

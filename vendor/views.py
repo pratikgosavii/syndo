@@ -4404,7 +4404,6 @@ def pos(request):
                 # Save sale
                 sale_instance = sale_form.save(commit=False)
                 sale_instance.user = request.user
-                sale_instance.is_wholesale_rate = bool(request.POST.get("wholesale_selector"))
                 # Fallback: set default company_profile if not submitted
                 if not getattr(sale_instance, "company_profile_id", None):
                     if default_cp:
@@ -4426,6 +4425,7 @@ def pos(request):
                 else:
                     sale_instance.bank = None
                     sale_instance.advance_bank = None
+                sale_instance.is_wholesale_rate = bool(request.POST.get("wholesale_selector"))
                 sale_instance.save()
 
                 # Block POS sale for tracked-stock products that are now out of stock.
@@ -4526,7 +4526,6 @@ def update_sale(request, sale_id):
     if request.method == "POST":
         sale_form = SaleForm(request.POST, instance=sale_instance, user=request.user)
         customer_form = vendor_customersForm(request.POST)
-        # Sale.related_name is "wholesales" (not pos_wholesale); wrong name always gave None → duplicate INSERT + UNIQUE error
         wholesale_instance = sale_instance.wholesales.first()
         wholesale_form = pos_wholesaleForm(request.POST, request.FILES, instance=wholesale_instance)
 
@@ -4555,7 +4554,6 @@ def update_sale(request, sale_id):
             with transaction.atomic():
                 sale_instance = sale_form.save(commit=False)
                 sale_instance.user = request.user
-                sale_instance.is_wholesale_rate = bool(request.POST.get("wholesale_selector"))
                 # Fallback: set default company_profile when not provided in update
                 if not getattr(sale_instance, "company_profile_id", None) and default_cp:
                     sale_instance.company_profile = default_cp
@@ -4576,6 +4574,7 @@ def update_sale(request, sale_id):
                 else:
                     sale_instance.bank = None
                     sale_instance.advance_bank = None
+                sale_instance.is_wholesale_rate = bool(request.POST.get("wholesale_selector"))
                 sale_instance.save()
 
                 # 1. Delete marked items
@@ -4707,9 +4706,24 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
 
     total_amount_before_discount = total_taxable + total_gst + delivery + packaging
     discount_amount = getattr(sale_instance, 'discount_amount', None) or Decimal('0')
-    advance_amount = getattr(sale_instance, 'advance_payment_amount', None) or getattr(sale_instance, 'advance_amount', None) or Decimal('0')
     total_amount = total_amount_before_discount - discount_amount
-    balance_amount = total_amount - advance_amount
+
+    # Credit: advance is partial payment; balance is what remains.
+    # Cash / UPI / Cheque: full amount is collected at POS — advance fields are often left 0,
+    # so do not show the full bill as "balance due".
+    pm = getattr(sale_instance, 'payment_method', None) or ''
+    if pm == 'credit':
+        advance_amount = (
+            getattr(sale_instance, 'advance_payment_amount', None)
+            or getattr(sale_instance, 'advance_amount', None)
+            or Decimal('0')
+        )
+        balance_amount = total_amount - advance_amount
+    else:
+        advance_amount = total_amount
+        balance_amount = Decimal('0')
+        # Keep form/list fields aligned with "paid in full" for non-credit sales
+        sale_instance.advance_payment_amount = total_amount
 
     sale_instance.total_items = total_items
     sale_instance.total_taxable_amount = total_taxable
@@ -4718,37 +4732,19 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
     sale_instance.total_amount = total_amount
     sale_instance.advance_amount = advance_amount
     sale_instance.balance_amount = balance_amount
-    sale_instance.save(update_fields=[
+    update_fields = [
         'total_items', 'total_taxable_amount', 'total_gst_amount',
         'total_amount_before_discount', 'total_amount', 'advance_amount', 'balance_amount',
-    ])
-
-
-def _sale_wholesale_display_for_invoice(sale, wholesale_row):
-    """pos_wholesale row or a minimal namespace so invoice templates always have invoice_number/date."""
-    if wholesale_row:
-        return wholesale_row
-    from types import SimpleNamespace
-    from decimal import Decimal
-    from django.utils import timezone
-
-    sale_dt = getattr(sale, "created_at", None) or timezone.now()
-    inv_date = sale_dt.date() if hasattr(sale_dt, "date") else timezone.now().date()
-    return SimpleNamespace(
-        invoice_type="invoice",
-        invoice_number=(sale.invoice_number or f"#{sale.id}"),
-        date=inv_date,
-        delivery_charges=Decimal("0.00"),
-        packaging_charges=Decimal("0.00"),
-        terms="",
-    )
+    ]
+    if pm != 'credit':
+        update_fields.append('advance_payment_amount')
+    sale_instance.save(update_fields=update_fields)
 
 
 def sale_bill_details(request, sale_id):
     sale = get_object_or_404(
-        Sale.objects.select_related('company_profile', 'customer').prefetch_related("items__product"),
-        id=sale_id,
-        user=request.user,
+        Sale.objects.select_related('company_profile', 'customer'),
+        id=sale_id
     )
     wholesale = pos_wholesale.objects.filter(sale=sale, user=request.user).first()
     # Recalculate totals if missing (e.g. old records before totals were saved)
@@ -4763,20 +4759,6 @@ def sale_bill_details(request, sale_id):
         display_terms = term_from_sale
     else:
         display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
-
-    cp = sale.company_profile
-    use_unregistered_bill = not (cp and getattr(cp, "is_gst_registered", False))
-    if use_unregistered_bill:
-        wholesale_display = _sale_wholesale_display_for_invoice(sale, wholesale)
-        return render(
-            request,
-            "sale_invoice/unregistered_proforma.html",
-            {
-                "sale_instance": sale,
-                "wholesale": wholesale_display,
-                "display_terms": display_terms,
-            },
-        )
 
     context = {
         'sale': sale,
@@ -4898,10 +4880,11 @@ def _amount_in_words_inr(amount):
 
 def sale_invoice(request, sale_id):
     
-    sale = get_object_or_404(
-        Sale.objects.prefetch_related('items__product').select_related('customer', 'company_profile'),
-        id=sale_id,
-        user=request.user,
+    sale = (
+        Sale.objects
+        .prefetch_related('items__product')
+        .select_related('customer', 'company_profile')
+        .get(id=sale_id)
     )
     wholesale = sale.wholesales.first()
     # If no pos_wholesale row exists, we still generate an invoice PDF using Sale.invoice_number
@@ -4971,12 +4954,6 @@ def sale_invoice(request, sale_id):
     use_thermal = inv_settings and inv_settings.thermal_print and not sale.is_wholesale_rate
     if use_thermal:
         template_name = "sale_invoice/thermal_bill.html"
-
-    # GST-unregistered vendor: use retail bill layout (templates/sale_invoice/unregistered_proforma.html)
-    cp_bill = sale.company_profile
-    if not (cp_bill and getattr(cp_bill, "is_gst_registered", False)):
-        template_name = "sale_invoice/unregistered_proforma.html"
-        use_thermal = False
 
     # --- Charges and totals ---
     from decimal import Decimal

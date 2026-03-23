@@ -323,8 +323,14 @@
                         <div class="info-card-title">Payment Information</div>
                         <div class="info-card-content">
                             <div class="bill-summary-row">Payment Method<span>{{ sale.get_payment_method_display|default:"—" }}</span></div>
+                            {% if sale.payment_method == 'credit' %}
                             <div class="bill-summary-row">Advance Paid<span>₹ {{ sale.advance_amount|default:0|floatformat:2 }}</span></div>
                             <div class="bill-summary-row">Balance Due<span class="text-danger">₹ {{ sale.balance_amount|default:0|floatformat:2 }}</span></div>
+                            {% else %}
+                            {# Cash / UPI / Cheque: full payment at POS — show total as paid, not "advance 0 + full amount due" #}
+                            <div class="bill-summary-row">Amount Paid<span>₹ {{ sale.total_amount|default:0|floatformat:2 }}</span></div>
+                            <div class="bill-summary-row">Balance Due<span class="text-success">₹ 0.00</span></div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
