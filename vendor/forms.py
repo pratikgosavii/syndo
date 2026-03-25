@@ -692,6 +692,7 @@ class SaleForm(forms.ModelForm):
         self.fields['advance_payment_amount'].required = False
         self.fields['advance_bank'].required = False
         self.fields['due_date'].required = False
+        self.fields['customer'].required = True
         
         if user:
             self.fields['customer'].queryset = vendor_customers.objects.filter(user=user)

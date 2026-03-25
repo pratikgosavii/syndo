@@ -7,6 +7,8 @@ from django.shortcuts import render
 
 from masters.models import MainCategory, product_category, product_subcategory
 from users.models import *
+from vendor.pdf_utils import html_to_pdf_local
+
 
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
@@ -702,31 +704,46 @@ class OnlineOrderInvoiceAPIView(APIView):
         template = get_template(template_name)
         html_content = template.render(context, request._request if hasattr(request, "_request") else request)
 
-        # Generate PDF using html2pdf.app API
+        # Generate PDF using LOCAL Playwright
         try:
-            api_response = requests.post(
-                "https://api.html2pdf.app/v1/generate",
-                json={
-                    "html": html_content,
-                    "apiKey": getattr(settings, "HTML2PDF_API_KEY", ""),
-                    "options": {"printBackground": True, "margin": "1cm", "pageSize": "A4"},
-                },
-                timeout=30,
-            )
-
-            if api_response.status_code == 200 and api_response.content:
-                response = HttpResponse(api_response.content, content_type="application/pdf")
-                filename = f"online_order_invoice_{order.order_id}.pdf"
-                response["Content-Disposition"] = f'inline; filename="{filename}"'
-                return response
-            elif api_response.status_code == 200:
-                return Response(
-                    {"error": "Error generating PDF", "details": "PDF service returned empty content"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            pdf_options = {"pageSize": "A4", "margin": "1cm"}
+            pdf_bytes = html_to_pdf_local(html_content, pdf_options)
+            
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
+            filename = f"online_order_invoice_{order.order_id}.pdf"
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+            return response
+        except Exception as local_e:
+            # Generate PDF using html2pdf.app API fallback
+            try:
+                api_response = requests.post(
+                    "https://api.html2pdf.app/v1/generate",
+                    json={
+                        "html": html_content,
+                        "apiKey": getattr(settings, "HTML2PDF_API_KEY", ""),
+                        "options": {"printBackground": True, "margin": "1cm", "pageSize": "A4"},
+                    },
+                    timeout=30,
                 )
-            else:
+
+                if api_response.status_code == 200 and api_response.content:
+                    response = HttpResponse(api_response.content, content_type="application/pdf")
+                    filename = f"online_order_invoice_{order.order_id}.pdf"
+                    response["Content-Disposition"] = f'inline; filename="{filename}"'
+                    return response
+                elif api_response.status_code == 200:
+                    return Response(
+                        {"error": "Error generating PDF", "details": f"PDF service returned empty content (Local error: {str(local_e)})"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+                else:
+                    return Response(
+                        {"error": "Error generating PDF", "details": f"{api_response.text} (Local error: {str(local_e)})"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+            except Exception as api_e:
                 return Response(
-                    {"error": "Error generating PDF", "details": api_response.text},
+                    {"error": "Error generating PDF", "details": f"API fallback failed: {str(api_e)}. (Local error: {str(local_e)})"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
         except Exception as e:

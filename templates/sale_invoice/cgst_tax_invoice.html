@@ -80,7 +80,7 @@
 
     <!-- Title -->
     <table class="no-border">
-        <tr><td class="header-title">TAX INVOICE</td></tr>
+        <tr><td class="header-title">{{ doc_title|default:"TAX INVOICE" }}</td></tr>
     </table>
 
     <!-- Company Info -->
@@ -96,11 +96,19 @@
                 {% endif %}
             </td>
             <td style="text-align:left;">
-                <div class="bold">{{ sale_instance.company_profile.name }}</div>
-                {{ sale_instance.company_profile.address }}<br>
+                <div class="bold">{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}</div>
+                {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br>{% endif %}
+                {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br>{% endif %}
+                {% if sale_instance.company_profile.city %}{{ sale_instance.company_profile.city }}{% endif %}
+                {% if sale_instance.company_profile.state %}, {{ sale_instance.company_profile.state }}{% endif %}
+                {% if sale_instance.company_profile.pincode %} - {{ sale_instance.company_profile.pincode }}{% endif %}
             </td>
             <td style="text-align:right;">
-                GSTIN - {{ sale_instance.company_profile.gstin|default:"Unregistered" }}<br>
+                {% if sale_instance.company_profile.is_gst_registered %}
+                    GSTIN - {{ sale_instance.company_profile.gstin }}
+                {% else %}
+                    Are not registered
+                {% endif %}<br>
                 <b>Invoice Date:</b> {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br>
                 <b>Invoice No.:</b> {{ wholesale.invoice_number }}<br>
                 {% if sale_instance.user.tax_settings.composite_scheme %}
@@ -143,14 +151,19 @@
             <th rowspan="2">Dis</th>
             <th rowspan="2">Qty</th>
             <th rowspan="2">Taxable<br>Value</th>
-            <th colspan="4">GST</th>
+            <th colspan="{% if is_igst %}2{% else %}4{% endif %}">GST</th>
             <th rowspan="2">Total</th>
         </tr>
         <tr>
-            <th>SGST %</th>
-            <th>SGST Amt</th>
-            <th>CGST %</th>
-            <th>CGST Amt</th>
+            {% if is_igst %}
+                <th>IGST %</th>
+                <th>IGST Amt</th>
+            {% else %}
+                <th>SGST %</th>
+                <th>SGST Amt</th>
+                <th>CGST %</th>
+                <th>CGST Amt</th>
+            {% endif %}
         </tr>
     </thead>
     <tbody>
@@ -163,10 +176,15 @@
             <td>{{ discount_percentage|default:"0" }}%</td>
             <td>{{ item.quantity }}</td>
             <td>{{ item.taxable_value|floatformat:2 }}</td>
-            <td>{{ item.sgst_percent }}%</td>
-            <td>{{ item.sgst_amount|floatformat:2 }}</td>
-            <td>{{ item.cgst_percent }}%</td>
-            <td>{{ item.cgst_amount|floatformat:2 }}</td>
+            {% if is_igst %}
+                <td>{{ item.igst_percent }}%</td>
+                <td>{{ item.igst_amount|floatformat:2 }}</td>
+            {% else %}
+                <td>{{ item.sgst_percent }}%</td>
+                <td>{{ item.sgst_amount|floatformat:2 }}</td>
+                <td>{{ item.cgst_percent }}%</td>
+                <td>{{ item.cgst_amount|floatformat:2 }}</td>
+            {% endif %}
             <td>{{ item.total_with_tax|floatformat:2 }}</td>
         </tr>
         {% endfor %}
@@ -175,10 +193,15 @@
         <tr>
             <td colspan="6" style="text-align:right;"><b>Total</b></td>
             <td><b>{{ sum_taxable|floatformat:2 }}</b></td>
-            <td></td>
-            <td><b>{{ sum_sgst|floatformat:2 }}</b></td>
-            <td></td>
-            <td><b>{{ sum_cgst|floatformat:2 }}</b></td>
+            {% if is_igst %}
+                <td></td>
+                <td><b>{{ sum_igst|floatformat:2 }}</b></td>
+            {% else %}
+                <td></td>
+                <td><b>{{ sum_sgst|floatformat:2 }}</b></td>
+                <td></td>
+                <td><b>{{ sum_cgst|floatformat:2 }}</b></td>
+            {% endif %}
             <td><b>{{ rounded_total|floatformat:2 }}</b></td>
         </tr>
     </tfoot>
@@ -203,12 +226,11 @@
                 <table class="summary" style="width:100%;">
                     <tr><td>Taxable Amount: ₹ {{ sale_instance.total_amount_before_discount|floatformat:2 }}</td></tr>
                     <tr><td>Total Tax: ₹ 
-                        {% with 0 as total_tax %}
-                        {% for hsn,data in hsn_summary %}
-                            {% widthratio data.total_tax 1 1 as tax %}
-                            {% if not forloop.first %}+{% endif %}{{ tax }}
-                        {% endfor %}
-                        {% endwith %}
+                        {% if is_igst %}
+                            {{ sum_igst|floatformat:2 }}
+                        {% else %}
+                            {{ total_tax|floatformat:2 }}
+                        {% endif %}
                     </td></tr>
                     <tr><td>Discount ({{ sale_instance.discount_percentage }}%) : ₹ {{ sale_instance.discount_amount|floatformat:2 }}</td></tr>
                     <tr><td>Round off</td></tr>
@@ -221,7 +243,17 @@
             </td>
         </tr>
         <tr>
-            <td colspan="2" class="terms"><b>Terms & Conditions</b><br>{{ display_terms|default:""|safe }}</td>
+            <td colspan="2" class="terms">
+                <b>Terms & Conditions</b><br>{{ display_terms|default:""|safe }}<br><br>
+                <i style="font-size: 10px;">
+                    Note: 
+                    {% if is_igst %}
+                        Inter-state transaction (IGST applicable).
+                    {% else %}
+                        Intra-state transaction (CGST & SGST applicable).
+                    {% endif %}
+                </i>
+            </td>
             <td style="text-align:right; vertical-align:bottom;">Signature</td>
         </tr>
     </table>

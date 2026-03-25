@@ -14,6 +14,8 @@ from .models import *
 from .models import vendor_bank  # Explicit import for pos/update_sale (avoids UnboundLocalError)
 from .forms import *
 from django.contrib.auth.decorators import login_required
+from .pdf_utils import html_to_pdf_local
+
 
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -4921,36 +4923,15 @@ def sale_invoice(request, sale_id):
     store_gst = "cgst" if same_state else "igst"
 
     # --- Template path decision across types ---
-    template_map = {
-        "proforma": {
-            "igst": "sale_invoice/igst_proforma.html",
-            "cgst": "sale_invoice/cgst_proforma.html",
-        },
-        "invoice": {
-            "igst": "sale_invoice/igst_invoice.html",
-            "cgst": "sale_invoice/cgst_tax_invoice.html",
-        },
-        "quotation": {
-            "igst": "sale_invoice/igst_quotation.html",
-            "cgst": "sale_invoice/cgst_quotation.html",
-        },
-        "delivery_challan": {
-            "igst": "sale_invoice/igst_delivery_challan.html",
-            "cgst": "sale_invoice/cgst_delivery_challan.html",
-        },
-    }
-    template_name = template_map.get(sale_type, {}).get(store_gst)
-    if not template_name:
-        # Fallback
-        template_name = "sale_invoice/online_invoice.html"
+    # User requested to unify all templates into cgst_tax_invoice.html
+    common_template = "sale_invoice/cgst_tax_invoice.html"
+    template_name = common_template
 
-    # For wholesale-rate sales, use detailed wholesale layouts for TAX INVOICE
-    if sale.is_wholesale_rate and sale_type == "invoice":
-        wholesale_template_map = {
-            "cgst": "sale_invoice/cgst_proforma.html",
-            "igst": "sale_invoice/igst_proforma.html",
-        }
-        template_name = wholesale_template_map.get(store_gst, template_name)
+    # Calculate is_igst for template logic
+    is_igst = (store_gst == "igst")
+
+    # For wholesale-rate sales, we still use the common template now
+    # as it handles the logic internally
 
     # --- Thermal bill for retail: when thermal_print is True, use thermal template for retail POS bills ---
     user = sale.user or request.user
@@ -5152,6 +5133,7 @@ def sale_invoice(request, sale_id):
         'payment_qr_data_uri': payment_qr_data_uri,
         'company_signature_data_uri': company_signature_data_uri,
         'doc_title': doc_title,
+        'is_igst': is_igst,
         'items_with_tax': items_with_tax,
         'vendor_pan': vendor_pan,
         'vendor_gstin': vendor_gstin,
@@ -5159,22 +5141,36 @@ def sale_invoice(request, sale_id):
         'company_logo_data_uri': company_logo_data_uri,
     }
     
-    # Generate PDF using html2pdf.app API
+    # Render template to HTML string
+    from django.template.loader import get_template
+    template = get_template(template_name)
+    html_content = template.render(context, request)
+
+    # Generate PDF using LOCAL Playwright (exact browser rendering)
     try:
-        import requests
-        from django.template.loader import get_template
-        from django.conf import settings
+        pdf_options = {}
+        if use_thermal:
+            pdf_options['width'] = 302
+            pdf_options['height'] = 1123
+            pdf_options['margin'] = {'top': '15px', 'bottom': '15px', 'left': '12px', 'right': '12px'}
+        else:
+            pdf_options['pageSize'] = 'A4'
+            pdf_options['margin'] = '1cm'
         
-        # Render template to HTML string
-        template = get_template(template_name)
-        html_content = template.render(context, request)
+        pdf_bytes = html_to_pdf_local(html_content, pdf_options)
         
-        # PDF options: thermal 80mm width for thermal, A4 for standard
-        # html2pdf.app: width/height in pixels. 80mm ≈ 302px, 297mm ≈ 1123px
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        filename = f"sale_invoice_{sale_id}_{sale_type}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as local_e:
+        # Fallback to API if local fails (safeguard)
         pdf_body = {'html': html_content, 'apiKey': getattr(settings, 'HTML2PDF_API_KEY', '')}
         if use_thermal:
             pdf_body['width'] = 302  # 80mm
             pdf_body['height'] = 1123  # 297mm (thermal roll length)
+            # ... other margins omitted for brevity but keeping original logic if needed
             pdf_body['marginTop'] = 15
             pdf_body['marginBottom'] = 15
             pdf_body['marginLeft'] = 12
@@ -5182,8 +5178,7 @@ def sale_invoice(request, sale_id):
         else:
             pdf_body['options'] = {'printBackground': True, 'margin': '1cm', 'pageSize': 'A4'}
 
-        # Generate PDF using html2pdf.app
-        api_response = requests.post('https://api.html2pdf.app/v1/generate', json=pdf_body)
+        api_response = requests.post('https://api.html2pdf.app/v1/generate', json=pdf_body, timeout=20)
         
         if api_response.status_code == 200:
             response = HttpResponse(api_response.content, content_type='application/pdf')
@@ -5191,7 +5186,7 @@ def sale_invoice(request, sale_id):
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
         else:
-            return HttpResponse(f"Error generating PDF: {api_response.text}", status=500)
+            return HttpResponse(f"Error generating PDF: {api_response.text} (Local error: {str(local_e)})", status=500)
     except Exception as e:
         # Fallback to HTML if PDF generation fails
         return render(request, template_name, context)
@@ -8619,22 +8614,32 @@ class customer_sale_invoice(APIView):
         template = get_template(template_name)
         html_content = template.render(context, request._request if hasattr(request, "_request") else request)
 
-        api_response = requests.post(
-            "https://api.html2pdf.app/v1/generate",
-            json={
-                "html": html_content,
-                "apiKey": getattr(settings, "HTML2PDF_API_KEY", ""),
-                "options": {"printBackground": True, "margin": "1cm", "pageSize": "A4"},
-            },
-            timeout=30,
-        )
-
-        if api_response.status_code == 200:
-            response = HttpResponse(api_response.content, content_type="application/pdf")
+        # Generate PDF using LOCAL Playwright
+        try:
+            pdf_options = {"pageSize": "A4", "margin": "1cm"}
+            pdf_bytes = html_to_pdf_local(html_content, pdf_options)
+            
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
             filename = f"sale_invoice_{sale.id}_{sale_type}.pdf"
-            # inline for customer UX (browser preview), but still downloadable
             response["Content-Disposition"] = f'inline; filename="{filename}"'
             return response
+        except Exception as local_e:
+            api_response = requests.post(
+                "https://api.html2pdf.app/v1/generate",
+                json={
+                    "html": html_content,
+                    "apiKey": getattr(settings, "HTML2PDF_API_KEY", ""),
+                    "options": {"printBackground": True, "margin": "1cm", "pageSize": "A4"},
+                },
+                timeout=30,
+            )
+
+            if api_response.status_code == 200:
+                response = HttpResponse(api_response.content, content_type="application/pdf")
+                filename = f"sale_invoice_{sale.id}_{sale_type}.pdf"
+                # inline for customer UX (browser preview), but still downloadable
+                response["Content-Disposition"] = f'inline; filename="{filename}"'
+                return response
 
         # fallback to HTML (helps debugging templates)
         return Response(
