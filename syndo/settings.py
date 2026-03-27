@@ -267,6 +267,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'syndo.wsgi.application'
+ASGI_APPLICATION = 'syndo.asgi.application'
 
 
 # Database
