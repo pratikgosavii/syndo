@@ -1,4 +1,5 @@
 import logging
+import requests
 from django.forms import ValidationError
 from django.shortcuts import render
 

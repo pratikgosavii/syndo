@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404, render
 from django.http import Http404
 import json
+import requests
 from decimal import Decimal
 
 from masters.filters import EventFilter
