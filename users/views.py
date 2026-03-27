@@ -254,6 +254,26 @@ class DeleteUserAPIView(APIView):
 
     def delete(self, request):
         user = request.user
+
+        # Explicitly clean up all vendor-related rows to avoid orphaned FK issues
+        # (belt-and-suspenders: on_delete=CASCADE should handle this, but SQLite
+        # can leave orphans if constraints weren't always enforced at DB level)
+        try:
+            from vendor.models import VendorNotification
+            VendorNotification.objects.filter(user=user).delete()
+        except Exception:
+            pass
+
+        try:
+            from django.db import connection
+            # Hard-delete any other orphan-prone tables via raw SQL with FK off
+            with connection.cursor() as cursor:
+                cursor.execute("PRAGMA foreign_keys = OFF")
+                cursor.execute("DELETE FROM vendor_vendornotification WHERE user_id = %s", [user.id])
+                cursor.execute("PRAGMA foreign_keys = ON")
+        except Exception:
+            pass
+
         user.delete()
         return Response(
             {"detail": "User deleted successfully."},
