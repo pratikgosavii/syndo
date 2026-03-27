@@ -183,6 +183,9 @@ class product_Form(forms.ModelForm):
         self.fields['wholesale_price'].required = False
         self.fields['mrp'].required = False
         self.fields['sales_price'].required = False
+        self.fields['assign_barcode'].required = False
+        self.fields['batch_number'].required = False
+        self.fields['color'].required = False
         if self.instance and self.instance.pk:
             self.fields['opening_stock'].widget.attrs['readonly'] = 'readonly'
             self.fields['opening_stock'].help_text = 'Opening stock can only be set while creating the product.'
