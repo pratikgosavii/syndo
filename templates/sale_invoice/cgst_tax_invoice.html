@@ -121,8 +121,7 @@
                     }}<br>{% endif %}
                     {% if sale_instance.company_profile.city %}{{ sale_instance.company_profile.city }}{% endif %}
                     {% if sale_instance.company_profile.state %}, {{ sale_instance.company_profile.state }}{% endif %}
-                    {% if sale_instance.company_profile.pincode %} - {{ sale_instance.company_profile.pincode }}{% endif
-                    %}
+                    {% if sale_instance.company_profile.pincode %} - {{ sale_instance.company_profile.pincode }}{% endif %}
                 </td>
                 <td style="text-align:right;">
                     {% if sale_instance.company_profile.is_gst_registered %}
@@ -155,8 +154,7 @@
                 </td>
                 <td style="text-align:left; border-bottom: none;">
                     <b>Mobile No :</b>
-                    {% if sale_instance.customer %}{{ sale_instance.customer.contact|default:"—" }}{% else %}—{% endif
-                    %}
+                    {% if sale_instance.customer %}{{ sale_instance.customer.contact|default:"—" }}{% else %}—{% endif %}
                 </td>
             </tr>
         </table>
@@ -203,10 +201,10 @@
                     <td>{{ item.quantity }}</td>
                     {% if sale_instance.company_profile.is_gst_registered %}
                     <td>{{ item.taxable_value|floatformat:2 }}</td>
-                    {% if is_igst %}
-                    <td>{{ item.igst_percent }}%</td>
-                    <td>{{ item.igst_amount|floatformat:2 }}</td>
-                    {% else %}
+                        {% if is_igst %}
+                        <td>{{ item.igst_percent }}%</td>
+                        <td>{{ item.igst_amount|floatformat:2 }}</td>
+                        {% else %}
                     <td>{{ item.sgst_percent }}%</td>
                     <td>{{ item.sgst_amount|floatformat:2 }}</td>
                     <td>{{ item.cgst_percent }}%</td>
