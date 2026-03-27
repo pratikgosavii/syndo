@@ -717,6 +717,7 @@ class OnlineOrderInvoiceAPIView(APIView):
         except Exception as local_e:
             # Generate PDF using html2pdf.app API fallback
             try:
+                import requests
                 api_response = requests.post(
                     "https://api.html2pdf.app/v1/generate",
                     json={

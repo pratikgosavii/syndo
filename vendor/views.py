@@ -5167,6 +5167,7 @@ def sale_invoice(request, sale_id):
 
     except Exception as local_e:
         # Fallback to API if local fails (safeguard)
+        import requests
         pdf_body = {'html': html_content, 'apiKey': getattr(settings, 'HTML2PDF_API_KEY', '')}
         if use_thermal:
             pdf_body['width'] = 302  # 80mm
