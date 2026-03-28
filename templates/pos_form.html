@@ -203,7 +203,20 @@
         .pos-left .section-card.mb-3 .flex-grow-1 .select2-container,
         .pos-left .section-card.mb-3 .flex-grow-1 select { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
         .pos-left .section-card.mb-3 #id_customer { width: 100% !important; min-height: 40px; }
-        .pos-left .section-card.mb-3 .select2-container--default .select2-selection--single .select2-selection__rendered { white-space: normal; }
+        /* Customer Select2: one line + ellipsis (avoid name + mobile wrapping downward) */
+        #id_customer + .select2-container .select2-selection--single .select2-selection__rendered {
+            white-space: nowrap !important;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            line-height: 2.30;
+        }
+        /* Dropdown is attached to body; option list id follows select id */
+        #select2-id_customer-results .select2-results__option {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         /* Product entry row – reference: manual-row (dashed, grid 3fr 1fr 1.2fr 1.2fr auto) */
         .section-card.product-entry-card {
@@ -2401,10 +2414,28 @@ document.addEventListener('DOMContentLoaded', function () {
   function posForceSelect2Width() {
     $('#pos-form .select2-container').css('width', '100%');
   }
+  /** Full label text on hover when selection is ellipsized */
+  function posSyncCustomerSelectTitle() {
+    var $s = $('#id_customer');
+    if (!$s.length) return;
+    var text = ($s.find('option:selected').text() || '').trim();
+    $s.next('.select2-container').find('.select2-selection__rendered').attr('title', text);
+  }
+  $(document).on('select2:select change', '#id_customer', posSyncCustomerSelectTitle);
+  $(document).on('select2:open', '#id_customer', function () {
+    setTimeout(function () {
+      $('#select2-id_customer-results .select2-results__option').each(function () {
+        var t = $(this).text();
+        if (t) $(this).attr('title', $.trim(t));
+      });
+    }, 0);
+  });
   $(document).ready(function() {
     posForceSelect2Width();
     setTimeout(posForceSelect2Width, 50);
     setTimeout(posForceSelect2Width, 300);
+    posSyncCustomerSelectTitle();
+    setTimeout(posSyncCustomerSelectTitle, 150);
   });
 </script>
 
