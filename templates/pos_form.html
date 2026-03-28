@@ -138,8 +138,8 @@
             margin-bottom: 0;
             flex-shrink: 0;
         }
-        /* Grid: two columns; children must span full cell — Bootstrap col-md-6 uses width:50% and left the barcode field half-empty */
-        .pos-left .section-card.mb-3 .row { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.25fr); gap: 24px; align-items: start; }
+        /* Grid: customer wide | compact barcode column */
+        .pos-left .section-card.mb-3 .row { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(140px, min(220px, 28vw)); gap: 20px; align-items: start; }
         .pos-left .section-card.mb-3 .row > [class*="col-"] { width: 100% !important; max-width: 100% !important; min-width: 0; }
         @media (max-width: 767px) { .pos-left .section-card.mb-3 .row { grid-template-columns: 1fr; } }
         .pos-left .section-card.mb-3 .form-label {
@@ -199,7 +199,7 @@
         .btn-search-catalog:hover { background: #e6ac00; color: white; }
         /* Customer dropdown: force full width so "Select Customer" is visible */
         .pos-left .section-card.mb-3 .d-flex { min-width: 0; gap: 10px; align-items: stretch; }
-        .pos-left .section-card.mb-3 .flex-grow-1 { flex: 1 1 0; min-width: 280px; }
+        .pos-left .section-card.mb-3 .flex-grow-1 { flex: 1 1 0; min-width: 240px; }
         .pos-left .section-card.mb-3 .flex-grow-1 .select2-container,
         .pos-left .section-card.mb-3 .flex-grow-1 select { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
         .pos-left .section-card.mb-3 #id_customer { width: 100% !important; min-height: 40px; }
