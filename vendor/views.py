@@ -4748,6 +4748,80 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
     sale_instance.save(update_fields=update_fields)
 
 
+def _invoice_line_totals_after_discount(items_with_tax, discount_amount):
+    """
+    Allocate bill-level discount across rows by each line's share of sum(total_with_tax).
+    Sets row['total_after_discount'] for invoice line Total column.
+    """
+    if not items_with_tax:
+        return
+    disc = float(discount_amount or 0)
+    sum_gross = sum(float(row.get("total_with_tax") or 0) for row in items_with_tax)
+    if sum_gross <= 0 or disc <= 0:
+        for row in items_with_tax:
+            row["total_after_discount"] = round(float(row.get("total_with_tax") or 0), 2)
+        return
+    remaining = disc
+    n = len(items_with_tax)
+    for i, row in enumerate(items_with_tax):
+        gross = float(row.get("total_with_tax") or 0)
+        if i == n - 1:
+            part = round(remaining, 2)
+        else:
+            part = round(disc * gross / sum_gross, 2)
+            remaining = round(remaining - part, 2)
+        row["total_after_discount"] = round(gross - part, 2)
+
+
+def _invoice_company_media_data_uris(sale):
+    """
+    Base64 data-URIs for company profile_image, payment_qr, signature (PDF renderers often cannot load media URLs).
+    Returns (company_logo_data_uri, payment_qr_data_uri, company_signature_data_uri).
+    """
+    import base64
+    from django.conf import settings
+
+    company_logo_data_uri = None
+    payment_qr_data_uri = None
+    company_signature_data_uri = None
+    cp = getattr(sale, "company_profile", None)
+    try:
+        max_inline_bytes = getattr(settings, "PDF_INLINE_IMAGE_MAX_BYTES", 200 * 1024)
+
+        if cp and cp.profile_image and getattr(cp.profile_image, "size", 0) <= max_inline_bytes:
+            try:
+                with cp.profile_image.open("rb") as f:
+                    logo_b64 = base64.b64encode(f.read()).decode("ascii")
+                ext = cp.profile_image.name.split(".")[-1].lower() if cp.profile_image.name else "jpeg"
+                mime = "image/png" if ext == "png" else "image/jpeg"
+                company_logo_data_uri = f"data:{mime};base64,{logo_b64}"
+            except Exception:
+                company_logo_data_uri = None
+
+        if cp and cp.payment_qr and getattr(cp.payment_qr, "size", 0) <= max_inline_bytes:
+            try:
+                with cp.payment_qr.open("rb") as f:
+                    qr_b64 = base64.b64encode(f.read()).decode("ascii")
+                ext_qr = cp.payment_qr.name.split(".")[-1].lower() if cp.payment_qr.name else "jpeg"
+                mime_qr = "image/png" if ext_qr == "png" else "image/jpeg"
+                payment_qr_data_uri = f"data:{mime_qr};base64,{qr_b64}"
+            except Exception:
+                payment_qr_data_uri = None
+
+        if cp and cp.signature and getattr(cp.signature, "size", 0) <= max_inline_bytes:
+            try:
+                with cp.signature.open("rb") as f:
+                    sig_b64 = base64.b64encode(f.read()).decode("ascii")
+                ext_sig = cp.signature.name.split(".")[-1].lower() if cp.signature.name else "jpeg"
+                mime_sig = "image/png" if ext_sig == "png" else "image/jpeg"
+                company_signature_data_uri = f"data:{mime_sig};base64,{sig_b64}"
+            except Exception:
+                company_signature_data_uri = None
+    except Exception:
+        return None, None, None
+    return company_logo_data_uri, payment_qr_data_uri, company_signature_data_uri
+
+
 def sale_bill_details(request, sale_id):
     sale = get_object_or_404(
         Sale.objects.select_related('company_profile', 'customer'),
@@ -5012,6 +5086,8 @@ def sale_invoice(request, sale_id):
             "total_with_tax": float(item.total_with_tax),
         })
 
+    _invoice_line_totals_after_discount(items_with_tax, sale.discount_amount)
+
     for hsn, data in hsn_summary.items():
         # Use floats here to avoid mixing Decimal and float types
         taxable_val = float(data.get('taxable_value', 0) or 0)
@@ -5050,50 +5126,8 @@ def sale_invoice(request, sale_id):
     vendor_gstin = None
     vendor_fssai = None
     # Base64 logo / QR / signature for PDF rendering (used by all invoice templates)
-    company_logo_data_uri = None
-    payment_qr_data_uri = None
-    company_signature_data_uri = None
+    company_logo_data_uri, payment_qr_data_uri, company_signature_data_uri = _invoice_company_media_data_uris(sale)
     cp = sale.company_profile
-    try:
-        import base64
-        from django.conf import settings
-
-        # Limit inline image size to avoid 413 from html2pdf / nginx
-        max_inline_bytes = getattr(settings, "PDF_INLINE_IMAGE_MAX_BYTES", 200 * 1024)
-
-        if cp and cp.profile_image and getattr(cp.profile_image, "size", 0) <= max_inline_bytes:
-            try:
-                with cp.profile_image.open('rb') as f:
-                    logo_b64 = base64.b64encode(f.read()).decode('ascii')
-                ext = cp.profile_image.name.split('.')[-1].lower() if cp.profile_image.name else 'jpeg'
-                mime = 'image/png' if ext == 'png' else 'image/jpeg'
-                company_logo_data_uri = f"data:{mime};base64,{logo_b64}"
-            except Exception:
-                company_logo_data_uri = None
-
-        if cp and cp.payment_qr and getattr(cp.payment_qr, "size", 0) <= max_inline_bytes:
-            try:
-                with cp.payment_qr.open('rb') as f:
-                    qr_b64 = base64.b64encode(f.read()).decode('ascii')
-                ext_qr = cp.payment_qr.name.split('.')[-1].lower() if cp.payment_qr.name else 'jpeg'
-                mime_qr = 'image/png' if ext_qr == 'png' else 'image/jpeg'
-                payment_qr_data_uri = f"data:{mime_qr};base64,{qr_b64}"
-            except Exception:
-                payment_qr_data_uri = None
-
-        if cp and cp.signature and getattr(cp.signature, "size", 0) <= max_inline_bytes:
-            try:
-                with cp.signature.open('rb') as f:
-                    sig_b64 = base64.b64encode(f.read()).decode('ascii')
-                ext_sig = cp.signature.name.split('.')[-1].lower() if cp.signature.name else 'jpeg'
-                mime_sig = 'image/png' if ext_sig == 'png' else 'image/jpeg'
-                company_signature_data_uri = f"data:{mime_sig};base64,{sig_b64}"
-            except Exception:
-                company_signature_data_uri = None
-    except Exception:
-        company_logo_data_uri = None
-        payment_qr_data_uri = None
-        company_signature_data_uri = None
 
     if use_thermal:
         store = vendor_store.objects.filter(user=user).first()
@@ -5143,9 +5177,8 @@ def sale_invoice(request, sale_id):
         'vendor_pan': vendor_pan,
         'vendor_gstin': vendor_gstin,
         'vendor_fssai': vendor_fssai,
-        'company_logo_data_uri': company_logo_data_uri,
     }
-    
+
     # Render template to HTML string
     from django.template.loader import get_template
     template = get_template(template_name)
@@ -8582,6 +8615,8 @@ class customer_sale_invoice(APIView):
                 "total_with_tax": float(item.total_with_tax or 0),
             })
 
+        _invoice_line_totals_after_discount(items_with_tax, sale.discount_amount)
+
         for hsn, data in hsn_summary.items():
             data["sgst_amount"] = (data["taxable_value"] * data["sgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
             data["cgst_amount"] = (data["taxable_value"] * data["cgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
@@ -8608,6 +8643,8 @@ class customer_sale_invoice(APIView):
             inv_settings = InvoiceSettings.objects.filter(user=sale.user).first()
             display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
 
+        company_logo_data_uri, payment_qr_data_uri, company_signature_data_uri = _invoice_company_media_data_uris(sale)
+
         context = {
             "sale_instance": sale,
             "wholesale": wholesale,
@@ -8632,6 +8669,9 @@ class customer_sale_invoice(APIView):
             "is_igst": is_igst,
             "is_registered": is_registered,
             "doc_title": doc_title,
+            "company_logo_data_uri": company_logo_data_uri,
+            "payment_qr_data_uri": payment_qr_data_uri,
+            "company_signature_data_uri": company_signature_data_uri,
         }
 
         # Render template to HTML string and convert to PDF
