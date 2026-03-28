@@ -138,7 +138,9 @@
             margin-bottom: 0;
             flex-shrink: 0;
         }
-        .pos-left .section-card.mb-3 .row { display: grid; grid-template-columns: minmax(340px, 2.5fr) minmax(300px, 1.5fr); gap: 24px; align-items: start; }
+        /* Grid: two columns; children must span full cell — Bootstrap col-md-6 uses width:50% and left the barcode field half-empty */
+        .pos-left .section-card.mb-3 .row { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(280px, 1.25fr); gap: 24px; align-items: start; }
+        .pos-left .section-card.mb-3 .row > [class*="col-"] { width: 100% !important; max-width: 100% !important; min-width: 0; }
         @media (max-width: 767px) { .pos-left .section-card.mb-3 .row { grid-template-columns: 1fr; } }
         .pos-left .section-card.mb-3 .form-label {
             font-size: 14px;
@@ -702,7 +704,7 @@
                 <!-- Controls: Customer, Barcode + Search Catalog -->
                 <div class="section-card mb-3">
                   <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-12">
                       <label class="form-label">Customer</label>
                       <div class="d-flex gap-2 align-items-center">
                         <div class="flex-grow-1">
@@ -711,9 +713,9 @@
                         <button type="button" class="btn btn-pos-customer" data-bs-toggle="modal" data-bs-target="#customerModal" title="Add Customer">+</button>
                       </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12">
                       <label class="form-label">Scan Barcode</label>
-                      <input type="text" id="barcode-input" class="form-control" placeholder="Scan Item..." autocomplete="off">
+                      <input type="text" id="barcode-input" class="form-control w-100" placeholder="Scan Item..." autocomplete="off">
                     </div>
                   </div>
                   <div class="pos-actions-bar">

@@ -166,7 +166,11 @@
                 <tr>
                     <th rowspan="2">S.No.</th>
                     <th rowspan="2">Product / Service</th>
+                    {% if sale_instance.company_profile.is_gst_registered %}
+
                     <th rowspan="2">HSN<br>SAC</th>
+                    {% endif %}
+
                     <th rowspan="2">Rate</th>
                     <th rowspan="2">Dis</th>
                     <th rowspan="2">Qty</th>
@@ -195,7 +199,10 @@
                 <tr>
                     <td>{{ forloop.counter }}</td>
                     <td>{{ item.name }}</td>
+                    {% if sale_instance.company_profile.is_gst_registered %}
+
                     <td>{{ item.hsn }}</td>
+                    {% endif %}
                     <td>{{ item.price|floatformat:2 }}</td>
                     <td>{{ discount_percentage|default:"0" }}%</td>
                     <td>{{ item.quantity }}</td>
