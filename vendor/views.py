@@ -26,6 +26,7 @@ from .serializers import *
 from users.permissions import *
 from django.db.models import Sum
 from django.db import transaction
+from django.conf import settings
 
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
