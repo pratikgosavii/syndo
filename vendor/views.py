@@ -4911,7 +4911,10 @@ def sale_invoice(request, sale_id):
         )
 
     sale_type = (getattr(wholesale, "invoice_type", None) or "invoice").lower().replace(" ", "_")  # normalize
-    is_registered = bool(sale.company_profile and sale.company_profile.gstin)
+    is_registered = bool(
+        getattr(sale, "company_profile", None)
+        and getattr(sale.company_profile, "is_gst_registered", False)
+    )
 
     # Determine store GST type (CGST if vendor/customer state matches else IGST)
     vendor_state_name = None
@@ -5135,6 +5138,7 @@ def sale_invoice(request, sale_id):
         'company_signature_data_uri': company_signature_data_uri,
         'doc_title': doc_title,
         'is_igst': is_igst,
+        'is_registered': is_registered,
         'items_with_tax': items_with_tax,
         'vendor_pan': vendor_pan,
         'vendor_gstin': vendor_gstin,
@@ -8500,6 +8504,21 @@ class customer_sale_invoice(APIView):
         if vendor_state_name and customer_state_name:
             same_state = vendor_state_name.strip().lower() == str(customer_state_name).strip().lower()
         store_gst = "cgst" if same_state else "igst"
+        is_igst = store_gst == "igst"
+        is_registered = bool(
+            getattr(sale, "company_profile", None)
+            and getattr(sale.company_profile, "is_gst_registered", False)
+        )
+        if sale_type == "invoice":
+            doc_title = "TAX INVOICE"
+        elif sale_type == "proforma":
+            doc_title = "PROFORMA INVOICE"
+        elif sale_type == "quotation":
+            doc_title = "QUOTATION"
+        elif sale_type == "delivery_challan":
+            doc_title = "DELIVERY CHALLAN"
+        else:
+            doc_title = sale_type.replace("_", " ").title()
 
         template_map = {
             "proforma": {"igst": "sale_invoice/igst_proforma.html", "cgst": "sale_invoice/cgst_proforma.html"},
@@ -8610,6 +8629,9 @@ class customer_sale_invoice(APIView):
             "paid_amount": float(paid_amount),
             "balance_amount": float(balance_amount),
             "items_with_tax": items_with_tax,
+            "is_igst": is_igst,
+            "is_registered": is_registered,
+            "doc_title": doc_title,
         }
 
         # Render template to HTML string and convert to PDF

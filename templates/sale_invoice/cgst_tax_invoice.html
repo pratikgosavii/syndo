@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Invoice - {{ wholesale.invoice_number }}</title>
+    <title>{% if sale_instance.company_profile and sale_instance.company_profile.is_gst_registered %}{{ doc_title|default:"TAX INVOICE" }}{% else %}Invoice{% endif %} - {{ wholesale.invoice_number }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -90,12 +90,13 @@
         <!-- Title -->
         <table class="no-border">
             <tr>
-                {% if sale_instance.company_profile.is_gst_registered %}
-                <td class="header-title">{{ doc_title|default:"TAX INVOICE" }}</td>
-                {% else %}
-                <td class="header-title">{{ doc_title|default:"INVOICE" }}</td>
-                {% endif %}<br>
-
+                <td class="header-title">
+                    {% if sale_instance.company_profile and sale_instance.company_profile.is_gst_registered %}
+                    {{ doc_title|default:"TAX INVOICE" }}
+                    {% else %}
+                    INVOICE
+                    {% endif %}
+                </td>
             </tr>
         </table>
 
@@ -112,16 +113,14 @@
                     {% endif %}
                 </td>
                 <td style="text-align:left;">
-                    <div class="bold">{{
-                        sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name }}
-                    </div>
-                    {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1
-                    }}<br>{% endif %}
-                    {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2
-                    }}<br>{% endif %}
-                    {% if sale_instance.company_profile.city %}{{ sale_instance.company_profile.city }}{% endif %}
-                    {% if sale_instance.company_profile.state %}, {{ sale_instance.company_profile.state }}{% endif %}
-                    {% if sale_instance.company_profile.pincode %} - {{ sale_instance.company_profile.pincode }}{% endif %}
+                    {% if sale_instance.company_profile %}
+                    {% with cp=sale_instance.company_profile %}
+                    <div class="bold">{{ cp.company_name|default:cp.brand_name|default:"" }}</div>
+                    {% if cp.address_line_1 %}{{ cp.address_line_1 }}<br>{% endif %}
+                    {% if cp.address_line_2 %}{{ cp.address_line_2 }}<br>{% endif %}
+                    {% if cp.city %}{{ cp.city }}{% endif %}{% if cp.state %}, {{ cp.state }}{% endif %}{% if cp.pincode %} - {{ cp.pincode }}{% endif %}
+                    {% endwith %}
+                    {% endif %}
                 </td>
                 <td style="text-align:right;">
                     {% if sale_instance.company_profile.is_gst_registered %}
@@ -261,23 +260,16 @@
                 <td style="width:40%;">
                     <table class="summary" style="width:100%;">
                         <tr>
-                            <td>Taxable Amount: ₹ {{ sale_instance.total_amount_before_discount|floatformat:2 }}</td>
+                            <td>Subtotal (before discount): ₹ {{ sale_instance.total_amount_before_discount|default:0|floatformat:2 }}</td>
                         </tr>
                         <tr>
-                            <td>Total Tax: ₹
-                                {% if is_igst %}
-                                {{ sum_igst|floatformat:2 }}
-                                {% else %}
-                                {{ total_tax|floatformat:2 }}
-                                {% endif %}
-                            </td>
+                            <td>Total Tax: ₹ {% if is_igst %}{{ sum_igst|floatformat:2 }}{% else %}{{ total_tax|floatformat:2 }}{% endif %}</td>
                         </tr>
                         <tr>
-                            <td>Discount ({{ sale_instance.discount_percentage }}%) : ₹ {{
-                                sale_instance.discount_amount|floatformat:2 }}</td>
+                            <td>Discount ({{ discount_percentage }}%): ₹ {{ discount_amount|floatformat:2 }}</td>
                         </tr>
                         <tr>
-                            <td>Round off</td>
+                            <td>Round off: ₹ {{ round_off_value|default:0|floatformat:2 }}</td>
                         </tr>
                         <tr class="bold">
                             <td>Total Amount: ₹ {{ total_amount|floatformat:2 }}</td>
@@ -296,14 +288,12 @@
             <tr>
                 <td colspan="2" class="terms">
                     <b>Terms & Conditions</b><br>{{ display_terms|default:""|safe }}<br><br>
+                    {% if sale_instance.company_profile.is_gst_registered %}
                     <i style="font-size: 10px;">
                         Note:
-                        {% if is_igst %}
-                        Inter-state transaction (IGST applicable).
-                        {% else %}
-                        Intra-state transaction (CGST & SGST applicable).
-                        {% endif %}
+                        {% if is_igst %}Inter-state transaction (IGST applicable).{% else %}Intra-state transaction (CGST & SGST applicable).{% endif %}
                     </i>
+                    {% endif %}
                 </td>
                 <td style="text-align:right; vertical-align:bottom;">Signature</td>
             </tr>
@@ -312,7 +302,7 @@
     </div>
 
     <div class="footer">
-        Website - {{ sale_instance.company_profile.website|default:"www.svindo.com" }}<br>
+        Website - {% if sale_instance.company_profile %}{{ sale_instance.company_profile.website|default:"www.svindo.com" }}{% else %}www.svindo.com{% endif %}<br>
         Page no. 1
     </div>
 
