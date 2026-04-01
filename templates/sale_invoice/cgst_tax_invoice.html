@@ -136,12 +136,10 @@
                 </td>
                 <td style="text-align:left;">
                     {% if sale_instance.company_profile %}
-                    {% with cp=sale_instance.company_profile %}
-                    <div class="bold">{{ cp.company_name|default:cp.brand_name|default:"" }}</div>
-                    {% if cp.address_line_1 %}{{ cp.address_line_1 }}<br>{% endif %}
-                    {% if cp.address_line_2 %}{{ cp.address_line_2 }}<br>{% endif %}
-                    {% if cp.city %}{{ cp.city }}{% endif %}{% if cp.state %}, {{ cp.state }}{% endif %}{% if cp.pincode %} - {{ cp.pincode }}{% endif %}
-                    {% endwith %}
+                    <div class="bold">{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"" }}</div>
+                    {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br>{% endif %}
+                    {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br>{% endif %}
+                    {% if sale_instance.company_profile.city %}{{ sale_instance.company_profile.city }}{% endif %}{% if sale_instance.company_profile.state %}, {{ sale_instance.company_profile.state }}{% endif %}{% if sale_instance.company_profile.pincode %} - {{ sale_instance.company_profile.pincode }}{% endif %}
                     {% endif %}
                 </td>
                 <td style="text-align:right;">
@@ -245,8 +243,9 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="{% if sale_instance.company_profile.is_gst_registered %}6{% else %}5{% endif %}"
+                    <td colspan="{% if sale_instance.company_profile.is_gst_registered %}5{% else %}4{% endif %}"
                         style="text-align:left;"><b>Total</b></td>
+                    <td><b>{{ total_quantity }}</b></td>
                     {% if sale_instance.company_profile.is_gst_registered %}
                     <td><b>{{ sum_taxable|floatformat:2 }}</b></td>
                     {% if is_igst %}

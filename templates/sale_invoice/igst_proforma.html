@@ -327,6 +327,14 @@
           </tr>
           {% endfor %}
         </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="text-align: right;"><b>Total</b></td>
+            <td><b>{{ total_quantity }}</b></td>
+            <td colspan="{% if is_registered %}{% if is_igst %}2{% else %}3{% endif %}{% else %}1{% endif %}"></td>
+            <td><b>{{ rounded_total|floatformat:2 }}</b></td>
+          </tr>
+        </tfoot>
       </table>
 
       <!-- TOTALS SECTION -->
