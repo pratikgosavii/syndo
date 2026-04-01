@@ -173,6 +173,18 @@
     border-bottom: none;
   }
 
+  .product-table tfoot td {
+    padding: 0.6rem 0.75rem;
+    border-top: 2px solid #e2e8f0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #f8fafc;
+  }
+
+  .product-table tfoot td.text-end {
+    text-align: right;
+  }
+
   .product-table .text-end {
     text-align: right;
   }
@@ -296,10 +308,7 @@
                 <div class="info-card-title">Dispatch Details</div>
                 <div class="info-card-content">
                   <strong>Ship To:</strong><br />
-                  <span class="name"
-                    >{{ wholesale.dispatch_address|default:"—"|linebreaksbr
-                    }}</span
-                  >
+                  <span class="name">{{ wholesale.dispatch_address|default:"—"|linebreaksbr }}</span>
                 </div>
               </div>
             </div>
@@ -325,8 +334,7 @@
                   <strong>{{ item.product.name }}</strong>
                   {% if item.product.batch_number or item.product.size %}
                   <div class="item-desc-secondary">
-                    {% if item.product.batch_number %}Batch: {{ item.product.batch_number }}{% endif %}{% if item.product.batch_number and item.product.size %} | {% endif %}{% if item.product.size %}Size: {{
-                    item.product.size.name }}{% endif %}
+                    {% if item.product.batch_number %}Batch: {{ item.product.batch_number }}{% endif %}{% if item.product.batch_number and item.product.size %} | {% endif %}{% if item.product.size %}Size: {{ item.product.size.name }}{% endif %}
                   </div>
                   {% endif %}
                 </td>
@@ -337,6 +345,14 @@
               </tr>
               {% endfor %}
             </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3">Total</td>
+                <td class="text-end">{{ items_total_quantity }}</td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
 
           <div class="row g-3">
@@ -345,20 +361,16 @@
                 <div class="info-card-title">Logistics & Transport Details</div>
                 <div class="logistics-grid">
                   <div>
-                    <strong>Transport Name : </strong> {{
-                    wholesale.transport_name|default:"—" }}
+                    <strong>Transport Name : </strong> {{ wholesale.transport_name|default:"—" }}
                   </div>
                   <div>
-                    <strong>LR Number : </strong> {{
-                    wholesale.lr_number|default:"—" }}
+                    <strong>LR Number : </strong> {{ wholesale.lr_number|default:"—" }}
                   </div>
                   <div>
-                    <strong>Vehicle Number : </strong> {{
-                    wholesale.vehicle_number|default:"—" }}
+                    <strong>Vehicle Number : </strong> {{ wholesale.vehicle_number|default:"—" }}
                   </div>
                   <div>
-                    <strong>E-Way Bill No.: </strong> {{
-                    wholesale.eway_bill_number|default:"—" }}
+                    <strong>E-Way Bill No.: </strong> {{ wholesale.eway_bill_number|default:"—" }}
                   </div>
                 </div>
               </div>
@@ -370,26 +382,16 @@
                   Item Total<span>{{ sale.total_taxable_amount|default:0|add:sale.total_gst_amount|default:0|floatformat:2 }}</span>
                 </div>
                 <div class="bill-summary-row">
-                  Discount<span
-                    >{{ sale.discount_amount|default:0|floatformat:2 }}</span
-                  >
+                  Discount<span>{{ sale.discount_amount|default:0|floatformat:2 }}</span>
                 </div>
                 <div class="bill-summary-row orange">
-                  Delivery Charges<span
-                    >{{ wholesale.delivery_charges|default:0|floatformat:2
-                    }}</span
-                  >
+                  Delivery Charges<span>{{ wholesale.delivery_charges|default:0|floatformat:2 }}</span>
                 </div>
                 <div class="bill-summary-row orange">
-                  Packaging Charges<span
-                    >{{ wholesale.packaging_charges|default:0|floatformat:2
-                    }}</span
-                  >
+                  Packaging Charges<span>{{ wholesale.packaging_charges|default:0|floatformat:2 }}</span>
                 </div>
                 <div class="bill-summary-row grand">
-                  Grand Total<span
-                    >₹ {{ sale.total_amount|default:0|floatformat:2 }}</span
-                  >
+                  Grand Total<span>₹ {{ sale.total_amount|default:0|floatformat:2 }}</span>
                 </div>
               </div>
             </div>
@@ -451,8 +453,7 @@
                     No. of Parcels
                     <span>{{ wholesale.number_of_parcels }}</span>
                   </div>
-                  {% endif %} {% if wholesale.dispatch_address or
-                  wholesale.delivery_city %}
+                  {% endif %} {% if wholesale.dispatch_address or wholesale.delivery_city %}
                   <div class="bill-summary-row">
                     Dispatch / Delivery :
                     <span>
@@ -486,6 +487,8 @@
               </div>
             </div>
           </div>
+
+          {% endif %}
 
           {% if not sale.is_wholesale_rate or not wholesale %}
           <!-- Retail: 2 cards -->
@@ -543,13 +546,21 @@
               </tr>
               {% endfor %}
             </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2">Total</td>
+                <td class="text-end">{{ items_total_quantity }}</td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
 
           <div class="row g-3">
             <div class="col-md-6">
               <div class="info-card">
                 <div class="info-card-title">Remarks</div>
-                <div class="remarks-box">{{ wholesale.notes }}</div>
+                <div class="remarks-box">{% if wholesale %}{{ wholesale.notes }}{% endif %}</div>
                 {% if display_terms %}
                 <div class="info-card-title mt-3">Terms &amp; Conditions</div>
                 <div class="remarks-box">{{ display_terms|safe }}</div>

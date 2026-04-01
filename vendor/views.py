@@ -4842,10 +4842,14 @@ def sale_bill_details(request, sale_id):
     else:
         display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
 
+    qty_sum = sale.items.aggregate(s=Sum('quantity'))['s']
+    items_total_quantity = qty_sum if qty_sum is not None else 0
+
     context = {
         'sale': sale,
         'wholesale': wholesale,
         'display_terms': display_terms,
+        'items_total_quantity': items_total_quantity,
     }
     return render(request, 'sale_bill_details.html', context)
 
@@ -5284,6 +5288,10 @@ def order_details(request, order_id):
     order = qs.first()
     if not order:
         raise Http404("Order not found")
+    order_items = order.items.all()
+    if not request.user.is_superuser:
+        order_items = order_items.filter(product__user=request.user)
+    order_items_count = order_items.count()
     delivery_boy_data = DeliveryBoy.objects.filter(user=request.user)
 
     # Customer details: from user or address (e.g. on-shop orders may have address only)
@@ -5305,6 +5313,8 @@ def order_details(request, order_id):
 
     context = {
         "data": order,
+        "order_items": order_items,
+        "order_items_count": order_items_count,
         "delivery_boy_data": delivery_boy_data,
         "customer_name": customer_name or "—",
         "customer_phone": customer_phone or "—",

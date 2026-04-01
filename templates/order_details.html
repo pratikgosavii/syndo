@@ -304,12 +304,12 @@
                 <div class="order-details-grid">
                     <!-- Left: Order Items -->
                     <div class="card order-items-card p-4">
-                        <h2 class="card-title">Order Items ({{ data.items.all|length }})</h2>
+                        <h2 class="card-title">Order Items ({{ order_items_count }})</h2>
                         {% if data.status != 'accepted' %}
                         <p class="text-muted small mb-3">Accept the order first to update item status.</p>
                         {% endif %}
 
-                        {% for item in data.items.all %}
+                        {% for item in order_items %}
                         <div class="order-item-row {% if data.status != 'accepted' %}item-status-disabled{% endif %}">
                             {% if item.product.image %}
                             <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="order-item-img" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
@@ -393,6 +393,8 @@
                                 {% endif %}
                             </div>
                         </div>
+                        {% empty %}
+                        <p class="text-muted mb-0">No order items found.</p>
                         {% endfor %}
                     </div>
 
