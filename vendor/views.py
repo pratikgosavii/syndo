@@ -5204,7 +5204,7 @@ def sale_invoice(request, sale_id):
             pdf_options['margin'] = {'top': '15px', 'bottom': '15px', 'left': '12px', 'right': '12px'}
         else:
             pdf_options['pageSize'] = 'A4'
-            pdf_options['margin'] = '1cm'
+            pdf_options['margin'] = {'top': '10mm', 'bottom': '10mm', 'left': '10mm', 'right': '10mm'}
         
         pdf_bytes = html_to_pdf_local(html_content, pdf_options)
         
@@ -5214,29 +5214,7 @@ def sale_invoice(request, sale_id):
         return response
 
     except Exception as local_e:
-        # Fallback to API if local fails (safeguard)
-        import requests
-        pdf_body = {'html': html_content, 'apiKey': getattr(settings, 'HTML2PDF_API_KEY', '')}
-        if use_thermal:
-            pdf_body['width'] = 302  # 80mm
-            pdf_body['height'] = 1123  # 297mm (thermal roll length)
-            # ... other margins omitted for brevity but keeping original logic if needed
-            pdf_body['marginTop'] = 15
-            pdf_body['marginBottom'] = 15
-            pdf_body['marginLeft'] = 12
-            pdf_body['marginRight'] = 12
-        else:
-            pdf_body['options'] = {'printBackground': True, 'margin': '1cm', 'pageSize': 'A4'}
-
-        api_response = requests.post('https://api.html2pdf.app/v1/generate', json=pdf_body, timeout=20)
-        
-        if api_response.status_code == 200:
-            response = HttpResponse(api_response.content, content_type='application/pdf')
-            filename = f"sale_invoice_{sale_id}_{sale_type}.pdf"
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
-        else:
-            return HttpResponse(f"Error generating PDF: {api_response.text} (Local error: {str(local_e)})", status=500)
+        return HttpResponse(f"Error generating PDF locally: {str(local_e)}", status=500)
     except Exception as e:
         # Fallback to HTML if PDF generation fails
         return render(request, template_name, context)
@@ -8581,7 +8559,8 @@ class customer_sale_invoice(APIView):
         # Charges and totals
         delivery = Decimal(wholesale.delivery_charges or 0)
         packaging = Decimal(wholesale.packaging_charges or 0)
-        total_amount = (Decimal(sale.total_amount or 0) + delivery + packaging)
+        # `sale.total_amount` already includes delivery/packaging from totals calculation.
+        total_amount = Decimal(sale.total_amount or 0)
         rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
         round_off_value = float(Decimal(rounded_total) - total_amount)
 
@@ -8697,7 +8676,10 @@ class customer_sale_invoice(APIView):
 
         # Generate PDF using LOCAL Playwright
         try:
-            pdf_options = {"pageSize": "A4", "margin": "1cm"}
+            pdf_options = {
+                "pageSize": "A4",
+                "margin": {"top": "10mm", "bottom": "10mm", "left": "10mm", "right": "10mm"},
+            }
             pdf_bytes = html_to_pdf_local(html_content, pdf_options)
             
             response = HttpResponse(pdf_bytes, content_type="application/pdf")
@@ -8705,28 +8687,10 @@ class customer_sale_invoice(APIView):
             response["Content-Disposition"] = f'inline; filename="{filename}"'
             return response
         except Exception as local_e:
-            api_response = requests.post(
-                "https://api.html2pdf.app/v1/generate",
-                json={
-                    "html": html_content,
-                    "apiKey": getattr(settings, "HTML2PDF_API_KEY", ""),
-                    "options": {"printBackground": True, "margin": "1cm", "pageSize": "A4"},
-                },
-                timeout=30,
+            return Response(
+                {"error": "Error generating PDF locally", "details": str(local_e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-            if api_response.status_code == 200:
-                response = HttpResponse(api_response.content, content_type="application/pdf")
-                filename = f"sale_invoice_{sale.id}_{sale_type}.pdf"
-                # inline for customer UX (browser preview), but still downloadable
-                response["Content-Disposition"] = f'inline; filename="{filename}"'
-                return response
-
-        # fallback to HTML (helps debugging templates)
-        return Response(
-            {"error": "Error generating PDF", "details": api_response.text},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
         
 class VendorReturnManageAPIView(APIView):
     """
