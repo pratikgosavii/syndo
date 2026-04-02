@@ -103,7 +103,12 @@
     <th>Description</th>
     <th>Product</th>
     <th>Shop Name</th>
-    <th>Vendor</th>
+    <th>Vendor Name</th>
+    {% if request.user.is_superuser %}
+        <th>Company Name</th>
+        <th>Registration Number</th>
+        <th>Registration Email</th>
+    {% endif %}
     <th>Boost Post</th>
     <th>Budget</th>
     <th>Created At</th>
@@ -140,6 +145,29 @@
                     —
                 {% endif %}
             </td>
+            {% if request.user.is_superuser %}
+                <td>
+                    {% if i.user and i.user.user_company_profile %}
+                        {{ i.user.user_company_profile.company_name|default:"-" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if i.user and i.user.user_company_profile %}
+                        {{ i.user.user_company_profile.gstin|default:"-" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if i.user and i.user.user_company_profile %}
+                        {{ i.user.user_company_profile.email|default:"-" }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            {% endif %}
             <td>
                 {% if i.boost_post %}
                     <span class="badge bg-success">Yes</span>

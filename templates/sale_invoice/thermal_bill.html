@@ -29,6 +29,26 @@
         .section { margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed #999; }
         .section-title { font-weight: bold; margin-bottom: 2px; font-size: 10px; }
         .sold-by .name { font-weight: bold; }
+        .sold-by-head { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+        .sold-by-logo {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            font-size: 8px;
+            color: #666;
+        }
+        .sold-by-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
         .two-col { display: flex; justify-content: space-between; gap: 8px; }
         .two-col > div { flex: 1; }
         .address-block { font-size: 10px; line-height: 1.3; }
@@ -68,7 +88,18 @@
     <!-- Sold By -->
     <div class="section sold-by">
         <div class="section-title">Sold By :</div>
-        <div class="name">{% if sale_instance.company_profile %}{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"—" }}{% else %}—{% endif %}</div>
+        <div class="sold-by-head">
+            <div class="sold-by-logo">
+                {% if company_logo_data_uri %}
+                <img src="{{ company_logo_data_uri }}" alt="Logo">
+                {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+                <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Logo">
+                {% else %}
+                Logo
+                {% endif %}
+            </div>
+            <div class="name">{% if sale_instance.company_profile %}{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"—" }}{% else %}—{% endif %}</div>
+        </div>
         <div class="address-block">
             {% if sale_instance.company_profile %}{{ sale_instance.company_profile.address_line_1|default:"" }}{% if sale_instance.company_profile.address_line_2 %}<br>{{ sale_instance.company_profile.address_line_2 }}{% endif %}{% else %}—{% endif %}
         </div>

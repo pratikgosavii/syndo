@@ -25,6 +25,12 @@
                                         <thead>
                                             <tr>
                                                 <th>#</th>
+                                                {% if request.user.is_superuser %}
+                                                    <th>Vendor Name</th>
+                                                    <th>Company Name</th>
+                                                    <th>Registration Number</th>
+                                                    <th>Registration Email</th>
+                                                {% endif %}
                                                 <th>Campaign Name</th>
                                                 <th>Image</th>
                                                 <th>Description</th>
@@ -37,6 +43,44 @@
                                             {% for i in data %}
                                             <tr>
                                                 <td>{{ forloop.counter }}</td>
+                                                {% if request.user.is_superuser %}
+                                                    <td>
+                                                        {% if i.store and i.store.user %}
+                                                            {{ i.store.user.get_full_name|default:i.store.user.username }}
+                                                        {% elif i.user %}
+                                                            {{ i.user.get_full_name|default:i.user.username }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if i.store and i.store.user and i.store.user.user_company_profile %}
+                                                            {{ i.store.user.user_company_profile.company_name|default:"-" }}
+                                                        {% elif i.user and i.user.user_company_profile %}
+                                                            {{ i.user.user_company_profile.company_name|default:"-" }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if i.store and i.store.user and i.store.user.user_company_profile %}
+                                                            {{ i.store.user.user_company_profile.gstin|default:"-" }}
+                                                        {% elif i.user and i.user.user_company_profile %}
+                                                            {{ i.user.user_company_profile.gstin|default:"-" }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if i.store and i.store.user and i.store.user.user_company_profile %}
+                                                            {{ i.store.user.user_company_profile.email|default:"-" }}
+                                                        {% elif i.user and i.user.user_company_profile %}
+                                                            {{ i.user.user_company_profile.email|default:"-" }}
+                                                        {% else %}
+                                                            —
+                                                        {% endif %}
+                                                    </td>
+                                                {% endif %}
                                                 <td>{{ i.campaign_name }}</td>
                                                 <td>
                                                     {% if i.banner %}

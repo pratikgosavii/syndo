@@ -1556,18 +1556,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // for hiding/ showing product fields on  product type fields
     function toggleProductOnlyFields(show) {
-        // Pricing required is set by setPricingRequired(productType), not here
-        const exemptIds = ["id_track_serial_numbers", "id_low_stock_alert", "size-search-inner", "id_wholesale_price", "id_mrp", "id_sales_price"];
-
         document.querySelectorAll('.product-only-field').forEach(el => {
             el.style.display = show ? '' : 'none';
             el.querySelectorAll('input, select, textarea').forEach(input => {
                 input.disabled = !show;
-                if (exemptIds.includes(input.id)) {
-                    input.required = false;
-                } else {
-                    input.required = show;
-                }
+                // Do not force `required=true` via JS. Let Django form `required` decide.
+                // When hidden we disable the field, and for extra safety mark it not required.
+                if (!show) input.required = false;
             });
         });
     }
@@ -1694,7 +1689,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const trackCb = document.getElementById('id_track_serial_numbers');
         setVisibleById('serial_imei_wrapper', settings.imei && trackCb && trackCb.checked);
         // Do NOT force-check track_serial_numbers; leave default false unless user ticks it
-        setVisibleById('tax_div', settings.tax);
+        // GST should always stay visible (tax inclusive/exclusive must not hide it)
+        setVisibleById('tax_div', true);
         var foodWrapper = document.getElementById('foodOptionToggleWrapper');
         if (foodWrapper) { foodWrapper.style.display = settings.food ? '' : 'none'; setCheckbox('id_is_food', settings.food); }
         var galleryWrapper = document.getElementById('gallery_images_wrapper');
@@ -1971,15 +1967,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const isEditProduct = {% if instance %}true{% else %}false{% endif %};
     const checkbox = document.getElementById("id_tax_inclusive");
     const gstInput = document.getElementById("tax_div");
-
-    function toggleGSTInput() {
-      if (gstInput) gstInput.style.display = checkbox && checkbox.checked ? "none" : "block";
-    }
-
-    if (checkbox) checkbox.addEventListener("change", toggleGSTInput);
-
-    // Initialize on page load
-    toggleGSTInput();
+    // Keep GST field visible for both tax inclusive and tax exclusive modes.
+    if (gstInput) gstInput.style.display = "block";
 
     // Build hidden textarea value from dynamic IMEI inputs
     function syncSerialTextarea() {
@@ -2080,7 +2069,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const enabled = barcodeToggle.checked;
         barcodeWrapper.style.display = enabled ? 'block' : 'none';
         barcodeInput.disabled = !enabled;
-        barcodeInput.required = enabled;
+        // Barcode value should never be compulsory; it depends on your toggle and Django validation.
+        barcodeInput.required = false;
         if (!enabled && clearValue) {
             barcodeInput.value = '';
         }
@@ -2385,7 +2375,8 @@ function handleCustomPrintToggleChange() {
         // Do NOT force-check track_serial_numbers; leave default false unless user ticks it
 
         // Tax
-        setVisibleById('tax_div', settings.tax);
+        // GST should always stay visible (tax inclusive/exclusive must not hide it)
+        setVisibleById('tax_div', true);
 
         // Food
         const foodWrapper = document.getElementById('foodOptionToggleWrapper');

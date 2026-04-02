@@ -107,6 +107,12 @@
                                             <thead>
                                                 <tr>
                                                     <th>#</th>
+                                                    {% if request.user.is_superuser %}
+                                                        <th>Vendor Name</th>
+                                                        <th>Company Name</th>
+                                                        <th>Registration Number</th>
+                                                        <th>Registration Email</th>
+                                                    {% endif %}
                                                     <th>Code</th> 
                                                     <th>Coupon Type</th> 
                                                     <th>Title</th> 
@@ -126,6 +132,36 @@
                                                     {% for i in data %}
                                                         <tr>
                                                             <td>{{ forloop.counter }}</td>
+                                                            {% if request.user.is_superuser %}
+                                                                <td>
+                                                                    {% if i.user %}
+                                                                        {{ i.user.get_full_name|default:i.user.username }}
+                                                                    {% else %}
+                                                                        —
+                                                                    {% endif %}
+                                                                </td>
+                                                                <td>
+                                                                    {% if i.user and i.user.user_company_profile %}
+                                                                        {{ i.user.user_company_profile.company_name|default:"-" }}
+                                                                    {% else %}
+                                                                        —
+                                                                    {% endif %}
+                                                                </td>
+                                                                <td>
+                                                                    {% if i.user and i.user.user_company_profile %}
+                                                                        {{ i.user.user_company_profile.gstin|default:"-" }}
+                                                                    {% else %}
+                                                                        —
+                                                                    {% endif %}
+                                                                </td>
+                                                                <td>
+                                                                    {% if i.user and i.user.user_company_profile %}
+                                                                        {{ i.user.user_company_profile.email|default:"-" }}
+                                                                    {% else %}
+                                                                        —
+                                                                    {% endif %}
+                                                                </td>
+                                                            {% endif %}
                                                             <td>{{ i.code }}</td>
                                                             <td>{{ i.coupon_type }}</td>
                                                             <td>{{ i.title }}</td>

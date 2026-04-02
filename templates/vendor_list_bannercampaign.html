@@ -72,12 +72,15 @@
                                         <thead>
                                             <tr>
                                                 <th>#</th>
-                                                <th>User</th>
+                                                <th>Vendor Name</th>
                                                 <th>Banner</th>
                                                 <th>Campaign Name</th>
                                                 <th>Approved</th>
                                                 <th>Created At</th>
                                                         {% if request.user.is_superuser %}
+                                                <th>Company Name</th>
+                                                <th>Registration Number</th>
+                                                <th>Registration Email</th>
 
                                                 <th>Action</th>
                                                 {% endif %}
@@ -88,7 +91,13 @@
                                                 {% for banner in data %}
                                                     <tr>
                                                         <td>{{ forloop.counter }}</td>
-                                                        <td>{{ banner.user }}</td>
+                                                        <td>
+                                                            {% if banner.user %}
+                                                                {{ banner.user.get_full_name|default:banner.user.username }}
+                                                            {% else %}
+                                                                —
+                                                            {% endif %}
+                                                        </td>
                                                         <td>
                                                             {% if banner.banner_image %}
                                                                 <img src="{{ banner.banner_image.url }}" class="banner-img" />
@@ -99,6 +108,35 @@
                                                         <td>{{ banner.campaign_name }}</td>
                                                         <td>{{ banner.is_approved|yesno:"Yes,No" }}</td>
                                                         <td>{{ banner.created_at|date:"d M Y" }}</td>
+                                                        {% if request.user.is_superuser %}
+                                                            <td>
+                                                                {% if banner.store and banner.store.user and banner.store.user.user_company_profile %}
+                                                                    {{ banner.store.user.user_company_profile.company_name|default:"-" }}
+                                                                {% elif banner.user and banner.user.user_company_profile %}
+                                                                    {{ banner.user.user_company_profile.company_name|default:"-" }}
+                                                                {% else %}
+                                                                    —
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if banner.store and banner.store.user and banner.store.user.user_company_profile %}
+                                                                    {{ banner.store.user.user_company_profile.gstin|default:"-" }}
+                                                                {% elif banner.user and banner.user.user_company_profile %}
+                                                                    {{ banner.user.user_company_profile.gstin|default:"-" }}
+                                                                {% else %}
+                                                                    —
+                                                                {% endif %}
+                                                            </td>
+                                                            <td>
+                                                                {% if banner.store and banner.store.user and banner.store.user.user_company_profile %}
+                                                                    {{ banner.store.user.user_company_profile.email|default:"-" }}
+                                                                {% elif banner.user and banner.user.user_company_profile %}
+                                                                    {{ banner.user.user_company_profile.email|default:"-" }}
+                                                                {% else %}
+                                                                    —
+                                                                {% endif %}
+                                                            </td>
+                                                        {% endif %}
                                                         {% if request.user.is_superuser %}
                                                             <td class="text-center">
                                                                 {% if not banner.is_approved %}

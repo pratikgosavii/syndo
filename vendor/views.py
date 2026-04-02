@@ -5031,7 +5031,9 @@ def sale_invoice(request, sale_id):
     from decimal import Decimal
     delivery = Decimal(getattr(wholesale, "delivery_charges", 0) or 0)
     packaging = Decimal(getattr(wholesale, "packaging_charges", 0) or 0)
-    total_amount = Decimal(sale.total_amount or 0) + delivery + packaging
+    # `sale.total_amount` is already calculated in `_update_sale_totals()` including
+    # delivery/packaging (when provided). Adding again would double-count charges.
+    total_amount = Decimal(sale.total_amount or 0)
 
     rounded_total = round(total_amount)
     round_off_value = round(rounded_total - total_amount, 2)
