@@ -269,9 +269,19 @@ def delete_coupon(request, coupon_id):
 def list_coupon(request):
 
     if request.user.is_superuser:
-        data = coupon.objects.all()
+        data = coupon.objects.all().order_by('-id')
     else:
-        data = coupon.objects.filter(user=request.user)
+        data = coupon.objects.filter(user=request.user).order_by('-id')
+    
+    paginator = Paginator(data, 20)  # Show 20 coupons per page
+    page = request.GET.get('page')
+    try:
+        data = paginator.page(page)
+    except PageNotAnInteger:
+        data = paginator.page(1)
+    except EmptyPage:
+        data = paginator.page(paginator.num_pages)
+
     context = {
         'data': data
     }
@@ -526,14 +536,24 @@ def list_bannercampaign(request):
 @login_required(login_url='login_admin')
 def list_post(request):
     if request.user.is_superuser:
-        data = Post.objects.select_related('user').prefetch_related('user__vendor_store').order_by('-created_at')
+        data_qs = Post.objects.select_related('user').prefetch_related('user__vendor_store').order_by('-created_at')
     else:
-        data = (
+        data_qs = (
             Post.objects.filter(user=request.user)
             .select_related('user')
             .prefetch_related('user__vendor_store')
             .order_by('-created_at')
         )
+    
+    paginator = Paginator(data_qs, 20)
+    page = request.GET.get('page')
+    try:
+        data = paginator.page(page)
+    except PageNotAnInteger:
+        data = paginator.page(1)
+    except EmptyPage:
+        data = paginator.page(paginator.num_pages)
+
     context = {
         'data': data
     }
@@ -553,14 +573,24 @@ def delete_post(request, post_id):
 @login_required(login_url='login_admin')
 def list_reel(request):
     if request.user.is_superuser:
-        data = Reel.objects.select_related('user').prefetch_related('user__vendor_store').order_by('-created_at')
+        data_qs = Reel.objects.select_related('user').prefetch_related('user__vendor_store').order_by('-created_at')
     else:
-        data = (
-            Reel.objects.filter(user=request.user)
+        data_qs = (
+            Reel.objects.filter(request.user)
             .select_related('user')
             .prefetch_related('user__vendor_store')
             .order_by('-created_at')
         )
+    
+    paginator = Paginator(data_qs, 20)
+    page = request.GET.get('page')
+    try:
+        data = paginator.page(page)
+    except PageNotAnInteger:
+        data = paginator.page(1)
+    except EmptyPage:
+        data = paginator.page(paginator.num_pages)
+
     context = {
         'data': data
     }
@@ -5372,8 +5402,17 @@ def order_list(request):
     if delivery_type_filter:
         qs = qs.filter(delivery_type=delivery_type_filter)
 
+    paginator = Paginator(qs, 20)
+    page = request.GET.get('page')
+    try:
+        data = paginator.page(page)
+    except PageNotAnInteger:
+        data = paginator.page(1)
+    except EmptyPage:
+        data = paginator.page(paginator.num_pages)
+
     context = {
-        "data": qs,
+        "data": data,
         "filter_status": status_filter,
         "filter_paid": paid_filter,
         "filter_payment_mode": payment_filter,

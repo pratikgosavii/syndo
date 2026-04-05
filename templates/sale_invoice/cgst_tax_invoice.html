@@ -258,7 +258,21 @@
                     <td><b>{{ sum_cgst|floatformat:2 }}</b></td>
                     {% endif %}
                     {% endif %}
-                    <td><b>{{ rounded_total|floatformat:2 }}</b></td>
+                    <td><b>
+                      {% if sale_instance.company_profile.is_gst_registered %}
+                        {% if is_igst %}
+                          {% with product_total=sum_taxable|add:sum_igst %}
+                            {{ product_total|floatformat:2 }}
+                          {% endwith %}
+                        {% else %}
+                          {% with product_total=sum_taxable|add:total_tax %}
+                            {{ product_total|floatformat:2 }}
+                          {% endwith %}
+                        {% endif %}
+                      {% else %}
+                        {{ sum_taxable|floatformat:2 }}
+                      {% endif %}
+                    </b></td>
                 </tr>
             </tfoot>
         </table>

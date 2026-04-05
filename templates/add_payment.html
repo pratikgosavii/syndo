@@ -7,21 +7,27 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
 <style>
-  body { background-color: #f1f5f9; padding-bottom: 20px; }
+  body {
+    background-color: #f1f5f9;
+    padding-bottom: 20px;
+  }
+
   .payment-form-card {
     background: #fff;
     border-radius: 14px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
     border: 1px solid #e5e7eb;
     padding: 1.25rem 1.5rem;
     position: relative;
   }
+
   .payment-form-title {
     font-size: 1.1rem;
     font-weight: 700;
     color: #111827;
     margin-bottom: 1rem;
   }
+
   /* Top right info box */
   .payment-info-box {
     position: absolute;
@@ -35,6 +41,7 @@
     font-size: 0.78rem;
     font-weight: 600;
   }
+
   .payment-section-header {
     font-size: 0.72rem;
     font-weight: 600;
@@ -43,28 +50,34 @@
     letter-spacing: 0.05em;
     margin-bottom: 0.9rem;
   }
+
   .payment-form-card .form-label {
     font-weight: 600;
     color: #4b5563;
     font-size: 0.88rem;
     margin-bottom: 0.45rem;
   }
-  .payment-form-card .form-control, .payment-form-card .form-select {
+
+  .payment-form-card .form-control,
+  .payment-form-card .form-select {
     border: 1px solid #d1d5db;
     border-radius: 8px;
     background: #fff;
     min-height: 44px;
     font-size: 0.92rem;
   }
-  .payment-form-card .form-control:focus, .payment-form-card .form-select:focus {
+
+  .payment-form-card .form-control:focus,
+  .payment-form-card .form-select:focus {
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     outline: none;
   }
+
   /* Transaction type buttons - You Gave = red when selected, You Received = green when selected */
   .btn-transaction {
     background: #f8fafc;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e5e7eb !important;
     color: #374151;
     border-radius: 8px;
     font-weight: 600;
@@ -76,29 +89,46 @@
     flex-direction: column;
     gap: 0.15rem;
   }
-  .btn-transaction-gave.btn-transaction-active { background: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important; }
-  .btn-transaction-received.btn-transaction-active { background: #22c55e !important; border-color: #22c55e !important; color: #fff !important; }
-  .btn-transaction:not(.btn-transaction-active):hover { border-color: #9ca3af; }
+
+  .btn-transaction-gave.btn-transaction-active {
+    background: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #fff !important;
+  }
+
+  .btn-transaction-received.btn-transaction-active {
+    background: #22c55e !important;
+    border-color: #22c55e !important;
+    color: #fff !important;
+  }
+
+  .btn-transaction:not(.btn-transaction-active):hover {
+    border-color: #9ca3af;
+  }
+
   /* Party type buttons */
   .btn-party {
     background: #fff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #e2e8f0 !important;
     color: #64748b;
     border-radius: 8px;
     font-weight: 600;
     min-height: 40px;
     transition: 0.2s;
   }
+
   .btn-party.btn-party-active {
     background: #FEF3C7 !important;
     border-color: #F59E0B !important;
     color: #92400e;
   }
+
   .btn-party:not(.btn-party-active):hover {
     border-color: #cbd5e0;
     background: #f8fafc;
     color: #475569;
   }
+
   /* Payment mode - same palette as POS */
   .btn-payment {
     background: #fff;
@@ -109,16 +139,19 @@
     font-weight: 600;
     transition: 0.2s;
   }
+
   .btn-payment.btn-payment-active {
     background: #FEF3C7;
     border-color: #F59E0B;
     color: #92400e;
   }
+
   .btn-payment:not(.btn-payment-active):hover {
     border-color: #cbd5e0;
     background: #f8fafc;
     color: #475569;
   }
+
   /* File upload */
   .payment-file-upload {
     border: 2px dashed #d1d5db;
@@ -133,25 +166,64 @@
     align-items: center;
     justify-content: center;
   }
-  .payment-file-upload:hover { border-color: #3b82f6; background: #f3f4f6; }
-  .payment-file-upload .bi-paperclip { font-size: 1.35rem; color: #9ca3af; }
-  .payment-file-upload input[type="file"] { display: none; }
-  .payment-file-upload.has-file { border-color: #22c55e; background: #f0fdf4; }
-  .btn-discard { background: #fff; border: 1px solid #dc2626 !important; color: #dc2626 !important; font-weight: 600; }
-  .btn-discard:hover { background: #dc2626; color: #fff; }
-  .btn-proceed { background: #FFC107 !important; font-weight: 600 !important; color: white !important; border: none; }
-  .btn-proceed:hover { background: #e6ac00 !important; color: white !important; }
+
+  .payment-file-upload:hover {
+    border-color: #3b82f6;
+    background: #f3f4f6;
+  }
+
+  .payment-file-upload .bi-paperclip {
+    font-size: 1.35rem;
+    color: #9ca3af;
+  }
+
+  .payment-file-upload input[type="file"] {
+    display: none;
+  }
+
+  .payment-file-upload.has-file {
+    border-color: #22c55e;
+    background: #f0fdf4;
+  }
+
+  .btn-discard {
+    background: #fff;
+    border: 1px solid #dc2626 !important;
+    color: #dc2626 !important;
+    font-weight: 600;
+  }
+
+  .btn-discard:hover {
+    background: #dc2626;
+    color: #fff;
+  }
+
+  .btn-proceed {
+    background: #FFC107 !important;
+    font-weight: 600 !important;
+    color: white !important;
+    border: none;
+  }
+
+  .btn-proceed:hover {
+    background: #e6ac00 !important;
+    color: white !important;
+  }
+
   .payment-form-card textarea.form-control {
     min-height: 78px;
     resize: vertical;
   }
+
   .payment-form-card .row.g-4 {
     --bs-gutter-x: 1.35rem;
     --bs-gutter-y: 1rem;
   }
+
   .payment-notes-col .mb-3:last-child {
     margin-bottom: 0;
   }
+
   .payment-actions {
     margin-top: 0.75rem;
     padding-top: 1rem;
@@ -190,26 +262,35 @@
                 <div class="mb-3">
                   <label class="form-label d-block">Transaction Type</label>
                   <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="type" id="gave" value="gave" {% if form.instance.type == 'gave' or not form.instance.type %}checked{% endif %}>
+                    <input type="radio" class="btn-check" name="type" id="gave" value="gave" {% if
+                      form.instance.type=='gave' or not form.instance.type %}checked{% endif %}>
                     <label class="btn btn-transaction btn-transaction-gave" for="gave">You Gave (Money Out)</label>
-                    <input type="radio" class="btn-check" name="type" id="received" value="received" {% if form.instance.type == 'received' %}checked{% endif %}>
-                    <label class="btn btn-transaction btn-transaction-received" for="received">You Received (Money In)</label>
+                    <input type="radio" class="btn-check" name="type" id="received" value="received" {% if
+                      form.instance.type=='received' %}checked{% endif %}>
+                    <label class="btn btn-transaction btn-transaction-received" for="received">You Received (Money
+                      In)</label>
                   </div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label d-block">Party Type</label>
                   <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="party_type" id="party-customer" value="customer" {% if selected_party_type != 'vendor' %}checked{% endif %}>
-                    <label class="btn btn-party {% if selected_party_type != 'vendor' %}btn-party-active{% endif %}" for="party-customer">Customer</label>
-                    <input type="radio" class="btn-check" name="party_type" id="party-vendor" value="vendor" {% if selected_party_type == 'vendor' %}checked{% endif %}>
-                    <label class="btn btn-party {% if selected_party_type == 'vendor' %}btn-party-active{% endif %}" for="party-vendor">Vendor</label>
+                    <input type="radio" class="btn-check" name="party_type" id="party-customer" value="customer" {% if
+                      selected_party_type !='vendor' %}checked{% endif %}>
+                    <label class="btn btn-party {% if selected_party_type != 'vendor' %}btn-party-active{% endif %}"
+                      for="party-customer">Customer</label>
+                    <input type="radio" class="btn-check" name="party_type" id="party-vendor" value="vendor" {% if
+                      selected_party_type=='vendor' %}checked{% endif %}>
+                    <label class="btn btn-party {% if selected_party_type == 'vendor' %}btn-party-active{% endif %}"
+                      for="party-vendor">Vendor</label>
                   </div>
                 </div>
-                <div class="mb-3" id="customer-dropdown" {% if selected_party_type == 'vendor' %}style="display:none;"{% endif %}>
+                <div class="mb-3" id="customer-dropdown" {% if selected_party_type=='vendor' %}style="display:none;" {%
+                  endif %}>
                   <label class="form-label">Select Party</label>
                   {{ form.customer }}
                 </div>
-                <div class="mb-3" id="vendor-dropdown" {% if selected_party_type != 'vendor' %}style="display:none;"{% endif %}>
+                <div class="mb-3" id="vendor-dropdown" {% if selected_party_type !='vendor' %}style="display:none;" {%
+                  endif %}>
                   <label class="form-label">Select Party</label>
                   {{ form.vendor }}
                 </div>
@@ -221,22 +302,31 @@
                 <div class="mb-3">
                   <label class="form-label">Amount (₹)</label>
                   {{ form.amount }}
-                  {% if form.amount.errors %}<div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>{% endif %}
+                  {% if form.amount.errors %}<div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>{%
+                  endif %}
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Payment Date</label>
                   {{ form.payment_date }}
-                  {% if form.payment_date.errors %}<div class="invalid-feedback d-block">{{ form.payment_date.errors.0 }}</div>{% endif %}
+                  {% if form.payment_date.errors %}<div class="invalid-feedback d-block">{{ form.payment_date.errors.0
+                    }}</div>{% endif %}
                 </div>
-               
+
                 <div class="mb-3">
                   <label class="form-label d-block">Payment Mode</label>
                   <div class="btn-group w-100 btn-group-payment" role="group">
-                    <button type="button" class="btn btn-payment {% if form.instance.payment_type == 'cash' or not form.instance.payment_type %}btn-payment-active{% endif %}" onclick="selectPayment('cash', this)">Cash</button>
-                    <button type="button" class="btn btn-payment {% if form.instance.payment_type == 'upi' %}btn-payment-active{% endif %}" onclick="selectPayment('upi', this)">UPI</button>
-                    <button type="button" class="btn btn-payment {% if form.instance.payment_type == 'cheque' %}btn-payment-active{% endif %}" onclick="selectPayment('cheque', this)">Cheque</button>
+                    <button type="button"
+                      class="btn btn-payment {% if form.instance.payment_type == 'cash' or not form.instance.payment_type %}btn-payment-active{% endif %}"
+                      onclick="selectPayment('cash', this)">Cash</button>
+                    <button type="button"
+                      class="btn btn-payment {% if form.instance.payment_type == 'upi' %}btn-payment-active{% endif %}"
+                      onclick="selectPayment('upi', this)">UPI</button>
+                    <button type="button"
+                      class="btn btn-payment {% if form.instance.payment_type == 'cheque' %}btn-payment-active{% endif %}"
+                      onclick="selectPayment('cheque', this)">Cheque</button>
                   </div>
-                  <input type="hidden" name="payment_type" id="payment_type" value="{{ form.instance.payment_type|default:'cash' }}">
+                  <input type="hidden" name="payment_type" id="payment_type"
+                    value="{{ form.instance.payment_type|default:'cash' }}">
                 </div>
                 <div class="mb-3" id="bank-dropdown" style="display:none;">
                   <label class="form-label">Bank Account (Optional)</label>
@@ -276,101 +366,101 @@
 
 {% block extra_js %}
 <script>
-function selectPayment(method, btn) {
-  document.getElementById('payment_type').value = method;
-  var group = btn.closest('.btn-group-payment');
-  if (group) group.querySelectorAll('.btn-payment').forEach(function(b) { b.classList.remove('btn-payment-active'); });
-  btn.classList.add('btn-payment-active');
-  var bankDropdown = document.getElementById('bank-dropdown');
-  var bankSelect = document.getElementById('id_bank');
-  if (method !== 'cash') {
-    if (bankDropdown) bankDropdown.style.display = 'block';
-    if (bankSelect) bankSelect.setAttribute('required', 'required');
-  } else {
-    if (bankDropdown) bankDropdown.style.display = 'none';
-    if (bankSelect) { bankSelect.removeAttribute('required'); bankSelect.value = ''; }
-  }
-}
-
-document.addEventListener("DOMContentLoaded", function() {
-  // Set type from form if editing
-  var typeInput = document.querySelector("input[name='type']:checked");
-  if (typeInput) {
-    var label = document.querySelector("label[for='" + typeInput.id + "']");
-    if (label) {
-      document.querySelectorAll(".btn-transaction").forEach(function(l) { l.classList.remove("btn-transaction-active"); });
-      label.classList.add("btn-transaction-active");
-    }
-  }
-  document.querySelectorAll("input[name='type']").forEach(function(r) {
-    r.addEventListener("change", function() {
-      document.querySelectorAll(".btn-transaction").forEach(function(l) { l.classList.remove("btn-transaction-active"); });
-      document.querySelector("label[for='" + this.id + "']").classList.add("btn-transaction-active");
-    });
-  });
-
-  // Party type toggle
-  var customerDropdown = document.getElementById("customer-dropdown");
-  var vendorDropdown = document.getElementById("vendor-dropdown");
-  var customerSelect = document.getElementById("id_customer");
-  var vendorSelect = document.getElementById("id_vendor");
-  function applyPartyType(value) {
-    document.querySelectorAll(".btn-party").forEach(function(l) { l.classList.remove("btn-party-active"); });
-    var activeLabel = document.querySelector("label[for='" + (value === "vendor" ? "party-vendor" : "party-customer") + "']");
-    if (activeLabel) activeLabel.classList.add("btn-party-active");
-    if (value === "customer") {
-      if (customerDropdown) customerDropdown.style.display = "block";
-      if (vendorDropdown) vendorDropdown.style.display = "none";
-      if (vendorSelect) { vendorSelect.value = ""; vendorSelect.disabled = true; }
-      if (customerSelect) customerSelect.disabled = false;
-      var customerRadio = document.getElementById("party-customer");
-      if (customerRadio) customerRadio.checked = true;
+  function selectPayment(method, btn) {
+    document.getElementById('payment_type').value = method;
+    var group = btn.closest('.btn-group-payment');
+    if (group) group.querySelectorAll('.btn-payment').forEach(function (b) { b.classList.remove('btn-payment-active'); });
+    btn.classList.add('btn-payment-active');
+    var bankDropdown = document.getElementById('bank-dropdown');
+    var bankSelect = document.getElementById('id_bank');
+    if (method !== 'cash') {
+      if (bankDropdown) bankDropdown.style.display = 'block';
+      if (bankSelect) bankSelect.setAttribute('required', 'required');
     } else {
-      if (customerDropdown) customerDropdown.style.display = "none";
-      if (vendorDropdown) vendorDropdown.style.display = "block";
-      if (customerSelect) { customerSelect.value = ""; customerSelect.disabled = true; }
-      if (vendorSelect) vendorSelect.disabled = false;
-      var vendorRadio = document.getElementById("party-vendor");
-      if (vendorRadio) vendorRadio.checked = true;
+      if (bankDropdown) bankDropdown.style.display = 'none';
+      if (bankSelect) { bankSelect.removeAttribute('required'); bankSelect.value = ''; }
     }
   }
-  document.querySelectorAll("input[name='party_type']").forEach(function(radio) {
-    radio.addEventListener("change", function() {
-      applyPartyType(this.value);
-    });
-  });
-  // On load: use checked radio first, then fall back to selected values
-  var checkedParty = document.querySelector("input[name='party_type']:checked");
-  if (checkedParty) {
-    applyPartyType(checkedParty.value);
-  } else if (vendorSelect && vendorSelect.value) {
-    applyPartyType("vendor");
-  } else {
-    applyPartyType("customer");
-  }
 
-  // Payment type on load
-  var pt = document.getElementById("payment_type");
-  if (pt && pt.value && pt.value !== 'cash') {
-    var bankRow = document.getElementById("bank-dropdown");
-    if (bankRow) bankRow.style.display = "block";
-  }
-
-  // File upload label
-  var fileInput = document.getElementById("id_attachment");
-  var fileLabel = document.getElementById("file-upload-label");
-  var fileText = document.getElementById("file-upload-text");
-  if (fileInput && fileLabel && fileText) {
-    fileInput.addEventListener("change", function() {
-      if (this.files && this.files.length) {
-        fileText.textContent = this.files[0].name;
-        fileLabel.classList.add("has-file");
-      } else {
-        fileText.textContent = "Drag file or Click to upload";
-        fileLabel.classList.remove("has-file");
+  document.addEventListener("DOMContentLoaded", function () {
+    // Set type from form if editing
+    var typeInput = document.querySelector("input[name='type']:checked");
+    if (typeInput) {
+      var label = document.querySelector("label[for='" + typeInput.id + "']");
+      if (label) {
+        document.querySelectorAll(".btn-transaction").forEach(function (l) { l.classList.remove("btn-transaction-active"); });
+        label.classList.add("btn-transaction-active");
       }
+    }
+    document.querySelectorAll("input[name='type']").forEach(function (r) {
+      r.addEventListener("change", function () {
+        document.querySelectorAll(".btn-transaction").forEach(function (l) { l.classList.remove("btn-transaction-active"); });
+        document.querySelector("label[for='" + this.id + "']").classList.add("btn-transaction-active");
+      });
     });
-  }
-});
+
+    // Party type toggle
+    var customerDropdown = document.getElementById("customer-dropdown");
+    var vendorDropdown = document.getElementById("vendor-dropdown");
+    var customerSelect = document.getElementById("id_customer");
+    var vendorSelect = document.getElementById("id_vendor");
+    function applyPartyType(value) {
+      document.querySelectorAll(".btn-party").forEach(function (l) { l.classList.remove("btn-party-active"); });
+      var activeLabel = document.querySelector("label[for='" + (value === "vendor" ? "party-vendor" : "party-customer") + "']");
+      if (activeLabel) activeLabel.classList.add("btn-party-active");
+      if (value === "customer") {
+        if (customerDropdown) customerDropdown.style.display = "block";
+        if (vendorDropdown) vendorDropdown.style.display = "none";
+        if (vendorSelect) { vendorSelect.value = ""; vendorSelect.disabled = true; }
+        if (customerSelect) customerSelect.disabled = false;
+        var customerRadio = document.getElementById("party-customer");
+        if (customerRadio) customerRadio.checked = true;
+      } else {
+        if (customerDropdown) customerDropdown.style.display = "none";
+        if (vendorDropdown) vendorDropdown.style.display = "block";
+        if (customerSelect) { customerSelect.value = ""; customerSelect.disabled = true; }
+        if (vendorSelect) vendorSelect.disabled = false;
+        var vendorRadio = document.getElementById("party-vendor");
+        if (vendorRadio) vendorRadio.checked = true;
+      }
+    }
+    document.querySelectorAll("input[name='party_type']").forEach(function (radio) {
+      radio.addEventListener("change", function () {
+        applyPartyType(this.value);
+      });
+    });
+    // On load: use checked radio first, then fall back to selected values
+    var checkedParty = document.querySelector("input[name='party_type']:checked");
+    if (checkedParty) {
+      applyPartyType(checkedParty.value);
+    } else if (vendorSelect && vendorSelect.value) {
+      applyPartyType("vendor");
+    } else {
+      applyPartyType("customer");
+    }
+
+    // Payment type on load
+    var pt = document.getElementById("payment_type");
+    if (pt && pt.value && pt.value !== 'cash') {
+      var bankRow = document.getElementById("bank-dropdown");
+      if (bankRow) bankRow.style.display = "block";
+    }
+
+    // File upload label
+    var fileInput = document.getElementById("id_attachment");
+    var fileLabel = document.getElementById("file-upload-label");
+    var fileText = document.getElementById("file-upload-text");
+    if (fileInput && fileLabel && fileText) {
+      fileInput.addEventListener("change", function () {
+        if (this.files && this.files.length) {
+          fileText.textContent = this.files[0].name;
+          fileLabel.classList.add("has-file");
+        } else {
+          fileText.textContent = "Drag file or Click to upload";
+          fileLabel.classList.remove("has-file");
+        }
+      });
+    }
+  });
 </script>
 {% endblock extra_js %}

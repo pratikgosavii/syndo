@@ -184,11 +184,21 @@ class get_state(ListAPIView):
 
 @login_required(login_url='login_admin')
 def list_notification_campaigns(request):
-
-    qs = NotificationCampaign.objects.all()
+    qs = NotificationCampaign.objects.all().order_by('-id')
     campaign_filter = NotificationCampaignFilter(request.GET or None, queryset=qs)
+    data_qs = campaign_filter.qs
+    
+    paginator = Paginator(data_qs, 20)
+    page = request.GET.get('page')
+    try:
+        data = paginator.page(page)
+    except PageNotAnInteger:
+        data = paginator.page(1)
+    except EmptyPage:
+        data = paginator.page(paginator.num_pages)
+
     context = {
-        'data': campaign_filter.qs,
+        'data': data,
         'filter': campaign_filter,
     }
     return render(request, 'list_notification_campaigns.html', context)
@@ -1043,7 +1053,17 @@ def list_home_banner(request):
 @login_required(login_url='login_admin')
 def vendor_list_bannercampaign(request):
 
-    data = BannerCampaign.objects.filter(is_approved = True, user = request.user)
+    data_qs = BannerCampaign.objects.filter(is_approved = True, user = request.user).order_by('-id')
+    
+    paginator = Paginator(data_qs, 20)
+    page = request.GET.get('page')
+    try:
+        data = paginator.page(page)
+    except PageNotAnInteger:
+        data = paginator.page(1)
+    except EmptyPage:
+        data = paginator.page(paginator.num_pages)
+
     context = {
         'data': data
     }
@@ -1054,7 +1074,17 @@ def vendor_list_bannercampaign(request):
 @login_required(login_url='login_admin')
 def admin_vendor_list_bannercampaign(request):
 
-    data = BannerCampaign.objects.all().order_by('-id')
+    data_qs = BannerCampaign.objects.all().order_by('-id')
+    
+    paginator = Paginator(data_qs, 20)
+    page = request.GET.get('page')
+    try:
+        data = paginator.page(page)
+    except PageNotAnInteger:
+        data = paginator.page(1)
+    except EmptyPage:
+        data = paginator.page(paginator.num_pages)
+
     context = {
         'data': data
     }

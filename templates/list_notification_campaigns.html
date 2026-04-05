@@ -28,7 +28,7 @@
                                                 {% if request.user.is_superuser %}
                                                     <th>Vendor Name</th>
                                                     <th>Company Name</th>
-                                                    <th>Registration Number</th>
+                                                    <th>Mobile Number</th>
                                                     <th>Registration Email</th>
                                                 {% endif %}
                                                 <th>Campaign Name</th>
@@ -63,10 +63,10 @@
                                                         {% endif %}
                                                     </td>
                                                     <td>
-                                                        {% if i.store and i.store.user and i.store.user.user_company_profile %}
-                                                            {{ i.store.user.user_company_profile.gstin|default:"-" }}
-                                                        {% elif i.user and i.user.user_company_profile %}
-                                                            {{ i.user.user_company_profile.gstin|default:"-" }}
+                                                        {% if i.store and i.store.user %}
+                                                            {{ i.store.user.mobile|default:"-" }}
+                                                        {% elif i.user %}
+                                                            {{ i.user.mobile|default:"-" }}
                                                         {% else %}
                                                             —
                                                         {% endif %}
@@ -113,6 +113,59 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                
+                                <!-- Pagination UI -->
+                                {% if data.has_other_pages %}
+                                <nav aria-label="Page navigation" class="mt-4">
+                                    <ul class="pagination justify-content-center">
+                                        {% if data.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ data.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Previous">
+                                                    <span aria-hidden="true">&laquo;</span>
+                                                </a>
+                                            </li>
+                                        {% endif %}
+
+                                        <!-- Always show first page -->
+                                        <li class="page-item {% if data.number == 1 %}active{% endif %}">
+                                            <a class="page-link" href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">1</a>
+                                        </li>
+
+                                        {% if data.number > 5 %}
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        {% endif %}
+
+                                        {% for n in data.paginator.page_range %}
+                                            {% if n > 1 and n < data.paginator.num_pages %}
+                                                {% if n >= data.number|add:-3 and n <= data.number|add:3 %}
+                                                    <li class="page-item {% if data.number == n %}active{% endif %}">
+                                                        <a class="page-link" href="?page={{ n }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ n }}</a>
+                                                    </li>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+
+                                        {% if data.number < data.paginator.num_pages|add:-4 %}
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        {% endif %}
+
+                                        <!-- Always show last page -->
+                                        {% if data.paginator.num_pages > 1 %}
+                                            <li class="page-item {% if data.number == data.paginator.num_pages %}active{% endif %}">
+                                                <a class="page-link" href="?page={{ data.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ data.paginator.num_pages }}</a>
+                                            </li>
+                                        {% endif %}
+
+                                        {% if data.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ data.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Next">
+                                                    <span aria-hidden="true">&raquo;</span>
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

@@ -195,6 +195,12 @@
                                             <tr>
                                                 <th>ORDER ID</th>
                                                 <th>CUSTOMER</th>
+                                                {% if request.user.is_superuser %}
+                                                    <th>VENDOR NAME</th>
+                                                    <th>COMPANY NAME</th>
+                                                    <th>MOBILE NUMBER</th>
+                                                    <th>REGISTRATION EMAIL</th>
+                                                {% endif %}
                                                 <th>DATE / TIME</th>
                                                 <th>ITEMS</th>
                                                 <th>DELIVERY</th>
@@ -213,6 +219,14 @@
                                                             <span class="customer-name">{% if i.user %}{{ i.user.get_full_name|default:i.user.username }}{% else %}{% if i.address %}{{ i.address.full_name }}{% else %}—{% endif %}{% endif %}</span>
                                                             <span class="customer-phone">{% if i.address %}{{ i.address.mobile_number }}{% endif %}</span>
                                                         </td>
+                                                        {% if request.user.is_superuser %}
+                                                            {% with vendor=i.items.all.0.product.user %}
+                                                                <td>{{ vendor.get_full_name|default:vendor.username|default:"—" }}</td>
+                                                                <td>{{ vendor.user_company_profile.company_name|default:"—" }}</td>
+                                                                <td>{{ vendor.mobile|default:"—" }}</td>
+                                                                <td>{{ vendor.user_company_profile.email|default:"—" }}</td>
+                                                            {% endwith %}
+                                                        {% endif %}
                                                         <td>
                                                             <span class="date-line">{{ i.created_at|date:"d M Y" }}</span><br>
                                                             <span class="time-line">{{ i.created_at|time:"g:i A" }}</span>
@@ -240,7 +254,7 @@
                                                         </td>
                                                     </tr>
                                                     <tr class="collapse" id="orderItems{{ i.id }}">
-                                                        <td colspan="9" class="bg-light">
+                                                        <td colspan="{% if request.user.is_superuser %}13{% else %}9{% endif %}" class="bg-light">
                                                             <strong>Items:</strong>
                                                             {% if i.items.all %}
                                                                 <ul class="mb-0 mt-1">
@@ -257,11 +271,64 @@
                                                     </tr>
                                                 {% endfor %}
                                             {% else %}
-                                                <tr><td colspan="9" class="text-center py-4 text-muted">No orders found.</td></tr>
+                                                <tr><td colspan="{% if request.user.is_superuser %}13{% else %}9{% endif %}" class="text-center py-4 text-muted">No orders found.</td></tr>
                                             {% endif %}
                                         </tbody>
                                     </table>
                                 </div>
+                                
+                                <!-- Pagination UI -->
+                                {% if data.has_other_pages %}
+                                <nav aria-label="Page navigation" class="mt-4 mb-4">
+                                    <ul class="pagination justify-content-center">
+                                        {% if data.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ data.previous_page_number }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_paid %}&paid={{ filter_paid }}{% endif %}{% if filter_payment_mode %}&payment_mode={{ filter_payment_mode }}{% endif %}{% if filter_delivery_type %}&delivery_type={{ filter_delivery_type }}{% endif %}" aria-label="Previous">
+                                                    <span aria-hidden="true">&laquo;</span>
+                                                </a>
+                                            </li>
+                                        {% endif %}
+
+                                        <!-- Always show first page -->
+                                        <li class="page-item {% if data.number == 1 %}active{% endif %}">
+                                            <a class="page-link" href="?page=1{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_paid %}&paid={{ filter_paid }}{% endif %}{% if filter_payment_mode %}&payment_mode={{ filter_payment_mode }}{% endif %}{% if filter_delivery_type %}&delivery_type={{ filter_delivery_type }}{% endif %}">1</a>
+                                        </li>
+
+                                        {% if data.number > 5 %}
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        {% endif %}
+
+                                        {% for n in data.paginator.page_range %}
+                                            {% if n > 1 and n < data.paginator.num_pages %}
+                                                {% if n >= data.number|add:-3 and n <= data.number|add:3 %}
+                                                    <li class="page-item {% if data.number == n %}active{% endif %}">
+                                                        <a class="page-link" href="?page={{ n }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_paid %}&paid={{ filter_paid }}{% endif %}{% if filter_payment_mode %}&payment_mode={{ filter_payment_mode }}{% endif %}{% if filter_delivery_type %}&delivery_type={{ filter_delivery_type }}{% endif %}">{{ n }}</a>
+                                                    </li>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+
+                                        {% if data.number < data.paginator.num_pages|add:-4 %}
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        {% endif %}
+
+                                        <!-- Always show last page -->
+                                        {% if data.paginator.num_pages > 1 %}
+                                            <li class="page-item {% if data.number == data.paginator.num_pages %}active{% endif %}">
+                                                <a class="page-link" href="?page={{ data.paginator.num_pages }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_paid %}&paid={{ filter_paid }}{% endif %}{% if filter_payment_mode %}&payment_mode={{ filter_payment_mode }}{% endif %}{% if filter_delivery_type %}&delivery_type={{ filter_delivery_type }}{% endif %}">{{ data.paginator.num_pages }}</a>
+                                            </li>
+                                        {% endif %}
+
+                                        {% if data.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ data.next_page_number }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_paid %}&paid={{ filter_paid }}{% endif %}{% if filter_payment_mode %}&payment_mode={{ filter_payment_mode }}{% endif %}{% if filter_delivery_type %}&delivery_type={{ filter_delivery_type }}{% endif %}" aria-label="Next">
+                                                    <span aria-hidden="true">&raquo;</span>
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

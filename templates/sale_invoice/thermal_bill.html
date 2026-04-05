@@ -72,12 +72,23 @@
 <div class="bill">
     <!-- Header: Company name | TAX INVOICE / BILL (no logo) -->
     <div class="header">
-        <div class="company-name">
-            {% if sale_instance.company_profile %}
-                {{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"Store" }}
-            {% else %}
-                Store
-            {% endif %}
+        <div style="display: flex; align-items: center;">
+            <div class="logo-placeholder">
+                {% if company_logo_data_uri %}
+                <img src="{{ company_logo_data_uri }}" alt="Logo">
+                {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
+                <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Logo">
+                {% else %}
+                Logo
+                {% endif %}
+            </div>
+            <div class="company-name">
+                {% if sale_instance.company_profile %}
+                    {{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"Store" }}
+                {% else %}
+                    Store
+                {% endif %}
+            </div>
         </div>
         <div class="invoice-title">
             <div class="main">TAX INVOICE / BILL</div>
@@ -87,22 +98,7 @@
 
     <!-- Sold By -->
     <div class="section sold-by">
-        <div class="section-title">Sold By :</div>
-        <div class="sold-by-head">
-            <div class="sold-by-logo">
-                {% if company_logo_data_uri %}
-                <img src="{{ company_logo_data_uri }}" alt="Logo">
-                {% elif sale_instance.company_profile and sale_instance.company_profile.profile_image %}
-                <img src="{{ sale_instance.company_profile.profile_image.url }}" alt="Logo">
-                {% else %}
-                Logo
-                {% endif %}
-            </div>
-            <div class="name">{% if sale_instance.company_profile %}{{ sale_instance.company_profile.company_name|default:sale_instance.company_profile.brand_name|default:"—" }}{% else %}—{% endif %}</div>
-        </div>
-        <div class="address-block">
-            {% if sale_instance.company_profile %}{{ sale_instance.company_profile.address_line_1|default:"" }}{% if sale_instance.company_profile.address_line_2 %}<br>{{ sale_instance.company_profile.address_line_2 }}{% endif %}{% else %}—{% endif %}
-        </div>
+        
         <div>Mobile : {% if sale_instance.company_profile %}{{ sale_instance.company_profile.contact|default:"—" }}{% else %}—{% endif %}</div>
         <div class="two-col" style="margin-top: 2px;">
             <span>PAN : {{ vendor_pan|default:"—" }}</span>
