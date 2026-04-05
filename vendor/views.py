@@ -5198,6 +5198,8 @@ def sale_invoice(request, sale_id):
         'hsn_summary': hsn_summary.items(),
         'total_in_words': total_in_words,
         'total_tax': total_tax,
+        'product_total_before_discount': float(total_taxable) + float(total_tax),
+        'product_total_after_discount': float(total_taxable) + float(total_tax) - float(sale.discount_amount or 0),
         'store_gst': store_gst,
         'sum_taxable': round(total_taxable, 2),
         'sum_sgst': round(total_sgst, 2),
