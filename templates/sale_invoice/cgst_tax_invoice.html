@@ -65,10 +65,19 @@
         }
 
         .terms {
-            height: 60px;
             font-size: 11px;
             text-align: left;
             padding: 5px;
+        }
+
+        .pre-wrap-content {
+            white-space: pre-wrap;
+            line-height: 1.1;
+        }
+
+        .pre-wrap-content p, .pre-wrap-content div {
+            margin: 0;
+            padding: 0;
         }
 
         .footer {
@@ -166,7 +175,7 @@
                 <td style="text-align:left; border-bottom: none;">
                     <b>Customer Name :</b>
                     {% if sale_instance.customer %}
-                    {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}
+                    <b>{{ sale_instance.customer.company_name|default:sale_instance.customer.name }}</b>
                     {% else %}
                     Walk-in Customer
                     {% endif %}
@@ -281,11 +290,13 @@
                 <td style="width:40%;">
                     <table class="summary" style="width:100%;">
                         <tr>
-                            <td>Subtotal (before discount): ₹ {{ sale_instance.total_amount_before_discount|default:0|floatformat:2 }}</td>
+                            <td>Subtotal (Gross): ₹ {{ gross_subtotal_items|floatformat:2 }}</td>
                         </tr>
-                       
                         <tr>
-                            <td>Discount ({{ discount_percentage }}%): ₹ {{ discount_amount|floatformat:2 }}</td>
+                            <td>Discount ({{ discount_percentage }}%): - ₹ {{ discount_amount|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td>Taxable Amount: ₹ {{ sum_taxable|floatformat:2 }}</td>
                         </tr>
                         <tr>
                             <td>Total Tax: ₹ {% if is_igst %}{{ sum_igst|floatformat:2 }}{% else %}{{ total_tax|floatformat:2 }}{% endif %}</td>
@@ -294,7 +305,7 @@
                             <td>Round off: ₹ {{ round_off_value|default:0|floatformat:2 }}</td>
                         </tr>
                         <tr class="bold">
-                            <td>Total Amount: ₹ {{ total_amount|floatformat:2 }}</td>
+                            <td>Total Amount: ₹ {{ rounded_total|floatformat:2 }}</td>
                         </tr>
                         <tr>
                             <td>Paid: ₹ {{ paid_amount|floatformat:2 }}</td>
@@ -309,7 +320,8 @@
             </tr>
             <tr>
                 <td colspan="2" class="terms">
-                    <b>Terms & Conditions</b><br>{{ display_terms|default:""|safe }}<br><br>
+                    <b>Terms & Conditions</b>
+                    <div class="pre-wrap-content" style="margin-top: 2px;">{{ display_terms|default:""|safe }}</div>
                     {% if sale_instance.company_profile.is_gst_registered %}
                     <i style="font-size: 10px;">
                         Note:

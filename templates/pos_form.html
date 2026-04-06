@@ -10,6 +10,7 @@
     <link href="{% static 'libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css' %}" rel="stylesheet" type="text/css"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
     <style>
         /* --- Sample-inspired POS: base & layout (IDs/names unchanged) --- */
         * { box-sizing: border-box; }
@@ -904,8 +905,11 @@
                         {{ wholesale_forms.references }}
                       </div>
                       <div class="col-12">
-                        <label class="form-label">Terms & Conditions</label>
-                        {{ wholesale_forms.terms }}
+                        <label class="form-label">Terms &amp; Conditions</label>
+                        <div id="terms-editor-container" style="height: 150px; background: #fff;"></div>
+                        <div style="display:none;">
+                          {{ wholesale_forms.terms }}
+                        </div>
                       </div>
                       <div class="col-12">
                         <label class="form-label">Internal Notes</label>
@@ -1384,108 +1388,127 @@
   // Recalculate totals (subtotal, GST, discount, shipping, net payable)
 function recalculateTotals() {
     let totalItems = 0;
-    let subtotal = 0;
-    let gstAmount = 0;
+    let totalGrossValue = 0; // sum(qty * price) - the base for discount distribution
+    const isWholesale = document.getElementById('wholesale_selector')?.checked;
+    
+    const rows = document.querySelectorAll('.item-row');
+    const lineData = [];
 
-    document.querySelectorAll('.item-row').forEach(row => {
+    rows.forEach(row => {
         const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
         const price = parseFloat(row.querySelector('.rate-input').value) || 0;
-        const grossAmount = qty * price; // what user sees/enters
+        const gross = qty * price;
+        
         const sel = row.querySelector('.product-select');
         const opt = (sel && sel.selectedIndex >= 0) ? sel.options[sel.selectedIndex] : null;
-        let gstRate = opt ? (parseFloat(opt.getAttribute('data-gst')) || 0) : 0;
-        const taxInclusiveFlag = opt ? opt.getAttribute('data-tax-inclusive') : null;
-        const isTaxInclusive = taxInclusiveFlag === '1';
+        const gstRate = opt ? (parseFloat(opt.getAttribute('data-gst')) || 0) : 0;
+        const taxInclusive = opt ? (opt.getAttribute('data-tax-inclusive') === '1') : false;
 
-        let baseAmount = grossAmount;
-        let rowGst = 0;
-
-        // Composite scheme from backend: no GST calculations when enabled
-        const isCompositeScheme = !!(window.POS_COMPOSITE_SCHEME);
-
-        if (!isCompositeScheme && gstRate > 0) {
-            if (isTaxInclusive) {
-                // Price is GST inclusive: split into base + tax so that
-                // base + tax == grossAmount, but tax still shows in summary.
-                const divisor = 1 + (gstRate / 100);
-                baseAmount = grossAmount / divisor;
-                rowGst = grossAmount - baseAmount;
-            } else {
-                // Price is before tax: GST is added on top.
-                baseAmount = grossAmount;
-                rowGst = grossAmount * (gstRate / 100);
-            }
-        } else {
-            baseAmount = grossAmount;
-            rowGst = 0;
-        }
-
-        if (row.querySelector('.amount')) row.querySelector('.amount').value = grossAmount.toFixed(2);
+        totalGrossValue += gross;
         totalItems += qty;
-        subtotal += baseAmount;
-        gstAmount += rowGst;
+        
+        lineData.push({
+            row: row,
+            gross: gross,
+            gstRate: gstRate,
+            taxInclusive: taxInclusive
+        });
     });
 
-    const totalBeforeDiscount = subtotal + gstAmount;
-    const discountPercentageField = document.getElementById('discount-percentage');
-    const discountAmountField = document.getElementById('discount-amount-input');
-    const advanceAmountField = document.getElementById('id_advance_payment_amount');
-    const isWholesale = document.getElementById('wholesale_selector')?.checked;
+    // 1. Get Discount value
+    const discountValueInput = document.getElementById('discount-value-input');
+    const isAmountMode = document.getElementById('discount-type-amount') && document.getElementById('discount-type-amount').classList.contains('btn-payment-active');
+    
+    let totalDiscountAmount = 0;
+    let discountPercentage = 0;
+    
+    if (discountValueInput) {
+        const val = parseFloat(discountValueInput.value) || 0;
+        if (isAmountMode) {
+            totalDiscountAmount = val;
+            discountPercentage = (totalGrossValue > 0) ? (totalDiscountAmount / totalGrossValue) * 100 : 0;
+        } else {
+            discountPercentage = val;
+            totalDiscountAmount = totalGrossValue * (discountPercentage / 100);
+        }
+    }
+
+    // 2. Distribute discount and calculate taxes
+    const discountRatio = (totalGrossValue > 0) ? (totalDiscountAmount / totalGrossValue) : 0;
+    let finalTaxableTotal = 0;
+    let finalGstTotal = 0;
+
+    // Composite scheme flag
+    const isCompositeScheme = !!(window.POS_COMPOSITE_SCHEME);
+
+    lineData.forEach(data => {
+        const itemDiscount = data.gross * discountRatio;
+        const netValue = data.gross - itemDiscount;
+        
+        let taxable = netValue;
+        let tax = 0;
+
+        if (!isCompositeScheme && data.gstRate > 0) {
+            if (data.taxInclusive) {
+                const divisor = 1 + (data.gstRate / 100);
+                taxable = netValue / divisor;
+                tax = netValue - taxable;
+            } else {
+                taxable = netValue;
+                tax = netValue * (data.gstRate / 100);
+            }
+        }
+        
+        finalTaxableTotal += taxable;
+        finalGstTotal += tax;
+        
+        // Update row total display (we show gross for the user)
+        if (data.row.querySelector('.amount')) {
+            data.row.querySelector('.amount').value = data.gross.toFixed(2);
+        }
+    });
+
+    // 3. Additional Charges
     const deliveryChargesEl = document.getElementById('id_delivery_charges');
     const packagingChargesEl = document.getElementById('id_packaging_charges');
-    const deliveryCharges = isWholesale ? (deliveryChargesEl ? (parseFloat(deliveryChargesEl.value) || 0) : 0) : 0;
-    const packagingCharges = isWholesale ? (packagingChargesEl ? (parseFloat(packagingChargesEl.value) || 0) : 0) : 0;
-    const shippingCharges = deliveryCharges + packagingCharges;
+    const deliveryCharges = isWholesale ? (parseFloat(deliveryChargesEl?.value) || 0) : 0;
+    const packagingCharges = isWholesale ? (parseFloat(packagingChargesEl?.value) || 0) : 0;
+    const shippingTotal = deliveryCharges + packagingCharges;
 
-    let discountAmount = 0;
-    let discountPercentage = 0;
-    var discountValueInput = document.getElementById('discount-value-input');
-    var isAmountMode = document.getElementById('discount-type-amount') && document.getElementById('discount-type-amount').classList.contains('btn-payment-active');
-    if (discountPercentageField && discountAmountField) {
-        if (isAmountMode) {
-            // In amount mode: use visible input as source (user types there), sync to hidden fields
-            discountAmount = parseFloat(discountValueInput && discountValueInput.value ? discountValueInput.value : discountAmountField.value) || 0;
-            if (discountAmountField) discountAmountField.value = discountAmount.toFixed(2);
-            discountPercentage = (totalBeforeDiscount === 0) ? 0 : (discountAmount / totalBeforeDiscount) * 100;
-            if (discountPercentageField) discountPercentageField.value = discountPercentage.toFixed(2);
-        } else {
-            // In percent mode: use percent field, calculate amount
-            discountPercentage = parseFloat(discountValueInput && discountValueInput.value ? discountValueInput.value : discountPercentageField.value) || 0;
-            if (discountPercentageField) discountPercentageField.value = discountPercentage.toFixed(2);
-            discountAmount = totalBeforeDiscount * (discountPercentage / 100);
-            if (discountAmountField) discountAmountField.value = discountAmount.toFixed(2);
-        }
-    }
+    // 4. Final Totals
+    const netTotal = finalTaxableTotal + finalGstTotal + shippingTotal;
+    const paymentMethod = document.getElementById('payment_method')?.value || 'cash';
+    const advanceAmountField = document.getElementById('id_advance_payment_amount');
+    const advanceAmount = (paymentMethod === 'credit') ? (parseFloat(advanceAmountField?.value) || 0) : 0;
 
-    const amountAfterDiscount = totalBeforeDiscount - discountAmount;
-    const paymentMethod = (document.getElementById('payment_method') || {}).value || 'cash';
-    const advanceAmount = (paymentMethod === 'credit' && advanceAmountField) ? (parseFloat(advanceAmountField.value) || 0) : 0;
-    
-    // Round final total matching backend Ledger (ROUND_HALF_UP)
-    const finalTotalRounded = Math.round(amountAfterDiscount + shippingCharges);
+    // Match backend rounding
+    const finalTotalRounded = Math.round(netTotal);
     const netPayable = finalTotalRounded - advanceAmount;
 
-    const el = function(id) { const e = document.getElementById(id); return e ? e : null; };
+    // Update UI
+    const el = id => document.getElementById(id);
     if (el('total-items')) el('total-items').innerText = totalItems;
-    if (el('subtotal-amount')) el('subtotal-amount').innerText = subtotal.toFixed(2);
-    if (el('total-gst-amount')) el('total-gst-amount').innerText = gstAmount.toFixed(2);
+    if (el('subtotal-amount')) el('subtotal-amount').innerText = finalTaxableTotal.toFixed(2);
+    if (el('total-gst-amount')) el('total-gst-amount').innerText = finalGstTotal.toFixed(2);
     if (el('delivery-charges-display')) el('delivery-charges-display').innerText = deliveryCharges.toFixed(2);
     if (el('packaging-charges-display')) el('packaging-charges-display').innerText = packagingCharges.toFixed(2);
-    if (el('discount-amount-display')) el('discount-amount-display').innerText = discountAmount.toFixed(2);
+    if (el('discount-amount-display')) el('discount-amount-display').innerText = totalDiscountAmount.toFixed(2);
     if (el('discount-percent-display')) el('discount-percent-display').innerText = discountPercentage.toFixed(2);
-    if (el('total-amount-before-discount')) el('total-amount-before-discount').innerText = totalBeforeDiscount.toFixed(2);
-    if (el('advance-amount')) el('advance-amount').innerText = advanceAmount.toFixed(2);
-    if (el('advance-mode')) el('advance-mode').innerText = (document.getElementById('advance_payment_method') && document.getElementById('advance_payment_method').value) ? document.getElementById('advance_payment_method').value.charAt(0).toUpperCase() + document.getElementById('advance_payment_method').value.slice(1) : 'Cash';
-    const bankSelect = document.getElementById('advance_bank');
-    if (el('advance-bank-name')) {
-        if (bankSelect && bankSelect.value) {
-            el('advance-bank-name').style.display = 'inline';
-            el('advance-bank-name').innerText = '(' + (bankSelect.options[bankSelect.selectedIndex] ? bankSelect.options[bankSelect.selectedIndex].text : '') + ')';
-        } else {
-            el('advance-bank-name').style.display = 'none';
-        }
-    }
     if (el('net-payable')) el('net-payable').innerText = Math.max(0, netPayable).toFixed(2);
+    
+    // Total before discount display (for UI consistency)
+    if (el('total-amount-before-discount')) {
+        // defined as sum of gross + gross-based tax
+        let grossWithTaxTotal = 0;
+        lineData.forEach(d => {
+            if (!isCompositeScheme && d.gstRate > 0 && !d.taxInclusive) {
+                grossWithTaxTotal += d.gross * (1 + (d.gstRate / 100));
+            } else {
+                grossWithTaxTotal += d.gross;
+            }
+        });
+        el('total-amount-before-discount').innerText = (grossWithTaxTotal + shippingTotal).toFixed(2);
+    }
 }
 
 
@@ -2484,6 +2507,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
 </script>
 
+<!-- Quill.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+
 <script>
   // Default invoice terms from backend (InvoiceSettings.terms_and_conditions)
   const POS_INVOICE_DEFAULT_TERMS = "{{ invoice_terms|default_if_none:''|escapejs }}";
@@ -2491,11 +2517,42 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener('DOMContentLoaded', function () {
     const wholesaleToggle = document.getElementById('wholesale_selector');
     const termsField = document.getElementById('id_terms');
+    const editorContainer = document.getElementById('terms-editor-container');
+
+    if (!editorContainer || !termsField) return;
+
+    // Initialize Quill
+    const quill = new Quill('#terms-editor-container', {
+      theme: 'snow',
+      placeholder: 'Enter Terms & Conditions...',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          ['clean']
+        ]
+      }
+    });
+
+    // Load initial content from textarea
+    if (termsField.value) {
+      quill.root.innerHTML = termsField.value;
+    }
+
+    // Sync Quill content back to textarea on every change
+    quill.on('text-change', function() {
+      termsField.value = quill.root.innerHTML;
+    });
 
     function maybeFillTerms() {
-      if (!wholesaleToggle || !termsField) return;
+      if (!wholesaleToggle || !quill) return;
       const isWholesale = wholesaleToggle.checked;
-      if (isWholesale && !termsField.value && POS_INVOICE_DEFAULT_TERMS) {
+      // Only fill if empty
+      const currentContent = quill.root.innerHTML.trim();
+      const isEmpty = currentContent === '' || currentContent === '<p><br></p>';
+      
+      if (isWholesale && isEmpty && POS_INVOICE_DEFAULT_TERMS) {
+        quill.root.innerHTML = POS_INVOICE_DEFAULT_TERMS;
         termsField.value = POS_INVOICE_DEFAULT_TERMS;
       }
     }

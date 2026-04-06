@@ -4721,34 +4721,122 @@ def delete_sale(request, sale_id):
 
 
 def _update_sale_totals(sale_instance, wholesale_instance=None):
-    """Recalculate Sale totals from SaleItems + delivery/packaging - discount - advance."""
-    items = SaleItem.objects.filter(sale=sale_instance)
-    agg = items.aggregate(
-        total_taxable=Sum('amount'),
-        total_gst=Sum('tax_amount'),
-        total_qty=Sum('quantity'),
-    )
-    total_taxable = agg['total_taxable'] or Decimal('0')
-    total_gst = agg['total_gst'] or Decimal('0')
-    total_items = int(agg['total_qty'] or 0)
+    """
+    Recalculate Sale totals from SaleItems.
+    This version calculates Taxes AFTER applying the bill-level discount (Trade Discount logic).
+    """
+    items = SaleItem.objects.filter(sale=sale_instance).select_related('product')
+    if not items.exists():
+        sale_instance.total_items = 0
+        sale_instance.total_taxable_amount = Decimal('0')
+        sale_instance.total_gst_amount = Decimal('0')
+        sale_instance.total_amount_before_discount = Decimal('0')
+        sale_instance.total_amount = Decimal('0')
+        sale_instance.save()
+        return
 
+    # 1. Calculate Gross Price Total (before any discount or tax)
+    # We use (price * quantity) for each item as the base for distribution.
+    from decimal import Decimal, ROUND_HALF_UP
+
+    total_gross_value = Decimal('0')
+    line_data = [] # store data for reconciliation
+    total_qty = 0
+    
+    for item in items:
+        qty = Decimal(str(item.quantity))
+        price = Decimal(str(item.price))
+        gross = (qty * price).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        total_gross_value += gross
+        total_qty += int(item.quantity)
+        
+        # Get tax info for this product
+        gst_rate = Decimal(str(getattr(item.product, 'gst', 0) or 0)) / Decimal('100')
+        tax_inclusive = bool(getattr(item.product, 'tax_inclusive', False))
+        line_data.append({
+            'item': item,
+            'qty': qty,
+            'price': price,
+            'gross': gross,
+            'gst_rate': gst_rate,
+            'tax_inclusive': tax_inclusive
+        })
+
+    # 2. Get Discount and prorate across items
+    discount_amount = getattr(sale_instance, 'discount_amount', None) or Decimal('0')
+    
+    # Avoid division by zero
+    if total_gross_value <= 0:
+        discount_ratio = Decimal('0')
+    else:
+        discount_ratio = discount_amount / total_gross_value
+
+    total_taxable = Decimal('0')
+    total_gst = Decimal('0')
+
+    # 3. Calculate taxable value and GST per item (Post-Discount)
+    for data in line_data:
+        # Prorate discount based on gross value
+        item_discount = (data['gross'] * discount_ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        net_value = data['gross'] - item_discount
+        
+        if data['gst_rate'] > 0:
+            if data['tax_inclusive']:
+                # net_value = taxable + taxable * rate
+                divisor = Decimal('1') + data['gst_rate']
+                taxable = (net_value / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                tax = net_value - taxable
+            else:
+                # net_value = taxable
+                taxable = net_value
+                tax = (taxable * data['gst_rate']).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            taxable = net_value
+            tax = Decimal('0')
+            
+        total_taxable += taxable
+        total_gst += tax
+        
+        # Update the actual item record so that other templates (like thermal) 
+        # using item.amount/tax_amount show the correct discounted values.
+        data['item'].amount = taxable
+        data['item'].tax_amount = tax
+        data['item'].total_with_tax = taxable + tax
+        data['item'].save(update_fields=['amount', 'tax_amount', 'total_with_tax'])
+
+    # 4. Final bill totals
     delivery = Decimal('0')
     packaging = Decimal('0')
     if wholesale_instance:
-        delivery = wholesale_instance.delivery_charges or Decimal('0')
-        packaging = wholesale_instance.packaging_charges or Decimal('0')
+        delivery = Decimal(str(wholesale_instance.delivery_charges or 0))
+        packaging = Decimal(str(wholesale_instance.packaging_charges or 0))
 
-    total_amount_before_discount = total_taxable + total_gst + delivery + packaging
-    discount_amount = getattr(sale_instance, 'discount_amount', None) or Decimal('0')
-    total_amount = total_amount_before_discount - discount_amount
+    # Grand Total = Taxable + GST + Charges
+    # total_amount_before_discount is now defined as Gross_Taxable + Taxes (Pre-Discount Items)
+    # but for simplicity, we just calculate the final sum.
+    total_amount = total_taxable + total_gst + delivery + packaging
+    
+    # We also keep a "before discount" field for UI consistency (though technically taxes change)
+    # Let's define it as the items' pre-discount taxable + pre-discount tax + charges
+    # (Matches original calculation for UI display)
+    total_amount_before_discount = Decimal('0')
+    for d in line_data:
+        if d['gst_rate'] > 0:
+            if d['tax_inclusive']:
+                div = Decimal('1') + d['gst_rate']
+                base = (d['gross'] / div).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                t = d['gross'] - base
+                total_amount_before_discount += base + t
+            else:
+                total_amount_before_discount += d['gross'] + (d['gross'] * d['gst_rate']).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            total_amount_before_discount += d['gross']
+    total_amount_before_discount += delivery + packaging
 
-    # Round the final total (half up) to ensure integer values are passed to ledgers
-    from decimal import ROUND_HALF_UP
+    # Round final total (half up)
     total_amount = total_amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP)
 
-    # Credit: advance is partial payment; balance is what remains.
-    # Cash / UPI / Cheque: full amount is collected at POS — advance fields are often left 0,
-    # so do not show the full bill as "balance due".
+    # 5. Payment and Balance
     pm = getattr(sale_instance, 'payment_method', None) or ''
     if pm == 'credit':
         advance_amount = (
@@ -4760,16 +4848,17 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
     else:
         advance_amount = total_amount
         balance_amount = Decimal('0')
-        # Keep form/list fields aligned with "paid in full" for non-credit sales
         sale_instance.advance_payment_amount = total_amount
 
-    sale_instance.total_items = total_items
+    # Update Sale instance
+    sale_instance.total_items = total_qty
     sale_instance.total_taxable_amount = total_taxable
     sale_instance.total_gst_amount = total_gst
     sale_instance.total_amount_before_discount = total_amount_before_discount
     sale_instance.total_amount = total_amount
     sale_instance.advance_amount = advance_amount
     sale_instance.balance_amount = balance_amount
+    
     update_fields = [
         'total_items', 'total_taxable_amount', 'total_gst_amount',
         'total_amount_before_discount', 'total_amount', 'advance_amount', 'balance_amount',
@@ -4781,27 +4870,49 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
 
 def _invoice_line_totals_after_discount(items_with_tax, discount_amount):
     """
-    Allocate bill-level discount across rows by each line's share of sum(total_with_tax).
-    Sets row['total_after_discount'] for invoice line Total column.
+    Allocate bill-level discount across items based on their gross share.
+    Updates taxable_value and tax amounts to be post-discount.
     """
     if not items_with_tax:
         return
+    
     disc = float(discount_amount or 0)
-    sum_gross = sum(float(row.get("total_with_tax") or 0) for row in items_with_tax)
+    # sum_gross = sum of (price * quantity)
+    sum_gross = sum(float(row.get("price", 0) * row.get("quantity", 0)) for row in items_with_tax)
+    
     if sum_gross <= 0 or disc <= 0:
         for row in items_with_tax:
             row["total_after_discount"] = round(float(row.get("total_with_tax") or 0), 2)
         return
-    remaining = disc
-    n = len(items_with_tax)
-    for i, row in enumerate(items_with_tax):
-        gross = float(row.get("total_with_tax") or 0)
-        if i == n - 1:
-            part = round(remaining, 2)
-        else:
-            part = round(disc * gross / sum_gross, 2)
-            remaining = round(remaining - part, 2)
-        row["total_after_discount"] = round(gross - part, 2)
+
+    discount_ratio = disc / sum_gross
+    
+    for row in items_with_tax:
+        gross = float(row.get("price", 0) * row.get("quantity", 0))
+        item_discount = gross * discount_ratio
+        net_taxable_base = gross - item_discount
+        
+        # Recalculate taxes on net_taxable_base
+        gst_rate = float(row.get("igst_percent") or 0) / 100.0
+        
+        # Check if the row was originally tax-inclusive (we need this info)
+        # We can't easily know from items_with_tax list unless we pass it.
+        # Let's assume the view already handled it, but usually, we just need to 
+        # keep the same logic: if it was inclusive, net_taxable_base is still inclusive.
+        
+        # For display purposes on the invoice: 
+        # Standard GST invoice shows "Taxable Value" = after trade discount.
+        
+        # If the view passed taxable_val which was pre-discount, we update it.
+        # Since we use float(item.amount) in the view, it's the pre-discount taxable.
+        # We need to prorate it.
+        
+        row_discount_ratio = (1 - discount_ratio)
+        row["taxable_value"] = round(float(row.get("taxable_value", 0)) * row_discount_ratio, 2)
+        row["sgst_amount"] = round(float(row.get("sgst_amount", 0)) * row_discount_ratio, 2)
+        row["cgst_amount"] = round(float(row.get("cgst_amount", 0)) * row_discount_ratio, 2)
+        row["igst_amount"] = round(float(row.get("igst_amount", 0)) * row_discount_ratio, 2)
+        row["total_after_discount"] = round(row["taxable_value"] + row["igst_amount"], 2)
 
 
 def _invoice_company_media_data_uris(sale):
@@ -5020,10 +5131,20 @@ def sale_invoice(request, sale_id):
         )
 
     sale_type = (getattr(wholesale, "invoice_type", None) or "invoice").lower().replace(" ", "_")  # normalize
-    is_registered = bool(
-        getattr(sale, "company_profile", None)
-        and getattr(sale.company_profile, "is_gst_registered", False)
-    )
+    # Check GST registration on CompanyProfile or vendor_store fallback
+    is_registered = False
+    cp = getattr(sale, "company_profile", None)
+    if cp:
+        is_registered = bool(cp.is_gst_registered)
+    
+    if not is_registered:
+        # Fallback to vendor_store model if CompanyProfile is not registered
+        from .models import vendor_store
+        vstore = vendor_store.objects.filter(user=sale.user).first()
+        if vstore and vstore.gstin:
+            is_registered = True
+
+    print(is_registered)
 
     # Determine store GST type (CGST if vendor/customer state matches else IGST)
     vendor_state_name = None
@@ -5129,18 +5250,44 @@ def sale_invoice(request, sale_id):
 
     _invoice_line_totals_after_discount(items_with_tax, sale.discount_amount)
 
-    for hsn, data in hsn_summary.items():
-        # Use floats here to avoid mixing Decimal and float types
-        taxable_val = float(data.get('taxable_value', 0) or 0)
-        sgst_rate_val = float(data.get('sgst_rate', 0) or 0)
-        cgst_rate_val = float(data.get('cgst_rate', 0) or 0)
+    # Recalculate HSN summary and footer totals based on DISCOUNTED values
+    hsn_summary = {}
+    total_taxable = 0
+    total_tax = 0
+    total_sgst = 0
+    total_cgst = 0
+    total_igst = 0
+    
+    for row in items_with_tax:
+        hsn = row["hsn"]
+        if hsn not in hsn_summary:
+            hsn_summary[hsn] = {
+                'taxable_value': 0,
+                'sgst_rate': row["sgst_percent"],
+                'cgst_rate': row["cgst_percent"],
+                'sgst_amount': 0,
+                'cgst_amount': 0,
+                'igst_rate': row["igst_percent"],
+                'igst_amount': 0,
+                'total_tax': 0,
+            }
+        hsn_summary[hsn]['taxable_value'] += row["taxable_value"]
+        hsn_summary[hsn]['sgst_amount'] += row["sgst_amount"]
+        hsn_summary[hsn]['cgst_amount'] += row["cgst_amount"]
+        hsn_summary[hsn]['igst_amount'] += row["igst_amount"]
+        hsn_summary[hsn]['total_tax'] += (row["igst_amount"]) # total tax per line
 
-        data['sgst_amount'] = round(taxable_val * sgst_rate_val / 100.0, 2)
-        data['cgst_amount'] = round(taxable_val * cgst_rate_val / 100.0, 2)
-        data['total_tax'] = data['sgst_amount'] + data['cgst_amount']
-        # Helpful for IGST proforma
-        data['igst_rate'] = round((data['sgst_rate'] or 0) + (data['cgst_rate'] or 0), 2)
-        data['igst_amount'] = round(data['total_tax'], 2)
+        total_taxable += row["taxable_value"]
+        total_tax += row["igst_amount"]
+        total_sgst += row["sgst_amount"]
+        total_cgst += row["cgst_amount"]
+        total_igst += row["igst_amount"]
+
+    # Calculate discount percentage based on GROSS subtotal for display
+    gross_subtotal_items = sum(float(item.price * item.quantity) for item in sale.items.all())
+    discount_percentage = 0
+    if gross_subtotal_items > 0:
+        discount_percentage = round((float(sale.discount_amount or 0) / gross_subtotal_items) * 100, 2)
 
     total_in_words = _amount_in_words_inr(rounded_total)
 
@@ -5198,15 +5345,15 @@ def sale_invoice(request, sale_id):
         'hsn_summary': hsn_summary.items(),
         'total_in_words': total_in_words,
         'total_tax': total_tax,
-        'product_total_before_discount': float(total_taxable) + float(total_tax),
-        'product_total_after_discount': float(total_taxable) + float(total_tax) - float(sale.discount_amount or 0),
+        'gross_subtotal_items': gross_subtotal_items,
+        'product_total_after_discount': total_amount,
         'store_gst': store_gst,
         'sum_taxable': round(total_taxable, 2),
         'sum_sgst': round(total_sgst, 2),
         'sum_cgst': round(total_cgst, 2),
         'sum_igst': round(total_igst, 2),
         'total_quantity': total_quantity,
-        'discount_percentage': sale.discount_percentage or 0,
+        'discount_percentage': discount_percentage,
         'discount_amount': sale.discount_amount or 0,
         'paid_amount': paid_amount,
         'balance_amount': balance_amount,

@@ -21,7 +21,6 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        border-bottom: 1px solid black;
         padding-bottom: 5px;
       }
 
@@ -209,8 +208,18 @@
       }
 
       .footer strong {
-        display: block;
-        margin-top: 5px;
+        display: inline-block;
+        margin-top: 2px;
+      }
+
+      .pre-wrap-content {
+        white-space: pre-wrap;
+        line-height: 1.1;
+      }
+
+      .pre-wrap-content p, .pre-wrap-content div {
+        margin: 0;
+        padding: 0;
       }
 
       .signature {
@@ -261,7 +270,7 @@
         <tr>
           <td width="33%">
             <b>Customer Details:</b><br />
-            {{ sale_instance.customer.company_name|default:sale_instance.customer.name }}<br />
+            <b>{{ sale_instance.customer.company_name|default:sale_instance.customer.name }}</b><br />
             GSTIN : {{ sale_instance.customer.gst_number|default:"-" }}<br />
             PAN : {{ sale_instance.customer.pan_number|default:"-" }}<br />
             Aadhar : {{ sale_instance.customer.aadhar_number|default:"-" }}<br />
@@ -371,6 +380,14 @@
         <div class="totals-right">
           <table>
             <tr>
+              <td>Subtotal (Gross Price)</td>
+              <td>{{ gross_subtotal_items|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td>Discount ({{ discount_percentage|default:"0" }}%)</td>
+              <td>- {{ discount_amount|default:"0.00" }}</td>
+            </tr>
+            <tr>
               <td>Taxable Amount</td>
               <td>{{ sum_taxable|floatformat:2 }}</td>
             </tr>
@@ -391,10 +408,6 @@
             </tr>
               {% endif %}
             {% endif %}
-            <tr>
-              <td>Discount ({{ discount_percentage|default:"0" }}%)</td>
-              <td>{{ discount_amount|default:"0.00" }}</td>
-            </tr>
             <tr>
               <td>Delivery Charges</td>
               <td>{{ wholesale.delivery_charges|default:"0.00" }}</td>
@@ -467,9 +480,9 @@
 
       <!-- FOOTER -->
       <div class="footer">
-        <strong>Notes:</strong> {{ wholesale.notes|default:"-" }}
+        <strong>Notes:</strong> <span class="pre-wrap-content">{{ wholesale.notes|default:"-" }}</span><br>
         <strong>Terms & Conditions:</strong>
-        {{ display_terms|default:"-"|safe }}
+        <div class="pre-wrap-content" style="margin-top: 2px;">{{ display_terms|default:"-"|safe }}</div>
       </div>
 
       <div class="signature">
