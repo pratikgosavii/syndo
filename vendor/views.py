@@ -5131,20 +5131,17 @@ def sale_invoice(request, sale_id):
         )
 
     sale_type = (getattr(wholesale, "invoice_type", None) or "invoice").lower().replace(" ", "_")  # normalize
-    # Check GST registration on CompanyProfile or vendor_store fallback
-    is_registered = False
-    cp = getattr(sale, "company_profile", None)
-    if cp:
-        is_registered = bool(cp.is_gst_registered)
+    # Extract vendor details from vendor_store for GST/KYC info
+    from .models import vendor_store
+    vstore = vendor_store.objects.filter(user=sale.user).first()
+    is_registered = bool(vstore and vstore.gstin and vstore.is_gstin_verified)
     
-    if not is_registered:
-        # Fallback to vendor_store model if CompanyProfile is not registered
-        from .models import vendor_store
-        vstore = vendor_store.objects.filter(user=sale.user).first()
-        if vstore and vstore.gstin:
-            is_registered = True
+    vendor_gstin = vstore.gstin if vstore else None
+    vendor_pan = vstore.pan_number if vstore else None
+    vendor_fssai = vstore.fssai_number if vstore else None
 
-    print(is_registered)
+    if vstore:
+        print(f"Vendor Store Found: {vstore.id}, Registered: {is_registered}")
 
     # Determine store GST type (CGST if vendor/customer state matches else IGST)
     vendor_state_name = None
@@ -5317,11 +5314,7 @@ def sale_invoice(request, sale_id):
     company_logo_data_uri, payment_qr_data_uri, company_signature_data_uri = _invoice_company_media_data_uris(sale)
     cp = sale.company_profile
 
-    if use_thermal:
-        store = vendor_store.objects.filter(user=user).first()
-        vendor_pan = (cp.pan if cp else None) or (store.pan_number if store else None)
-        vendor_gstin = (cp.gstin if cp else None) or (store.gstin if store else None)
-        vendor_fssai = store.fssai_number if store else None
+    # (Already extracted vendor_pan, vendor_gstin, vendor_fssai at the top for all invoices)
 
     # Document title for templates (TAX INVOICE vs Proforma, etc.)
     if sale_type == "invoice":

@@ -56,8 +56,8 @@
         table.items th, table.items td { padding: 3px 2px; text-align: left; border-bottom: 1px solid #ddd; }
         table.items th { font-weight: bold; }
         table.items .qty, table.items .rate, table.items .dis, table.items .amt { text-align: right; }
-        table.items .col-# { width: 18px; }
-        table.items .col-name { }
+        table.items .col-item-no { width: 18px; }
+        table.items .col-name { min-width: 80px; }
         table.items .col-qty { width: 28px; text-align: right; }
         table.items .col-rate { width: 36px; text-align: right; }
         table.items .col-dis { width: 32px; text-align: right; }
@@ -91,7 +91,7 @@
             </div>
         </div>
         <div class="invoice-title">
-            <div class="main">TAX INVOICE / BILL</div>
+            <div class="main">{% if is_registered %}TAX INVOICE / BILL{% else %}BILL{% endif %}</div>
             <div>(Original for recipient)</div>
         </div>
     </div>
@@ -131,7 +131,7 @@
     <table class="items">
         <thead>
             <tr>
-                <th class="col-#">#</th>
+                <th class="col-item-no">#</th>
                 <th class="col-name">Item Name</th>
                 <th class="col-qty">Qty</th>
                 <th class="col-rate">Rate</th>

@@ -253,7 +253,7 @@
           {% if sale_instance.company_profile.address_line_1 %}{{ sale_instance.company_profile.address_line_1 }}<br />{% endif %}
           {% if sale_instance.company_profile.address_line_2 %}{{ sale_instance.company_profile.address_line_2 }}<br />{% endif %}
           {% if sale_instance.company_profile.state %}State: {{ sale_instance.company_profile.state }}{% endif %}<br />
-          GSTIN : {{ sale_instance.company_profile.gstin|default:"-" }} &nbsp;&nbsp; PAN : {{ sale_instance.company_profile.pan|default:"-" }}<br />
+          GSTIN : {{ vendor_gstin|default:"-" }} &nbsp;&nbsp; PAN : {{ vendor_pan|default:"-" }}<br />
           Mobile : {{ sale_instance.company_profile.contact|default:"-" }} &nbsp;&nbsp; Email : {{ sale_instance.company_profile.email|default:"-" }}<br />
           {% if wholesale.reverse_charges %}<b>Reverse Charge</b>{% endif %}
         </div>
@@ -300,7 +300,9 @@
           <tr>
             <th>S.No.</th>
             <th>Item</th>
+            {% if is_registered %}
             <th>HSN/SAC</th>
+            {% endif %}
             <th>Rate</th>
             <th>Qty Unit</th>
             <th>Taxable Value</th>
@@ -320,7 +322,9 @@
           <tr>
             <td>{{ forloop.counter }}</td>
             <td>{{ item.name }}</td>
+            {% if is_registered %}
             <td>{{ item.hsn|default:"-" }}</td>
+            {% endif %}
             <td>{{ item.price|floatformat:2 }}</td>
             <td>{{ item.quantity }}</td>
             <td>{{ item.taxable_value|floatformat:2 }}</td>
@@ -340,7 +344,7 @@
           <tr>
             <td colspan="4" style="text-align: right;"><b>Total</b></td>
             <td><b>{{ total_quantity }}</b></td>
-            <td colspan="{% if is_registered %}{% if is_igst %}2{% else %}3{% endif %}{% else %}1{% endif %}"></td>
+            <td colspan="{% if is_registered %}{% if is_igst %}2{% else %}3{% endif %}{% else %}0{% endif %}"></td>
             <td><b>{{ product_total_before_discount|floatformat:2 }}</b></td>
           </tr>
         </tfoot>

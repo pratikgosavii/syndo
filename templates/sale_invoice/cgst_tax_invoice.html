@@ -152,8 +152,8 @@
                     {% endif %}
                 </td>
                 <td style="text-align:right;">
-                    {% if sale_instance.company_profile.is_gst_registered %}
-                    GSTIN - {{ sale_instance.company_profile.gstin }}
+                    {% if is_registered %}
+                    GSTIN - {{ vendor_gstin }}
                     {% else %}
                     GSTIN - Unregistered
                     {% endif %}<br>
@@ -202,14 +202,14 @@
                     <th rowspan="2">Rate</th>
                     <th rowspan="2">Dis</th>
                     <th rowspan="2">Qty</th>
-                    {% if sale_instance.company_profile.is_gst_registered %}
+                    {% if is_registered %}
                     <th rowspan="2">Taxable<br>Value</th>
                     <th colspan="{% if is_igst %}2{% else %}4{% endif %}">GST</th>
                     {% endif %}
                     <th rowspan="2">Total</th>
                 </tr>
                 <tr>
-                    {% if sale_instance.company_profile.is_gst_registered %}
+                    {% if is_registered %}
                     {% if is_igst %}
                     <th>IGST %</th>
                     <th>IGST Amt</th>
@@ -227,14 +227,14 @@
                 <tr>
                     <td>{{ forloop.counter }}</td>
                     <td>{{ item.name }}</td>
-                    {% if sale_instance.company_profile.is_gst_registered %}
+                    {% if is_registered %}
 
                     <td>{{ item.hsn }}</td>
                     {% endif %}
                     <td>{{ item.price|floatformat:2 }}</td>
                     <td>{{ discount_percentage|default:"0" }}%</td>
                     <td>{{ item.quantity }}</td>
-                    {% if sale_instance.company_profile.is_gst_registered %}
+                    {% if is_registered %}
                     <td>{{ item.taxable_value|floatformat:2 }}</td>
                     {% if is_igst %}
                     <td>{{ item.igst_percent }}%</td>
@@ -322,7 +322,7 @@
                 <td colspan="2" class="terms">
                     <b>Terms & Conditions</b>
                     <div class="pre-wrap-content" style="margin-top: 2px;">{{ display_terms|default:""|safe }}</div>
-                    {% if sale_instance.company_profile.is_gst_registered %}
+                    {% if is_registered %}
                     <i style="font-size: 10px;">
                         Note:
                         {% if is_igst %}Inter-state transaction (IGST applicable).{% else %}Intra-state transaction (CGST & SGST applicable).{% endif %}
