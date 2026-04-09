@@ -8663,45 +8663,36 @@ class customer_sale_invoice(APIView):
     def get(self, request, sale_id=None):
         """
         Return POS sale invoice PDF to the *customer* (or vendor) for a given sale.
-        Access control:
-        - allowed if sale.user == request.user (vendor who created it)
-        - OR sale.customer.user == request.user (customer login mapped on vendor_customers.user)
+        Logic matches the standard sale_invoice view at vendor/urls.py:L205.
         """
         from django.http import HttpResponse
-        from django.shortcuts import render
+        from django.shortcuts import render, get_object_or_404
         from django.template.loader import get_template
         from django.conf import settings
-        import requests
-        from num2words import num2words
         from decimal import Decimal
+        from django.utils import timezone
+        from types import SimpleNamespace
 
-        # accept ?id= as fallback
+        # Accept ?id= as fallback
         if sale_id is None:
             sale_id = request.query_params.get("id") if hasattr(request, "query_params") else request.GET.get("id")
         if not sale_id:
             return Response({"error": "id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 1. Fetch sale
         sale = (
             Sale.objects
             .prefetch_related('items__product')
-            .select_related('customer', 'company_profile', 'user')
+            .select_related('customer', 'company_profile')
             .filter(id=sale_id)
             .first()
         )
         if not sale:
             return Response({"error": "Sale not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # NOTE: Token/security intentionally disabled as requested.
-        # This endpoint is now publicly accessible with just sale_id.
-
+        # 2. Extract wholesale data
         wholesale = sale.wholesales.first()
-        # If no pos_wholesale row exists, still generate invoice PDF with default invoice_type
-        # and charges=0 using Sale.invoice_number.
         if not wholesale:
-            from types import SimpleNamespace
-            from django.utils import timezone
-            from decimal import Decimal
-
             sale_dt = getattr(sale, "created_at", None) or timezone.now()
             wholesale = SimpleNamespace(
                 invoice_type="invoice",
@@ -8711,9 +8702,18 @@ class customer_sale_invoice(APIView):
                 packaging_charges=Decimal("0.00"),
             )
 
-        sale_type = (wholesale.invoice_type or "invoice").lower().replace(" ", "_")
+        sale_type = (getattr(wholesale, "invoice_type", None) or "invoice").lower().replace(" ", "_")
 
-        # Determine store GST type (CGST if vendor/customer state matches else IGST)
+        # 3. Extract vendor details from vendor_store for GST/KYC info
+        from .models import vendor_store
+        vstore = vendor_store.objects.filter(user=sale.user).first()
+        is_registered = bool(vstore and vstore.gstin and vstore.is_gstin_verified)
+        
+        vendor_gstin = vstore.gstin if vstore else None
+        vendor_pan = vstore.pan_number if vstore else None
+        vendor_fssai = vstore.fssai_number if vstore else None
+
+        # 4. Determine store GST type
         vendor_state_name = None
         if getattr(sale, "company_profile", None) and getattr(sale.company_profile, "state", None):
             vendor_state_name = sale.company_profile.state
@@ -8722,88 +8722,87 @@ class customer_sale_invoice(APIView):
         if vendor_state_name and customer_state_name:
             same_state = vendor_state_name.strip().lower() == str(customer_state_name).strip().lower()
         store_gst = "cgst" if same_state else "igst"
-        is_igst = store_gst == "igst"
-        is_registered = bool(
-            getattr(sale, "company_profile", None)
-            and getattr(sale.company_profile, "is_gst_registered", False)
-        )
-        if sale_type == "invoice":
-            doc_title = "TAX INVOICE"
-        elif sale_type == "proforma":
-            doc_title = "PROFORMA INVOICE"
-        elif sale_type == "quotation":
-            doc_title = "QUOTATION"
-        elif sale_type == "delivery_challan":
-            doc_title = "DELIVERY CHALLAN"
-        else:
-            doc_title = sale_type.replace("_", " ").title()
+        is_igst = (store_gst == "igst")
 
-        template_map = {
-            "proforma": {"igst": "sale_invoice/igst_proforma.html", "cgst": "sale_invoice/cgst_proforma.html"},
-            "invoice": {"igst": "sale_invoice/igst_invoice.html", "cgst": "sale_invoice/cgst_tax_invoice.html"},
-            "quotation": {"igst": "sale_invoice/igst_quotation.html", "cgst": "sale_invoice/cgst_quotation.html"},
-            "delivery_challan": {"igst": "sale_invoice/igst_delivery_challan.html", "cgst": "sale_invoice/cgst_delivery_challan.html"},
-        }
-        template_name = template_map.get(sale_type, {}).get(store_gst) or "sale_invoice/online_invoice.html"
+        # 5. Template and doc title Selection
+        common_template = "sale_invoice/cgst_tax_invoice.html"
+        template_name = common_template
+        doc_title = "TAX INVOICE" if is_registered else "INVOICE"
+        
+        if sale.is_wholesale_rate:
+            template_name = "sale_invoice/igst_proforma.html"
 
-        # Charges and totals
-        delivery = Decimal(wholesale.delivery_charges or 0)
-        packaging = Decimal(wholesale.packaging_charges or 0)
-        # `sale.total_amount` already includes delivery/packaging from totals calculation.
+        user = sale.user or request.user
+        inv_settings = InvoiceSettings.objects.filter(user=user).first()
+        use_thermal = inv_settings and inv_settings.thermal_print and not sale.is_wholesale_rate
+        if use_thermal:
+            template_name = "sale_invoice/thermal_bill.html"
+
+        # 6. Totals and Calculations
+        delivery = Decimal(getattr(wholesale, "delivery_charges", 0) or 0)
+        packaging = Decimal(getattr(wholesale, "packaging_charges", 0) or 0)
         total_amount = Decimal(sale.total_amount or 0)
-        rounded_total = int(total_amount.to_integral_value(rounding="ROUND_HALF_UP"))
-        round_off_value = float(Decimal(rounded_total) - total_amount)
+        rounded_total = round(total_amount)
+        round_off_value = round(rounded_total - total_amount, 2)
 
-        # HSN Summary / items
+        # 7. HSN Summary & Item Processing
         hsn_summary = {}
-        total_tax = Decimal(0)
-        total_taxable = Decimal(0)
+        total_tax = 0
+        total_taxable = 0
         total_quantity = 0
-        total_sgst = Decimal(0)
-        total_cgst = Decimal(0)
-        total_igst = Decimal(0)
+        total_sgst = 0
+        total_cgst = 0
+        total_igst = 0
         items_with_tax = []
-
         for item in sale.items.all():
             if not item.product:
                 continue
+                
             hsn = getattr(item.product, "hsn", None) or "N/A"
-            sgst_rate = Decimal(getattr(item.product, "sgst_rate", None) or 9)
-            cgst_rate = Decimal(getattr(item.product, "cgst_rate", None) or 9)
-            taxable_val = Decimal(item.amount or 0)
+            product_gst = getattr(item.product, "gst", None)
+            if not product_gst:
+                sgst_rate = 0
+                cgst_rate = 0
+            else:
+                sgst_rate = getattr(item.product, "sgst_rate", None) or 9
+                cgst_rate = getattr(item.product, "cgst_rate", None) or 9
+            taxable_val = float(item.amount)
 
             if hsn not in hsn_summary:
-                hsn_summary[hsn] = {"taxable_value": Decimal(0), "sgst_rate": sgst_rate, "cgst_rate": cgst_rate}
-            hsn_summary[hsn]["taxable_value"] += taxable_val
-
-            total_tax += Decimal(item.tax_amount or 0)
-            total_taxable += taxable_val
+                hsn_summary[hsn] = {
+                    'taxable_value': 0,
+                    'sgst_rate': sgst_rate,
+                    'cgst_rate': cgst_rate,
+                }
+            hsn_summary[hsn]['taxable_value'] += taxable_val
+            total_tax += item.tax_amount
+            total_taxable += float(item.amount)
             total_quantity += int(item.quantity or 0)
 
-            sgst_amt = (taxable_val * sgst_rate / Decimal(100)).quantize(Decimal("0.01"))
-            cgst_amt = (taxable_val * cgst_rate / Decimal(100)).quantize(Decimal("0.01"))
+            sgst_amt = round(taxable_val * float(sgst_rate) / 100, 2)
+            cgst_amt = round(taxable_val * float(cgst_rate) / 100, 2)
             total_sgst += sgst_amt
             total_cgst += cgst_amt
-            total_igst += Decimal(item.tax_amount or 0)
+            total_igst += float(item.tax_amount or 0)
 
             items_with_tax.append({
                 "name": getattr(item.product, "name", "N/A"),
                 "hsn": getattr(item.product, "hsn", None) or "N/A",
-                "price": float(item.price or 0),
-                "quantity": int(item.quantity or 0),
-                "taxable_value": float(taxable_val),
-                "sgst_percent": float(sgst_rate),
-                "cgst_percent": float(cgst_rate),
-                "sgst_amount": float(sgst_amt),
-                "cgst_amount": float(cgst_amt),
+                "price": float(item.price),
+                "quantity": int(item.quantity),
+                "taxable_value": taxable_val,
+                "sgst_percent": float(sgst_rate or 0),
+                "cgst_percent": float(cgst_rate or 0),
+                "sgst_amount": sgst_amt,
+                "cgst_amount": cgst_amt,
                 "igst_percent": float(getattr(item.product, "gst", 0) or 0),
-                "igst_amount": float(Decimal(item.tax_amount or 0)),
-                "total_with_tax": float(item.total_with_tax or 0),
+                "igst_amount": float(item.tax_amount or 0),
+                "total_with_tax": float(item.total_with_tax),
             })
 
+        from .views import _invoice_line_totals_after_discount
         _invoice_line_totals_after_discount(items_with_tax, sale.discount_amount)
 
-        for hsn, data in hsn_summary.items():
             data["sgst_amount"] = (data["taxable_value"] * data["sgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
             data["cgst_amount"] = (data["taxable_value"] * data["cgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
             data["total_tax"] = (data["sgst_amount"] + data["cgst_amount"]).quantize(Decimal("0.01"))

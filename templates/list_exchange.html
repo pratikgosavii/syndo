@@ -122,7 +122,11 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 page-title">Return / Exchange Requests</h4>
+                        <h4 class="mb-sm-0 page-title">
+                            {% if filter_type == 'return' %}Return List
+                            {% elif filter_type == 'exchange' %}Replace List
+                            {% else %}Return / Exchange Requests{% endif %}
+                        </h4>
                     </div>
                 </div>
             </div>
@@ -161,15 +165,23 @@
                         <div class="card">
                             <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table exchange-table">
+                                    <table id="datatable" class="table order-table">
                                         <thead>
                                             <tr>
-                                                <th>#</th>
-                                                <th>ORDER ITEM</th>
-                                                <th>USER</th>
-                                                <th>TYPE</th>
+                                                <th>ORDER ID</th>
+                                                <th>CUSTOMER</th>
+                                                {% if request.user.is_superuser %}
+                                                    <th>VENDOR NAME</th>
+                                                    <th>COMPANY NAME</th>
+                                                    <th>MOBILE NUMBER</th>
+                                                    <th>REGISTRATION EMAIL</th>
+                                                {% endif %}
+                                                <th>DATE / TIME</th>
+                                                <th>PRODUCT</th>
+                                                <th>DELIVERY</th>
+                                                <th>PAYMENT</th>
                                                 <th>STATUS</th>
-                                                <th>REQUESTED ON</th>
+                                                <th>TOTAL</th>
                                                 <th>ACTION</th>
                                             </tr>
                                         </thead>
@@ -177,15 +189,35 @@
                                             {% if data %}
                                                 {% for i in data %}
                                                     <tr>
-                                                        <td class="request-id">{{ forloop.counter }}</td>
+                                                        <td class="order-id">#{{ i.order_item.order.order_id }}</td>
+                                                        <td>
+                                                            <span class="customer-name">{{ i.user.get_full_name|default:i.user.username }}</span>
+                                                            {% if i.order_item.order.address %}
+                                                                <span class="customer-phone">{{ i.order_item.order.address.mobile_number }}</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        {% if request.user.is_superuser %}
+                                                            {% with vendor=i.order_item.product.user %}
+                                                                <td>{{ vendor.get_full_name|default:vendor.username|default:"—" }}</td>
+                                                                <td>{{ vendor.user_company_profile.company_name|default:"—" }}</td>
+                                                                <td>{{ vendor.mobile|default:"—" }}</td>
+                                                                <td>{{ vendor.user_company_profile.email|default:"—" }}</td>
+                                                            {% endwith %}
+                                                        {% endif %}
+                                                        <td>
+                                                            <span class="date-line">{{ i.created_at|date:"d M Y" }}</span><br>
+                                                            <span class="time-line">{{ i.created_at|time:"g:i A" }}</span>
+                                                        </td>
                                                         <td>
                                                             <span class="product-name">{{ i.order_item.product.name }} × {{ i.order_item.quantity }}</span>
                                                         </td>
+                                                        <td>{{ i.order_item.order.get_delivery_type_display|default:i.order_item.order.delivery_type|default:"—" }}</td>
                                                         <td>
-                                                            <span class="user-name">{{ i.user.get_full_name|default:i.user.username }}</span>
-                                                        </td>
-                                                        <td>
-                                                            <span class="type-badge">{{ i.get_type_display }}</span>
+                                                            <span class="payment-badge">
+                                                                {{ i.order_item.order.payment_mode|default:"COD"|upper }}
+                                                                <span class="mx-1">•</span>
+                                                                {% if i.order_item.order.is_paid %}<span class="paid">Paid</span>{% else %}<span class="unpaid">Unpaid</span>{% endif %}
+                                                            </span>
                                                         </td>
                                                         <td>
                                                             {% with status=i.order_item.status %}
@@ -203,17 +235,14 @@
                                                             </span>
                                                             {% endwith %}
                                                         </td>
-                                                        <td>
-                                                            <span class="date-line">{{ i.created_at|date:"d M Y" }}</span><br>
-                                                            <span class="time-line">{{ i.created_at|time:"g:i A" }}</span>
-                                                        </td>
+                                                        <td class="total-amount">₹ {{ i.amount }}</td>
                                                         <td>
                                                             <a href="{% url 'return_detail' i.id %}" class="btn-view">View</a>
                                                         </td>
                                                     </tr>
                                                 {% endfor %}
                                             {% else %}
-                                                <tr><td colspan="7" class="text-center py-4 text-muted">No requests found.</td></tr>
+                                                <tr><td colspan="{% if request.user.is_superuser %}13{% else %}9{% endif %}" class="text-center py-4 text-muted">No requests found.</td></tr>
                                             {% endif %}
                                         </tbody>
                                     </table>

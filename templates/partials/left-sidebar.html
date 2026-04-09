@@ -340,6 +340,8 @@ body[data-sidebar-size=sm] .sidebar-logout-wrap {
                             </a>
                             <ul class="sub-menu" aria-expanded="false">
                                 <li><a href="{% url 'order_list' %}">Online orders</a></li>
+                                <li><a href="{% url 'order_exchange_list' %}?type=return">Return list</a></li>
+                                <li><a href="{% url 'order_exchange_list' %}?type=exchange">Replace list</a></li>
                             </ul>
                         </li>
 
