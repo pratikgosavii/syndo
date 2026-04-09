@@ -8727,7 +8727,6 @@ class customer_sale_invoice(APIView):
         # 5. Template and doc title Selection
         common_template = "sale_invoice/cgst_tax_invoice.html"
         template_name = common_template
-        doc_title = "TAX INVOICE" if is_registered else "INVOICE"
         
         if sale.is_wholesale_rate:
             template_name = "sale_invoice/igst_proforma.html"
@@ -8739,51 +8738,24 @@ class customer_sale_invoice(APIView):
             template_name = "sale_invoice/thermal_bill.html"
 
         # 6. Totals and Calculations
-        delivery = Decimal(getattr(wholesale, "delivery_charges", 0) or 0)
-        packaging = Decimal(getattr(wholesale, "packaging_charges", 0) or 0)
         total_amount = Decimal(sale.total_amount or 0)
         rounded_total = round(total_amount)
         round_off_value = round(rounded_total - total_amount, 2)
 
         # 7. HSN Summary & Item Processing
-        hsn_summary = {}
-        total_tax = 0
-        total_taxable = 0
         total_quantity = 0
-        total_sgst = 0
-        total_cgst = 0
-        total_igst = 0
         items_with_tax = []
         for item in sale.items.all():
             if not item.product:
                 continue
                 
-            hsn = getattr(item.product, "hsn", None) or "N/A"
-            product_gst = getattr(item.product, "gst", None)
-            if not product_gst:
-                sgst_rate = 0
-                cgst_rate = 0
-            else:
-                sgst_rate = getattr(item.product, "sgst_rate", None) or 9
-                cgst_rate = getattr(item.product, "cgst_rate", None) or 9
+            sgst_rate = getattr(item.product, "sgst_rate", None) or 9
+            cgst_rate = getattr(item.product, "cgst_rate", None) or 9
             taxable_val = float(item.amount)
-
-            if hsn not in hsn_summary:
-                hsn_summary[hsn] = {
-                    'taxable_value': 0,
-                    'sgst_rate': sgst_rate,
-                    'cgst_rate': cgst_rate,
-                }
-            hsn_summary[hsn]['taxable_value'] += taxable_val
-            total_tax += item.tax_amount
-            total_taxable += float(item.amount)
-            total_quantity += int(item.quantity or 0)
-
             sgst_amt = round(taxable_val * float(sgst_rate) / 100, 2)
             cgst_amt = round(taxable_val * float(cgst_rate) / 100, 2)
-            total_sgst += sgst_amt
-            total_cgst += cgst_amt
-            total_igst += float(item.tax_amount or 0)
+            
+            total_quantity += int(item.quantity or 0)
 
             items_with_tax.append({
                 "name": getattr(item.product, "name", "N/A"),
@@ -8803,83 +8775,125 @@ class customer_sale_invoice(APIView):
         from .views import _invoice_line_totals_after_discount
         _invoice_line_totals_after_discount(items_with_tax, sale.discount_amount)
 
-            data["sgst_amount"] = (data["taxable_value"] * data["sgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
-            data["cgst_amount"] = (data["taxable_value"] * data["cgst_rate"] / Decimal(100)).quantize(Decimal("0.01"))
-            data["total_tax"] = (data["sgst_amount"] + data["cgst_amount"]).quantize(Decimal("0.01"))
-            data["igst_rate"] = (data["sgst_rate"] + data["cgst_rate"]).quantize(Decimal("0.01"))
-            data["igst_amount"] = data["total_tax"]
+        hsn_summary = {}
+        total_taxable = 0
+        total_tax = 0
+        total_sgst = 0
+        total_cgst = 0
+        total_igst = 0
+        for row in items_with_tax:
+            hsn = row["hsn"]
+            if hsn not in hsn_summary:
+                hsn_summary[hsn] = {
+                    'taxable_value': 0,
+                    'sgst_rate': row["sgst_percent"],
+                    'cgst_rate': row["cgst_percent"],
+                    'sgst_amount': 0,
+                    'cgst_amount': 0,
+                    'igst_rate': row["igst_percent"],
+                    'igst_amount': 0,
+                    'total_tax': 0,
+                }
+            hsn_summary[hsn]['taxable_value'] += row["taxable_value"]
+            hsn_summary[hsn]['sgst_amount'] += row["sgst_amount"]
+            hsn_summary[hsn]['cgst_amount'] += row["cgst_amount"]
+            hsn_summary[hsn]['igst_amount'] += row["igst_amount"]
+            hsn_summary[hsn]['total_tax'] += (row["igst_amount"])
 
+            total_taxable += row["taxable_value"]
+            total_tax += row["igst_amount"]
+            total_sgst += row["sgst_amount"]
+            total_cgst += row["cgst_amount"]
+            total_igst += row["igst_amount"]
+
+        gross_subtotal_items = sum(float(item.price * item.quantity) for item in sale.items.all())
+        discount_percentage = 0
+        if gross_subtotal_items > 0:
+            discount_percentage = round((float(sale.discount_amount or 0) / gross_subtotal_items) * 100, 2)
+
+        from .views import _amount_in_words_inr
         total_in_words = _amount_in_words_inr(rounded_total)
 
-        # For credit sales, balance = total - advance; otherwise treat as fully paid
         if sale.payment_method == "credit":
-            paid_amount = Decimal(sale.advance_amount or 0)
-            balance_raw = (Decimal(rounded_total) - paid_amount).quantize(Decimal("0.01"))
-            balance_amount = balance_raw if balance_raw > 0 else Decimal("0.00")
+            paid_amount = float(sale.advance_amount or 0)
+            balance_raw = round(rounded_total - paid_amount, 2)
+            balance_amount = balance_raw if balance_raw > 0 else 0.0
         else:
-            paid_amount = Decimal(rounded_total)
-            balance_amount = Decimal("0.00")
+            paid_amount = float(rounded_total)
+            balance_amount = 0.0
 
-        # Terms: use wholesale.terms if present, else InvoiceSettings.terms_and_conditions
         term_from_sale = getattr(wholesale, 'terms', None) or ''
-        if term_from_sale and str(term_from_sale).strip():
-            display_terms = term_from_sale
-        else:
-            inv_settings = InvoiceSettings.objects.filter(user=sale.user).first()
-            display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
+        display_terms = term_from_sale if term_from_sale and str(term_from_sale).strip() else ((inv_settings.terms_and_conditions or '') if inv_settings else '')
 
+        from .views import _invoice_company_media_data_uris
         company_logo_data_uri, payment_qr_data_uri, company_signature_data_uri = _invoice_company_media_data_uris(sale)
 
+        if sale_type == "invoice":
+            doc_title = "TAX INVOICE"
+        elif sale_type == "proforma":
+            doc_title = "PROFORMA INVOICE"
+        elif sale_type == "quotation":
+            doc_title = "QUOTATION"
+        elif sale_type == "delivery_challan":
+            doc_title = "DELIVERY CHALLAN"
+        else:
+            doc_title = sale_type.replace("_", " ").title()
+
+        copy_type = request.GET.get('copy_type', 'ORIGINAL FOR RECIPIENT')
+
         context = {
-            "sale_instance": sale,
-            "wholesale": wholesale,
-            "display_terms": display_terms,
-            "total_amount": float(total_amount),
-            "rounded_total": rounded_total,
-            "round_off_value": float(round_off_value),
-            "hsn_summary": hsn_summary.items(),
-            "total_in_words": total_in_words,
-            "total_tax": float(total_tax),
-            "store_gst": store_gst,
-            "sum_taxable": float(total_taxable.quantize(Decimal("0.01"))),
-            "sum_sgst": float(total_sgst.quantize(Decimal("0.01"))),
-            "sum_cgst": float(total_cgst.quantize(Decimal("0.01"))),
-            "sum_igst": float(total_igst.quantize(Decimal("0.01"))),
-            "total_quantity": total_quantity,
-            "discount_percentage": sale.discount_percentage or 0,
-            "discount_amount": sale.discount_amount or 0,
-            "paid_amount": float(paid_amount),
-            "balance_amount": float(balance_amount),
-            "items_with_tax": items_with_tax,
-            "is_igst": is_igst,
-            "is_registered": is_registered,
-            "doc_title": doc_title,
-            "company_logo_data_uri": company_logo_data_uri,
-            "payment_qr_data_uri": payment_qr_data_uri,
-            "company_signature_data_uri": company_signature_data_uri,
+            'sale_instance': sale,
+            'wholesale': wholesale,
+            'display_terms': display_terms,
+            'total_amount': total_amount,
+            'rounded_total': rounded_total,
+            'round_off_value': round_off_value,
+            'hsn_summary': hsn_summary.items(),
+            'total_in_words': total_in_words,
+            'total_tax': total_tax,
+            'gross_subtotal_items': gross_subtotal_items,
+            'product_total_after_discount': total_amount,
+            'store_gst': store_gst,
+            'sum_taxable': round(total_taxable, 2),
+            'sum_sgst': round(total_sgst, 2),
+            'sum_cgst': round(total_cgst, 2),
+            'sum_igst': round(total_igst, 2),
+            'total_quantity': total_quantity,
+            'discount_percentage': discount_percentage,
+            'discount_amount': sale.discount_amount or 0,
+            'paid_amount': paid_amount,
+            'balance_amount': balance_amount,
+            'company_logo_data_uri': company_logo_data_uri,
+            'payment_qr_data_uri': payment_qr_data_uri,
+            'company_signature_data_uri': company_signature_data_uri,
+            'doc_title': doc_title,
+            'copy_type': copy_type,
+            'is_igst': is_igst,
+            'is_registered': is_registered,
+            'items_with_tax': items_with_tax,
+            'vendor_pan': vendor_pan,
+            'vendor_gstin': vendor_gstin,
+            'vendor_fssai': vendor_fssai,
         }
 
-        # Render template to HTML string and convert to PDF
         template = get_template(template_name)
-        html_content = template.render(context, request._request if hasattr(request, "_request") else request)
+        html_content = template.render(context, request)
 
-        # Generate PDF using LOCAL Playwright
         try:
-            pdf_options = {
-                "pageSize": "A4",
-                "margin": {"top": "10mm", "bottom": "10mm", "left": "10mm", "right": "10mm"},
-            }
-            pdf_bytes = html_to_pdf_local(html_content, pdf_options)
+            from .pdf_utils import html_to_pdf_local
+            pdf_options = {}
+            if use_thermal:
+                pdf_options = {'width': 302, 'height': 1123, 'margin': {'top': '15px', 'bottom': '15px', 'left': '12px', 'right': '12px'}}
+            else:
+                pdf_options = {'pageSize': 'A4', 'margin': {'top': '10mm', 'bottom': '10mm', 'left': '10mm', 'right': '10mm'}}
             
-            response = HttpResponse(pdf_bytes, content_type="application/pdf")
-            filename = f"sale_invoice_{sale.id}_{sale_type}.pdf"
-            response["Content-Disposition"] = f'inline; filename="{filename}"'
+            pdf_bytes = html_to_pdf_local(html_content, pdf_options)
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            filename = f"sale_invoice_{sale_id}_{sale_type}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
-        except Exception as local_e:
-            return Response(
-                {"error": "Error generating PDF locally", "details": str(local_e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        except Exception as e:
+            return HttpResponse(f"Error generating PDF: {str(e)}", status=500)
         
 class VendorReturnManageAPIView(APIView):
     """
