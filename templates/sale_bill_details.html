@@ -267,9 +267,40 @@
               </div>
             </div>
             <div class="invoice-actions">
+              {% if sale.is_wholesale_rate %}
+              <div class="d-inline-flex gap-2 align-items-center">
+                <select id="invoice_copy_select" class="form-select form-select-sm" style="width: auto; height: 38px; border-radius: 8px;">
+                  <option value="ORIGINAL FOR RECIPIENT">Original for Recipient</option>
+                  <option value="DUPLICATE FOR SELLER">Duplicate for Seller</option>
+                  <option value="TRANSPARENT COPY">Transparent Copy</option>
+                  <option value="DUPLICATE COPY">Duplicate Copy</option>
+                </select>
+                <a href="{% url 'sale_invoice' sale.id %}" id="wholesale_download_btn" class="btn-download">
+                  <i class="bi bi-download"></i> Download PDF
+                </a>
+              </div>
+              <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                  const select = document.getElementById('invoice_copy_select');
+                  const btn = document.getElementById('wholesale_download_btn');
+                  const baseUrl = "{% url 'sale_invoice' sale.id %}";
+
+                  function updateLink() {
+                    const copyType = encodeURIComponent(select.value);
+                    btn.href = `${baseUrl}?copy_type=${copyType}`;
+                  }
+
+                  if (select && btn) {
+                    select.addEventListener('change', updateLink);
+                    updateLink(); // Set initial value
+                  }
+                });
+              </script>
+              {% else %}
               <a href="{% url 'sale_invoice' sale.id %}" class="btn-download"
                 ><i class="bi bi-download"></i> Download PDF</a
               >
+              {% endif %}
               <a href="{% url 'bill_details_view' sale.id %}" class="btn-edit"
                 ><i class="bi bi-pencil"></i> Edit Invoice</a
               >

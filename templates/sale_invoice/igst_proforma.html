@@ -259,7 +259,7 @@
         </div>
         <div class="invoice-details">
         <h3>{{ doc_title|default:"PROFORMA INVOICE" }}</h3>
-          ORIGINAL FOR RECIPIENT<br />
+          {{ copy_type }}<br />
           Invoice Date: {{ wholesale.date|default:sale_instance.created_at|date:"d/m/Y" }}<br />
           Invoice No: {{ wholesale.invoice_number }}
         </div>

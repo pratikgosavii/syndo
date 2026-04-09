@@ -4763,13 +4763,17 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
         })
 
     # 2. Get Discount and prorate across items
-    discount_amount = getattr(sale_instance, 'discount_amount', None) or Decimal('0')
-    
-    # Avoid division by zero
-    if total_gross_value <= 0:
-        discount_ratio = Decimal('0')
+    total_discount_amount = getattr(sale_instance, 'discount_amount', Decimal('0')) or Decimal('0')
+    total_discount_percentage = getattr(sale_instance, 'discount_percentage', Decimal('0')) or Decimal('0')
+
+    if total_discount_amount > 0:
+        discount_ratio = total_discount_amount / total_gross_value if total_gross_value > 0 else Decimal('0')
+    elif total_discount_percentage > 0:
+        discount_ratio = total_discount_percentage / Decimal('100')
+        # Update discount_amount on instance to match the calculated value for storage and invoice rendering
+        sale_instance.discount_amount = (total_gross_value * discount_ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     else:
-        discount_ratio = discount_amount / total_gross_value
+        discount_ratio = Decimal('0')
 
     total_taxable = Decimal('0')
     total_gst = Decimal('0')
@@ -4862,6 +4866,7 @@ def _update_sale_totals(sale_instance, wholesale_instance=None):
     update_fields = [
         'total_items', 'total_taxable_amount', 'total_gst_amount',
         'total_amount_before_discount', 'total_amount', 'advance_amount', 'balance_amount',
+        'discount_amount', 'discount_percentage'
     ]
     if pm != 'credit':
         update_fields.append('advance_payment_amount')
@@ -5328,6 +5333,8 @@ def sale_invoice(request, sale_id):
     else:
         doc_title = sale_type.replace("_", " ").title()
 
+    copy_type = request.GET.get('copy_type', 'ORIGINAL FOR RECIPIENT')
+
     context = {
         'sale_instance': sale,
         'wholesale': wholesale,
@@ -5354,6 +5361,7 @@ def sale_invoice(request, sale_id):
         'payment_qr_data_uri': payment_qr_data_uri,
         'company_signature_data_uri': company_signature_data_uri,
         'doc_title': doc_title,
+        'copy_type': copy_type,
         'is_igst': is_igst,
         'is_registered': is_registered,
         'items_with_tax': items_with_tax,
