@@ -17,6 +17,7 @@ from .forms import *
 from django.contrib.auth.decorators import login_required
 from .pdf_utils import html_to_pdf_local
 
+from .signals import _get_invoice_label
 
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -6509,7 +6510,7 @@ class DayBookAPIView(APIView):
                 'debit': abs(amt) if amt < 0 else 0,
                 'credit': amt if amt > 0 else 0,
                 'time': e.created_at,
-                'reference_id': e.reference_id,
+                'reference_id': _get_invoice_label(e.transaction_type, e.reference_id),
                 'description': e.description or ''
             }
 
@@ -6521,7 +6522,7 @@ class DayBookAPIView(APIView):
                 'debit': abs(amt) if amt < 0 else 0,
                 'credit': amt if amt > 0 else 0,
                 'time': e.created_at,
-                'reference_id': e.reference_id,
+                'reference_id': _get_invoice_label(e.transaction_type, e.reference_id),
                 'description': e.description or ''
             }
 
@@ -6673,7 +6674,7 @@ def daybook_report(request):
             'debit': abs(amt) if amt < 0 else 0,
             'credit': amt if amt > 0 else 0,
             'time': e.created_at,
-            'reference_id': e.reference_id,
+            'reference_id': _get_invoice_label(e.transaction_type, e.reference_id),
             'description': e.description or ''
         }
 
@@ -6685,7 +6686,7 @@ def daybook_report(request):
             'debit': abs(amt) if amt < 0 else 0,
             'credit': amt if amt > 0 else 0,
             'time': e.created_at,
-            'reference_id': e.reference_id,
+            'reference_id': _get_invoice_label(e.transaction_type, e.reference_id),
             'description': e.description or ''
         }
 
@@ -6698,7 +6699,7 @@ def daybook_report(request):
             'debit': abs(amt),
             'credit': 0,
             'time': e.created_at,
-            'reference_id': e.expense_id,
+            'reference_id': _get_invoice_label('expense', e.expense_id),
             'description': f"{e.category.name}: {e.description or ''}".strip()
         }
 

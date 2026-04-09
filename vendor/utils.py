@@ -87,7 +87,7 @@ def generate_serial_number(prefix, model_class, date=None, user=None, filter_kwa
     except Exception:
         model_field_names = set()
 
-    for field_name in ['invoice_number', 'purchase_code', 'order_id', 'payment_number', 'transaction_id', 'serial_number']:
+    for field_name in ['invoice_number', 'purchase_code', 'order_id', 'payment_number', 'transaction_id', 'transfer_number', 'serial_number']:
         if field_name in model_field_names:
             serial_field = field_name
             break

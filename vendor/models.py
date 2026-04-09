@@ -351,7 +351,8 @@ class BankLedger(models.Model):
         ("expense", "Expense"),
         ("deposit", "Manual Deposit"),
         ("withdrawal", "Bank Withdrawal"),
-        ("transfered", "Transferred"),
+        ("transfered", "Bank Transfer"),
+        ("cash_transfer", "Cash Transfer"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
     reference_id = models.PositiveIntegerField(blank=True, null=True)
@@ -1556,6 +1557,7 @@ class CashTransfer(models.Model):
     bank_account = models.ForeignKey(vendor_bank, on_delete=models.CASCADE, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    transfer_number = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} -> Rs {self.amount}"
@@ -1581,6 +1583,7 @@ class BankTransfer(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     
     notes = models.TextField(blank=True, null=True)
+    transfer_number = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"Transfer {self.amount} from {self.from_bank} to {self.to_bank}"

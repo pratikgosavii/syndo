@@ -2568,4 +2568,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
-{% endblock extra_js %}
+{% block extra_js %}
+<script>
+  /**
+   * POS Edit Mode Initialization
+   * Ensure correct visual state (active buttons, visible sections) on page load
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. Initialize Discount Mode
+    // If discount percentage is set, switch to percent mode visually
+    const discountPercentage = parseFloat(document.getElementById('discount-percentage')?.value) || 0;
+    const discountTypePercentBtn = document.getElementById('discount-type-percent');
+    if (discountPercentage > 0 && discountTypePercentBtn) {
+        discountTypePercentBtn.click();
+    }
+    
+    // 2. Initialize Payment Mode
+    // Highlight the button corresponding to the stored payment method
+    const paymentMethodField = document.getElementById('payment_method');
+    if (paymentMethodField && paymentMethodField.value) {
+        const method = paymentMethodField.value;
+        // Search for matching onclick pattern
+        const selector = `[onclick*="selectPayment('${method}'"]`;
+        const paymentBtn = document.querySelector(selector);
+        if (paymentBtn) {
+            paymentBtn.click();
+        }
+    }
+    
+    // 3. Initialize Advance Payment Mode (for Credit sales)
+    const advancePaymentMethodField = document.getElementById('advance_payment_method');
+    if (advancePaymentMethodField && advancePaymentMethodField.value) {
+        const advMethod = advancePaymentMethodField.value;
+        const advSelector = `[onclick*="selectAdvancePayment('${advMethod}'"]`;
+        const advBtn = document.querySelector(advSelector);
+        if (advBtn) {
+            advBtn.click();
+        }
+    }
+  });
+</script>

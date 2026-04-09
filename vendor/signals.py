@@ -71,6 +71,8 @@ import logging
 # Get logger for signals
 logger = logging.getLogger('vendor.signals')
 
+from .utils import generate_serial_number
+
 # -------------------------------
 # LEDGER CREATION HELPER
 # -------------------------------
@@ -244,9 +246,12 @@ def _get_invoice_label(transaction_type, reference_id):
         if transaction_type == "expense":
             inv = Expense.objects.filter(pk=reference_id).values_list("transaction_id", flat=True).first()
             return inv or f"EXP-#{reference_id}"
-        if transaction_type in ("payment", "refund", "deposit", "withdrawal"):
-            inv = Payment.objects.filter(pk=reference_id).values_list("payment_number", flat=True).first()
-            return inv or f"PAY-#{reference_id}"
+        if transaction_type == "transfered":
+            inv = BankTransfer.objects.filter(pk=reference_id).values_list("transfer_number", flat=True).first()
+            return inv or f"BT-#{reference_id}"
+        if transaction_type == "cash_transfer":
+            inv = CashTransfer.objects.filter(pk=reference_id).values_list("transfer_number", flat=True).first()
+            return inv or f"CT-#{reference_id}"
     except Exception:
         pass
     return f"#{reference_id}"
@@ -1007,24 +1012,26 @@ def expense_ledger(sender, instance, created, **kwargs):
 
     # Create BankLedger entry (for bank balance tracking)
     if instance.bank:
+        expense_label = _get_invoice_label("expense", instance.id)
         create_ledger(
             instance.bank,
             BankLedger,
             "expense",
             instance.id,
             -(instance.amount or Decimal(0)),
-            f"Expense #{instance.id} - {instance.category}" if instance.category else f"Expense #{instance.id}"
+            f"Expense ({expense_label}) - {instance.category}" if instance.category else f"Expense ({expense_label})"
         )
 
     # Create CashLedger entry (for cash balance tracking)
     if instance.payment_method == "cash" and instance.user is not None:
+        expense_label = _get_invoice_label("expense", instance.id)
         create_ledger(
             None,
             CashLedger,
             "expense",
             instance.id,
             -(instance.amount or Decimal(0)),
-            f"Cash Expense #{instance.id}",
+            f"Cash Expense ({expense_label})",
             user=instance.user
         )
 
@@ -1285,7 +1292,7 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
         adjust_ledger_to_target(
             instance.bank_account,
             BankLedger,
-            "deposit",
+            "cash_transfer",
             instance.id,
             (instance.amount or Decimal(0)),
             f"Cash Transfer from Cash"
@@ -1300,7 +1307,7 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
     # Delete old entries for this reference to ensure clean updates
     # This prevents confusion from multiple entries for the same transaction
     BankLedger.objects.filter(
-        transaction_type__in=["transfered", "deposit"],
+        transaction_type="transfered",
         reference_id=instance.id
     ).delete()
 
@@ -1324,7 +1331,7 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
         create_ledger(
             instance.to_bank,
             BankLedger,
-            "deposit",
+            "transfered",
             instance.id,
             amt,
             f"Transfer from {from_name}"
@@ -2453,7 +2460,7 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
                     transaction_type="sale",
                     reference_id=instance.id,
                     amount=amount,
-                    description=f"Online Order Auto-Managed (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
+                    description=f"Online Order Auto-Managed (Order #{getattr(order, 'order_id', order.id)}, Product: {instance.product.name})",
                 )
                 logger.info(f"[ORDER_DELIVERY_CREDIT] ✅ SUCCESS: BankLedger entry created for OrderItem {instance.id}")
                 logger.info(f"[ORDER_DELIVERY_CREDIT] Amount credited: {amount}")
@@ -2495,7 +2502,7 @@ def credit_vendor_cash_on_order_item_delivered(sender, instance, created, **kwar
                 transaction_type="sale",
                 reference_id=instance.id,
                 amount=amount,
-                description=f"Online Order COD Received (Order #{getattr(order, 'order_id', order.id)}, Item #{instance.id})",
+                description=f"Online Order COD (Order #{getattr(order, 'order_id', order.id)}, Product: {instance.product.name})",
                 user=vendor_user,
             )
             logger.info(f"[ORDER_DELIVERY_CREDIT] ✅ SUCCESS: CashLedger entry created for OrderItem {instance.id}")
@@ -2656,3 +2663,15 @@ def send_reminder_push_notification_to_user(user):
         return False
 
 
+# -------------------------------
+# AUTO-NUMBERING FOR TRANSFERS
+# -------------------------------
+@receiver(pre_save, sender=BankTransfer)
+def _capture_bank_transfer_number(sender, instance, **kwargs):
+    if not instance.transfer_number:
+        instance.transfer_number = generate_serial_number("BT", BankTransfer, user=instance.user)
+
+@receiver(pre_save, sender=CashTransfer)
+def _capture_cash_transfer_number(sender, instance, **kwargs):
+    if not instance.transfer_number:
+        instance.transfer_number = generate_serial_number("CT", CashTransfer, user=instance.user)
