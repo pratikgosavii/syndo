@@ -5139,12 +5139,29 @@ def sale_invoice(request, sale_id):
     sale_type = (getattr(wholesale, "invoice_type", None) or "invoice").lower().replace(" ", "_")  # normalize
     # Extract vendor details from vendor_store for GST/KYC info
     from .models import vendor_store
-    vstore = vendor_store.objects.filter(user=sale.user).first()
-    is_registered = bool(vstore and vstore.gstin and vstore.is_gstin_verified)
     
-    vendor_gstin = vstore.gstin if vstore else None
-    vendor_pan = vstore.pan_number if vstore else None
-    vendor_fssai = vstore.fssai_number if vstore else None
+    vstore = vendor_store.objects.filter(user=sale.user).first()
+    if not vstore and getattr(sale, 'company_profile', None):
+        vstore = vendor_store.objects.filter(user=sale.company_profile.user).first()
+
+    is_registered = False
+    vendor_gstin = None
+    vendor_pan = None
+    vendor_fssai = None
+
+    # Check vendor_store first for verified GSTIN
+    if vstore and vstore.gstin and vstore.is_gstin_verified:
+        is_registered = True
+        vendor_gstin = vstore.gstin
+        vendor_pan = vstore.pan_number
+        vendor_fssai = vstore.fssai_number
+    # Fallback to CompanyProfile
+    elif getattr(sale, 'company_profile', None) and sale.company_profile.is_gst_registered and sale.company_profile.gstin:
+        is_registered = True
+        vendor_gstin = sale.company_profile.gstin
+        
+    if not vendor_pan and getattr(sale, 'company_profile', None):
+        vendor_pan = getattr(sale.company_profile, 'pan', None)
 
     if vstore:
         print(f"Vendor Store Found: {vstore.id}, Registered: {is_registered}")
@@ -8706,12 +8723,27 @@ class customer_sale_invoice(APIView):
 
         # 3. Extract vendor details from vendor_store for GST/KYC info
         from .models import vendor_store
-        vstore = vendor_store.objects.filter(user=sale.user).first()
-        is_registered = bool(vstore and vstore.gstin and vstore.is_gstin_verified)
         
-        vendor_gstin = vstore.gstin if vstore else None
-        vendor_pan = vstore.pan_number if vstore else None
-        vendor_fssai = vstore.fssai_number if vstore else None
+        vstore = vendor_store.objects.filter(user=sale.user).first()
+        if not vstore and getattr(sale, 'company_profile', None):
+            vstore = vendor_store.objects.filter(user=sale.company_profile.user).first()
+
+        is_registered = False
+        vendor_gstin = None
+        vendor_pan = None
+        vendor_fssai = None
+
+        if vstore and vstore.gstin and vstore.is_gstin_verified:
+            is_registered = True
+            vendor_gstin = vstore.gstin
+            vendor_pan = vstore.pan_number
+            vendor_fssai = vstore.fssai_number
+        elif getattr(sale, 'company_profile', None) and sale.company_profile.is_gst_registered and sale.company_profile.gstin:
+            is_registered = True
+            vendor_gstin = sale.company_profile.gstin
+            
+        if not vendor_pan and getattr(sale, 'company_profile', None):
+            vendor_pan = getattr(sale.company_profile, 'pan', None)
 
         # 4. Determine store GST type
         vendor_state_name = None
