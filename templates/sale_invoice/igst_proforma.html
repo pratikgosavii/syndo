@@ -342,9 +342,13 @@
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="4" style="text-align: right;"><b>Total</b></td>
+            <td colspan="{% if is_registered %}4{% else %}3{% endif %}" style="text-align: right;"><b>Total</b></td>
             <td><b>{{ total_quantity }}</b></td>
-            <td colspan="{% if is_registered %}{% if is_igst %}2{% else %}3{% endif %}{% else %}0{% endif %}"></td>
+            {% if is_registered %}
+            <td colspan="{% if is_igst %}2{% else %}3{% endif %}"></td>
+            {% else %}
+            <td></td>
+            {% endif %}
             <td><b>{{ product_total_before_discount|floatformat:2 }}</b></td>
           </tr>
         </tfoot>
