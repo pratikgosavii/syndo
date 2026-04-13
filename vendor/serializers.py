@@ -1594,6 +1594,14 @@ class PurchaseSerializer(serializers.ModelSerializer):
         else:
             validated_data.pop('packing_charges', None)
 
+        # Handle other aliases from request.data if present
+        if request and hasattr(request, 'data'):
+            rdata = request.data
+            if 'eway_bill_number' in rdata and 'eway_bill_no' not in validated_data:
+                validated_data['eway_bill_no'] = rdata.get('eway_bill_number')
+            if 'number_of_parcels' in rdata and 'no_of_parcels' not in validated_data:
+                validated_data['no_of_parcels'] = rdata.get('number_of_parcels')
+
         # purchase_code will be generated in Purchase.save() method
         purchase = Purchase.objects.create(
             user=user,
@@ -1665,6 +1673,15 @@ class PurchaseSerializer(serializers.ModelSerializer):
             # Remove alias from validated_data if present
             validated_data.pop('packing_charges', None)
         
+        # Handle transport related aliases
+        if 'eway_bill_number' in request_data and 'eway_bill_no' not in validated_data:
+            validated_data['eway_bill_no'] = request_data.get('eway_bill_number')
+            logger.info(f"[PURCHASE_SERIALIZER] Mapped eway_bill_number -> eway_bill_no: {validated_data['eway_bill_no']}")
+        
+        if 'number_of_parcels' in request_data and 'no_of_parcels' not in validated_data:
+            validated_data['no_of_parcels'] = request_data.get('number_of_parcels')
+            logger.info(f"[PURCHASE_SERIALIZER] Mapped number_of_parcels -> no_of_parcels: {validated_data['no_of_parcels']}")
+
         # Handle bank field explicitly - check if it's in request_data (even if None)
         if 'bank' in request_data:
             bank_value = request_data.get('bank')
@@ -1682,6 +1699,25 @@ class PurchaseSerializer(serializers.ModelSerializer):
                     logger.info(f"[PURCHASE_SERIALIZER] Bank already in validated_data: {validated_data.get('bank')}")
         else:
             logger.info("[PURCHASE_SERIALIZER] Bank not in request_data")
+        
+        # Handle discount mutual exclusivity - if one is sent in the body, the other should be reset to 0
+        # to ensure precedence logic in calculate_total() works as expected.
+        # Check both request_data AND validated_data to be absolutely sure we capture it.
+        dis_amt = request_data.get('discount_amount')
+        dis_per = request_data.get('discount_percentage')
+
+        if dis_amt is not None and dis_per is None:
+            validated_data['discount_amount'] = dis_amt
+            validated_data['discount_percentage'] = 0
+            logger.info(f"[PURCHASE_SERIALIZER] Prioritizing discount_amount={dis_amt}, resetting percentage to 0")
+        elif dis_per is not None and dis_amt is None:
+            validated_data['discount_percentage'] = dis_per
+            validated_data['discount_amount'] = 0
+            logger.info(f"[PURCHASE_SERIALIZER] Prioritizing discount_percentage={dis_per}, resetting amount to 0")
+        elif dis_amt is not None and dis_per is not None:
+            logger.info(f"[PURCHASE_SERIALIZER] Both discounts provided: amount={dis_amt}, percentage={dis_per}")
+            # If both are provided, DRF's validated_data will handle it, 
+            # and calculate_total() will favor percentage.
         
         # Check if delivery_shipping_charges or packaging_charges are being updated
         charges_updated = 'delivery_shipping_charges' in validated_data or 'packaging_charges' in validated_data

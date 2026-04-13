@@ -3,6 +3,7 @@ from django.dispatch import receiver
 
 from masters.models import expense_category
 from users.models import User
+from django.apps import apps
 
 
 DEFAULT_EXPENSE_CATEGORIES = [
@@ -54,5 +55,13 @@ def create_default_expense_categories_for_new_vendor(sender, instance: User, cre
 
     for name in DEFAULT_EXPENSE_CATEGORIES:
         expense_category.objects.get_or_create(user=instance, name=name)
+
+    # Create default OrderNotificationMessage
+    OrderNotificationMessage = apps.get_model('vendor', 'OrderNotificationMessage')
+    default_msg = "Thankyou for choosing us. Your order is our priority. For prompt processing of order for expedited delivery, please reach out to our shop using the call option provided in the order details. "
+    OrderNotificationMessage.objects.get_or_create(
+        user=instance,
+        defaults={'message': default_msg, 'is_active': True}
+    )
 
 
