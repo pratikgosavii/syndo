@@ -17,6 +17,48 @@ from users.models import User
 
 
 
+STATE_CHOICES = [
+    ("Andhra Pradesh", "Andhra Pradesh"),
+    ("Arunachal Pradesh", "Arunachal Pradesh"),
+    ("Assam", "Assam"),
+    ("Bihar", "Bihar"),
+    ("Chhattisgarh", "Chhattisgarh"),
+    ("Goa", "Goa"),
+    ("Gujarat", "Gujarat"),
+    ("Haryana", "Haryana"),
+    ("Himachal Pradesh", "Himachal Pradesh"),
+    ("Jharkhand", "Jharkhand"),
+    ("Karnataka", "Karnataka"),
+    ("Kerala", "Kerala"),
+    ("Madhya Pradesh", "Madhya Pradesh"),
+    ("Maharashtra", "Maharashtra"),
+    ("Manipur", "Manipur"),
+    ("Meghalaya", "Meghalaya"),
+    ("Mizoram", "Mizoram"),
+    ("Nagaland", "Nagaland"),
+    ("Odisha", "Odisha"),
+    ("Punjab", "Punjab"),
+    ("Rajasthan", "Rajasthan"),
+    ("Sikkim", "Sikkim"),
+    ("Tamil Nadu", "Tamil Nadu"),
+    ("Telangana", "Telangana"),
+    ("Tripura", "Tripura"),
+    ("Uttar Pradesh", "Uttar Pradesh"),
+    ("Uttarakhand", "Uttarakhand"),
+    ("West Bengal", "West Bengal"),
+    ("Andaman and Nicobar Islands", "Andaman and Nicobar Islands"),
+    ("Chandigarh", "Chandigarh"),
+    ("Dadra and Nagar Haveli and Daman and Diu", "Dadra and Nagar Haveli and Daman and Diu"),
+    ("Delhi", "Delhi"),
+    ("Jammu and Kashmir", "Jammu and Kashmir"),
+    ("Ladakh", "Ladakh"),
+    ("Lakshadweep", "Lakshadweep"),
+    ("Puducherry", "Puducherry"),
+]
+
+
+
+
 class coupon(models.Model):
 
     COUPON_TYPE_CHOICES = [
@@ -278,7 +320,7 @@ class vendor_customers(models.Model):
     dispatch_state = models.CharField(max_length=50, blank=True, null=True)
     dispatch_country = models.CharField(max_length=50, blank=True, null=True)
     # Transport
-    state = models.ForeignKey('masters.State', on_delete=models.SET_NULL, null=True, blank=True)
+    state = models.CharField(max_length=100, choices=STATE_CHOICES, blank=True, null=True)
 
     transport_name = models.CharField(max_length=100, blank=True, null=True)
 
@@ -319,7 +361,7 @@ class vendor_vendors(models.Model):
     address_line_2 = models.CharField(max_length=255, blank=True, null=True)
     pincode = models.CharField(max_length=10, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
-    state = models.ForeignKey('masters.State', on_delete=models.SET_NULL, null=True, blank=True)
+    state = models.CharField(max_length=100, choices=STATE_CHOICES, blank=True, null=True)
 
     country = models.CharField(max_length=100, blank=True, null=True)
 
@@ -1137,44 +1179,6 @@ class PurchaseItem(models.Model):
 
             
 
-STATE_CHOICES = [
-    ("Andhra Pradesh", "Andhra Pradesh"),
-    ("Arunachal Pradesh", "Arunachal Pradesh"),
-    ("Assam", "Assam"),
-    ("Bihar", "Bihar"),
-    ("Chhattisgarh", "Chhattisgarh"),
-    ("Goa", "Goa"),
-    ("Gujarat", "Gujarat"),
-    ("Haryana", "Haryana"),
-    ("Himachal Pradesh", "Himachal Pradesh"),
-    ("Jharkhand", "Jharkhand"),
-    ("Karnataka", "Karnataka"),
-    ("Kerala", "Kerala"),
-    ("Madhya Pradesh", "Madhya Pradesh"),
-    ("Maharashtra", "Maharashtra"),
-    ("Manipur", "Manipur"),
-    ("Meghalaya", "Meghalaya"),
-    ("Mizoram", "Mizoram"),
-    ("Nagaland", "Nagaland"),
-    ("Odisha", "Odisha"),
-    ("Punjab", "Punjab"),
-    ("Rajasthan", "Rajasthan"),
-    ("Sikkim", "Sikkim"),
-    ("Tamil Nadu", "Tamil Nadu"),
-    ("Telangana", "Telangana"),
-    ("Tripura", "Tripura"),
-    ("Uttar Pradesh", "Uttar Pradesh"),
-    ("Uttarakhand", "Uttarakhand"),
-    ("West Bengal", "West Bengal"),
-    ("Andaman and Nicobar Islands", "Andaman and Nicobar Islands"),
-    ("Chandigarh", "Chandigarh"),
-    ("Dadra and Nagar Haveli and Daman and Diu", "Dadra and Nagar Haveli and Daman and Diu"),
-    ("Delhi", "Delhi"),
-    ("Jammu and Kashmir", "Jammu and Kashmir"),
-    ("Ladakh", "Ladakh"),
-    ("Lakshadweep", "Lakshadweep"),
-    ("Puducherry", "Puducherry"),
-]
 
 
 class CompanyProfile(models.Model):
