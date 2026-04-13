@@ -5149,13 +5149,16 @@ def sale_invoice(request, sale_id):
     vendor_pan = None
     vendor_fssai = None
 
-    # Check vendor_store first for verified GSTIN
-    if vstore and vstore.gstin and vstore.is_gstin_verified:
-        is_registered = True
-        vendor_gstin = vstore.gstin
-        vendor_pan = vstore.pan_number
-        vendor_fssai = vstore.fssai_number
-    # Fallback to CompanyProfile
+    if vstore:
+        if vstore.gstin and vstore.is_gstin_verified:
+            is_registered = True
+            vendor_gstin = vstore.gstin
+            vendor_pan = vstore.pan_number
+            vendor_fssai = vstore.fssai_number
+        else:
+            is_registered = False
+            vendor_gstin = None
+    # Fallback to CompanyProfile only if vstore completely missing
     elif getattr(sale, 'company_profile', None) and sale.company_profile.is_gst_registered and sale.company_profile.gstin:
         is_registered = True
         vendor_gstin = sale.company_profile.gstin
@@ -5329,11 +5332,7 @@ def sale_invoice(request, sale_id):
     else:
         display_terms = (inv_settings.terms_and_conditions or '') if inv_settings else ''
 
-    # For thermal bill: vendor PAN, GSTIN, FSSAI; embed company logo as base64 (PDF service can't fetch relative URLs)
-    vendor_pan = None
-    vendor_gstin = None
-    vendor_fssai = None
-    # Base64 logo / QR / signature for PDF rendering (used by all invoice templates)
+    # For thermal bill: embed company logo as base64 (PDF service can't fetch relative URLs)
     company_logo_data_uri, payment_qr_data_uri, company_signature_data_uri = _invoice_company_media_data_uris(sale)
     cp = sale.company_profile
 
@@ -8733,11 +8732,15 @@ class customer_sale_invoice(APIView):
         vendor_pan = None
         vendor_fssai = None
 
-        if vstore and vstore.gstin and vstore.is_gstin_verified:
-            is_registered = True
-            vendor_gstin = vstore.gstin
-            vendor_pan = vstore.pan_number
-            vendor_fssai = vstore.fssai_number
+        if vstore:
+            if vstore.gstin and vstore.is_gstin_verified:
+                is_registered = True
+                vendor_gstin = vstore.gstin
+                vendor_pan = vstore.pan_number
+                vendor_fssai = vstore.fssai_number
+            else:
+                is_registered = False
+                vendor_gstin = None
         elif getattr(sale, 'company_profile', None) and sale.company_profile.is_gst_registered and sale.company_profile.gstin:
             is_registered = True
             vendor_gstin = sale.company_profile.gstin
