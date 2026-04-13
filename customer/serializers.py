@@ -1481,6 +1481,32 @@ class ReturnExchangeSerializer(serializers.ModelSerializer):
         order_item.status = f'{return_type}_requested'  # 'return_requested' or 'exchange_requested'
         order_item.save(update_fields=['status'])
 
+        # ✅ Notify vendor about the return/exchange request
+        try:
+            vendor_user = order_item.product.user
+            customer_name = user.first_name or user.mobile or f"User {user.id}"
+            product_name = order_item.product.name
+            order_id = getattr(order_item.order, 'order_id', 'N/A')
+            
+            notification_title = f"{return_type.capitalize()} Requested"
+            notification_body = f"{customer_name} has requested a {return_type} for {product_name} (Order: {order_id})"
+            
+            send_vendor_notification(
+                vendor_user=vendor_user,
+                notification_type=f"{return_type}_request",
+                title=notification_title,
+                body=notification_body,
+                data={
+                    "order_id": str(order_id),
+                    "product_id": str(order_item.product.id),
+                    "type": f"{return_type}_request"
+                }
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error sending {return_type} notification to vendor: {e}")
+
         return instance
 
 

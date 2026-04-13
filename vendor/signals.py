@@ -2341,16 +2341,83 @@ def update_online_order_ledger_on_return(sender, instance, created, **kwargs):
     # Only update ledger for return type; do nothing for exchange (no ledger for replace)
     if not req or req.type != 'return':
         return
+    
+    # 1. Update OnlineOrderLedger
     try:
-        entry = OnlineOrderLedger.objects.filter(order_item=instance).order_by('-created_at').first()
-    except OnlineOrderLedger.DoesNotExist:
-        entry = None
-    if not entry:
-        return
-    entry.status = 'returned'
-    entry.note = (entry.note or '') + ' | Marked returned'
-    entry.save(update_fields=['status', 'note', 'updated_at'])
-    # Stock for return only: avoid duplicate StockTransaction per request
+        # Check if we already created a return (negative) ledger entry for this request
+        existing_return_ledger = OnlineOrderLedger.objects.filter(
+            order_item=instance,
+            status='returned',
+            amount__lt=0,
+            note__icontains=f"Return Ref: {req.pk}"
+        ).exists()
+
+        if not existing_return_ledger:
+            # Find the original recorded entry to get accurate amount and vendor
+            original_entry = OnlineOrderLedger.objects.filter(order_item=instance, status='recorded', amount__gt=0).first()
+            if original_entry:
+                # Create a NEW negative entry for the return
+                OnlineOrderLedger.objects.create(
+                    user=original_entry.user,
+                    order_item=instance,
+                    product=original_entry.product,
+                    order_id=original_entry.order_id,
+                    quantity=original_entry.quantity,
+                    amount=-original_entry.amount,
+                    status='returned',
+                    note=f'Online order returned | Return Ref: {req.pk}'
+                )
+                logger.info(f"[ONLINE_ORDER_LEDGER_RETURN] Created minus entry for OrderItem {instance.id}")
+
+                # 2. Financial Ledger Reversal (Bank/Cash)
+                # Determine original reversal logic based on Order and Payment Mode
+                order = getattr(instance, 'order', None)
+                if order:
+                    vendor_user = original_entry.user
+                    amount_to_reverse = original_entry.amount # Positive value to be passed to create_ledger which handles subtraction if needed, 
+                                                              # but here we pass negative to create_ledger? 
+                                                              # Wait, create_ledger usually takes the amount and adds it. 
+                                                              # Let's check create_ledger in utils.py.
+                    
+                    is_auto_managed = getattr(order, 'is_auto_managed', False)
+                    if is_auto_managed:
+                        # Reverse Bank credit
+                        online_bank = vendor_bank.objects.filter(user=vendor_user, online_order_bank=True, is_active=True).first()
+                        if online_bank:
+                            # Avoid duplicate bank reversal
+                            if not BankLedger.objects.filter(bank=online_bank, transaction_type="return", reference_id=instance.id).exists():
+                                from .utils import create_ledger
+                                create_ledger(
+                                    online_bank,
+                                    BankLedger,
+                                    transaction_type="return",
+                                    reference_id=instance.id,
+                                    amount=-amount_to_reverse,
+                                    description=f"Online Order Return Reversal (Order #{getattr(order, 'order_id', order.id)}, Product: {instance.product.name})",
+                                )
+                                logger.info(f"[ONLINE_ORDER_LEDGER_RETURN] Bank reversal successful for OrderItem {instance.id}")
+                    else:
+                        # Reverse Cash credit (for COD/Cash)
+                        payment_mode = str(getattr(order, "payment_mode", "") or "").strip().lower()
+                        if payment_mode in ("cod", "cash"):
+                            # Avoid duplicate cash reversal
+                            if not CashLedger.objects.filter(user=vendor_user, transaction_type="return", reference_id=instance.id).exists():
+                                from .utils import create_ledger
+                                create_ledger(
+                                    None,
+                                    CashLedger,
+                                    transaction_type="return",
+                                    reference_id=instance.id,
+                                    amount=-amount_to_reverse,
+                                    description=f"Online Order Return Reversal (Order #{getattr(order, 'order_id', order.id)}, Product: {instance.product.name})",
+                                    user=vendor_user,
+                                )
+                                logger.info(f"[ONLINE_ORDER_LEDGER_RETURN] Cash reversal successful for OrderItem {instance.id}")
+
+    except Exception as e:
+        logger.error(f"[ONLINE_ORDER_LEDGER_RETURN] Error creating return ledger: {str(e)}")
+
+    # 3. Stock Transaction (Stock for return only: avoid duplicate StockTransaction per request)
     if not StockTransaction.objects.filter(
         product=instance.product,
         transaction_type='return',
