@@ -134,6 +134,7 @@ class product_Form(forms.ModelForm):
 
             'track_serial_numbers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'assign_barcode': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter barcode value'}),
+            'track_stock': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'opening_stock': forms.NumberInput(attrs={'class': 'form-control'}),
             'stock': forms.NumberInput(attrs={'class': 'form-control'}),
             'low_stock_alert': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -190,7 +191,9 @@ class product_Form(forms.ModelForm):
         self.fields['opening_stock'].required = False
         if self.instance and self.instance.pk:
             self.fields['opening_stock'].widget.attrs['readonly'] = 'readonly'
+            self.fields['stock'].widget.attrs['readonly'] = 'readonly'
             self.fields['opening_stock'].help_text = 'Opening stock can only be set while creating the product.'
+            self.fields['stock'].help_text = 'Current stock balance (updated via sales/purchases).'
 
     def clean(self):
         cleaned = super().clean()

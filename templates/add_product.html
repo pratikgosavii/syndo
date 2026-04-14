@@ -8,49 +8,183 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
 <style>
-    body { background-color: #f8f9fa; padding-bottom: 20px; }
-    .form-container { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e9ecef; }
-    .section-card { border: 1px solid #dee2e6; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-    .section-title { font-weight: 700; color: #212529; margin-bottom: 1rem; font-size: 1rem; }
-    .section-title .bi { margin-right: 0.5rem; color: #775599; }
-    .form-heading { font-weight: 600; color: #495057; margin-bottom: 1rem; font-size: 1rem; }
-    .form-label { font-weight: 500; color: #495057; }
-    .form-control, .form-select { border-radius: 6px; border: 1px solid #ced4da; }
-    .image-preview { max-height: 100px; margin-top: 10px; border-radius: 8px; border: 1px solid #dee2e6; cursor: pointer; }
-    /* Fullscreen image overlay */
-    .image-fullscreen-overlay {
-        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
-        z-index: 9999; align-items: center; justify-content: center;
+    body {
+        background-color: #f8f9fa;
+        padding-bottom: 20px;
+    }
+
+    .form-container {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e9ecef;
+    }
+
+    .section-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .section-title {
+        font-weight: 700;
+        color: #212529;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+    }
+
+    .section-title .bi {
+        margin-right: 0.5rem;
+        color: #775599;
+    }
+
+    .form-heading {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .form-control,
+    .form-select {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+    }
+
+    .image-preview {
+        max-height: 100px;
+        margin-top: 10px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
         cursor: pointer;
     }
-    .image-fullscreen-overlay.show { display: flex; }
-    .image-fullscreen-overlay img { max-width: 95%; max-height: 95%; object-fit: contain; pointer-events: none; }
-    .custom-button { min-width: 150px; }
+
+    /* Fullscreen image overlay */
+    .image-fullscreen-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .image-fullscreen-overlay.show {
+        display: flex;
+    }
+
+    .image-fullscreen-overlay img {
+        max-width: 95%;
+        max-height: 95%;
+        object-fit: contain;
+        pointer-events: none;
+    }
+
+    .custom-button {
+        min-width: 150px;
+    }
+
     /* Submit Product button: yellow/orange (reference image 2) */
-    .btn-submit-product { background-color: #f59e0b !important; border-color: #f59e0b !important; color: #fff !important; }
-    .btn-submit-product:hover { background-color: #d97706; border-color: #d97706; color: #fff; }
+    .btn-submit-product {
+        background-color: #f59e0b !important;
+        border-color: #f59e0b !important;
+        color: #fff !important;
+    }
+
+    .btn-submit-product:hover {
+        background-color: #d97706;
+        border-color: #d97706;
+        color: #fff;
+    }
+
     /* Toggle switch: grey off, blue on */
-    .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
     .switch .slider {
-        position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #ced4da; transition: 0.3s; border-radius: 26px;
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ced4da;
+        transition: 0.3s;
+        border-radius: 26px;
     }
+
     .switch .slider:before {
-        position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
-        background-color: white; transition: 0.3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
-    .switch input:checked + .slider { background-color: #2196F3; }
-    .switch input:checked + .slider:before { transform: translateX(22px); }
-    .form-check-input:checked { background-color: #2196F3; border-color: #2196F3; }
-    .form-check-input:focus { border-color: #90caf9; box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25); }
+
+    .switch input:checked+.slider {
+        background-color: #2196F3;
+    }
+
+    .switch input:checked+.slider:before {
+        transform: translateX(22px);
+    }
+
+    .form-check-input:checked {
+        background-color: #2196F3;
+        border-color: #2196F3;
+    }
+
+    .form-check-input:focus {
+        border-color: #90caf9;
+        box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25);
+    }
+
     /* Section header row: title left, "Use default" link right */
     .section-card-header-row {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e9ecef;
     }
-    .section-card-header-row .section-title { margin-bottom: 0; color: #212529; font-weight: 700; }
-    .section-card-header-row .section-title .bi { color: #775599; }
+
+    .section-card-header-row .section-title {
+        margin-bottom: 0;
+        color: #212529;
+        font-weight: 700;
+    }
+
+    .section-card-header-row .section-title .bi {
+        color: #775599;
+    }
+
     .use-default-link {
         background-color: #f59e0b !important;
         border: 1px solid #f59e0b !important;
@@ -61,45 +195,125 @@
         text-decoration: none;
         border-radius: 4px;
     }
+
     /* Low stock quantity and IMEI list are only visible when their toggles are enabled (also controlled in JS) */
     #low_stock_quantity_wrapper,
     #serial_imei_wrapper {
         display: none;
     }
-    .use-default-link:hover { color: #fff !important; background-color: #d97706 !important; border-color: #d97706 !important; text-decoration: none; }
+
+    .use-default-link:hover {
+        color: #fff !important;
+        background-color: #d97706 !important;
+        border-color: #d97706 !important;
+        text-decoration: none;
+    }
+
     /* Checkbox option in light grey rounded box (match reference image 2) */
     .option-box {
-        display: inline-flex; align-items: center; gap: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
         padding: 0.5rem 0.75rem;
-        border: 1px solid #dee2e6; border-radius: 8px; background: #fafafa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        background: #fafafa;
         min-height: 40px;
     }
-    .option-box .form-check-input { margin-top: 0; border: 1px solid #ced4da; }
-    .option-box label { margin-bottom: 0; color: #495057; font-weight: 500; cursor: pointer; }
-    .options-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .options-row-delivery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-    .options-row-policies { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+
+    .option-box .form-check-input {
+        margin-top: 0;
+        border: 1px solid #ced4da;
+    }
+
+    .option-box label {
+        margin-bottom: 0;
+        color: #495057;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .options-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .options-row-delivery {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .options-row-policies {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+    }
+
     /* Media upload zone: dashed border, icon, text (match reference image 2) */
     .media-upload-zone {
-        border: 2px dashed #ced4da; border-radius: 10px; background: #fff;
-        min-height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 1.5rem; position: relative; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+        border: 2px dashed #ced4da;
+        border-radius: 10px;
+        background: #fff;
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        position: relative;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
     }
-    .media-upload-zone:hover { border-color: #adb5bd; background: #f8f9fa; }
-    .media-upload-zone .upload-icon { font-size: 2.25rem; color: #6c757d; margin-bottom: 0.5rem; }
-    .media-upload-zone .upload-text { color: #6c757d; font-size: 0.9rem; }
-    .media-upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+    .media-upload-zone:hover {
+        border-color: #adb5bd;
+        background: #f8f9fa;
+    }
+
+    .media-upload-zone .upload-icon {
+        font-size: 2.25rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+
+    .media-upload-zone .upload-text {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .media-upload-zone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+    }
+
     /* Submit section must always be visible for all product types (id + class so it works even when cached) */
     #product-form-submit-section,
-    .product-form-submit-section { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+    .product-form-submit-section {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
 
     /* Searchable selects with search box INSIDE dropdown */
-    .searchable-select-wrap { position: relative; }
+    .searchable-select-wrap {
+        position: relative;
+    }
+
     .searchable-trigger {
         cursor: pointer;
         position: relative;
     }
-    .searchable-trigger[readonly] { background-color: #fff; }
+
+    .searchable-trigger[readonly] {
+        background-color: #fff;
+    }
+
     .searchable-dropdown {
         display: none;
         position: absolute;
@@ -110,18 +324,23 @@
         background: #fff;
         border: 1px solid #ced4da;
         border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         z-index: 1050;
         margin-top: 2px;
         flex-direction: column;
         overflow: hidden;
     }
-    .searchable-dropdown.show { display: flex; }
+
+    .searchable-dropdown.show {
+        display: flex;
+    }
+
     .searchable-dropdown-search {
         flex-shrink: 0;
         padding: 0.4rem 0.5rem;
         border-bottom: 1px solid #e9ecef;
     }
+
     .searchable-dropdown-search input {
         width: 100%;
         padding: 0.35rem 0.5rem 0.35rem 1.75rem;
@@ -129,21 +348,47 @@
         border-radius: 4px;
         font-size: 0.8125rem;
     }
-    .searchable-dropdown-search .bi-search { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280; font-size: 0.8rem; pointer-events: none; }
-    .searchable-dropdown-search { position: relative; }
+
+    .searchable-dropdown-search .bi-search {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        font-size: 0.8rem;
+        pointer-events: none;
+    }
+
+    .searchable-dropdown-search {
+        position: relative;
+    }
+
     .searchable-dropdown-list {
         max-height: 160px;
         overflow-y: auto;
     }
+
     .searchable-dropdown-item {
         padding: 0.5rem 0.75rem;
         cursor: pointer;
         font-size: 0.875rem;
         border-bottom: 1px solid #f1f3f5;
     }
-    .searchable-dropdown-item:hover, .searchable-dropdown-item.selected { background: #e7f1ff; }
-    .searchable-dropdown-item:last-child { border-bottom: none; }
-    .searchable-dropdown-empty { padding: 0.75rem; color: #6c757d; font-size: 0.875rem; }
+
+    .searchable-dropdown-item:hover,
+    .searchable-dropdown-item.selected {
+        background: #e7f1ff;
+    }
+
+    .searchable-dropdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .searchable-dropdown-empty {
+        padding: 0.75rem;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
 
     /* Catalogue select UI */
     .catalogue-select-card {
@@ -153,6 +398,7 @@
         background: #f9fafb;
         margin-bottom: 1rem;
     }
+
     .catalogue-select-title {
         font-size: 0.9rem;
         font-weight: 600;
@@ -161,20 +407,24 @@
         align-items: center;
         gap: 0.35rem;
     }
+
     .catalogue-select-title .bi {
         color: #7c3aed;
         font-size: 1rem;
     }
+
     .catalogue-select-helper {
         font-size: 0.78rem;
         color: #6b7280;
         margin-top: 0.35rem;
     }
+
     .catalogue-select-btn {
         background-color: #ffffff !important;
         color: #111827 !important;
         border: 1px solid #000000 !important;
     }
+
     .catalogue-select-btn:hover,
     .catalogue-select-btn:focus,
     .catalogue-select-btn:active {
@@ -183,41 +433,86 @@
         border-color: #000000 !important;
         box-shadow: none !important;
     }
+
     .catalogue-select-input-group .form-select {
         background-color: #fff;
     }
+
     .catalogue-select-input-group .input-group-text {
         background-color: #f3f4f6;
         border-right: 0;
     }
 
     /* Serial / IMEI section – enhanced UI */
-    #serial_imei_list { display: flex; flex-direction: column; gap: 0.5rem; }
-    .serial-imei-row {
-        display: flex; align-items: center; gap: 0.5rem;
-        padding: 0.4rem 0.6rem; background: #f8f9fa; border: 1px solid #e9ecef;
-        border-radius: 8px; transition: border-color 0.2s, box-shadow 0.2s;
+    #serial_imei_list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
     }
-    .serial-imei-row:hover { border-color: #ced4da; }
-    .serial-imei-row:focus-within { border-color: #775599; box-shadow: 0 0 0 2px rgba(119, 85, 153, 0.15); }
-    .serial-imei-row .serial-imei-input { flex: 1; border-radius: 6px; }
+
+    .serial-imei-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.6rem;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .serial-imei-row:hover {
+        border-color: #ced4da;
+    }
+
+    .serial-imei-row:focus-within {
+        border-color: #775599;
+        box-shadow: 0 0 0 2px rgba(119, 85, 153, 0.15);
+    }
+
+    .serial-imei-row .serial-imei-input {
+        flex: 1;
+        border-radius: 6px;
+    }
+
     .serial-imei-row .btn-remove-imei {
-        flex-shrink: 0; width: 32px; height: 32px; padding: 0; border-radius: 8px;
-        display: inline-flex; align-items: center; justify-content: center;
-        color: #dc3545; background: transparent; border: 1px solid transparent;
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #dc3545;
+        background: transparent;
+        border: 1px solid transparent;
         transition: color 0.2s, background 0.2s, border-color 0.2s;
     }
+
     .serial-imei-row .btn-remove-imei:hover {
-        color: #fff; background: #dc3545; border-color: #dc3545;
+        color: #fff;
+        background: #dc3545;
+        border-color: #dc3545;
     }
+
     #add-serial-imei-row {
-        display: inline-flex; align-items: center; gap: 0.4rem;
-        padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500;
-        border: 1px dashed #775599; color: #775599; background: rgba(119, 85, 153, 0.06);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+        border: 1px dashed #775599;
+        color: #775599;
+        background: rgba(119, 85, 153, 0.06);
         transition: all 0.2s;
     }
+
     #add-serial-imei-row:hover {
-        background: #775599; color: #fff; border-style: solid;
+        background: #775599;
+        color: #fff;
+        border-style: solid;
     }
 </style>
 {% endblock extra_css %}
@@ -229,8 +524,10 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 font-size-18"><i class="bi bi-box-seam me-2" style="color: #775599;"></i>Create Product</h4>
-                        <a href="{% url 'list_product' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+                        <h4 class="mb-sm-0 font-size-18"><i class="bi bi-box-seam me-2"
+                                style="color: #775599;"></i>Create Product</h4>
+                        <a href="{% url 'list_product' %}" class="btn btn-outline-secondary btn-sm"><i
+                                class="bi bi-arrow-left me-1"></i>Back to list</a>
                     </div>
                 </div>
             </div>
@@ -240,15 +537,17 @@
                     <form method="POST" enctype="multipart/form-data" id="product-form" novalidate>
                         {% csrf_token %}
                         {% if form.errors %}
-                        <div id="form-errors-alert" class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+                        <div id="form-errors-alert" class="alert alert-danger d-flex align-items-start gap-2"
+                            role="alert">
                             <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
                             <div>
                                 <strong>Please fix the errors below:</strong>
                                 <ul class="mb-0 mt-1 ps-3">
                                     {% for field, errors in form.errors.items %}
-                                        {% for error in errors %}
-                                            <li><strong>{% if field == 'category' %}Category{% elif field == 'sub_category' %}Sub category{% else %}{{ field }}{% endif %}:</strong> {{ error }}</li>
-                                        {% endfor %}
+                                    {% for error in errors %}
+                                    <li><strong>{% if field == 'category' %}Category{% elif field == 'sub_category'
+                                            %}Sub category{% else %}{{ field }}{% endif %}:</strong> {{ error }}</li>
+                                    {% endfor %}
                                     {% endfor %}
                                 </ul>
                             </div>
@@ -265,9 +564,8 @@
                                 </div>
                                 <div class="mt-2 d-flex flex-column flex-sm-row align-items-sm-center gap-2">
                                     <button type="button"
-                                            class="btn btn-sm d-flex align-items-center gap-1 catalogue-select-btn"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#catalogueModal">
+                                        class="btn btn-sm d-flex align-items-center gap-1 catalogue-select-btn"
+                                        data-bs-toggle="modal" data-bs-target="#catalogueModal">
                                         <i class="bi bi-search"></i>
                                         <span>Select Catalogue Product</span>
                                     </button>
@@ -276,12 +574,11 @@
                                         <span class="badge bg-soft-primary text-dark">
                                             Loaded from:
                                             {% for c in super_catalogue_list %}
-                                                {% if c.id == selected_catalogue_id %}{{ c.name }}{% endif %}
+                                            {% if c.id == selected_catalogue_id %}{{ c.name }}{% endif %}
                                             {% endfor %}
                                         </span>
-                                        <button type="button"
-                                                class="btn btn-outline-danger btn-sm"
-                                                id="clearCatalogueSelection">
+                                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                            id="clearCatalogueSelection">
                                             Remove
                                         </button>
                                     </div>
@@ -300,7 +597,7 @@
                                     <label for="id_product_type" class="form-label">Product type</label>
                                     {{ form.product_type }}
                                 </div>
-                               
+
                                 <div class="col-md-6">
                                     <label for="id_sale_type" class="form-label">Sale type</label>
                                     {{ form.sale_type }}
@@ -319,34 +616,46 @@
                                 <div class="col-md-6" id="category_wrapper">
                                     <label for="id_category" class="form-label">Category</label>
                                     <div class="searchable-select-wrap position-relative">
-                                        <input type="text" class="form-control searchable-trigger {% if form.category.errors %}is-invalid{% endif %}" id="category-trigger" placeholder="Select category..." readonly autocomplete="off">
-                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <input type="text"
+                                            class="form-control searchable-trigger {% if form.category.errors %}is-invalid{% endif %}"
+                                            id="category-trigger" placeholder="Select category..." readonly
+                                            autocomplete="off">
+                                        <i
+                                            class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
                                         <div class="searchable-dropdown" id="category-dropdown">
                                             <div class="searchable-dropdown-search">
                                                 <i class="bi bi-search"></i>
-                                                <input type="text" id="category-search-inner" placeholder="Search category..." autocomplete="off">
+                                                <input type="text" id="category-search-inner"
+                                                    placeholder="Search category..." autocomplete="off">
                                             </div>
                                             <div class="searchable-dropdown-list" id="category-list"></div>
                                         </div>
                                     </div>
                                     <div class="d-none">{{ form.category }}</div>
-                                    {% if form.category.errors %}<div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>{% endif %}
+                                    {% if form.category.errors %}<div class="invalid-feedback d-block">{{
+                                        form.category.errors.0 }}</div>{% endif %}
                                 </div>
                                 <div class="col-md-6" id="sub_category_wrapper">
                                     <label for="id_sub_category" class="form-label">Sub category</label>
                                     <div class="searchable-select-wrap position-relative">
-                                        <input type="text" class="form-control searchable-trigger {% if form.sub_category.errors %}is-invalid{% endif %}" id="subcategory-trigger" placeholder="Select category first..." readonly autocomplete="off">
-                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <input type="text"
+                                            class="form-control searchable-trigger {% if form.sub_category.errors %}is-invalid{% endif %}"
+                                            id="subcategory-trigger" placeholder="Select category first..." readonly
+                                            autocomplete="off">
+                                        <i
+                                            class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
                                         <div class="searchable-dropdown" id="subcategory-dropdown">
                                             <div class="searchable-dropdown-search">
                                                 <i class="bi bi-search"></i>
-                                                <input type="text" id="subcategory-search-inner" placeholder="Search subcategory..." autocomplete="off">
+                                                <input type="text" id="subcategory-search-inner"
+                                                    placeholder="Search subcategory..." autocomplete="off">
                                             </div>
                                             <div class="searchable-dropdown-list" id="subcategory-list"></div>
                                         </div>
                                     </div>
                                     <div class="d-none">{{ form.sub_category }}</div>
-                                    {% if form.sub_category.errors %}<div class="invalid-feedback d-block">{{ form.sub_category.errors.0 }}</div>{% endif %}
+                                    {% if form.sub_category.errors %}<div class="invalid-feedback d-block">{{
+                                        form.sub_category.errors.0 }}</div>{% endif %}
                                 </div>
                                 <div class="col-md-6" id="foodOptionToggleWrapper" style="display: block;">
                                     <label class="form-label d-block">Include food option?</label>
@@ -359,7 +668,7 @@
                                     <label for="id_food_type" class="form-label">Food type</label>
                                     {{ form.food_type }}
                                 </div>
-                               
+
                                 <div class="col-12" id="description_wrapper">
                                     <label for="id_description" class="form-label">Description</label>
                                     {{ form.description }}
@@ -389,12 +698,15 @@
                                 <div class="col-md-6">
                                     <label for="id_unit" class="form-label">Unit</label>
                                     <div class="searchable-select-wrap position-relative">
-                                        <input type="text" class="form-control searchable-trigger" id="unit-trigger" placeholder="Select unit..." readonly autocomplete="off">
-                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <input type="text" class="form-control searchable-trigger" id="unit-trigger"
+                                            placeholder="Select unit..." readonly autocomplete="off">
+                                        <i
+                                            class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
                                         <div class="searchable-dropdown" id="unit-dropdown">
                                             <div class="searchable-dropdown-search">
                                                 <i class="bi bi-search"></i>
-                                                <input type="text" id="unit-search-inner" placeholder="Search unit..." autocomplete="off">
+                                                <input type="text" id="unit-search-inner" placeholder="Search unit..."
+                                                    autocomplete="off">
                                             </div>
                                             <div class="searchable-dropdown-list" id="unit-list"></div>
                                         </div>
@@ -403,68 +715,85 @@
                                 </div>
                             </div>
                         </div>
-                       
+
                         <!-- Tax & details (shown only when company profile has GSTIN) -->
                         {% if has_gstin %}
                         <div class="section-card">
                             <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <div class="section-title"><i class="bi bi-receipt"></i>Tax & details  
-                            
-                            
-                            
-                            </div>
-                            <div class="col-md-3 col-sm-4">
-                                <div class="form-check mb-0">
-                                    {{ form.tax_inclusive }}
-                                    <label class="form-check-label" for="id_tax_inclusive">Tax inclusive</label>
+                                <div class="section-title"><i class="bi bi-receipt"></i>Tax & details
+
+
+
                                 </div>
-                            </div>
+                                <div class="col-md-3 col-sm-4">
+                                    <div class="form-check mb-0">
+                                        {{ form.tax_inclusive }}
+                                        <label class="form-check-label" for="id_tax_inclusive">Tax inclusive</label>
+                                    </div>
+                                </div>
                             </div>
                             <div class="row g-3 align-items-end">
                                 <div class="col-md-3 col-sm-4">
                                     <label for="id_hsn" class="form-label">HSN</label>
                                     {{ form.hsn }}
                                 </div>
-                               
+
                                 <div class="col-md-3 col-sm-4" id="tax_div">
                                     <label for="id_gst" class="form-label">GST (%)</label>
                                     {{ form.gst }}
                                 </div>
-                               
+
                             </div>
                         </div>
                         {% endif %}
-                    
+
                         <!-- Stock (reference image 2: General product settings – checkboxes in light grey boxes) -->
                         <div class="section-card product-only-field">
                             <div class="section-title"><i class="bi bi-boxes"></i>Stock</div>
                             <div class="row g-3">
                                 <div class="col-12">
                                     <div class="s-row">
+                                        <div class="option-box" id="track_stock_wrapper">
+                                            {{ form.track_stock }}
+                                            <label class="form-check-label" for="id_track_stock">Track Inventory /
+                                                Stock</label>
+                                        </div>
                                         <div class="option-box" id="track_serial_numbers_wrapper">
                                             {{ form.track_serial_numbers }}
-                                            <label class="form-check-label" for="id_track_serial_numbers">Track serial numbers</label>
+                                            <label class="form-check-label" for="id_track_serial_numbers">Track serial
+                                                numbers</label>
                                         </div>
                                         <div class="option-box" id="assign_barcode_toggle_wrapper">
-                                            <input type="checkbox" class="form-check-input" id="assign_barcode_toggle" {% if form.instance.assign_barcode %}checked{% endif %}>
-                                            <label class="form-check-label" for="assign_barcode_toggle">Assign barcode</label>
+                                            <input type="checkbox" class="form-check-input" id="assign_barcode_toggle"
+                                                {% if form.instance.assign_barcode %}checked{% endif %}>
+                                            <label class="form-check-label" for="assign_barcode_toggle">Assign
+                                                barcode</label>
                                         </div>
                                         <div class="option-box" id="low_stock_alert_wrapper">
                                             {{ form.low_stock_alert }}
-                                            <label class="form-check-label" for="id_low_stock_alert">Low stock alert</label>
+                                            <label class="form-check-label" for="id_low_stock_alert">Low stock
+                                                alert</label>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6" id="assign_barcode_wrapper" style="display: none;">
                                     <label for="id_assign_barcode" class="form-label">Barcode value</label>
                                     {{ form.assign_barcode }}
-                                    {% if form.assign_barcode.errors %}<div class="invalid-feedback d-block">{{ form.assign_barcode.errors.0 }}</div>{% endif %}
+                                    {% if form.assign_barcode.errors %}<div class="invalid-feedback d-block">{{
+                                        form.assign_barcode.errors.0 }}</div>{% endif %}
                                 </div>
                                 <div class="col-md-6" id="opening_stock_wrapper">
                                     <label for="id_opening_stock" class="form-label">Opening stock</label>
                                     {{ form.opening_stock }}
                                     {% if form.opening_stock.help_text %}
                                     <small class="text-muted d-block mt-1">{{ form.opening_stock.help_text }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6" id="stock_wrapper">
+                                    <label for="id_stock" class="form-label">Total Stock</label>
+                                    {{ form.stock }}
+                                    {% if form.stock.help_text %}
+                                    <small class="text-muted d-block mt-1">{{ form.stock.help_text }}</small>
                                     {% endif %}
                                 </div>
                                 <div class="col-md-6" id="low_stock_quantity_wrapper">
@@ -479,18 +808,17 @@
                                         <i class="bi bi-plus-lg me-1"></i>Add IMEI
                                     </button>
                                     <!-- Hidden field that will be populated from the dynamic IMEI inputs -->
-                                    <textarea name="serial_imei_no"
-                                              id="id_serial_imei_no"
-                                              class="d-none"
-                                              rows="3"></textarea>
+                                    <textarea name="serial_imei_no" id="id_serial_imei_no" class="d-none"
+                                        rows="3"></textarea>
                                     <small class="text-muted d-block mt-1">
-                                        Used only when \"Track serial numbers\" is enabled. Each IMEI will be saved separately.
+                                        Used only when \"Track serial numbers\" is enabled. Each IMEI will be saved
+                                        separately.
                                     </small>
                                 </div>
                             </div>
                         </div>
-                            
-                        
+
+
                         <!-- Optional attributes -->
                         <div class="section-card product-only-field">
                             <div class="section-title"><i class="bi bi-tags"></i>Optional attributes</div>
@@ -502,12 +830,15 @@
                                 <div class="col-md-6 product-only-field" id="size_wrapper">
                                     <label for="id_size" class="form-label product-only-field">Size</label>
                                     <div class="searchable-select-wrap position-relative">
-                                        <input type="text" class="form-control searchable-trigger" id="size-trigger" placeholder="Select size..." readonly autocomplete="off">
-                                        <i class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <input type="text" class="form-control searchable-trigger" id="size-trigger"
+                                            placeholder="Select size..." readonly autocomplete="off">
+                                        <i
+                                            class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
                                         <div class="searchable-dropdown" id="size-dropdown">
                                             <div class="searchable-dropdown-search">
                                                 <i class="bi bi-search"></i>
-                                                <input type="text" id="size-search-inner" placeholder="Search size..." autocomplete="off">
+                                                <input type="text" id="size-search-inner" placeholder="Search size..."
+                                                    autocomplete="off">
                                             </div>
                                             <div class="searchable-dropdown-list" id="size-list"></div>
                                         </div>
@@ -517,7 +848,8 @@
                                 <div class="col-12 product-only-field" id="color_wrapper">
                                     <label for="common_colors" class="form-label d-block">Color</label>
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <select id="common_colors" class="form-control form-select" style="max-width: 180px;" onchange="updateColorDisplayFromDropdown(this)">
+                                        <select id="common_colors" class="form-control form-select"
+                                            style="max-width: 180px;" onchange="updateColorDisplayFromDropdown(this)">
                                             <option value="">Select common color</option>
                                             <option value="#ffffff">White</option>
                                             <option value="#000000">Black</option>
@@ -529,8 +861,11 @@
                                             <option value="#800080">Purple</option>
                                             <option value="#808080">Gray</option>
                                         </select>
-                                        <div id="color_display" class="color-swatch-display" style="width: 2.5rem; height: 2.25rem; border-radius: 6px; border: 1px solid #ced4da; background: #f3f4f6; flex-shrink: 0;" title="Selected color preview"></div>
-                                        <span id="color_hex_display" class="text-muted small align-self-center" style="min-width: 4.5rem;">—</span>
+                                        <div id="color_display" class="color-swatch-display"
+                                            style="width: 2.5rem; height: 2.25rem; border-radius: 6px; border: 1px solid #ced4da; background: #f3f4f6; flex-shrink: 0;"
+                                            title="Selected color preview"></div>
+                                        <span id="color_hex_display" class="text-muted small align-self-center"
+                                            style="min-width: 4.5rem;">—</span>
                                         <div class="visually-hidden">{{ form.color }}</div>
                                     </div>
                                 </div>
@@ -544,7 +879,7 @@
                                 </div>
                             </div>
                         </div>
-                    
+
                         <!-- Media (match reference image 2: dashed border, icon + text). Hidden for product type "product" when Product Settings image is off. -->
                         <div class="section-card" id="media_section_card">
                             <div class="section-title"><i class="bi bi-image"></i>Media</div>
@@ -556,24 +891,30 @@
                                         <span class="upload-text">Upload Main Image</span>
                                         {{ form.image }}
                                     </label>
-                                    <div id="preview-wrapper" class="mt-2" style="{% if not instance or not instance.image %}display: none;{% endif %}">
-                                        <img id="preview" class="image-preview d-block" src="{% if instance and instance.image %}{{ instance.image.url }}{% else %}#{% endif %}" alt="Image Preview">
+                                    <div id="preview-wrapper" class="mt-2"
+                                        style="{% if not instance or not instance.image %}display: none;{% endif %}">
+                                        <img id="preview" class="image-preview d-block"
+                                            src="{% if instance and instance.image %}{{ instance.image.url }}{% else %}#{% endif %}"
+                                            alt="Image Preview">
                                     </div>
                                 </div>
                                 <div class="col-md-6" id="gallery_images_wrapper">
-                                    <label for="gallery_images_input" class="form-label">Gallery Images (multiple)</label>
+                                    <label for="gallery_images_input" class="form-label">Gallery Images
+                                        (multiple)</label>
                                     <label class="media-upload-zone mb-0 d-block">
                                         <span class="upload-icon"><i class="bi bi-images"></i></span>
                                         <span class="upload-text">Upload multiple images</span>
-                                        <input type="file" name="gallery_images" id="gallery_images_input" class="form-control" accept="image/*" multiple>
+                                        <input type="file" name="gallery_images" id="gallery_images_input"
+                                            class="form-control" accept="image/*" multiple>
                                     </label>
                                     <div id="gallery-preview" class="d-flex flex-wrap gap-2 mt-2">
                                         {% if instance %}
-                                            {% for gi in instance.gallery_images.all %}
-                                                {% if gi.image %}
-                                                <img src="{{ gi.image.url }}" class="image-preview" style="max-height: 60px; width: auto;" alt="Gallery Image">
-                                                {% endif %}
-                                            {% endfor %}
+                                        {% for gi in instance.gallery_images.all %}
+                                        {% if gi.image %}
+                                        <img src="{{ gi.image.url }}" class="image-preview"
+                                            style="max-height: 60px; width: auto;" alt="Gallery Image">
+                                        {% endif %}
+                                        {% endfor %}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -585,27 +926,27 @@
                         </div>
 
                         <!-- Submit row: always visible right after Media (before Delivery/Policies) -->
-                       
-                    
+
+
                         <!-- Delivery & Policies -->
-                       
-                        
-                        
-                        
+
+
+
+
                         {{ variant_formset.management_form }}
                         <div id="standardPrintWrapper" style="display: none;">
                             <div class="section-card" id="variantSection">
                                 <div class="section-title"><i class="bi bi-collection"></i>Variants</div>
                                 {% for form in variant_formset.forms %}
-                                    {% if form.errors %}
-                                        <div class="alert alert-danger">
-                                            {% for field, errors in form.errors.items %}
-                                                {% for error in errors %}
-                                                    {{ field }}: {{ error }}<br>
-                                                {% endfor %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
+                                {% if form.errors %}
+                                <div class="alert alert-danger">
+                                    {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                    {{ field }}: {{ error }}<br>
+                                    {% endfor %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                                 {% endfor %}
                                 <table class="table table-bordered" id="variant-table" data-enable-filters="false">
                                     <thead>
@@ -621,44 +962,48 @@
                                     <tbody id="variant-formset">
                                         {% for form in variant_formset %}
 
-                                            <tr class="variant-form">
-                                                <td class="sr-no">{{ forloop.counter }}</td>
-                                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                                                <td>{{ form.min_quantity }}</td>
-                                                <td>{{ form.max_quantity }}</td>
-                                                <td>{{ form.price }}</td>
-                                                <td>{{ form.sided }}</td>
-                                                <td class="text-center">
-                                                    <span class="d-none">{{ form.DELETE }}</span>
-                                                    <button type="button" class="btn btn-link text-danger p-0 border-0 btn-delete-variant" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                                                </td>
-                                            </tr>
+                                        <tr class="variant-form">
+                                            <td class="sr-no">{{ forloop.counter }}</td>
+                                            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                            <td>{{ form.min_quantity }}</td>
+                                            <td>{{ form.max_quantity }}</td>
+                                            <td>{{ form.price }}</td>
+                                            <td>{{ form.sided }}</td>
+                                            <td class="text-center">
+                                                <span class="d-none">{{ form.DELETE }}</span>
+                                                <button type="button"
+                                                    class="btn btn-link text-danger p-0 border-0 btn-delete-variant"
+                                                    title="Delete" aria-label="Delete"><i
+                                                        class="bi bi-trash"></i></button>
+                                            </td>
+                                        </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                                <button type="button" class="btn btn-outline-primary" id="add-variant">Add Another Variant</button>
-                                                        
+                                <button type="button" class="btn btn-outline-primary" id="add-variant">Add Another
+                                    Variant</button>
+
                             </div>
                         </div>
 
-                        
+
                         {{ customize_print_variant_formset.management_form }}
-                        
+
                         <div id="customPrintWrapper" style="display: none;">
                             <hr>
 
                             <div id="customizevariantSection" style="margin-bottom:10px;">
 
                                 {% for form in customize_print_variant_formset.forms %}
-                                    {% if form.errors %}
-                                        <div class="alert alert-danger">
-                                            {% for field, errors in form.errors.items %}
-                                                {% for error in errors %}
-                                                    {{ field }}: {{ error }}<br>
-                                                {% endfor %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
+                                {% if form.errors %}
+                                <div class="alert alert-danger">
+                                    {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                    {{ field }}: {{ error }}<br>
+                                    {% endfor %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                                 {% endfor %}
 
 
@@ -674,20 +1019,25 @@
                                     </thead>
                                     <tbody id="customize-print-variant-formset">
                                         {% for form in customize_print_variant_formset %}
-                                            <tr class="custimize-print-variant-form">
-                                                <td class="sr-no">{{ forloop.counter }}</td>
-                                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                                                <td>{{ form.size }}</td>
-                                                <td>{{ form.price }}</td>
-                                                <td class="text-center">
-                                                    <span class="d-none">{{ form.DELETE }}</span>
-                                                    <button type="button" class="btn btn-link text-danger p-0 border-0 btn-delete-customize-variant" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                                                </td>
-                                            </tr>
+                                        <tr class="custimize-print-variant-form">
+                                            <td class="sr-no">{{ forloop.counter }}</td>
+                                            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                            <td>{{ form.size }}</td>
+                                            <td>{{ form.price }}</td>
+                                            <td class="text-center">
+                                                <span class="d-none">{{ form.DELETE }}</span>
+                                                <button type="button"
+                                                    class="btn btn-link text-danger p-0 border-0 btn-delete-customize-variant"
+                                                    title="Delete" aria-label="Delete"><i
+                                                        class="bi bi-trash"></i></button>
+                                            </td>
+                                        </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="add-customize-print-variant"><i class="bi bi-plus-lg me-1"></i>Add Another Variant</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                    id="add-customize-print-variant"><i class="bi bi-plus-lg me-1"></i>Add Another
+                                    Variant</button>
                             </div>
                         </div>
 
@@ -695,145 +1045,155 @@
                         <div id="addon-section" style="display: none;">
                             <div class="section-card">
                                 <div class="section-title"><i class="bi bi-plus-circle"></i>Addons</div>
-                            
-                            <div >
-                            
 
-                                {% for form in formset.forms %}
+                                <div>
+
+
+                                    {% for form in formset.forms %}
                                     {% if form.errors %}
-                                        <div class="alert alert-danger">
-                                            {% for field, errors in form.errors.items %}
-                                                {% for error in errors %}
-                                                    {{ field }}: {{ error }}<br>
-                                                {% endfor %}
-                                            {% endfor %}
-                                        </div>
+                                    <div class="alert alert-danger">
+                                        {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                        {{ field }}: {{ error }}<br>
+                                        {% endfor %}
+                                        {% endfor %}
+                                    </div>
                                     {% endif %}
-                                {% endfor %}
-
-
-
-                                                            
-                                <table class="table table-bordered" id="addon-table" data-enable-filters="false">
-                                    <thead>
-                                        <tr>
-                                            <th>Sr No</th>
-                                            <th>Addon</th>
-                                            <th>Delete</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="addon-formset">
-                                    {% for form in formset %}
-                                        <tr class="addon-form">
-                                            <td class="sr-no">{{ forloop.counter }}</td>
-
-                                            <td>
-                                                {{ form.addon }}
-                                                <!-- 🔥 Include hidden fields -->
-                                                {% for hidden in form.hidden_fields %}
-                                                    {{ hidden }}
-                                                {% endfor %}
-                                            </td>
-
-                                            <td class="text-center">
-                                                <span class="d-none">{{ form.DELETE }}</span>
-                                                <button type="button" class="btn btn-link text-danger p-0 border-0 btn-delete-addon" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                                            </td>
-                                        </tr>
                                     {% endfor %}
 
-                                    </tbody>
-                                </table>
 
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="add-addon"><i class="bi bi-plus-lg me-1"></i>Add Another Addon</button>
+
+
+                                    <table class="table table-bordered" id="addon-table" data-enable-filters="false">
+                                        <thead>
+                                            <tr>
+                                                <th>Sr No</th>
+                                                <th>Addon</th>
+                                                <th>Delete</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="addon-formset">
+                                            {% for form in formset %}
+                                            <tr class="addon-form">
+                                                <td class="sr-no">{{ forloop.counter }}</td>
+
+                                                <td>
+                                                    {{ form.addon }}
+                                                    <!-- 🔥 Include hidden fields -->
+                                                    {% for hidden in form.hidden_fields %}
+                                                    {{ hidden }}
+                                                    {% endfor %}
+                                                </td>
+
+                                                <td class="text-center">
+                                                    <span class="d-none">{{ form.DELETE }}</span>
+                                                    <button type="button"
+                                                        class="btn btn-link text-danger p-0 border-0 btn-delete-addon"
+                                                        title="Delete" aria-label="Delete"><i
+                                                            class="bi bi-trash"></i></button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+
+                                        </tbody>
+                                    </table>
+
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="add-addon"><i
+                                            class="bi bi-plus-lg me-1"></i>Add Another Addon</button>
+                                </div>
                             </div>
-                        </div>
                         </div>
 
                         <div id="hide_offline_div">
-                        <!-- Delivery Details (match reference image 2: checkboxes in light grey boxes, "Use Default" link) -->
-                        <div class="section-card" id="delivery_div">
-                            <div class="section-card-header-row">
-                                <div class="section-title"><i class="bi bi-truck"></i>Delivery Details</div>
-                                <a href="#" class="use-default-link use-defaults-trigger" data-block="delivery">Use Default</a>
+                            <!-- Delivery Details (match reference image 2: checkboxes in light grey boxes, "Use Default" link) -->
+                            <div class="section-card" id="delivery_div">
+                                <div class="section-card-header-row">
+                                    <div class="section-title"><i class="bi bi-truck"></i>Delivery Details</div>
+                                    <a href="#" class="use-default-link use-defaults-trigger" data-block="delivery">Use
+                                        Default</a>
+                                </div>
+                                <div class="options-row options-row-delivery">
+                                    <div class="option-box">
+                                        {{ form.instant_delivery }}
+                                        <label class="form-check-label" for="id_instant_delivery">Instant
+                                            Delivery</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.self_pickup }}
+                                        <label class="form-check-label" for="id_self_pickup">Self Pickup</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.general_delivery }}
+                                        <label class="form-check-label" for="id_general_delivery">General
+                                            Delivery</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.is_on_shop }}
+                                        <label class="form-check-label" for="id_is_on_shop">On Shop Order</label>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="use_default" id="id_use_default"
+                                    value="{{ form.use_default.value|default:'' }}">
                             </div>
-                            <div class="options-row options-row-delivery">
-                                <div class="option-box">
-                                    {{ form.instant_delivery }}
-                                    <label class="form-check-label" for="id_instant_delivery">Instant Delivery</label>
+
+                            <!-- Policies (match reference image 2: checkboxes in light grey boxes, "Use Default" link) -->
+                            <div class="section-card" id="policies_div">
+                                <div class="section-card-header-row">
+                                    <div class="section-title"><i class="bi bi-shield-check"></i>Policies</div>
+                                    <a href="#" class="use-default-link use-defaults-trigger" data-block="policies">Use
+                                        Default</a>
                                 </div>
-                                <div class="option-box">
-                                    {{ form.self_pickup }}
-                                    <label class="form-check-label" for="id_self_pickup">Self Pickup</label>
-                                </div>
-                                <div class="option-box">
-                                    {{ form.general_delivery }}
-                                    <label class="form-check-label" for="id_general_delivery">General Delivery</label>
-                                </div>
-                                <div class="option-box">
-                                    {{ form.is_on_shop }}
-                                    <label class="form-check-label" for="id_is_on_shop">On Shop Order</label>
+                                <div class="options-row options-row-policies">
+                                    <div class="option-box">
+                                        {{ form.return_policy }}
+                                        <label class="form-check-label" for="id_return_policy">Return Policy</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.cod }}
+                                        <label class="form-check-label" for="id_cod">Cash on Delivery</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.replacement }}
+                                        <label class="form-check-label" for="id_replacement">Replacement</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.shop_exchange }}
+                                        <label class="form-check-label" for="id_shop_exchange">Shop Exchange</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.shop_warranty }}
+                                        <label class="form-check-label" for="id_shop_warranty">Shop Warranty</label>
+                                    </div>
+                                    <div class="option-box">
+                                        {{ form.brand_warranty }}
+                                        <label class="form-check-label" for="id_brand_warranty">Brand Warranty</label>
+                                    </div>
                                 </div>
                             </div>
-                            <input type="hidden" name="use_default" id="id_use_default" value="{{ form.use_default.value|default:'' }}">
                         </div>
 
-                        <!-- Policies (match reference image 2: checkboxes in light grey boxes, "Use Default" link) -->
-                        <div class="section-card" id="policies_div">
-                            <div class="section-card-header-row">
-                                <div class="section-title"><i class="bi bi-shield-check"></i>Policies</div>
-                                <a href="#" class="use-default-link use-defaults-trigger" data-block="policies">Use Default</a>
-                            </div>
-                            <div class="options-row options-row-policies">
-                                <div class="option-box">
-                                    {{ form.return_policy }}
-                                    <label class="form-check-label" for="id_return_policy">Return Policy</label>
-                                </div>
-                                <div class="option-box">
-                                    {{ form.cod }}
-                                    <label class="form-check-label" for="id_cod">Cash on Delivery</label>
-                                </div>
-                                <div class="option-box">
-                                    {{ form.replacement }}
-                                    <label class="form-check-label" for="id_replacement">Replacement</label>
-                                </div>
-                                <div class="option-box">
-                                    {{ form.shop_exchange }}
-                                    <label class="form-check-label" for="id_shop_exchange">Shop Exchange</label>
-                                </div>
-                                <div class="option-box">
-                                    {{ form.shop_warranty }}
-                                    <label class="form-check-label" for="id_shop_warranty">Shop Warranty</label>
-                                </div>
-                                <div class="option-box">
-                                    {{ form.brand_warranty }}
-                                    <label class="form-check-label" for="id_brand_warranty">Brand Warranty</label>
-                                </div>
-                            </div>
-                        </div>
-                        </div>
-                    
                         {% if request.user.is_superuser %}
-                            <div class="section-card">
-                                <div class="section-title"><i class="bi bi-person-badge"></i>Admin only</div>
+                        <div class="section-card">
+                            <div class="section-title"><i class="bi bi-person-badge"></i>Admin only</div>
 
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.is_popular }}
-                                    <label class="form-check-label" for="id_is_popular">Is Popular</label>
-                                </div>
-                            
-                                <div class="form-check form-switch mb-2">
-                                    {{ form.is_featured }}
-                                    <label class="form-check-label" for="id_is_featured">Is Featured</label>
-                                </div>
-
+                            <div class="form-check form-switch mb-2">
+                                {{ form.is_popular }}
+                                <label class="form-check-label" for="id_is_popular">Is Popular</label>
                             </div>
-                        
-                        
+
+                            <div class="form-check form-switch mb-2">
+                                {{ form.is_featured }}
+                                <label class="form-check-label" for="id_is_featured">Is Featured</label>
+                            </div>
+
+                        </div>
+
+
                         {% endif %}
 
 
-                         <div id="product-form-submit-section" class="product-form-submit-section section-card d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div id="product-form-submit-section"
+                            class="product-form-submit-section section-card d-flex flex-wrap align-items-center justify-content-between gap-3">
                             <div class="d-flex align-items-center">
                                 <label class="switch mb-0 me-3">
                                     {{ form.is_active }}
@@ -843,7 +1203,9 @@
                             </div>
                             <div class="d-flex gap-2">
                                 <a href="{% url 'list_product' %}" class="btn btn-outline-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-submit-product custom-button"><i class="bi bi-check-lg me-1"></i>{% if instance %}Update Product{% else %}Submit Product{% endif %}</button>
+                                <button type="submit" class="btn btn-submit-product custom-button"><i
+                                        class="bi bi-check-lg me-1"></i>{% if instance %}Update Product{% else %}Submit
+                                    Product{% endif %}</button>
                             </div>
                         </div>
 
@@ -854,133 +1216,136 @@
         </div>
     </div>
     {% block footer %}
-        {% include 'partials/footer.html' %}
+    {% include 'partials/footer.html' %}
     {% endblock footer %}
 </div>
-    {% if super_catalogue_list %}
-    <!-- Catalogue selection modal -->
-    <div class="modal fade" id="catalogueModal" tabindex="-1" aria-labelledby="catalogueModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="catalogueModalLabel">Select Catalogue Product</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="catalogue-modal-search" class="form-control" placeholder="Search products...">
-                        </div>
+{% if super_catalogue_list %}
+<!-- Catalogue selection modal -->
+<div class="modal fade" id="catalogueModal" tabindex="-1" aria-labelledby="catalogueModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="catalogueModalLabel">Select Catalogue Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="catalogue-modal-search" class="form-control"
+                            placeholder="Search products...">
                     </div>
-                    <div id="catalogue-modal-list">
-                        <div class="row g-3">
-                            {% for c in super_catalogue_list %}
-                            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                                <div class="card h-100 shadow-sm border-0 catalogue-modal-item"
-                                     role="button"
-                                     data-id="{{ c.id }}"
-                                     data-name="{{ c.name }}"
-                                     data-search="{{ c.name }} {{ c.brand_name }} {{ c.size }} {{ c.color }}">
-                                    <div class="card-img-top p-3 pb-0 d-flex justify-content-center">
-                                        {% if c.image %}
-                                        <img src="{{ c.image }}" alt="{{ c.name }}" class="img-fluid rounded" style="max-height:90px; object-fit:contain;">
-                                        {% else %}
-                                        <div class="d-flex align-items-center justify-content-center bg-light rounded" style="width:100%; height:90px; font-size:1.5rem; color:#9ca3af;">
-                                            <i class="bi bi-image"></i>
-                                        </div>
-                                        {% endif %}
+                </div>
+                <div id="catalogue-modal-list">
+                    <div class="row g-3">
+                        {% for c in super_catalogue_list %}
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                            <div class="card h-100 shadow-sm border-0 catalogue-modal-item" role="button"
+                                data-id="{{ c.id }}" data-name="{{ c.name }}"
+                                data-search="{{ c.name }} {{ c.brand_name }} {{ c.size }} {{ c.color }}">
+                                <div class="card-img-top p-3 pb-0 d-flex justify-content-center">
+                                    {% if c.image %}
+                                    <img src="{{ c.image }}" alt="{{ c.name }}" class="img-fluid rounded"
+                                        style="max-height:90px; object-fit:contain;">
+                                    {% else %}
+                                    <div class="d-flex align-items-center justify-content-center bg-light rounded"
+                                        style="width:100%; height:90px; font-size:1.5rem; color:#9ca3af;">
+                                        <i class="bi bi-image"></i>
                                     </div>
-                                    <div class="card-body py-2 px-3 d-flex flex-column">
-                                        <div class="fw-semibold text-truncate" title="{{ c.name }}">{{ c.name }}</div>
-                                        <div class="text-muted small mt-1">
-                                            {% if c.brand_name %}<span>{{ c.brand_name }}</span>{% endif %}
-                                            {% if c.size %}{% if c.brand_name %} · {% endif %}<span>{{ c.size }}</span>{% endif %}
-                                            {% if c.color %}{% if c.brand_name or c.size %} · {% endif %}<span>{{ c.color }}</span>{% endif %}
-                                        </div>
-                                        {% if c.price %}
-                                        <div class="fw-bold mt-1">₹ {{ c.price }}</div>
-                                        {% endif %}
-                                        <div class="mt-2">
-                                            <button type="button" class="btn btn-warning btn-sm w-100 select-catalogue-btn">
-                                                Use in form
-                                            </button>
-                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body py-2 px-3 d-flex flex-column">
+                                    <div class="fw-semibold text-truncate" title="{{ c.name }}">{{ c.name }}</div>
+                                    <div class="text-muted small mt-1">
+                                        {% if c.brand_name %}<span>{{ c.brand_name }}</span>{% endif %}
+                                        {% if c.size %}{% if c.brand_name %} · {% endif %}<span>{{ c.size }}</span>{%
+                                        endif %}
+                                        {% if c.color %}{% if c.brand_name or c.size %} · {% endif %}<span>{{ c.color
+                                            }}</span>{% endif %}
+                                    </div>
+                                    {% if c.price %}
+                                    <div class="fw-bold mt-1">₹ {{ c.price }}</div>
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-warning btn-sm w-100 select-catalogue-btn">
+                                            Use in form
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                            {% endfor %}
                         </div>
+                        {% endfor %}
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
-    {% endif %}
+</div>
+{% endif %}
 {% endblock content %}
 
 {% block extra_js %}
 <script>
-// Load from catalogue: when user selects a catalogue item in the modal, reload form with its data as initial
-document.addEventListener('DOMContentLoaded', function () {
-    function attachCatalogueHandlers() {
-        document.querySelectorAll('.catalogue-modal-item').forEach(function (card) {
-            var selectBtn = card.querySelector('.select-catalogue-btn');
-            if (!selectBtn) return;
-            selectBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var id = card.getAttribute('data-id');
+    // Load from catalogue: when user selects a catalogue item in the modal, reload form with its data as initial
+    document.addEventListener('DOMContentLoaded', function () {
+        function attachCatalogueHandlers() {
+            document.querySelectorAll('.catalogue-modal-item').forEach(function (card) {
+                var selectBtn = card.querySelector('.select-catalogue-btn');
+                if (!selectBtn) return;
+                selectBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var id = card.getAttribute('data-id');
+                    var url = window.location.pathname;
+                    var params = new URLSearchParams(window.location.search);
+                    if (id) {
+                        params.set('catalogue_id', id);
+                    } else {
+                        params.delete('catalogue_id');
+                    }
+                    var query = params.toString();
+                    if (query) {
+                        url += '?' + query;
+                    }
+                    window.location.href = url;
+                });
+            });
+        }
+
+        attachCatalogueHandlers();
+
+        var searchInput = document.getElementById('catalogue-modal-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                var q = this.value.toLowerCase();
+                document.querySelectorAll('.catalogue-modal-item').forEach(function (card) {
+                    var searchText = (card.getAttribute('data-search') || card.getAttribute('data-name') || '').toLowerCase();
+                    var match = searchText.indexOf(q) !== -1;
+                    card.parentElement.style.display = match ? '' : 'none';
+                });
+            });
+        }
+
+        var clearBtn = document.getElementById('clearCatalogueSelection');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
                 var url = window.location.pathname;
                 var params = new URLSearchParams(window.location.search);
-                if (id) {
-                    params.set('catalogue_id', id);
-                } else {
-                    params.delete('catalogue_id');
-                }
+                params.delete('catalogue_id');
                 var query = params.toString();
                 if (query) {
                     url += '?' + query;
                 }
                 window.location.href = url;
             });
-        });
-    }
-
-    attachCatalogueHandlers();
-
-    var searchInput = document.getElementById('catalogue-modal-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            var q = this.value.toLowerCase();
-            document.querySelectorAll('.catalogue-modal-item').forEach(function (card) {
-                var searchText = (card.getAttribute('data-search') || card.getAttribute('data-name') || '').toLowerCase();
-                var match = searchText.indexOf(q) !== -1;
-                card.parentElement.style.display = match ? '' : 'none';
-            });
-        });
-    }
-
-    var clearBtn = document.getElementById('clearCatalogueSelection');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', function () {
-            var url = window.location.pathname;
-            var params = new URLSearchParams(window.location.search);
-            params.delete('catalogue_id');
-            var query = params.toString();
-            if (query) {
-                url += '?' + query;
-            }
-            window.location.href = url;
-        });
-    }
-});
+        }
+    });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         if (typeof tinymce !== 'undefined') {
             tinymce.init({
                 selector: '#id_description',
@@ -999,11 +1364,11 @@ document.addEventListener('DOMContentLoaded', function () {
         var previewImg = document.getElementById('preview');
         var previewWrapper = document.getElementById('preview-wrapper');
         if (imageInput && previewImg && previewWrapper) {
-            imageInput.addEventListener('change', function() {
+            imageInput.addEventListener('change', function () {
                 var file = this.files && this.files[0];
                 if (file && file.type.indexOf('image') !== -1) {
                     var reader = new FileReader();
-                    reader.onload = function(e) {
+                    reader.onload = function (e) {
                         previewImg.src = e.target.result;
                         previewWrapper.style.display = '';
                     };
@@ -1031,25 +1396,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.body.style.overflow = '';
             }
         }
-        if (previewImg) previewImg.addEventListener('click', function() { showFullscreen(this.src); });
+        if (previewImg) previewImg.addEventListener('click', function () { showFullscreen(this.src); });
         if (overlay) overlay.addEventListener('click', hideFullscreen);
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideFullscreen(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideFullscreen(); });
         var galleryPrev = document.getElementById('gallery-preview');
-        if (galleryPrev) galleryPrev.addEventListener('click', function(e) {
+        if (galleryPrev) galleryPrev.addEventListener('click', function (e) {
             if (e.target && e.target.tagName === 'IMG' && e.target.src) showFullscreen(e.target.src);
         });
         // Gallery images: multiple file preview
         var galleryInput = document.getElementById('gallery_images_input');
         var galleryPreview = document.getElementById('gallery-preview');
         if (galleryInput && galleryPreview) {
-            galleryInput.addEventListener('change', function() {
+            galleryInput.addEventListener('change', function () {
                 galleryPreview.innerHTML = '';
                 var files = this.files || [];
                 for (var i = 0; i < Math.min(files.length, 6); i++) {
                     if (files[i].type.indexOf('image') === -1) continue;
                     var reader = new FileReader();
-                    reader.onload = (function(idx) {
-                        return function(e) {
+                    reader.onload = (function (idx) {
+                        return function (e) {
                             var img = document.createElement('img');
                             img.src = e.target.result;
                             img.className = 'image-preview';
@@ -1067,405 +1432,406 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <script>
     // Searchable category, subcategory, unit - search box INSIDE dropdown
-    (function() {
-        var categories = {{ categories_json|default:"[]"|safe }};
-        var subcategories = {{ subcategories_json|default:"[]"|safe }};
-        var sizes = {{ sizes_json|default:"[]"|safe }};
+    (function () {
+        var categories = {{ categories_json|default: "[]" | safe
+    }};
+    var subcategories = {{ subcategories_json|default: "[]" | safe }};
+    var sizes = {{ sizes_json|default: "[]" | safe }};
 
-        var categoryTrigger = document.getElementById('category-trigger');
-        var categorySearchInner = document.getElementById('category-search-inner');
-        var categoryList = document.getElementById('category-list');
-        var categoryDropdown = document.getElementById('category-dropdown');
-        var categorySelect = document.getElementById('id_category');
-        var subcategoryTrigger = document.getElementById('subcategory-trigger');
-        var subcategorySearchInner = document.getElementById('subcategory-search-inner');
-        var subcategoryList = document.getElementById('subcategory-list');
-        var subcategoryDropdown = document.getElementById('subcategory-dropdown');
-        var subcategorySelect = document.getElementById('id_sub_category');
-        var unitTrigger = document.getElementById('unit-trigger');
-        var unitSearchInner = document.getElementById('unit-search-inner');
-        var unitList = document.getElementById('unit-list');
-        var unitDropdown = document.getElementById('unit-dropdown');
-        var unitSelect = document.getElementById('id_unit');
-        var sizeTrigger = document.getElementById('size-trigger');
-        var sizeSearchInner = document.getElementById('size-search-inner');
-        var sizeList = document.getElementById('size-list');
-        var sizeDropdown = document.getElementById('size-dropdown');
-        var sizeSelect = document.getElementById('id_size');
-        var useUnitCheck = document.getElementById('use-unit-check') || null;
+    var categoryTrigger = document.getElementById('category-trigger');
+    var categorySearchInner = document.getElementById('category-search-inner');
+    var categoryList = document.getElementById('category-list');
+    var categoryDropdown = document.getElementById('category-dropdown');
+    var categorySelect = document.getElementById('id_category');
+    var subcategoryTrigger = document.getElementById('subcategory-trigger');
+    var subcategorySearchInner = document.getElementById('subcategory-search-inner');
+    var subcategoryList = document.getElementById('subcategory-list');
+    var subcategoryDropdown = document.getElementById('subcategory-dropdown');
+    var subcategorySelect = document.getElementById('id_sub_category');
+    var unitTrigger = document.getElementById('unit-trigger');
+    var unitSearchInner = document.getElementById('unit-search-inner');
+    var unitList = document.getElementById('unit-list');
+    var unitDropdown = document.getElementById('unit-dropdown');
+    var unitSelect = document.getElementById('id_unit');
+    var sizeTrigger = document.getElementById('size-trigger');
+    var sizeSearchInner = document.getElementById('size-search-inner');
+    var sizeList = document.getElementById('size-list');
+    var sizeDropdown = document.getElementById('size-dropdown');
+    var sizeSelect = document.getElementById('id_size');
+    var useUnitCheck = document.getElementById('use-unit-check') || null;
 
-        if (!categoryTrigger || !subcategoryTrigger) return;
+    if (!categoryTrigger || !subcategoryTrigger) return;
 
-        function esc(s) {
-            if (!s) return '';
-            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    function esc(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderCategoryList(filter) {
+        var q = (filter || '').toLowerCase().trim();
+        var filtered = categories.filter(function (c) { return !q || (c.name || '').toLowerCase().indexOf(q) !== -1; });
+        categoryList.innerHTML = filtered.length
+            ? filtered.map(function (c) { return '<div class="searchable-dropdown-item" data-id="' + c.id + '" data-name="' + esc(c.name) + '">' + esc(c.name) + '</div>'; }).join('')
+            : '<div class="searchable-dropdown-empty">No category found</div>';
+    }
+
+    function renderSubcategoryList(filter, categoryId) {
+        var q = (filter || '').toLowerCase().trim();
+        var filtered = subcategories.filter(function (s) { return String(s.category_id) === String(categoryId); });
+        if (q) filtered = filtered.filter(function (s) { return (s.name || '').toLowerCase().indexOf(q) !== -1; });
+        subcategoryList.innerHTML = filtered.length
+            ? filtered.map(function (s) { return '<div class="searchable-dropdown-item" data-id="' + s.id + '" data-name="' + esc(s.name) + '">' + esc(s.name) + '</div>'; }).join('')
+            : '<div class="searchable-dropdown-empty">No subcategory found</div>';
+    }
+
+    function getUnitOptions() {
+        var opts = [];
+        if (unitSelect) for (var i = 0; i < unitSelect.options.length; i++) {
+            var o = unitSelect.options[i];
+            if (o.value) opts.push({ value: o.value, label: o.text });
         }
+        return opts;
+    }
 
-        function renderCategoryList(filter) {
-            var q = (filter || '').toLowerCase().trim();
-            var filtered = categories.filter(function(c) { return !q || (c.name || '').toLowerCase().indexOf(q) !== -1; });
-            categoryList.innerHTML = filtered.length
-                ? filtered.map(function(c) { return '<div class="searchable-dropdown-item" data-id="'+c.id+'" data-name="'+esc(c.name)+'">'+esc(c.name)+'</div>'; }).join('')
-                : '<div class="searchable-dropdown-empty">No category found</div>';
+    function renderUnitList(filter) {
+        var opts = getUnitOptions();
+        var q = (filter || '').toLowerCase().trim();
+        var filtered = opts.filter(function (o) { return !q || (o.label || o.value || '').toLowerCase().indexOf(q) !== -1; });
+        unitList.innerHTML = filtered.length
+            ? filtered.map(function (o) { return '<div class="searchable-dropdown-item" data-value="' + esc(o.value) + '" data-label="' + esc(o.label) + '">' + esc(o.label) + '</div>'; }).join('')
+            : '<div class="searchable-dropdown-empty">No unit found</div>';
+    }
+
+    function renderSizeList(filter) {
+        var q = (filter || '').toLowerCase().trim();
+        var filtered = sizes.filter(function (s) { return !q || (s.name || '').toLowerCase().indexOf(q) !== -1; });
+        sizeList.innerHTML = filtered.length
+            ? filtered.map(function (s) { return '<div class="searchable-dropdown-item" data-id="' + s.id + '" data-name="' + esc(s.name) + '">' + esc(s.name) + '</div>'; }).join('')
+            : '<div class="searchable-dropdown-empty">No size found</div>';
+    }
+
+    function closeAll() {
+        if (categoryDropdown) categoryDropdown.classList.remove('show');
+        if (subcategoryDropdown) subcategoryDropdown.classList.remove('show');
+        if (unitDropdown) unitDropdown.classList.remove('show');
+        if (sizeDropdown) sizeDropdown.classList.remove('show');
+    }
+
+    function openCategory() {
+        closeAll();
+        if (categoryDropdown) categoryDropdown.classList.add('show');
+        if (categorySearchInner) { categorySearchInner.value = ''; categorySearchInner.focus(); }
+        renderCategoryList('');
+    }
+
+    function openSubcategory() {
+        if (!categorySelect || !categorySelect.value) return;
+        closeAll();
+        if (subcategoryDropdown) subcategoryDropdown.classList.add('show');
+        if (subcategorySearchInner) { subcategorySearchInner.value = ''; subcategorySearchInner.focus(); }
+        renderSubcategoryList('', categorySelect.value);
+    }
+
+    function openUnit() {
+        closeAll();
+        if (unitDropdown) unitDropdown.classList.add('show');
+        if (unitSearchInner) { unitSearchInner.value = ''; unitSearchInner.focus(); }
+        renderUnitList('');
+    }
+
+    function openSize() {
+        closeAll();
+        if (sizeDropdown) sizeDropdown.classList.add('show');
+        if (sizeSearchInner) { sizeSearchInner.value = ''; sizeSearchInner.focus(); }
+        renderSizeList('');
+    }
+
+    categoryTrigger.addEventListener('click', function (e) { e.stopPropagation(); openCategory(); });
+    if (categorySearchInner) categorySearchInner.addEventListener('input', function () { renderCategoryList(this.value); });
+    if (categorySearchInner) categorySearchInner.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    subcategoryTrigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (categorySelect && categorySelect.value) openSubcategory();
+    });
+    if (subcategorySearchInner) subcategorySearchInner.addEventListener('input', function () { renderSubcategoryList(this.value, categorySelect ? categorySelect.value : ''); });
+    if (subcategorySearchInner) subcategorySearchInner.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    if (unitTrigger) unitTrigger.addEventListener('click', function (e) { e.stopPropagation(); openUnit(); });
+    if (unitSearchInner) unitSearchInner.addEventListener('input', function () { renderUnitList(this.value); });
+    if (unitSearchInner) unitSearchInner.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    if (sizeTrigger) sizeTrigger.addEventListener('click', function (e) { e.stopPropagation(); openSize(); });
+    if (sizeSearchInner) sizeSearchInner.addEventListener('input', function () { renderSizeList(this.value); });
+    if (sizeSearchInner) sizeSearchInner.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    categoryDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+    categoryList.addEventListener('click', function (e) {
+        var item = e.target.closest('.searchable-dropdown-item[data-id]');
+        if (!item) return;
+        categorySelect.value = item.dataset.id;
+        categoryTrigger.value = item.dataset.name || item.textContent;
+        closeAll();
+        subcategorySelect.value = '';
+        subcategoryTrigger.value = '';
+        if (subcategorySearchInner) subcategorySearchInner.value = '';
+    });
+
+    subcategoryList.addEventListener('click', function (e) {
+        var item = e.target.closest('.searchable-dropdown-item[data-id]');
+        if (!item) return;
+        subcategorySelect.value = item.dataset.id;
+        subcategoryTrigger.value = item.dataset.name || item.textContent;
+        closeAll();
+    });
+
+    if (unitDropdown) unitDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (unitList) unitList.addEventListener('click', function (e) {
+        var item = e.target.closest('.searchable-dropdown-item[data-value]');
+        if (!item) return;
+        unitSelect.value = item.dataset.value;
+        unitTrigger.value = item.dataset.label || item.textContent;
+        closeAll();
+    });
+
+    if (sizeDropdown) sizeDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (sizeList) sizeList.addEventListener('click', function (e) {
+        var item = e.target.closest('.searchable-dropdown-item[data-id]');
+        if (!item) return;
+        sizeSelect.value = item.dataset.id;
+        sizeTrigger.value = item.dataset.name || item.textContent;
+        closeAll();
+    });
+
+    categorySelect.addEventListener('change', function () {
+        subcategorySelect.value = '';
+        subcategoryTrigger.value = '';
+        if (subcategorySearchInner) subcategorySearchInner.value = '';
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.searchable-select-wrap')) closeAll();
+    });
+
+    function syncFromSelects() {
+        if (categorySelect && categorySelect.value) {
+            var c = categories.find(function (x) { return String(x.id) === String(categorySelect.value); });
+            if (c) categoryTrigger.value = c.name;
+        } else categoryTrigger.value = '';
+        if (subcategorySelect && subcategorySelect.value) {
+            var s = subcategories.find(function (x) { return String(x.id) === String(subcategorySelect.value); });
+            if (s) subcategoryTrigger.value = s.name;
+        } else subcategoryTrigger.value = '';
+        if (unitSelect && unitTrigger) {
+            if (unitSelect.value) {
+                var opts = getUnitOptions();
+                var u = opts.find(function (x) { return String(x.value) === String(unitSelect.value); });
+                if (u) unitTrigger.value = u.label;
+            } else unitTrigger.value = '';
         }
-
-        function renderSubcategoryList(filter, categoryId) {
-            var q = (filter || '').toLowerCase().trim();
-            var filtered = subcategories.filter(function(s) { return String(s.category_id) === String(categoryId); });
-            if (q) filtered = filtered.filter(function(s) { return (s.name || '').toLowerCase().indexOf(q) !== -1; });
-            subcategoryList.innerHTML = filtered.length
-                ? filtered.map(function(s) { return '<div class="searchable-dropdown-item" data-id="'+s.id+'" data-name="'+esc(s.name)+'">'+esc(s.name)+'</div>'; }).join('')
-                : '<div class="searchable-dropdown-empty">No subcategory found</div>';
+        if (sizeSelect && sizeTrigger) {
+            if (sizeSelect.value) {
+                var sz = sizes.find(function (x) { return String(x.id) === String(sizeSelect.value); });
+                if (sz) sizeTrigger.value = sz.name;
+            } else sizeTrigger.value = '';
         }
+    }
 
-        function getUnitOptions() {
-            var opts = [];
-            if (unitSelect) for (var i = 0; i < unitSelect.options.length; i++) {
-                var o = unitSelect.options[i];
-                if (o.value) opts.push({ value: o.value, label: o.text });
-            }
-            return opts;
-        }
-
-        function renderUnitList(filter) {
-            var opts = getUnitOptions();
-            var q = (filter || '').toLowerCase().trim();
-            var filtered = opts.filter(function(o) { return !q || (o.label||o.value||'').toLowerCase().indexOf(q) !== -1; });
-            unitList.innerHTML = filtered.length
-                ? filtered.map(function(o) { return '<div class="searchable-dropdown-item" data-value="'+esc(o.value)+'" data-label="'+esc(o.label)+'">'+esc(o.label)+'</div>'; }).join('')
-                : '<div class="searchable-dropdown-empty">No unit found</div>';
-        }
-
-        function renderSizeList(filter) {
-            var q = (filter || '').toLowerCase().trim();
-            var filtered = sizes.filter(function(s) { return !q || (s.name || '').toLowerCase().indexOf(q) !== -1; });
-            sizeList.innerHTML = filtered.length
-                ? filtered.map(function(s) { return '<div class="searchable-dropdown-item" data-id="'+s.id+'" data-name="'+esc(s.name)+'">'+esc(s.name)+'</div>'; }).join('')
-                : '<div class="searchable-dropdown-empty">No size found</div>';
-        }
-
-        function closeAll() {
-            if (categoryDropdown) categoryDropdown.classList.remove('show');
-            if (subcategoryDropdown) subcategoryDropdown.classList.remove('show');
-            if (unitDropdown) unitDropdown.classList.remove('show');
-            if (sizeDropdown) sizeDropdown.classList.remove('show');
-        }
-
-        function openCategory() {
-            closeAll();
-            if (categoryDropdown) categoryDropdown.classList.add('show');
-            if (categorySearchInner) { categorySearchInner.value = ''; categorySearchInner.focus(); }
-            renderCategoryList('');
-        }
-
-        function openSubcategory() {
-            if (!categorySelect || !categorySelect.value) return;
-            closeAll();
-            if (subcategoryDropdown) subcategoryDropdown.classList.add('show');
-            if (subcategorySearchInner) { subcategorySearchInner.value = ''; subcategorySearchInner.focus(); }
-            renderSubcategoryList('', categorySelect.value);
-        }
-
-        function openUnit() {
-            closeAll();
-            if (unitDropdown) unitDropdown.classList.add('show');
-            if (unitSearchInner) { unitSearchInner.value = ''; unitSearchInner.focus(); }
-            renderUnitList('');
-        }
-
-        function openSize() {
-            closeAll();
-            if (sizeDropdown) sizeDropdown.classList.add('show');
-            if (sizeSearchInner) { sizeSearchInner.value = ''; sizeSearchInner.focus(); }
-            renderSizeList('');
-        }
-
-        categoryTrigger.addEventListener('click', function(e) { e.stopPropagation(); openCategory(); });
-        if (categorySearchInner) categorySearchInner.addEventListener('input', function() { renderCategoryList(this.value); });
-        if (categorySearchInner) categorySearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
-
-        subcategoryTrigger.addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (categorySelect && categorySelect.value) openSubcategory();
+    if (useUnitCheck && unitTrigger) {
+        useUnitCheck.addEventListener('change', function () {
+            if (!this.checked) { unitSelect.value = ''; unitTrigger.value = ''; unitTrigger.disabled = true; }
+            else { unitTrigger.disabled = false; }
         });
-        if (subcategorySearchInner) subcategorySearchInner.addEventListener('input', function() { renderSubcategoryList(this.value, categorySelect ? categorySelect.value : ''); });
-        if (subcategorySearchInner) subcategorySearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
+    }
 
-        if (unitTrigger) unitTrigger.addEventListener('click', function(e) { e.stopPropagation(); openUnit(); });
-        if (unitSearchInner) unitSearchInner.addEventListener('input', function() { renderUnitList(this.value); });
-        if (unitSearchInner) unitSearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
-
-        if (sizeTrigger) sizeTrigger.addEventListener('click', function(e) { e.stopPropagation(); openSize(); });
-        if (sizeSearchInner) sizeSearchInner.addEventListener('input', function() { renderSizeList(this.value); });
-        if (sizeSearchInner) sizeSearchInner.addEventListener('click', function(e) { e.stopPropagation(); });
-
-        categoryDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
-        categoryList.addEventListener('click', function(e) {
-            var item = e.target.closest('.searchable-dropdown-item[data-id]');
-            if (!item) return;
-            categorySelect.value = item.dataset.id;
-            categoryTrigger.value = item.dataset.name || item.textContent;
-            closeAll();
-            subcategorySelect.value = '';
-            subcategoryTrigger.value = '';
-            if (subcategorySearchInner) subcategorySearchInner.value = '';
-        });
-
-        subcategoryList.addEventListener('click', function(e) {
-            var item = e.target.closest('.searchable-dropdown-item[data-id]');
-            if (!item) return;
-            subcategorySelect.value = item.dataset.id;
-            subcategoryTrigger.value = item.dataset.name || item.textContent;
-            closeAll();
-        });
-
-        if (unitDropdown) unitDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
-        if (unitList) unitList.addEventListener('click', function(e) {
-            var item = e.target.closest('.searchable-dropdown-item[data-value]');
-            if (!item) return;
-            unitSelect.value = item.dataset.value;
-            unitTrigger.value = item.dataset.label || item.textContent;
-            closeAll();
-        });
-
-        if (sizeDropdown) sizeDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
-        if (sizeList) sizeList.addEventListener('click', function(e) {
-            var item = e.target.closest('.searchable-dropdown-item[data-id]');
-            if (!item) return;
-            sizeSelect.value = item.dataset.id;
-            sizeTrigger.value = item.dataset.name || item.textContent;
-            closeAll();
-        });
-
-        categorySelect.addEventListener('change', function() {
-            subcategorySelect.value = '';
-            subcategoryTrigger.value = '';
-            if (subcategorySearchInner) subcategorySearchInner.value = '';
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.searchable-select-wrap')) closeAll();
-        });
-
-        function syncFromSelects() {
-            if (categorySelect && categorySelect.value) {
-                var c = categories.find(function(x) { return String(x.id) === String(categorySelect.value); });
-                if (c) categoryTrigger.value = c.name;
-            } else categoryTrigger.value = '';
-            if (subcategorySelect && subcategorySelect.value) {
-                var s = subcategories.find(function(x) { return String(x.id) === String(subcategorySelect.value); });
-                if (s) subcategoryTrigger.value = s.name;
-            } else subcategoryTrigger.value = '';
-            if (unitSelect && unitTrigger) {
-                if (unitSelect.value) {
-                    var opts = getUnitOptions();
-                    var u = opts.find(function(x) { return String(x.value) === String(unitSelect.value); });
-                    if (u) unitTrigger.value = u.label;
-                } else unitTrigger.value = '';
-            }
-            if (sizeSelect && sizeTrigger) {
-                if (sizeSelect.value) {
-                    var sz = sizes.find(function(x) { return String(x.id) === String(sizeSelect.value); });
-                    if (sz) sizeTrigger.value = sz.name;
-                } else sizeTrigger.value = '';
-            }
-        }
-
-        if (useUnitCheck && unitTrigger) {
-            useUnitCheck.addEventListener('change', function() {
-                if (!this.checked) { unitSelect.value = ''; unitTrigger.value = ''; unitTrigger.disabled = true; }
-                else { unitTrigger.disabled = false; }
-            });
-        }
-
-        syncFromSelects();
-        window.syncCategorySubcategoryDisplay = syncFromSelects;
-    })();
+    syncFromSelects();
+    window.syncCategorySubcategoryDisplay = syncFromSelects;
+    }) ();
 </script>
 
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
 
-    // -------------------------- start add more ---------------------------
+        // -------------------------- start add more ---------------------------
 
 
-    const addAddonBtn = document.getElementById("add-addon");
-    const addonContainer = document.getElementById("addon-formset");
-    const addonTotalForms = document.getElementById("id_addon-TOTAL_FORMS");
+        const addAddonBtn = document.getElementById("add-addon");
+        const addonContainer = document.getElementById("addon-formset");
+        const addonTotalForms = document.getElementById("id_addon-TOTAL_FORMS");
 
-    addAddonBtn?.addEventListener("click", function () {
-        const currentFormCount = parseInt(addonTotalForms.value);
-        const newFormRow = addonContainer.querySelector(".addon-form").cloneNode(true);
+        addAddonBtn?.addEventListener("click", function () {
+            const currentFormCount = parseInt(addonTotalForms.value);
+            const newFormRow = addonContainer.querySelector(".addon-form").cloneNode(true);
 
-        // Update name/id/index for all fields
-        Array.from(newFormRow.querySelectorAll("select, input")).forEach((input) => {
-            if (input.name) input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
-            if (input.id) input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
-            if (input.tagName === "SELECT") {
-                input.selectedIndex = 0;
+            // Update name/id/index for all fields
+            Array.from(newFormRow.querySelectorAll("select, input")).forEach((input) => {
+                if (input.name) input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
+                if (input.id) input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
+                if (input.tagName === "SELECT") {
+                    input.selectedIndex = 0;
+                } else {
+                    input.value = "";
+                }
+            });
+
+            // Reset hidden id
+            const hiddenId = newFormRow.querySelector("input[type='hidden'][name$='-id']");
+            if (hiddenId) hiddenId.value = "";
+
+            // Ensure DELETE is unchecked for the new row
+            const deleteInput = newFormRow.querySelector("input[name*='-DELETE']");
+            if (deleteInput) deleteInput.checked = false;
+
+            // Show row in case cloned from a hidden (deleted) row
+            newFormRow.style.display = '';
+
+            // Update Sr No
+            newFormRow.querySelector(".sr-no").innerText = currentFormCount + 1;
+
+            addonTotalForms.value = currentFormCount + 1;
+            addonContainer.appendChild(newFormRow);
+        });
+
+        // ---------- Variant Section ----------
+        const addVariantBtn = document.getElementById("add-variant");
+        const variantContainer = document.getElementById("variant-formset");
+        const variantTotalForms = document.getElementById("id_print_variants-TOTAL_FORMS");
+
+        addVariantBtn?.addEventListener("click", function () {
+            const currentFormCount = parseInt(variantTotalForms.value);
+            const newFormRow = variantContainer.querySelector(".variant-form").cloneNode(true);
+
+            // Update all field indexes
+            Array.from(newFormRow.querySelectorAll("input, select")).forEach(function (input) {
+                input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
+                input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
+                input.type === 'checkbox' || input.type === 'radio' ? input.checked = false : input.value = '';
+            });
+
+            // Update labels
+            Array.from(newFormRow.querySelectorAll("label")).forEach(function (label) {
+                if (label.htmlFor) {
+                    label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${currentFormCount}-`);
+                }
+            });
+
+            // Reset hidden id field if present
+            const hiddenId = newFormRow.querySelector("input[type='hidden'][name$='-id']");
+            if (hiddenId) hiddenId.value = '';
+
+            // Update Sr No
+            newFormRow.querySelector(".sr-no").innerText = currentFormCount + 1;
+
+            variantTotalForms.value = currentFormCount + 1;
+            variantContainer.appendChild(newFormRow);
+        });
+
+        // ---------- add custimize print Variant Section ----------
+
+        const addVariantBtn2 = document.getElementById("add-customize-print-variant");
+        const variantContainer2 = document.getElementById("customize-print-variant-formset");
+        const variantTotalForms2 = document.getElementById("id_customize_print_variants-TOTAL_FORMS");
+
+        addVariantBtn2?.addEventListener("click", function () {
+            const currentFormCount = parseInt(variantTotalForms2.value);
+            const newFormRow = variantContainer2.querySelector(".custimize-print-variant-form").cloneNode(true);
+
+            // Update all field indexes
+            Array.from(newFormRow.querySelectorAll("input, select")).forEach(function (input) {
+                input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
+                input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
+                input.type === 'checkbox' || input.type === 'radio' ? input.checked = false : input.value = '';
+            });
+
+            // Update labels
+            Array.from(newFormRow.querySelectorAll("label")).forEach(function (label) {
+                if (label.htmlFor) {
+                    label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${currentFormCount}-`);
+                }
+            });
+
+            // Reset hidden id field if present
+            const hiddenId = newFormRow.querySelector("input[type='hidden'][name$='-id']");
+            if (hiddenId) hiddenId.value = '';
+
+            // Update Sr No
+            newFormRow.querySelector(".sr-no").innerText = currentFormCount + 1;
+
+            variantTotalForms2.value = currentFormCount + 1;
+            variantContainer2.appendChild(newFormRow);
+        });
+
+        // ---------- Delete formset row: delete from backend (API) if existing record, then remove from DOM and renumber ----------
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        }
+        function renumberFormsetRows(container, prefix) {
+            var rows = container.querySelectorAll('tr');
+            var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
+            if (totalInput) totalInput.value = rows.length;
+            rows.forEach(function (row, idx) {
+                row.querySelectorAll('input, select, textarea').forEach(function (el) {
+                    if (el.name && el.name.indexOf(prefix) === 0) {
+                        el.name = el.name.replace(new RegExp('^' + prefix + '-\\d+-'), prefix + '-' + idx + '-');
+                    }
+                    if (el.id) {
+                        el.id = el.id.replace(new RegExp('-\\d+-'), '-' + idx + '-');
+                    }
+                });
+                row.querySelectorAll('label').forEach(function (label) {
+                    if (label.htmlFor) label.htmlFor = label.htmlFor.replace(/-\d+-/, '-' + idx + '-');
+                });
+                var srNo = row.querySelector('.sr-no');
+                if (srNo) srNo.innerText = idx + 1;
+            });
+        }
+        function removeFormsetRow(btn, apiBaseUrl, prefix) {
+            var row = btn.closest('tr');
+            if (!row) return;
+            var tbody = row.closest('tbody');
+            var idInput = row.querySelector("input[type='hidden'][name$='-id']");
+            var recordId = idInput ? idInput.value.trim() : '';
+            function doRemove() {
+                row.remove();
+                renumberFormsetRows(tbody, prefix);
+            }
+            if (recordId && apiBaseUrl) {
+                fetch(apiBaseUrl + recordId + '/', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin'
+                }).then(function (r) {
+                    if (r.ok || r.status === 204) doRemove();
+                    else console.error('Delete failed:', r.status);
+                }).catch(function (e) { console.error('Delete error:', e); });
             } else {
-                input.value = "";
+                doRemove();
             }
-        });
-
-        // Reset hidden id
-        const hiddenId = newFormRow.querySelector("input[type='hidden'][name$='-id']");
-        if (hiddenId) hiddenId.value = "";
-
-        // Ensure DELETE is unchecked for the new row
-        const deleteInput = newFormRow.querySelector("input[name*='-DELETE']");
-        if (deleteInput) deleteInput.checked = false;
-
-        // Show row in case cloned from a hidden (deleted) row
-        newFormRow.style.display = '';
-
-        // Update Sr No
-        newFormRow.querySelector(".sr-no").innerText = currentFormCount + 1;
-
-        addonTotalForms.value = currentFormCount + 1;
-        addonContainer.appendChild(newFormRow);
-    });
-
-    // ---------- Variant Section ----------
-    const addVariantBtn = document.getElementById("add-variant");
-    const variantContainer = document.getElementById("variant-formset");
-    const variantTotalForms = document.getElementById("id_print_variants-TOTAL_FORMS");
-
-    addVariantBtn?.addEventListener("click", function () {
-        const currentFormCount = parseInt(variantTotalForms.value);
-        const newFormRow = variantContainer.querySelector(".variant-form").cloneNode(true);
-
-        // Update all field indexes
-        Array.from(newFormRow.querySelectorAll("input, select")).forEach(function (input) {
-            input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
-            input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
-            input.type === 'checkbox' || input.type === 'radio' ? input.checked = false : input.value = '';
-        });
-
-        // Update labels
-        Array.from(newFormRow.querySelectorAll("label")).forEach(function (label) {
-            if (label.htmlFor) {
-                label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${currentFormCount}-`);
-            }
-        });
-
-        // Reset hidden id field if present
-        const hiddenId = newFormRow.querySelector("input[type='hidden'][name$='-id']");
-        if (hiddenId) hiddenId.value = '';
-
-        // Update Sr No
-        newFormRow.querySelector(".sr-no").innerText = currentFormCount + 1;
-
-        variantTotalForms.value = currentFormCount + 1;
-        variantContainer.appendChild(newFormRow);
-    });
-
-    // ---------- add custimize print Variant Section ----------
-
-    const addVariantBtn2 = document.getElementById("add-customize-print-variant");
-    const variantContainer2 = document.getElementById("customize-print-variant-formset");
-    const variantTotalForms2 = document.getElementById("id_customize_print_variants-TOTAL_FORMS");
-
-    addVariantBtn2?.addEventListener("click", function () {
-        const currentFormCount = parseInt(variantTotalForms2.value);
-        const newFormRow = variantContainer2.querySelector(".custimize-print-variant-form").cloneNode(true);
-
-        // Update all field indexes
-        Array.from(newFormRow.querySelectorAll("input, select")).forEach(function (input) {
-            input.name = input.name.replace(/-\d+-/, `-${currentFormCount}-`);
-            input.id = input.id.replace(/-\d+-/, `-${currentFormCount}-`);
-            input.type === 'checkbox' || input.type === 'radio' ? input.checked = false : input.value = '';
-        });
-
-        // Update labels
-        Array.from(newFormRow.querySelectorAll("label")).forEach(function (label) {
-            if (label.htmlFor) {
-                label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${currentFormCount}-`);
-            }
-        });
-
-        // Reset hidden id field if present
-        const hiddenId = newFormRow.querySelector("input[type='hidden'][name$='-id']");
-        if (hiddenId) hiddenId.value = '';
-
-        // Update Sr No
-        newFormRow.querySelector(".sr-no").innerText = currentFormCount + 1;
-
-        variantTotalForms2.value = currentFormCount + 1;
-        variantContainer2.appendChild(newFormRow);
-    });
-
-    // ---------- Delete formset row: delete from backend (API) if existing record, then remove from DOM and renumber ----------
-    function getCsrfToken() {
-        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    }
-    function renumberFormsetRows(container, prefix) {
-        var rows = container.querySelectorAll('tr');
-        var totalInput = document.getElementById('id_' + prefix + '-TOTAL_FORMS');
-        if (totalInput) totalInput.value = rows.length;
-        rows.forEach(function(row, idx) {
-            row.querySelectorAll('input, select, textarea').forEach(function(el) {
-                if (el.name && el.name.indexOf(prefix) === 0) {
-                    el.name = el.name.replace(new RegExp('^' + prefix + '-\\d+-'), prefix + '-' + idx + '-');
-                }
-                if (el.id) {
-                    el.id = el.id.replace(new RegExp('-\\d+-'), '-' + idx + '-');
-                }
-            });
-            row.querySelectorAll('label').forEach(function(label) {
-                if (label.htmlFor) label.htmlFor = label.htmlFor.replace(/-\d+-/, '-' + idx + '-');
-            });
-            var srNo = row.querySelector('.sr-no');
-            if (srNo) srNo.innerText = idx + 1;
-        });
-    }
-    function removeFormsetRow(btn, apiBaseUrl, prefix) {
-        var row = btn.closest('tr');
-        if (!row) return;
-        var tbody = row.closest('tbody');
-        var idInput = row.querySelector("input[type='hidden'][name$='-id']");
-        var recordId = idInput ? idInput.value.trim() : '';
-        function doRemove() {
-            row.remove();
-            renumberFormsetRows(tbody, prefix);
         }
-        if (recordId && apiBaseUrl) {
-            fetch(apiBaseUrl + recordId + '/', {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRFToken': getCsrfToken(),
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'same-origin'
-            }).then(function(r) {
-                if (r.ok || r.status === 204) doRemove();
-                else console.error('Delete failed:', r.status);
-            }).catch(function(e) { console.error('Delete error:', e); });
-        } else {
-            doRemove();
-        }
-    }
-    variantContainer?.addEventListener('click', function(e) {
-        var btn = e.target.closest('.btn-delete-variant');
-        if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "PrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'print_variants'); }
-    });
-    variantContainer2?.addEventListener('click', function(e) {
-        var btn = e.target.closest('.btn-delete-customize-variant');
-        if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "CustomizePrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'customize_print_variants'); }
+        variantContainer?.addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-delete-variant');
+            if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "PrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'print_variants'); }
+        });
+        variantContainer2?.addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-delete-customize-variant');
+            if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "CustomizePrintVariantViewSet-detail" 0 %}'.replace('/0/', '/'), 'customize_print_variants'); }
+        });
+
+        // ---------- Delete addon row (icon click) ----------
+        addonContainer?.addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-delete-addon');
+            if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "ProductAddonViewSet-detail" 0 %}'.replace('/0/', '/'), 'addon'); }
+        });
+
     });
 
-    // ---------- Delete addon row (icon click) ----------
-    addonContainer?.addEventListener('click', function(e) {
-        var btn = e.target.closest('.btn-delete-addon');
-        if (btn) { e.preventDefault(); removeFormsetRow(btn, '{% url "ProductAddonViewSet-detail" 0 %}'.replace('/0/', '/'), 'addon'); }
-    });
+    // -------------------------- end add more ---------------------------
 
-});
-
-// -------------------------- end add more ---------------------------
-
-// --------------------- based on product type hide show  -------------------------
+    // --------------------- based on product type hide show  -------------------------
 
     const productType = document.getElementById("productType");
     const saleType = document.getElementById("saleType");
@@ -1496,35 +1862,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var saleTypePrintBlocker = null;
     function setSaleTypeOptionsForPrint() {
-    if (!saleType) return;
-    var pt = document.getElementById('productType') || document.getElementById('id_product_type');
-    if (pt) { pt.removeAttribute('disabled'); pt.style.pointerEvents = ''; }
-    if (saleTypePrintBlocker) saleType.removeEventListener('mousedown', saleTypePrintBlocker);
-    saleTypePrintBlocker = function(e) { e.preventDefault(); };
-    saleType.addEventListener('mousedown', saleTypePrintBlocker);
+        if (!saleType) return;
+        var pt = document.getElementById('productType') || document.getElementById('id_product_type');
+        if (pt) { pt.removeAttribute('disabled'); pt.style.pointerEvents = ''; }
+        if (saleTypePrintBlocker) saleType.removeEventListener('mousedown', saleTypePrintBlocker);
+        saleTypePrintBlocker = function (e) { e.preventDefault(); };
+        saleType.addEventListener('mousedown', saleTypePrintBlocker);
 
-    // Clear old options
-    saleType.innerHTML = '';
+        // Clear old options
+        saleType.innerHTML = '';
 
-    // Create and append new option
-    let option = document.createElement('option');
-    option.value = 'online';
-    option.text = 'Online Only';
-    option.selected = true;
-    saleType.appendChild(option);
+        // Create and append new option
+        let option = document.createElement('option');
+        option.value = 'online';
+        option.text = 'Online Only';
+        option.selected = true;
+        saleType.appendChild(option);
 
-    // Set value explicitly
-    saleType.value = 'online';
+        // Set value explicitly
+        saleType.value = 'online';
 
-    // Remove any stale hidden inputs from previous print mode
-    saleType.parentNode.querySelectorAll('input[name="sale_type"]').forEach(inp => { if (inp.type === 'hidden') inp.remove(); });
-    let hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.name = 'sale_type';
-    hiddenInput.value = 'online';
-    saleType.parentNode.appendChild(hiddenInput);
-    saleType.dispatchEvent(new Event('change', { bubbles: true }));
-}
+        // Remove any stale hidden inputs from previous print mode
+        saleType.parentNode.querySelectorAll('input[name="sale_type"]').forEach(inp => { if (inp.type === 'hidden') inp.remove(); });
+        let hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'sale_type';
+        hiddenInput.value = 'online';
+        saleType.parentNode.appendChild(hiddenInput);
+        saleType.dispatchEvent(new Event('change', { bubbles: true }));
+    }
 
 
 
@@ -1648,7 +2014,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-   
+
 
 
 
@@ -1667,7 +2033,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (el && el.type === 'checkbox') el.checked = !!value;
     }
 
-    var productSettings = {{ product_settings_json|default:"{}"|safe }};
+    var productSettings = {{ product_settings_json|default: "{}" | safe }};
 
     function applyProductSettingsForOffline(settings) {
         if (!settings) return;
@@ -1839,7 +2205,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (saleType) saleType.addEventListener('change', handleSaleTypeChange);   // for hiding delivery option for offline product
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         handleSaleTypeChange();
         updateFieldLogic();   // set image/gallery visibility on load
     });
@@ -1872,13 +2238,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-// Usage:
-changeMrpLabel("Selling Price");
+    // Usage:
+    changeMrpLabel("Selling Price");
 
 
 
     // Example usage in your existing logic:
-   
+
     function handleProductTypeChange() {
         const selectedType = productType?.value;
 
@@ -1898,14 +2264,14 @@ changeMrpLabel("Selling Price");
 
         if (selectedType === 'print') {
             setSaleTypeOptionsForPrint();
-            
+
             toggleVariantFormSection(true);
-            toggleProductOnlyFields(false); 
-        
+            toggleProductOnlyFields(false);
+
             console.log('in here')
 
             changeMrpLabel("Base MRP");
-            
+
             standardPrintWrapper.style.display = 'block';
 
             foodOptionToggleWrapper.style.display = 'none';
@@ -1920,7 +2286,7 @@ changeMrpLabel("Selling Price");
             toggleVariantFormSection(false);  // Hide variant sections when not print
             toggleProductOnlyFields(selectedType === 'product');
             if (selectedType === 'product' && typeof updateFieldLogic === 'function') updateFieldLogic();
-            
+
             changeMrpLabel("MRP");
 
             foodOptionToggleWrapper.style.display = selectedType === 'service' ? 'block' : 'none';
@@ -1947,27 +2313,27 @@ changeMrpLabel("Selling Price");
     }
 
     // Add listener
-        if (customPrintToggle) {
-            customPrintToggle.addEventListener("change", handleCustomPrintToggleChange);
-        }
+    if (customPrintToggle) {
+        customPrintToggle.addEventListener("change", handleCustomPrintToggleChange);
+    }
 
-            // Event listeners
-        if (productType) {
-            productType.addEventListener("change", handleProductTypeChange);
-        }
-        if (foodToggle) {
-            foodToggle.addEventListener("change", handleFoodToggleChange);
-        }
+    // Event listeners
+    if (productType) {
+        productType.addEventListener("change", handleProductTypeChange);
+    }
+    if (foodToggle) {
+        foodToggle.addEventListener("change", handleFoodToggleChange);
+    }
 
-        // Initial setup
-        handleProductTypeChange();
+    // Initial setup
+    handleProductTypeChange();
 
 
 
-// -------------------------------------------------------------
+    // -------------------------------------------------------------
 
-document.addEventListener("DOMContentLoaded", function () {
-    const isEditProduct = {% if instance %}true{% else %}false{% endif %};
+    document.addEventListener("DOMContentLoaded", function () {
+        const isEditProduct = {% if instance %}true{% else %}false{% endif %};
     const checkbox = document.getElementById("id_tax_inclusive");
     const gstInput = document.getElementById("tax_div");
     // Keep GST field visible for both tax inclusive and tax exclusive modes.
@@ -1996,7 +2362,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
         if (trackSerialCheckbox.checked) {
-            const imeiCount = Array.from(document.querySelectorAll('.serial-imei-input')).filter(function(inp) {
+            const imeiCount = Array.from(document.querySelectorAll('.serial-imei-input')).filter(function (inp) {
                 return (inp.value || '').trim() !== '';
             }).length;
             openingStockInput.value = imeiCount;
@@ -2025,7 +2391,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const input = row.querySelector('.serial-imei-input');
         const removeBtn = row.querySelector('.btn-remove-imei');
         if (!isSold) {
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 syncSerialTextarea();
                 syncOpeningStockFromImeis();
             });
@@ -2040,25 +2406,45 @@ document.addEventListener("DOMContentLoaded", function () {
         syncOpeningStockFromImeis();
     }
 
-    // Low stock quantity visibility controlled by checkbox
+    // Low stock quantity visibility controlled by both Track Stock and Low Stock Alert
+    const trackStockCheckbox = document.getElementById('id_track_stock');
     const lowStockCheckbox = document.getElementById('id_low_stock_alert');
     const lowStockQtyWrapper = document.getElementById('low_stock_quantity_wrapper');
-    function syncLowStockVisibility() {
-        if (!lowStockCheckbox || !lowStockQtyWrapper) return;
-        lowStockQtyWrapper.style.display = lowStockCheckbox.checked ? 'block' : 'none';
+    const openingStockWrapper = document.getElementById('opening_stock_wrapper');
+    const stockWrapper = document.getElementById('stock_wrapper');
+    const lowStockAlertWrapper = document.getElementById('low_stock_alert_wrapper');
+
+    function syncStockFieldsVisibility() {
+        if (!trackStockCheckbox) return;
+        
+        const isTracking = trackStockCheckbox.checked;
+        
+        // Toggle main stock field wrappers
+        if (openingStockWrapper) openingStockWrapper.style.display = isTracking ? 'block' : 'none';
+        if (stockWrapper) stockWrapper.style.display = isTracking ? 'block' : 'none';
+        if (lowStockAlertWrapper) lowStockAlertWrapper.style.display = isTracking ? 'block' : 'none';
+        
+        // Low stock quantity requires BOTH track_stock and low_stock_alert to be true
+        if (lowStockQtyWrapper) {
+            lowStockQtyWrapper.style.display = (isTracking && lowStockCheckbox && lowStockCheckbox.checked) ? 'block' : 'none';
+        }
     }
-    if (lowStockCheckbox && lowStockQtyWrapper) {
-        syncLowStockVisibility();
-        lowStockCheckbox.addEventListener('change', syncLowStockVisibility);
+
+    if (trackStockCheckbox) {
+        syncStockFieldsVisibility();
+        trackStockCheckbox.addEventListener('change', syncStockFieldsVisibility);
+    }
+    if (lowStockCheckbox) {
+        lowStockCheckbox.addEventListener('change', syncStockFieldsVisibility);
     }
 
     // Populate existing IMEIs BEFORE sync so we don't add an extra empty row
     // Update product: [{value, is_sold}, ...]; Add/duplicate: ["imei1", ...]
     if (typeof existingImeis !== 'undefined' && existingImeis && existingImeis.length) {
-      existingImeis.forEach(function(v) {
-        const isObj = typeof v === 'object' && v && v !== null && 'value' in v;
-        addSerialInput(v, isObj ? !!v.is_sold : false);
-      });
+        existingImeis.forEach(function (v) {
+            const isObj = typeof v === 'object' && v && v !== null && 'value' in v;
+            addSerialInput(v, isObj ? !!v.is_sold : false);
+        });
     }
 
     // Serial/IMEI list visibility controlled by 'Track serial numbers'
@@ -2124,7 +2510,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (barcodeToggle) {
         syncBarcodeMode(false);
-        barcodeToggle.addEventListener('change', function() {
+        barcodeToggle.addEventListener('change', function () {
             syncBarcodeMode(!barcodeToggle.checked ? true : false);
             syncSerialVisibility();
         });
@@ -2141,116 +2527,116 @@ document.addEventListener("DOMContentLoaded", function () {
     // Sync textarea before form submit so IMEIs are sent
     var productForm = document.getElementById('product-form');
     if (productForm) {
-      productForm.addEventListener('submit', function() {
-        if (typeof syncSerialTextarea === 'function') syncSerialTextarea();
-        syncBarcodeMode(false);
-        syncOpeningStockFromImeis();
-      });
+        productForm.addEventListener('submit', function () {
+            if (typeof syncSerialTextarea === 'function') syncSerialTextarea();
+            syncBarcodeMode(false);
+            syncOpeningStockFromImeis();
+        });
     }
     syncOpeningStockFromImeis();
   });
 
-  // Color dropdown: update display swatch + hex value + form input (elements resolved at call time)
-  function updateColorDisplayFromDropdown(select) {
-    if (!select) return;
-    var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
-    var colorDisplay = document.getElementById("color_display");
-    var colorHexDisplay = document.getElementById("color_hex_display");
-    var hex = select.value ? String(select.value).trim() : '';
-    if (colorValue) colorValue.value = hex;
-    if (colorHexDisplay) colorHexDisplay.textContent = hex || '—';
-    if (colorDisplay) {
-      if (hex) {
-        colorDisplay.style.background = hex;
-        colorDisplay.style.borderColor = (hex === '#ffffff' ? '#ced4da' : hex);
-      } else {
-        colorDisplay.style.background = '#f3f4f6';
-        colorDisplay.style.borderColor = '#ced4da';
-      }
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
-    var colorDisplay = document.getElementById("color_display");
-    var colorHexDisplay = document.getElementById("color_hex_display");
-    var commonColors = document.getElementById("common_colors");
-    var initialColor = "{{ form.color.value|default:'' }}".trim();
-    if (colorValue && initialColor) colorValue.value = initialColor;
-    if (colorHexDisplay) colorHexDisplay.textContent = initialColor || '—';
-    if (colorDisplay && initialColor) {
-      colorDisplay.style.background = initialColor;
-      colorDisplay.style.borderColor = (initialColor === '#ffffff' ? '#ced4da' : initialColor);
-    }
-    if (commonColors && initialColor) {
-      for (var i = 0; i < commonColors.options.length; i++) {
-        if (commonColors.options[i].value.toLowerCase() === initialColor.toLowerCase()) {
-          commonColors.selectedIndex = i;
-          break;
-        }
-      }
-    }
-  });
-
-  
-function handleCustomPrintToggleChange() {
-    const isCustom = document.getElementById('customPrintToggle')?.checked;
-    const productTypeEl = document.getElementById('productType') || document.getElementById('id_product_type');
-    const selectedType = productTypeEl?.value;
-    const stdWrapper = document.getElementById('standardPrintWrapper');
-    const custWrapper = document.getElementById('customPrintWrapper');
-    const mrpWrapper = document.getElementById('mrp_wrapper');
-    const mrpInput = document.getElementById('id_mrp');
-    const select = stdWrapper?.querySelector('select');
-
-    if (isCustom) {
-        if (selectedType === 'print' && mrpWrapper) {
-            mrpWrapper.style.display = 'none';
-        }
-        if (mrpInput) {
-            mrpInput.required = false;
-        }
-        if (stdWrapper) {
-            stdWrapper.style.display = 'none';
-            stdWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-                el.disabled = true;
-                el.removeAttribute('required');
-            });
-        }
-        if (custWrapper) {
-            custWrapper.style.display = 'block';
-            custWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-                el.disabled = false;
-                el.required = false;
-            });
-        }
-    } else {
-        if (selectedType === 'print' && mrpWrapper) {
-            mrpWrapper.style.display = '';
-        }
-        if (selectedType === 'print' && mrpInput) {
-            mrpInput.required = true;
-        }
-        if (custWrapper) {
-            custWrapper.style.display = 'none';
-            custWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-                el.disabled = true;
-                el.required = false;
-            });
-        }
-        if (selectedType === 'print' && stdWrapper) {
-            stdWrapper.style.display = 'block';
-            stdWrapper.querySelectorAll('input, select, textarea').forEach(el => {
-                el.disabled = false;
-            });
-        }
-        if (select) {
-            select.setAttribute('required', 'required');
+    // Color dropdown: update display swatch + hex value + form input (elements resolved at call time)
+    function updateColorDisplayFromDropdown(select) {
+        if (!select) return;
+        var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
+        var colorDisplay = document.getElementById("color_display");
+        var colorHexDisplay = document.getElementById("color_hex_display");
+        var hex = select.value ? String(select.value).trim() : '';
+        if (colorValue) colorValue.value = hex;
+        if (colorHexDisplay) colorHexDisplay.textContent = hex || '—';
+        if (colorDisplay) {
+            if (hex) {
+                colorDisplay.style.background = hex;
+                colorDisplay.style.borderColor = (hex === '#ffffff' ? '#ced4da' : hex);
+            } else {
+                colorDisplay.style.background = '#f3f4f6';
+                colorDisplay.style.borderColor = '#ced4da';
+            }
         }
     }
-}
 
-    
+    document.addEventListener('DOMContentLoaded', function () {
+        var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
+        var colorDisplay = document.getElementById("color_display");
+        var colorHexDisplay = document.getElementById("color_hex_display");
+        var commonColors = document.getElementById("common_colors");
+        var initialColor = "{{ form.color.value|default:'' }}".trim();
+        if (colorValue && initialColor) colorValue.value = initialColor;
+        if (colorHexDisplay) colorHexDisplay.textContent = initialColor || '—';
+        if (colorDisplay && initialColor) {
+            colorDisplay.style.background = initialColor;
+            colorDisplay.style.borderColor = (initialColor === '#ffffff' ? '#ced4da' : initialColor);
+        }
+        if (commonColors && initialColor) {
+            for (var i = 0; i < commonColors.options.length; i++) {
+                if (commonColors.options[i].value.toLowerCase() === initialColor.toLowerCase()) {
+                    commonColors.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    });
+
+
+    function handleCustomPrintToggleChange() {
+        const isCustom = document.getElementById('customPrintToggle')?.checked;
+        const productTypeEl = document.getElementById('productType') || document.getElementById('id_product_type');
+        const selectedType = productTypeEl?.value;
+        const stdWrapper = document.getElementById('standardPrintWrapper');
+        const custWrapper = document.getElementById('customPrintWrapper');
+        const mrpWrapper = document.getElementById('mrp_wrapper');
+        const mrpInput = document.getElementById('id_mrp');
+        const select = stdWrapper?.querySelector('select');
+
+        if (isCustom) {
+            if (selectedType === 'print' && mrpWrapper) {
+                mrpWrapper.style.display = 'none';
+            }
+            if (mrpInput) {
+                mrpInput.required = false;
+            }
+            if (stdWrapper) {
+                stdWrapper.style.display = 'none';
+                stdWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = true;
+                    el.removeAttribute('required');
+                });
+            }
+            if (custWrapper) {
+                custWrapper.style.display = 'block';
+                custWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = false;
+                    el.required = false;
+                });
+            }
+        } else {
+            if (selectedType === 'print' && mrpWrapper) {
+                mrpWrapper.style.display = '';
+            }
+            if (selectedType === 'print' && mrpInput) {
+                mrpInput.required = true;
+            }
+            if (custWrapper) {
+                custWrapper.style.display = 'none';
+                custWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = true;
+                    el.required = false;
+                });
+            }
+            if (selectedType === 'print' && stdWrapper) {
+                stdWrapper.style.display = 'block';
+                stdWrapper.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = false;
+                });
+            }
+            if (select) {
+                select.setAttribute('required', 'required');
+            }
+        }
+    }
+
+
     // ✅ Then: Run it on DOM load
     document.addEventListener('DOMContentLoaded', () => {
         const toggle = document.getElementById('customPrintToggle');
@@ -2262,91 +2648,91 @@ function handleCustomPrintToggleChange() {
 
 
 
-  window.addEventListener("DOMContentLoaded", () => {
-    handleProductTypeChange();
-    // Ensure submit section is always visible regardless of product type
-    const submitSection = document.getElementById('product-form-submit-section');
-    if (submitSection) submitSection.style.display = '';
-  });
-
-
-
-
-  
-  
-  // --------------------- Inline native validation messages for all fields ---------------------
-  document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('product-form') || document.querySelector('form');
-    if (!form) return;
-
-    // When server returns validation errors, scroll to the error alert
-    const formErrorsAlert = document.getElementById('form-errors-alert');
-    if (formErrorsAlert) formErrorsAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    function showError(el) {
-      if (!el || el.validity.valid) return;
-      let container = el.parentNode;
-      // Remove any existing error under this parent
-      const prev = container.querySelector('.validation-error');
-      if (prev) prev.remove();
-      const msg = document.createElement('div');
-      msg.className = 'validation-error text-danger small';
-      msg.textContent = el.validationMessage || 'Please fill out this field.';
-      container.appendChild(msg);
-    }
-
-    function clearError(el) {
-      const container = el?.parentNode;
-      if (!container) return;
-      const prev = container.querySelector('.validation-error');
-      if (prev) prev.remove();
-    }
-
-    // On submit: only block if there are *visible* invalid fields (hidden fields are excluded)
-    form.addEventListener('submit', function (e) {
-      // Clear old messages
-      form.querySelectorAll('.validation-error').forEach(n => n.remove());
-
-      // Find invalid elements that are visible and not disabled
-      const invalidEls = form.querySelectorAll(':invalid');
-      const visibleInvalid = Array.from(invalidEls).filter(el => {
-        if (el.disabled) return false;
-        // offsetParent is null when element or ancestor has display:none
-        if (el.offsetParent === null) return false;
-        return true;
-      });
-
-      if (visibleInvalid.length > 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        visibleInvalid.forEach(el => showError(el));
-        visibleInvalid[0]?.focus?.();
-      }
-    }, true);
-
-    // Suppress native bubble and show inline on each invalid event
-    form.addEventListener('invalid', function (e) {
-      e.preventDefault();
-      const el = e.target;
-      // skip hidden/disabled
-      if (el.disabled) return;
-      if (el.offsetParent === null) return;
-      showError(el);
-    }, true);
-
-    // Live clear when field becomes valid
-    form.querySelectorAll('input, select, textarea').forEach(el => {
-      el.addEventListener('input', () => {
-        if (el.checkValidity()) clearError(el);
-      });
-      el.addEventListener('change', () => {
-        if (el.checkValidity()) clearError(el);
-      });
+    window.addEventListener("DOMContentLoaded", () => {
+        handleProductTypeChange();
+        // Ensure submit section is always visible regardless of product type
+        const submitSection = document.getElementById('product-form-submit-section');
+        if (submitSection) submitSection.style.display = '';
     });
-  });
 
-     </script>
-    
+
+
+
+
+
+    // --------------------- Inline native validation messages for all fields ---------------------
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('product-form') || document.querySelector('form');
+        if (!form) return;
+
+        // When server returns validation errors, scroll to the error alert
+        const formErrorsAlert = document.getElementById('form-errors-alert');
+        if (formErrorsAlert) formErrorsAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        function showError(el) {
+            if (!el || el.validity.valid) return;
+            let container = el.parentNode;
+            // Remove any existing error under this parent
+            const prev = container.querySelector('.validation-error');
+            if (prev) prev.remove();
+            const msg = document.createElement('div');
+            msg.className = 'validation-error text-danger small';
+            msg.textContent = el.validationMessage || 'Please fill out this field.';
+            container.appendChild(msg);
+        }
+
+        function clearError(el) {
+            const container = el?.parentNode;
+            if (!container) return;
+            const prev = container.querySelector('.validation-error');
+            if (prev) prev.remove();
+        }
+
+        // On submit: only block if there are *visible* invalid fields (hidden fields are excluded)
+        form.addEventListener('submit', function (e) {
+            // Clear old messages
+            form.querySelectorAll('.validation-error').forEach(n => n.remove());
+
+            // Find invalid elements that are visible and not disabled
+            const invalidEls = form.querySelectorAll(':invalid');
+            const visibleInvalid = Array.from(invalidEls).filter(el => {
+                if (el.disabled) return false;
+                // offsetParent is null when element or ancestor has display:none
+                if (el.offsetParent === null) return false;
+                return true;
+            });
+
+            if (visibleInvalid.length > 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                visibleInvalid.forEach(el => showError(el));
+                visibleInvalid[0]?.focus?.();
+            }
+        }, true);
+
+        // Suppress native bubble and show inline on each invalid event
+        form.addEventListener('invalid', function (e) {
+            e.preventDefault();
+            const el = e.target;
+            // skip hidden/disabled
+            if (el.disabled) return;
+            if (el.offsetParent === null) return;
+            showError(el);
+        }, true);
+
+        // Live clear when field becomes valid
+        form.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('input', () => {
+                if (el.checkValidity()) clearError(el);
+            });
+            el.addEventListener('change', () => {
+                if (el.checkValidity()) clearError(el);
+            });
+        });
+    });
+
+</script>
+
 
 
 
@@ -2409,7 +2795,7 @@ function handleCustomPrintToggleChange() {
             if (saleType && settings.online_catalog_only) {
                 saleType.value = 'online';
             }
-        } catch (e) {}
+        } catch (e) { }
 
         // Recalculate any totals/derived UI if needed
         if (typeof recalculateTotals === 'function') {
@@ -2432,14 +2818,14 @@ function handleCustomPrintToggleChange() {
         setCheckbox('id_brand_warranty', settings.brand_warranty);
     }
 
-    document.querySelectorAll('.use-defaults-trigger').forEach(function(link) {
-        link.addEventListener('click', function(e) {
+    document.querySelectorAll('.use-defaults-trigger').forEach(function (link) {
+        link.addEventListener('click', function (e) {
             e.preventDefault();
             var block = this.getAttribute('data-block');
             if (!block) return;
             fetch("{% url 'product_defaults' %}")
                 .then(response => response.json())
-                .then(function(result) {
+                .then(function (result) {
                     if (result.success) {
                         var data = result.data;
                         if (block === 'delivery') {
@@ -2451,7 +2837,7 @@ function handleCustomPrintToggleChange() {
                         console.warn("No product settings found.");
                     }
                 })
-                .catch(function(error) {
+                .catch(function (error) {
                     console.error("Error fetching product settings:", error);
                 });
         });

@@ -771,6 +771,8 @@ class product(models.Model):
         return self.purchase_price or self.mrp or 0
     
     def save(self, *args, **kwargs):
+        if self.product_type == 'print' and self.mrp:
+            self.sales_price = self.mrp
         if not self.wholesale_price and self.mrp:
             self.wholesale_price = self.mrp
         if not self.purchase_price and self.mrp:
