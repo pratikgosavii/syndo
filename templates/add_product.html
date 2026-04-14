@@ -838,28 +838,22 @@
                                     <div class="d-none">{{ form.size }}</div>
                                 </div>
                                 <div class="col-12 product-only-field" id="color_wrapper">
-                                    <label for="common_colors" class="form-label d-block">Color</label>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <select id="common_colors" class="form-control form-select"
-                                            style="max-width: 180px;" onchange="updateColorDisplayFromDropdown(this)">
-                                            <option value="">Select common color</option>
-                                            <option value="#ffffff">White</option>
-                                            <option value="#000000">Black</option>
-                                            <option value="#ff0000">Red</option>
-                                            <option value="#00ff00">Green</option>
-                                            <option value="#0000ff">Blue</option>
-                                            <option value="#ffff00">Yellow</option>
-                                            <option value="#ffa500">Orange</option>
-                                            <option value="#800080">Purple</option>
-                                            <option value="#808080">Gray</option>
-                                        </select>
-                                        <div id="color_display" class="color-swatch-display"
-                                            style="width: 2.5rem; height: 2.25rem; border-radius: 6px; border: 1px solid #ced4da; background: #f3f4f6; flex-shrink: 0;"
-                                            title="Selected color preview"></div>
-                                        <span id="color_hex_display" class="text-muted small align-self-center"
-                                            style="min-width: 4.5rem;">—</span>
-                                        <div class="visually-hidden">{{ form.color }}</div>
+                                    <label for="id_color" class="form-label product-only-field">Color</label>
+                                    <div class="searchable-select-wrap position-relative">
+                                        <input type="text" class="form-control searchable-trigger" id="color-trigger"
+                                            placeholder="Select color..." readonly autocomplete="off">
+                                        <i
+                                            class="bi bi-chevron-down position-absolute end-0 top-50 translate-middle-y me-2 text-muted pointer-events-none"></i>
+                                        <div class="searchable-dropdown" id="color-dropdown">
+                                            <div class="searchable-dropdown-search">
+                                                <i class="bi bi-search"></i>
+                                                <input type="text" id="color-search-inner" placeholder="Search color..."
+                                                    autocomplete="off">
+                                            </div>
+                                            <div class="searchable-dropdown-list" id="color-list"></div>
+                                        </div>
                                     </div>
+                                    <div class="d-none">{{ form.color }}</div>
                                 </div>
                                 <div class="col-md-6" id="batch_number_wrapper">
                                     <label for="id_batch_number" class="form-label">Batch number</label>
@@ -1426,6 +1420,8 @@
         var categories = {{ categories_json|default:"[]"|safe }};
     var subcategories = {{ subcategories_json|default:"[]"|safe }};
     var sizes = {{ sizes_json|default:"[]"|safe }};
+    var colors = ["White", "Black", "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "Brown", "Gray", "Silver", "Gold", "Maroon", "Navy Blue", "Teal", "Lime", "Indigo", "Violet", "Beige", "Turquoise", "Cyan", "Magenta", "Olive", "Ivory", "Lavender", "Sky Blue", "Coral", "Charcoal", "Emerald", "Dark Gray", "Light Gray", "Khaki", "Peach", "Tan", "Burgundy"];
+
 
     var categoryTrigger = document.getElementById('category-trigger');
     var categorySearchInner = document.getElementById('category-search-inner');
@@ -1447,7 +1443,13 @@
     var sizeList = document.getElementById('size-list');
     var sizeDropdown = document.getElementById('size-dropdown');
     var sizeSelect = document.getElementById('id_size');
+    var colorTrigger = document.getElementById('color-trigger');
+    var colorSearchInner = document.getElementById('color-search-inner');
+    var colorList = document.getElementById('color-list');
+    var colorDropdown = document.getElementById('color-dropdown');
+    var colorSelect = document.getElementById('id_color');
     var useUnitCheck = document.getElementById('use-unit-check') || null;
+
 
     if (!categoryTrigger || !subcategoryTrigger) return;
 
@@ -1499,12 +1501,22 @@
             : '<div class="searchable-dropdown-empty">No size found</div>';
     }
 
+    function renderColorList(filter) {
+        var q = (filter || '').toLowerCase().trim();
+        var filtered = colors.filter(function (c) { return !q || (c || '').toLowerCase().indexOf(q) !== -1; });
+        colorList.innerHTML = filtered.length
+            ? filtered.map(function (c) { return '<div class="searchable-dropdown-item" data-value="' + esc(c) + '">' + esc(c) + '</div>'; }).join('')
+            : '<div class="searchable-dropdown-empty">No color found</div>';
+    }
+
     function closeAll() {
         if (categoryDropdown) categoryDropdown.classList.remove('show');
         if (subcategoryDropdown) subcategoryDropdown.classList.remove('show');
         if (unitDropdown) unitDropdown.classList.remove('show');
         if (sizeDropdown) sizeDropdown.classList.remove('show');
+        if (colorDropdown) colorDropdown.classList.remove('show');
     }
+
 
     function openCategory() {
         closeAll();
@@ -1535,6 +1547,14 @@
         renderSizeList('');
     }
 
+    function openColor() {
+        closeAll();
+        if (colorDropdown) colorDropdown.classList.add('show');
+        if (colorSearchInner) { colorSearchInner.value = ''; colorSearchInner.focus(); }
+        renderColorList('');
+    }
+
+
     categoryTrigger.addEventListener('click', function (e) { e.stopPropagation(); openCategory(); });
     if (categorySearchInner) categorySearchInner.addEventListener('input', function () { renderCategoryList(this.value); });
     if (categorySearchInner) categorySearchInner.addEventListener('click', function (e) { e.stopPropagation(); });
@@ -1553,6 +1573,11 @@
     if (sizeTrigger) sizeTrigger.addEventListener('click', function (e) { e.stopPropagation(); openSize(); });
     if (sizeSearchInner) sizeSearchInner.addEventListener('input', function () { renderSizeList(this.value); });
     if (sizeSearchInner) sizeSearchInner.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    if (colorTrigger) colorTrigger.addEventListener('click', function (e) { e.stopPropagation(); openColor(); });
+    if (colorSearchInner) colorSearchInner.addEventListener('input', function () { renderColorList(this.value); });
+    if (colorSearchInner) colorSearchInner.addEventListener('click', function (e) { e.stopPropagation(); });
+
 
     categoryDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
     categoryList.addEventListener('click', function (e) {
@@ -1584,6 +1609,7 @@
     });
 
     if (sizeDropdown) sizeDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (sizeDropdown) sizeDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
     if (sizeList) sizeList.addEventListener('click', function (e) {
         var item = e.target.closest('.searchable-dropdown-item[data-id]');
         if (!item) return;
@@ -1591,6 +1617,16 @@
         sizeTrigger.value = item.dataset.name || item.textContent;
         closeAll();
     });
+
+    if (colorDropdown) colorDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (colorList) colorList.addEventListener('click', function (e) {
+        var item = e.target.closest('.searchable-dropdown-item[data-value]');
+        if (!item) return;
+        colorSelect.value = item.dataset.value;
+        colorTrigger.value = item.dataset.value || item.textContent;
+        closeAll();
+    });
+
 
     categorySelect.addEventListener('change', function () {
         subcategorySelect.value = '';
@@ -1624,7 +1660,13 @@
                 if (sz) sizeTrigger.value = sz.name;
             } else sizeTrigger.value = '';
         }
+        if (colorSelect && colorTrigger) {
+            if (colorSelect.value) {
+                colorTrigger.value = colorSelect.value;
+            } else colorTrigger.value = '';
+        }
     }
+
 
     if (useUnitCheck && unitTrigger) {
         useUnitCheck.addEventListener('change', function () {
@@ -2538,47 +2580,7 @@
     syncOpeningStockFromImeis();
   });
 
-    // Color dropdown: update display swatch + hex value + form input (elements resolved at call time)
-    function updateColorDisplayFromDropdown(select) {
-        if (!select) return;
-        var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
-        var colorDisplay = document.getElementById("color_display");
-        var colorHexDisplay = document.getElementById("color_hex_display");
-        var hex = select.value ? String(select.value).trim() : '';
-        if (colorValue) colorValue.value = hex;
-        if (colorHexDisplay) colorHexDisplay.textContent = hex || '—';
-        if (colorDisplay) {
-            if (hex) {
-                colorDisplay.style.background = hex;
-                colorDisplay.style.borderColor = (hex === '#ffffff' ? '#ced4da' : hex);
-            } else {
-                colorDisplay.style.background = '#f3f4f6';
-                colorDisplay.style.borderColor = '#ced4da';
-            }
-        }
-    }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
-        var colorDisplay = document.getElementById("color_display");
-        var colorHexDisplay = document.getElementById("color_hex_display");
-        var commonColors = document.getElementById("common_colors");
-        var initialColor = "{{ form.color.value|default:'' }}".trim();
-        if (colorValue && initialColor) colorValue.value = initialColor;
-        if (colorHexDisplay) colorHexDisplay.textContent = initialColor || '—';
-        if (colorDisplay && initialColor) {
-            colorDisplay.style.background = initialColor;
-            colorDisplay.style.borderColor = (initialColor === '#ffffff' ? '#ced4da' : initialColor);
-        }
-        if (commonColors && initialColor) {
-            for (var i = 0; i < commonColors.options.length; i++) {
-                if (commonColors.options[i].value.toLowerCase() === initialColor.toLowerCase()) {
-                    commonColors.selectedIndex = i;
-                    break;
-                }
-            }
-        }
-    });
 
 
     function handleCustomPrintToggleChange() {

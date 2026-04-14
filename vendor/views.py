@@ -8467,7 +8467,14 @@ class PrintVariantChoiceAPIView(APIView):
                 {"value": key, "label": label} for key, label in PrintVariant.SIDED_CHOICES
             ],
             "color_choices": [
-                {"value": key, "label": label} for key, label in PrintVariant.COLOR_CHOICES
+                {"value": color, "label": color} for color in [
+                    "White", "Black", "Red", "Blue", "Green", "Yellow", "Orange", "Purple", 
+                    "Pink", "Brown", "Gray", "Silver", "Gold", "Maroon", "Navy Blue", 
+                    "Teal", "Lime", "Indigo", "Violet", "Beige", "Turquoise", "Cyan", 
+                    "Magenta", "Olive", "Ivory", "Lavender", "Sky Blue", "Coral", 
+                    "Charcoal", "Emerald", "Dark Gray", "Light Gray", "Khaki", "Peach", 
+                    "Tan", "Burgundy"
+                ]
             ],
             "size_choices": [
                 {"value": s.id, "label": s.name} for s in size_model.objects.all()
