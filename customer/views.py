@@ -25,6 +25,7 @@ from .serializers import AddressSerializer, CartSerializer, OrderSerializer
 from types import SimpleNamespace
 
 from rest_framework import viewsets, permissions
+from syndo.pagination import StandardResultsSetPagination
 
 class CustomerOrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
@@ -1726,6 +1727,7 @@ class ListProducts(ListAPIView):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         user = self.request.user

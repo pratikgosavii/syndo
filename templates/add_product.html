@@ -443,7 +443,7 @@
         border-right: 0;
     }
 
-    /* Serial / IMEI section – enhanced UI */
+    /* Serial / IMEI section ÔÇô enhanced UI */
     #serial_imei_list {
         display: flex;
         flex-direction: column;
@@ -747,7 +747,7 @@
                         </div>
                         {% endif %}
 
-                        <!-- Stock (reference image 2: General product settings – checkboxes in light grey boxes) -->
+                        <!-- Stock (reference image 2: General product settings ÔÇô checkboxes in light grey boxes) -->
                         <div class="section-card product-only-field">
                             <div class="section-title"><i class="bi bi-boxes"></i>Stock</div>
                             <div class="row g-3">
@@ -800,7 +800,7 @@
                                     <label for="id_low_stock_quantity" class="form-label">Low stock quantity</label>
                                     {{ form.low_stock_quantity }}
                                 </div>
-                                <!-- Serial / IMEI list – only relevant when 'Track serial numbers' is enabled -->
+                                <!-- Serial / IMEI list ÔÇô only relevant when 'Track serial numbers' is enabled -->
                                 <div class="col-12" id="serial_imei_wrapper">
                                     <label class="form-label d-block">Serial / IMEI numbers</label>
                                     <div id="serial_imei_list"></div>
@@ -865,7 +865,7 @@
                                             style="width: 2.5rem; height: 2.25rem; border-radius: 6px; border: 1px solid #ced4da; background: #f3f4f6; flex-shrink: 0;"
                                             title="Selected color preview"></div>
                                         <span id="color_hex_display" class="text-muted small align-self-center"
-                                            style="min-width: 4.5rem;">—</span>
+                                            style="min-width: 4.5rem;">ÔÇö</span>
                                         <div class="visually-hidden">{{ form.color }}</div>
                                     </div>
                                 </div>
@@ -1079,7 +1079,7 @@
 
                                                 <td>
                                                     {{ form.addon }}
-                                                    <!-- 🔥 Include hidden fields -->
+                                                    <!-- ­ƒöÑ Include hidden fields -->
                                                     {% for hidden in form.hidden_fields %}
                                                     {{ hidden }}
                                                     {% endfor %}
@@ -1258,13 +1258,11 @@
                                     <div class="fw-semibold text-truncate" title="{{ c.name }}">{{ c.name }}</div>
                                     <div class="text-muted small mt-1">
                                         {% if c.brand_name %}<span>{{ c.brand_name }}</span>{% endif %}
-                                        {% if c.size %}{% if c.brand_name %} · {% endif %}<span>{{ c.size }}</span>{%
-                                        endif %}
-                                        {% if c.color %}{% if c.brand_name or c.size %} · {% endif %}<span>{{ c.color
-                                            }}</span>{% endif %}
+                                        {% if c.size %}{% if c.brand_name %} ┬À {% endif %}<span>{{ c.size }}</span>{% endif %}
+                                        {% if c.color %}{% if c.brand_name or c.size %} ┬À {% endif %}<span>{{ c.color }}</span>{% endif %}
                                     </div>
                                     {% if c.price %}
-                                    <div class="fw-bold mt-1">₹ {{ c.price }}</div>
+                                    <div class="fw-bold mt-1">Ôé╣ {{ c.price }}</div>
                                     {% endif %}
                                     <div class="mt-2">
                                         <button type="button" class="btn btn-warning btn-sm w-100 select-catalogue-btn">
@@ -1433,10 +1431,9 @@
 <script>
     // Searchable category, subcategory, unit - search box INSIDE dropdown
     (function () {
-        var categories = {{ categories_json|default: "[]" | safe
-    }};
-    var subcategories = {{ subcategories_json|default: "[]" | safe }};
-    var sizes = {{ sizes_json|default: "[]" | safe }};
+        var categories = {{ categories_json|default:"[]"|safe }};
+        var subcategories = {{ subcategories_json|default:"[]"|safe }};
+        var sizes = {{ sizes_json|default:"[]"|safe }};
 
     var categoryTrigger = document.getElementById('category-trigger');
     var categorySearchInner = document.getElementById('category-search-inner');
@@ -2033,7 +2030,7 @@
         if (el && el.type === 'checkbox') el.checked = !!value;
     }
 
-    var productSettings = {{ product_settings_json|default: "{}" | safe }};
+    var productSettings = {{ product_settings_json|default:"{}"|safe }};
 
     function applyProductSettingsForOffline(settings) {
         if (!settings) return;
@@ -2143,40 +2140,43 @@
         const config = rules[key];
         if (!config) return;
 
-        Object.entries(config).forEach(([field, rule]) => {
-            const wrapper = document.getElementById(`${field}_wrapper`);
-            const input = document.getElementById(`id_${field}`);
-            if (!wrapper || !input) return;
-
-            switch (rule) {
-                case 'required':
-                    wrapper.style.display = 'block';
-                    wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = false);
-                    // If editing, don't force image upload
-                    if ((field === 'image' || field === 'gallery_images') && isEditProduct) {
-                        input.required = false;
-                    } else {
-                        input.required = true;
-                    }
-                    break;
-                case 'optional':
-                    wrapper.style.display = 'block';
-                    wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = false);
-                    input.required = false;
-                    break;
-                case 'hide':
-                    wrapper.style.display = 'none';
-                    wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = true);
-                    input.required = false;
-                    break;
-            }
-        });
     }
 
-
-
-
     const isEditProduct = {% if instance %}true{% else %}false{% endif %};
+
+    Object.entries(config).forEach(([field, rule]) => {
+        const wrapper = document.getElementById(`${field}_wrapper`);
+        const input = document.getElementById(`id_${field}`);
+        if (!wrapper || !input) return;
+
+        switch (rule) {
+            case 'required':
+                wrapper.style.display = 'block';
+                wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = false);
+                // Skip making image/gallery required if we are editing an existing product
+                if ((field === 'image' || field === 'gallery_images') && isEditProduct) {
+                    input.required = false;
+                } else {
+                    input.required = true;
+                }
+                break;
+            case 'optional':
+                wrapper.style.display = 'block';
+                wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = false);
+                input.required = false;
+                break;
+            case 'hide':
+                wrapper.style.display = 'none';
+                wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = true);
+                input.required = false;
+                break;
+        }
+    });
+}
+
+
+
+
     const productTypeEl = document.getElementById('productType') || document.getElementById('id_product_type');
     const saleTypeEl = document.getElementById('saleType') || document.getElementById('id_sale_type');
     if (productTypeEl) productTypeEl.addEventListener('change', updateFieldLogic);
@@ -2189,7 +2189,7 @@
         if (saleType === 'offline' && productType === 'product') {
             applyProductSettingsForOffline(productSettings);
         }
-        // Always apply product-type-based rules (product/service/print × offline/both)
+        // Always apply product-type-based rules (product/service/print ├ù offline/both)
         adjustFormFields(productType, saleType);
         // For product type "product" only: respect Product Settings for optional fields (brand, color, size, batch, expiry, description, image)
         if (productType === 'product' && productSettings) {
@@ -2385,7 +2385,7 @@
         const val = (typeof initialValue === 'object' && initialValue && initialValue.value) ? initialValue.value : (initialValue || '');
         const escapedVal = String(val).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const soldAttr = isSold ? ' readonly' : '';
-        const removeDisabled = isSold ? ' disabled title="Sold – cannot remove"' : ' title="Remove"';
+        const removeDisabled = isSold ? ' disabled title="Sold ÔÇô cannot remove"' : ' title="Remove"';
         row.innerHTML = `
             <input type="text" class="form-control form-control-sm serial-imei-input" placeholder="Enter IMEI" value="${escapedVal}" autocomplete="off"${soldAttr}>
             ${isSold ? '<span class="badge bg-danger-subtle text-danger border align-self-center">Sold</span>' : ''}
@@ -2549,7 +2549,7 @@
         var colorHexDisplay = document.getElementById("color_hex_display");
         var hex = select.value ? String(select.value).trim() : '';
         if (colorValue) colorValue.value = hex;
-        if (colorHexDisplay) colorHexDisplay.textContent = hex || '—';
+        if (colorHexDisplay) colorHexDisplay.textContent = hex || 'ÔÇö';
         if (colorDisplay) {
             if (hex) {
                 colorDisplay.style.background = hex;
@@ -2568,7 +2568,7 @@
         var commonColors = document.getElementById("common_colors");
         var initialColor = "{{ form.color.value|default:'' }}".trim();
         if (colorValue && initialColor) colorValue.value = initialColor;
-        if (colorHexDisplay) colorHexDisplay.textContent = initialColor || '—';
+        if (colorHexDisplay) colorHexDisplay.textContent = initialColor || 'ÔÇö';
         if (colorDisplay && initialColor) {
             colorDisplay.style.background = initialColor;
             colorDisplay.style.borderColor = (initialColor === '#ffffff' ? '#ced4da' : initialColor);
@@ -2642,7 +2642,7 @@
     }
 
 
-    // ✅ Then: Run it on DOM load
+    // Ô£à Then: Run it on DOM load
     document.addEventListener('DOMContentLoaded', () => {
         const toggle = document.getElementById('customPrintToggle');
         if (toggle) {

@@ -40,6 +40,7 @@ from vendor.models import DeliveryBoy, DeliveryMode, CompanyProfile, DeliveryDis
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from syndo.pagination import StandardResultsSetPagination
 
 
 
@@ -3210,6 +3211,7 @@ class OnlineStoreSettingViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = product_serializer
     permission_classes = [IsVendor]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         return product.objects.filter(user=self.request.user, is_active=True)
