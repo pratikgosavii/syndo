@@ -262,35 +262,28 @@
                 <div class="mb-3">
                   <label class="form-label d-block">Transaction Type</label>
                   <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="type" id="gave" value="gave" {% if
-                      form.instance.type=='gave' or not form.instance.type %}checked{% endif %}>
+                    <input type="radio" class="btn-check" name="type" id="gave" value="gave" {% if form.instance.type == 'gave' or not form.instance.type %}checked{% endif %}>
                     <label class="btn btn-transaction btn-transaction-gave" for="gave">You Gave (Money Out)</label>
-                    <input type="radio" class="btn-check" name="type" id="received" value="received" {% if
-                      form.instance.type=='received' %}checked{% endif %}>
-                    <label class="btn btn-transaction btn-transaction-received" for="received">You Received (Money
-                      In)</label>
+                    <input type="radio" class="btn-check" name="type" id="received" value="received" {% if form.instance.type == 'received' %}checked{% endif %}>
+                    <label class="btn btn-transaction btn-transaction-received" for="received">You Received (Money In)</label>
                   </div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label d-block">Party Type</label>
                   <div class="btn-group w-100" role="group">
-                    <input type="radio" class="btn-check" name="party_type" id="party-customer" value="customer" {% if
-                      selected_party_type !='vendor' %}checked{% endif %}>
+                    <input type="radio" class="btn-check" name="party_type" id="party-customer" value="customer" {% if selected_party_type != 'vendor' %}checked{% endif %}>
                     <label class="btn btn-party {% if selected_party_type != 'vendor' %}btn-party-active{% endif %}"
                       for="party-customer">Customer</label>
-                    <input type="radio" class="btn-check" name="party_type" id="party-vendor" value="vendor" {% if
-                      selected_party_type=='vendor' %}checked{% endif %}>
+                    <input type="radio" class="btn-check" name="party_type" id="party-vendor" value="vendor" {% if selected_party_type == 'vendor' %}checked{% endif %}>
                     <label class="btn btn-party {% if selected_party_type == 'vendor' %}btn-party-active{% endif %}"
                       for="party-vendor">Vendor</label>
                   </div>
                 </div>
-                <div class="mb-3" id="customer-dropdown" {% if selected_party_type=='vendor' %}style="display:none;" {%
-                  endif %}>
+                <div class="mb-3" id="customer-dropdown" {% if selected_party_type == 'vendor' %}style="display:none;" {% endif %}>
                   <label class="form-label">Select Party</label>
                   {{ form.customer }}
                 </div>
-                <div class="mb-3" id="vendor-dropdown" {% if selected_party_type !='vendor' %}style="display:none;" {%
-                  endif %}>
+                <div class="mb-3" id="vendor-dropdown" {% if selected_party_type != 'vendor' %}style="display:none;" {% endif %}>
                   <label class="form-label">Select Party</label>
                   {{ form.vendor }}
                 </div>
@@ -302,14 +295,12 @@
                 <div class="mb-3">
                   <label class="form-label">Amount (₹)</label>
                   {{ form.amount }}
-                  {% if form.amount.errors %}<div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>{%
-                  endif %}
+                  {% if form.amount.errors %}<div class="invalid-feedback d-block">{{ form.amount.errors.0 }}</div>{% endif %}
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Payment Date</label>
                   {{ form.payment_date }}
-                  {% if form.payment_date.errors %}<div class="invalid-feedback d-block">{{ form.payment_date.errors.0
-                    }}</div>{% endif %}
+                  {% if form.payment_date.errors %}<div class="invalid-feedback d-block">{{ form.payment_date.errors.0 }}</div>{% endif %}
                 </div>
 
                 <div class="mb-3">

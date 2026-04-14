@@ -8763,6 +8763,8 @@ class customer_sale_invoice(APIView):
         common_template = "sale_invoice/cgst_tax_invoice.html"
         template_name = common_template
         
+        doc_title = "TAX INVOICE" if is_registered else "INVOICE"
+
         if sale.is_wholesale_rate:
             template_name = "sale_invoice/igst_proforma.html"
 
@@ -8784,8 +8786,15 @@ class customer_sale_invoice(APIView):
             if not item.product:
                 continue
                 
-            sgst_rate = getattr(item.product, "sgst_rate", None) or 9
-            cgst_rate = getattr(item.product, "cgst_rate", None) or 9
+            # If no GST is configured on the product, do not apply any default GST
+            product_gst = getattr(item.product, "gst", None)
+            if not product_gst:
+                sgst_rate = 0
+                cgst_rate = 0
+            else:
+                sgst_rate = getattr(item.product, "sgst_rate", None) or 9
+                cgst_rate = getattr(item.product, "cgst_rate", None) or 9
+            
             taxable_val = float(item.amount)
             sgst_amt = round(taxable_val * float(sgst_rate) / 100, 2)
             cgst_amt = round(taxable_val * float(cgst_rate) / 100, 2)

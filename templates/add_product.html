@@ -1882,6 +1882,20 @@ changeMrpLabel("Selling Price");
     function handleProductTypeChange() {
         const selectedType = productType?.value;
 
+        // Show addons for 'print' and 'service' types
+        if (selectedType === 'print' || selectedType === 'service') {
+            addon_section.style.display = 'block';
+            addon_section.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = false;
+            });
+        } else {
+            addon_section.style.display = 'none';
+            addon_section.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = true;
+                el.required = false;
+            });
+        }
+
         if (selectedType === 'print') {
             setSaleTypeOptionsForPrint();
             
@@ -1892,11 +1906,6 @@ changeMrpLabel("Selling Price");
 
             changeMrpLabel("Base MRP");
             
-            addon_section.style.display = 'block';
-            addon_section.querySelectorAll('input, select, textarea').forEach(el => {
-                el.disabled = false;
-            });
-
             standardPrintWrapper.style.display = 'block';
 
             foodOptionToggleWrapper.style.display = 'none';
@@ -1912,12 +1921,6 @@ changeMrpLabel("Selling Price");
             toggleProductOnlyFields(selectedType === 'product');
             if (selectedType === 'product' && typeof updateFieldLogic === 'function') updateFieldLogic();
             
-            addon_section.style.display = 'none';
-            addon_section.querySelectorAll('input, select, textarea').forEach(el => {
-                el.disabled = true;
-                el.required = false;
-            });
-
             changeMrpLabel("MRP");
 
             foodOptionToggleWrapper.style.display = selectedType === 'service' ? 'block' : 'none';
