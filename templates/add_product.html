@@ -753,6 +753,10 @@
                             <div class="row g-3">
                                 <div class="col-12">
                                     <div class="s-row">
+                                        <div class="option-box" id="track_stock_wrapper">
+                                            {{ form.track_stock }}
+                                            <label class="form-check-label" for="id_track_stock">Track stock</label>
+                                        </div>
                                         <div class="option-box" id="track_serial_numbers_wrapper">
                                             {{ form.track_serial_numbers }}
                                             <label class="form-check-label" for="id_track_serial_numbers">Track serial
@@ -1246,10 +1250,8 @@
                                     <div class="fw-semibold text-truncate" title="{{ c.name }}">{{ c.name }}</div>
                                     <div class="text-muted small mt-1">
                                         {% if c.brand_name %}<span>{{ c.brand_name }}</span>{% endif %}
-                                        {% if c.size %}{% if c.brand_name %} · {% endif %}<span>{{ c.size }}</span>{%
-                                        endif %}
-                                        {% if c.color %}{% if c.brand_name or c.size %} · {% endif %}<span>{{ c.color
-                                            }}</span>{% endif %}
+                                        {% if c.size %}{% if c.brand_name %} · {% endif %}<span>{{ c.size }}</span>{% endif %}
+                                        {% if c.color %}{% if c.brand_name or c.size %} · {% endif %}<span>{{ c.color }}</span>{% endif %}
                                     </div>
                                     {% if c.price %}
                                     <div class="fw-bold mt-1">₹ {{ c.price }}</div>
@@ -1421,10 +1423,9 @@
 <script>
     // Searchable category, subcategory, unit - search box INSIDE dropdown
     (function () {
-        var categories = {{ categories_json|default: "[]" | safe
-    }};
-    var subcategories = {{ subcategories_json|default: "[]" | safe }};
-    var sizes = {{ sizes_json|default: "[]" | safe }};
+        var categories = {{ categories_json|default:"[]"|safe }};
+    var subcategories = {{ subcategories_json|default:"[]"|safe }};
+    var sizes = {{ sizes_json|default:"[]"|safe }};
 
     var categoryTrigger = document.getElementById('category-trigger');
     var categorySearchInner = document.getElementById('category-search-inner');
@@ -2007,6 +2008,9 @@
 
 
     // Helpers used by product settings logic
+    function getTrackStockCheckbox() {
+        return document.getElementById('id_track_stock');
+    }
     function setVisibleById(id, visible) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -2021,7 +2025,7 @@
         if (el && el.type === 'checkbox') el.checked = !!value;
     }
 
-    var productSettings = {{ product_settings_json|default: "{}" | safe }};
+    var productSettings = {{ product_settings_json|default:"{}"|safe }};
 
     function applyProductSettingsForOffline(settings) {
         if (!settings) return;
@@ -2035,8 +2039,11 @@
         setVisibleById('description_wrapper', settings.description);
         setVisibleById('image_wrapper', settings.image);
         setVisibleById('wholesale_price_wrapper', settings.wholesale_price);
-        setVisibleById('opening_stock_wrapper', settings.stock);
-        setVisibleById('low_stock_alert_wrapper', settings.stock);
+        setVisibleById('track_stock_wrapper', settings.stock);
+        const trackStockCb = getTrackStockCheckbox();
+        const stockTrackingOn = settings.stock && trackStockCb && trackStockCb.checked;
+        setVisibleById('opening_stock_wrapper', stockTrackingOn);
+        setVisibleById('low_stock_alert_wrapper', stockTrackingOn);
         // Low stock quantity visibility is controlled directly by the checkbox in the UI
         setCheckbox('id_low_stock_alert', settings.low_stock_alert);
         setVisibleById('track_serial_numbers_wrapper', settings.imei);
@@ -2394,12 +2401,39 @@
         syncOpeningStockFromImeis();
     }
 
+    const trackStockCheckbox = getTrackStockCheckbox();
+    const openingStockWrapper = document.getElementById('opening_stock_wrapper');
+    const lowStockAlertWrapper = document.getElementById('low_stock_alert_wrapper');
+
+    function syncTrackStockVisibility() {
+        const trackCb = getTrackStockCheckbox();
+        if (!trackCb) return;
+        const isTracking = trackCb.checked;
+
+        if (openingStockWrapper) openingStockWrapper.style.display = isTracking ? 'inline-flex' : 'none';
+        if (lowStockAlertWrapper) lowStockAlertWrapper.style.display = isTracking ? 'inline-flex' : 'none';
+
+        // Re-sync low stock quantity: only show if both tracking is on AND alert is on
+        if (typeof syncLowStockVisibility === 'function') {
+            syncLowStockVisibility();
+        }
+    }
+
+    const tsc = getTrackStockCheckbox();
+    if (tsc) {
+        tsc.addEventListener('change', syncTrackStockVisibility);
+        syncTrackStockVisibility();
+    }
+
     // Low stock quantity visibility controlled by checkbox
     const lowStockCheckbox = document.getElementById('id_low_stock_alert');
     const lowStockQtyWrapper = document.getElementById('low_stock_quantity_wrapper');
     function syncLowStockVisibility() {
         if (!lowStockCheckbox || !lowStockQtyWrapper) return;
-        lowStockQtyWrapper.style.display = lowStockCheckbox.checked ? 'block' : 'none';
+        // Logic: show quantity only if both master tracking AND alert checkbox are TRUE
+        const trackCb = getTrackStockCheckbox();
+        const isTracking = trackCb ? trackCb.checked : true;
+        lowStockQtyWrapper.style.display = (isTracking && lowStockCheckbox.checked) ? 'block' : 'none';
     }
     if (lowStockCheckbox && lowStockQtyWrapper) {
         syncLowStockVisibility();
@@ -2720,8 +2754,11 @@
         setVisibleById('wholesale_price_wrapper', settings.wholesale_price);
 
         // Stock related
-        setVisibleById('opening_stock_wrapper', settings.stock);
-        setVisibleById('low_stock_alert_wrapper', settings.stock);
+        setVisibleById('track_stock_wrapper', settings.stock);
+        const tscUI = getTrackStockCheckbox();
+        const stockTrackingOnUI = settings.stock && tscUI && tscUI.checked;
+        setVisibleById('opening_stock_wrapper', stockTrackingOnUI);
+        setVisibleById('low_stock_alert_wrapper', stockTrackingOnUI);
         // Low stock quantity visibility is controlled by the checkbox in the UI
         setCheckbox('id_low_stock_alert', settings.low_stock_alert);
 
