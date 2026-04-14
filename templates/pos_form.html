@@ -1038,23 +1038,23 @@
         <input type="text" class="form-control mb-4" id="product-search-input" placeholder="Search by name...">
         <div class="row" id="product-list">
           {% for product in products %}
-          <div class="col-lg-2 col-md-3 col-sm-4 mb-3">
+            <div class="col-lg-2 col-md-3 col-sm-4 mb-3">
 
-              {% if product.image %}
-              <div class="card h-100 shadow-sm product-card" 
-                  data-id="{{ product.id }}"
-                  data-name="{{ product.name }}"
-                  data-price="{{ product.sales_price|default:product.effective_wholesale_price }}"
-                  data-image="{{ product.image.url }}">
-                <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
-            {% else %}
-              <div class="card h-100 shadow-sm product-card" 
-                  data-id="{{ product.id }}"
-                  data-name="{{ product.name }}"
-                  data-price="{{ product.sales_price|default:product.effective_wholesale_price }}"
-                  data-image="">
-                <img src="{% static 'images/default product image.jpeg' %}" class="card-img-top" alt="{{ product.name }}">
-            {% endif %}
+                {% if product.image %}
+                <div class="card h-100 shadow-sm product-card" 
+                    data-id="{{ product.id }}"
+                    data-name="{{ product.name }}"
+                    data-price="{{ product.sales_price|default:product.effective_wholesale_price }}"
+                    data-image="{{ product.image.url }}">
+                  <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" data-fallback="{% static 'images/default product image.jpeg' %}" onerror="this.onerror=null;this.src=this.getAttribute('data-fallback');">
+              {% else %}
+                <div class="card h-100 shadow-sm product-card" 
+                    data-id="{{ product.id }}"
+                    data-name="{{ product.name }}"
+                    data-price="{{ product.sales_price|default:product.effective_wholesale_price }}"
+                    data-image="">
+                  <img src="{% static 'images/default product image.jpeg' %}" class="card-img-top" alt="{{ product.name }}">
+              {% endif %}
 
 
               <div class="card-body text-center">
@@ -2217,57 +2217,57 @@ function displaySelectedImages() {
     </script>
 
     <script>
-        {% comment %} const editBtn = document.getElementById('edit_btn');
-        const codeDisplay = document.getElementById('purchase_code_display');
-        const codeInput = document.getElementById('purchase_code_input');
+        // {% comment %} const editBtn = document.getElementById('edit_btn');
+        // const codeDisplay = document.getElementById('purchase_code_display');
+        // const codeInput = document.getElementById('purchase_code_input');
       
-        editBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          if (codeInput.classList.contains('d-none')) {
-            // Show input, hide static text
-            codeInput.classList.remove('d-none');
-            codeDisplay.style.display = 'none';
-            codeInput.focus();
-            editBtn.textContent = 'Save';
-          } else {
-            // Hide input, show static text, update static text with input value
-            const newCode = codeInput.value.trim();
-            if(newCode) {
-              codeDisplay.textContent = newCode;
-            }
-            codeInput.classList.add('d-none');
-            codeDisplay.style.display = '';
-            editBtn.textContent = 'Edit';
-          }
-        }); {% endcomment %}
+        // editBtn.addEventListener('click', function(e) {
+        //   e.preventDefault();
+        //   if (codeInput.classList.contains('d-none')) {
+        //     // Show input, hide static text
+        //     codeInput.classList.remove('d-none');
+        //     codeDisplay.style.display = 'none';
+        //     codeInput.focus();
+        //     editBtn.textContent = 'Save';
+        //   } else {
+        //     // Hide input, show static text, update static text with input value
+        //     const newCode = codeInput.value.trim();
+        //     if(newCode) {
+        //       codeDisplay.textContent = newCode;
+        //     }
+        //     codeInput.classList.add('d-none');
+        //     codeDisplay.style.display = '';
+        //     editBtn.textContent = 'Edit';
+        //   }
+        // }); {% endcomment %}
 
 
        
 
 
 
-  {% comment %} // Toggle edit/save for purchase code
-document.addEventListener('DOMContentLoaded', function () {
-  const editBtn = document.getElementById('edit_btn');
-  const codeDisplay = document.getElementById('purchase_code_display');
-  const codeInput = document.getElementById('purchase_code_input');
+//   {% comment %} // Toggle edit/save for purchase code
+// document.addEventListener('DOMContentLoaded', function () {
+//   const editBtn = document.getElementById('edit_btn');
+//   const codeDisplay = document.getElementById('purchase_code_display');
+//   const codeInput = document.getElementById('purchase_code_input');
 
-  editBtn.addEventListener('click', function (e) {
-    e.preventDefault();
-    if (codeInput.classList.contains('d-none')) {
-      codeInput.classList.remove('d-none');
-      codeDisplay.style.display = 'none';
-      codeInput.focus();
-      editBtn.textContent = 'Save';
-    } else {
-      const newCode = codeInput.value.trim();
-      if (newCode) codeDisplay.textContent = newCode;
-      codeInput.classList.add('d-none');
-      codeDisplay.style.display = '';
-      editBtn.textContent = 'Edit';
-    }
-  });
-}); {% endcomment %}
+//   editBtn.addEventListener('click', function (e) {
+//     e.preventDefault();
+//     if (codeInput.classList.contains('d-none')) {
+//       codeInput.classList.remove('d-none');
+//       codeDisplay.style.display = 'none';
+//       codeInput.focus();
+//       editBtn.textContent = 'Save';
+//     } else {
+//       const newCode = codeInput.value.trim();
+//       if (newCode) codeDisplay.textContent = newCode;
+//       codeInput.classList.add('d-none');
+//       codeDisplay.style.display = '';
+//       editBtn.textContent = 'Edit';
+//     }
+//   });
+// }); {% endcomment %}
 
 
 

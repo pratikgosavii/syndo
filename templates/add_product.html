@@ -2152,7 +2152,12 @@
                 case 'required':
                     wrapper.style.display = 'block';
                     wrapper.querySelectorAll('input, select, textarea').forEach(inp => inp.disabled = false);
-                    input.required = true;
+                    // If editing, don't force image upload
+                    if ((field === 'image' || field === 'gallery_images') && isEditProduct) {
+                        input.required = false;
+                    } else {
+                        input.required = true;
+                    }
                     break;
                 case 'optional':
                     wrapper.style.display = 'block';
@@ -2171,6 +2176,7 @@
 
 
 
+    const isEditProduct = {% if instance %}true{% else %}false{% endif %};
     const productTypeEl = document.getElementById('productType') || document.getElementById('id_product_type');
     const saleTypeEl = document.getElementById('saleType') || document.getElementById('id_sale_type');
     if (productTypeEl) productTypeEl.addEventListener('change', updateFieldLogic);
@@ -2333,7 +2339,6 @@
     // -------------------------------------------------------------
 
     document.addEventListener("DOMContentLoaded", function () {
-        const isEditProduct = {% if instance %}true{% else %}false{% endif %};
     const checkbox = document.getElementById("id_tax_inclusive");
     const gstInput = document.getElementById("tax_div");
     // Keep GST field visible for both tax inclusive and tax exclusive modes.
