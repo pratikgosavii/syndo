@@ -8465,6 +8465,12 @@ class PrintVariantChoiceAPIView(APIView):
             ],
             "sided_choices": [
                 {"value": key, "label": label} for key, label in PrintVariant.SIDED_CHOICES
+            ],
+            "color_choices": [
+                {"value": key, "label": label} for key, label in PrintVariant.COLOR_CHOICES
+            ],
+            "size_choices": [
+                {"value": s.id, "label": s.name} for s in size_model.objects.all()
             ]
         })
     
