@@ -2397,6 +2397,9 @@ class CartCouponAPIView(APIView):
         # 2. customer_id logic: 
         #    - If customer_id is NULL/blank → return to all users
         #    - If customer_id is set → only return if it matches request.user.id
+        # 3. only_followers logic:
+        #    - If only_followers is False → return to all users
+        #    - If only_followers is True → only return if user follows the vendor
         now = timezone.now()
         
         # Base conditions that apply to all coupons
@@ -2410,17 +2413,24 @@ class CartCouponAPIView(APIView):
         # - If customer_id is NULL/blank → return to all users (no restriction)
         # - If customer_id is set → only return if it matches request.user.id
         customer_filter = Q(customer_id__isnull=True) | Q(customer_id=request.user.id)
+
+        # Followers filter logic
+        # Get IDs of vendors this user is following
+        followed_vendor_ids = Follower.objects.filter(follower=request.user).values_list('user_id', flat=True)
+        # - If only_followers=False → everyone can see it
+        # - If only_followers=True → only show if creator (user) is in followed_vendor_ids
+        follower_filter = Q(only_followers=False) | Q(only_followers=True, user__id__in=followed_vendor_ids)
         
         # Only return coupons if cart has products from vendors
         if not vendor_ids:
             return Response({"coupons": [], "message": "Cart is empty"}, status=200)
         
         # Filter coupons from vendors whose products are in cart
-        # AND apply customer_id filter
+        # AND apply customer_id and follower filters
         coupons = coupon.objects.filter(
             user__id__in=vendor_ids
         ).filter(
-            base_conditions & customer_filter
+            base_conditions & customer_filter & follower_filter
         ).distinct()
 
         serializer = coupon_serializer(coupons, many=True)
@@ -2448,6 +2458,12 @@ class CartCouponAPIView(APIView):
         if coupon_instance.customer_id is not None:
             if coupon_instance.customer_id != request.user.id:
                 return Response({"error": "This coupon is not available for your account."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Check only_followers restriction
+        if coupon_instance.only_followers:
+            is_following = Follower.objects.filter(user=user, follower=request.user).exists()
+            if not is_following:
+                return Response({"error": "This coupon is only available for followers of this vendor."}, status=status.HTTP_403_FORBIDDEN)
 
       
         # Calculate total cart value

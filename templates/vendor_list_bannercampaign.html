@@ -140,8 +140,8 @@
                                                         {% if request.user.is_superuser %}
                                                             <td class="text-center">
                                                                 {% if not banner.is_approved %}
-                                                                <a href="{% url 'approve_bannercampaign' banner.id %}" title="Approve">
-                                                                    <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                                                <a href="{% url 'approve_bannercampaign' banner.id %}" class="btn btn-sm btn-success">
+                                                                    Approve
                                                                 </a>
                                                                 {% endif %}
                                                                 <a href="{% url 'update_bannercampaign' banner.id %}" title="Edit">
