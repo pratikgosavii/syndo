@@ -270,6 +270,50 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
         data = refresh_order_status(order)
         return Response(data, status=200)
 
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        """
+        Customer cancels their own order.
+        Allowed only if status is 'not_accepted' or 'accepted'.
+        POST /customer/customer-order/{id}/cancel/
+        """
+        order = self.get_object()
+        
+        # Validation: only allow if not_accepted or accepted
+        if order.status not in ["not_accepted", "accepted"]:
+            return Response(
+                {"error": f"Order cannot be cancelled. Current status: {order.status}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+        previous_status = order.status
+        
+        # Cancel all OrderItems first (signals restore stock and serial/IMEI in vendor/signals.py)
+        for item in order.items.all():
+            if item.status != "cancelled":
+                item.status = "cancelled"
+                item.save(update_fields=["status"])
+        
+        order.status = "cancelled"
+        order.save(update_fields=["status"])
+        
+        # Notify customer about status change
+        try:
+            from customer.serializers import send_order_status_notification
+            send_order_status_notification(order, "cancelled", previous_status)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Error sending customer cancel notification: {e}")
+            
+        # Notify delivery integration (uEngage) if applicable
+        try:
+            from integrations.uengage import notify_delivery_event
+            notify_delivery_event(order, "cancelled")
+        except Exception:
+            pass
+            
+        return Response(OrderSerializer(order, context={"request": request}).data, status=status.HTTP_200_OK)
+
 
 
 from rest_framework.views import APIView
