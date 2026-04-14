@@ -5,8 +5,17 @@ import requests
 from decimal import Decimal
 
 from masters.filters import EventFilter
-from masters.models import product_category, product_subcategory, size as size_model
+from masters.models import product_category, product_subcategory, product, size as size_model, CustomizePrintVariant, PrintVariant, reminder_setting
 from vendor.filters import productFilter
+
+PRODUCT_COLOR_CHOICES = [
+    "White", "Black", "Red", "Blue", "Green", "Yellow", "Orange", "Purple", 
+    "Pink", "Brown", "Gray", "Silver", "Gold", "Maroon", "Navy Blue", 
+    "Teal", "Lime", "Indigo", "Violet", "Beige", "Turquoise", "Cyan", 
+    "Magenta", "Olive", "Ivory", "Lavender", "Sky Blue", "Coral", 
+    "Charcoal", "Emerald", "Dark Gray", "Light Gray", "Khaki", "Peach", 
+    "Tan", "Burgundy"
+]
 
 # Create your views here.
 
@@ -1748,6 +1757,7 @@ def add_product(request, parent_id=None):
         'existing_imeis_json': json.dumps(existing_imeis),
         'super_catalogue_list': catalogue_options,
         'selected_catalogue_id': int(selected_catalogue_id) if selected_catalogue_id else None,
+        'color_choices': PRODUCT_COLOR_CHOICES,
     }
     return render(request, 'add_product.html', context)
 
@@ -1886,6 +1896,7 @@ def update_product(request, product_id):
     ]
     context = {
         'form': product_form,
+        'color_choices': PRODUCT_COLOR_CHOICES,
         'formset': addon_formset,
         'variant_formset': variant_formset,
         'customize_print_variant_formset': customize_variant_formset,

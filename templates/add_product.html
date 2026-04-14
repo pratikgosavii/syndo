@@ -519,15 +519,9 @@
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
                                         <select id="common_colors" class="form-control form-select" style="max-width: 180px;" onchange="updateColorDisplayFromDropdown(this)">
                                             <option value="">Select common color</option>
-                                            <option value="#ffffff">White</option>
-                                            <option value="#000000">Black</option>
-                                            <option value="#ff0000">Red</option>
-                                            <option value="#00ff00">Green</option>
-                                            <option value="#0000ff">Blue</option>
-                                            <option value="#ffff00">Yellow</option>
-                                            <option value="#ffa500">Orange</option>
-                                            <option value="#800080">Purple</option>
-                                            <option value="#808080">Gray</option>
+                                            {% for color in color_choices %}
+                                            <option value="{{ color }}">{{ color }}</option>
+                                            {% endfor %}
                                         </select>
                                         <div id="color_display" class="color-swatch-display" style="width: 2.5rem; height: 2.25rem; border-radius: 6px; border: 1px solid #ced4da; background: #f3f4f6; flex-shrink: 0;" title="Selected color preview"></div>
                                         <span id="color_hex_display" class="text-muted small align-self-center" style="min-width: 4.5rem;">—</span>
@@ -2142,18 +2136,40 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // Color dropdown: update display swatch + hex value + form input (elements resolved at call time)
+  // Color mapping for swatch display
+  const colorToHex = {
+    "White": "#ffffff", "Black": "#000000", "Red": "#ff0000", "Blue": "#0000ff", "Green": "#008000",
+    "Yellow": "#ffff00", "Orange": "#ffa500", "Purple": "#800080", "Pink": "#ffc0cb", "Brown": "#a52a2a",
+    "Gray": "#808080", "Silver": "#c0c0c0", "Gold": "#ffd700", "Maroon": "#800000", "Navy Blue": "#000080",
+    "Teal": "#008080", "Lime": "#00ff00", "Indigo": "#4b0082", "Violet": "#ee82ee", "Beige": "#f5f5dc",
+    "Turquoise": "#40e0d0", "Cyan": "#00ffff", "Magenta": "#ff00ff", "Olive": "#808000", "Ivory": "#fffff0",
+    "Lavender": "#e6e6fa", "Sky Blue": "#87ceeb", "Coral": "#ff7f50", "Charcoal": "#36454f", "Emerald": "#50c878",
+    "Dark Gray": "#a9a9a9", "Light Gray": "#d3d3d3", "Khaki": "#f0e68c", "Peach": "#ffdab9", "Tan": "#d2b48c",
+    "Burgundy": "#800020"
+  };
+
   function updateColorDisplayFromDropdown(select) {
     if (!select) return;
-    var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
+    var colorValueInput = document.getElementById("color_value") || document.getElementById("id_color");
     var colorDisplay = document.getElementById("color_display");
     var colorHexDisplay = document.getElementById("color_hex_display");
-    var hex = select.value ? String(select.value).trim() : '';
-    if (colorValue) colorValue.value = hex;
+    
+    var colorName = select.value;
+    var hex = colorToHex[colorName] || '';
+    
+    if (colorValueInput) {
+        if (colorName && hex) {
+            colorValueInput.value = colorName + " (" + hex + ")";
+        } else {
+            colorValueInput.value = colorName || '';
+        }
+    }
+    
     if (colorHexDisplay) colorHexDisplay.textContent = hex || '—';
     if (colorDisplay) {
       if (hex) {
         colorDisplay.style.background = hex;
-        colorDisplay.style.borderColor = (hex === '#ffffff' ? '#ced4da' : hex);
+        colorDisplay.style.borderColor = (hex.toLowerCase() === '#ffffff' ? '#ced4da' : hex);
       } else {
         colorDisplay.style.background = '#f3f4f6';
         colorDisplay.style.borderColor = '#ced4da';
@@ -2162,20 +2178,40 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    var colorValue = document.getElementById("color_value") || document.getElementById("id_color");
+    var colorValueInput = document.getElementById("color_value") || document.getElementById("id_color");
     var colorDisplay = document.getElementById("color_display");
     var colorHexDisplay = document.getElementById("color_hex_display");
     var commonColors = document.getElementById("common_colors");
-    var initialColor = "{{ form.color.value|default:'' }}".trim();
-    if (colorValue && initialColor) colorValue.value = initialColor;
-    if (colorHexDisplay) colorHexDisplay.textContent = initialColor || '—';
-    if (colorDisplay && initialColor) {
-      colorDisplay.style.background = initialColor;
-      colorDisplay.style.borderColor = (initialColor === '#ffffff' ? '#ced4da' : initialColor);
+    var rawColor = "{{ form.color.value|default:'' }}".trim();
+    
+    let colorName = rawColor;
+    let hex = '';
+    
+    // Parse format "Name (#Hex)"
+    const match = rawColor.match(/^(.*?)\s*\((#[0-9a-fA-F]{6})\)$/);
+    if (match) {
+        colorName = match[1];
+        hex = match[2];
+    } else if (rawColor.startsWith('#')) {
+        hex = rawColor;
+        // Try to find name from hex mapping
+        for (let name in colorToHex) {
+            if (colorToHex[name].toLowerCase() === hex.toLowerCase()) {
+                colorName = name;
+                break;
+            }
+        }
     }
-    if (commonColors && initialColor) {
+    
+    if (colorHexDisplay) colorHexDisplay.textContent = hex || '—';
+    if (colorDisplay && hex) {
+      colorDisplay.style.background = hex;
+      colorDisplay.style.borderColor = (hex.toLowerCase() === '#ffffff' ? '#ced4da' : hex);
+    }
+    
+    if (commonColors && colorName) {
       for (var i = 0; i < commonColors.options.length; i++) {
-        if (commonColors.options[i].value.toLowerCase() === initialColor.toLowerCase()) {
+        if (commonColors.options[i].value.toLowerCase() === colorName.toLowerCase()) {
           commonColors.selectedIndex = i;
           break;
         }

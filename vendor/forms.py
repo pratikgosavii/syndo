@@ -143,9 +143,9 @@ class product_Form(forms.ModelForm):
             'brand_name': forms.TextInput(attrs={'class': 'form-control'}),
             'color': forms.TextInput(attrs={
                 'id': 'color_value',
-                'readonly': 'readonly',
-                'placeholder': '#ffffff',
-                'style': 'width: 100px;',
+                'placeholder': 'Ex: Red (#ff0000)',
+                'style': 'width: 200px;',
+                'class': 'form-control',
             }),
             'size': forms.Select(attrs={'class': 'form-control'}),
             'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
