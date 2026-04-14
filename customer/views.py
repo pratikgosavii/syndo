@@ -274,13 +274,13 @@ class CustomerOrderViewSet(viewsets.ModelViewSet):
     def cancel(self, request, pk=None):
         """
         Customer cancels their own order.
-        Allowed only if status is 'not_accepted' or 'accepted'.
+        Allowed only if status is 'not_accepted'.
         POST /customer/customer-order/{id}/cancel/
         """
         order = self.get_object()
         
-        # Validation: only allow if not_accepted or accepted
-        if order.status not in ["not_accepted", "accepted"]:
+        # Validation: only allow if not_accepted
+        if order.status != "not_accepted":
             return Response(
                 {"error": f"Order cannot be cancelled. Current status: {order.status}."},
                 status=status.HTTP_400_BAD_REQUEST,

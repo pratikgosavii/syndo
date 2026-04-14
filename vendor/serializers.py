@@ -248,6 +248,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
     is_favourite = serializers.SerializerMethodField()  # ✅ dynamic now
     gallery_images_details = serializers.SerializerMethodField()
+    sale_available_stock = serializers.ReadOnlyField()
 
     class Meta:
         model = product
@@ -359,6 +360,7 @@ class product_serializer(serializers.ModelSerializer):
     # Add reviews as nested read-only field
     avg_rating = serializers.SerializerMethodField()    
     reviews = serializers.SerializerMethodField()
+    sale_available_stock = serializers.ReadOnlyField()
 
     class Meta:
         model = product
