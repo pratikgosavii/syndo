@@ -5,7 +5,7 @@ import requests
 from decimal import Decimal
 
 from masters.filters import EventFilter
-from masters.models import product_category, product_subcategory, product, size as size_model, CustomizePrintVariant, PrintVariant, reminder_setting
+from masters.models import product_category, product_subcategory, size as size_model
 from vendor.filters import productFilter
 
 PRODUCT_COLOR_CHOICES = [
