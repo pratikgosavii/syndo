@@ -732,6 +732,8 @@ class ReelSerializer(serializers.ModelSerializer):
     store = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
     total_likes_count = serializers.SerializerMethodField()
+    total_reel_liked = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
 
     class Meta:
         model = Reel
@@ -770,24 +772,35 @@ class ReelSerializer(serializers.ModelSerializer):
         return False
     
     def get_total_likes_count(self, obj):
-        """Get total likes count for the reel"""
-        from django.db.models import Count
+        """Get total likes count for the associated product instead of the reel"""
+        if obj.product:
+            # Count how many users have favourited this product
+            return obj.product.favourited_by.count()
+        return 0
+
+    def get_total_reel_liked(self, obj):
+        """Alias for product likes count as requested"""
+        return self.get_total_likes_count(obj)
+
+    def get_is_liked(self, obj):
+        """Check if the current user has favourited the associated product"""
+        from customer.models import Favourite
         
-        try:
-            # Try to import FavouriteReel model if it exists
-            from customer.models import FavouriteReel
-            return FavouriteReel.objects.filter(reel=obj).count()
-        except (ImportError, AttributeError):
-            # If FavouriteReel model doesn't exist yet, check for alternative
-            # Check if there's a related_name on Reel model for likes
-            try:
-                # Try accessing through a related_name if it exists
-                if hasattr(obj, 'favourited_by'):
-                    return obj.favourited_by.count()
-            except:
-                pass
-            # Return 0 if no like system exists yet
-            return 0
+        if not obj.product:
+            return False
+            
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+
+        # Cache favourite IDs for the current request context
+        if not hasattr(self, "_user_fav_ids"):
+            self._user_fav_ids = set(
+                Favourite.objects.filter(user=request.user)
+                .values_list("product_id", flat=True)
+            )
+
+        return obj.product.id in self._user_fav_ids
 
     
 class SpotlightProductSerializer(serializers.ModelSerializer):
