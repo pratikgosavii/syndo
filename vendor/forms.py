@@ -189,11 +189,6 @@ class product_Form(forms.ModelForm):
         self.fields['color'].required = False
         # Opening stock should be optional in UI (especially for non-stock/offline modes).
         self.fields['opening_stock'].required = False
-        if self.instance and self.instance.pk:
-            self.fields['opening_stock'].widget.attrs['readonly'] = 'readonly'
-            self.fields['stock'].widget.attrs['readonly'] = 'readonly'
-            self.fields['opening_stock'].help_text = 'Opening stock can only be set while creating the product.'
-            self.fields['stock'].help_text = 'Current stock balance (updated via sales/purchases).'
 
     def clean(self):
         cleaned = super().clean()
@@ -214,6 +209,12 @@ class product_Form(forms.ModelForm):
         if cleaned.get('track_serial_numbers') and cleaned.get('assign_barcode') not in (None, ''):
             self.add_error('track_serial_numbers', 'Track serial numbers and assign barcode cannot both be used.')
             self.add_error('assign_barcode', 'Assign barcode and IMEI tracking cannot both be used.')
+        
+        # Automate track_stock based on opening_stock
+        opening_stock = cleaned.get('opening_stock')
+        if opening_stock is not None:
+            cleaned['track_stock'] = True
+            
         return cleaned
 
 
