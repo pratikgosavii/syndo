@@ -2365,7 +2365,7 @@ def update_online_order_ledger_on_return(sender, instance, created, **kwargs):
                     quantity=original_entry.quantity,
                     amount=-original_entry.amount,
                     status='returned',
-                    note=f'Online order returned | Return Ref: {req.pk}'
+                    note=f'Online order returned | Return Ref order id: {original_entry.order_id}'
                 )
                 logger.info(f"[ONLINE_ORDER_LEDGER_RETURN] Created minus entry for OrderItem {instance.id}")
 
