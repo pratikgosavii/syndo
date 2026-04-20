@@ -1724,7 +1724,7 @@ from django.db.models.functions import Cast
 
 class ListProducts(ListAPIView):
     serializer_class = product_serializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
     pagination_class = StandardResultsSetPagination
@@ -1741,9 +1741,19 @@ class ListProducts(ListAPIView):
         print(user)
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
-        print(default_addr)
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+            
+            # Optional: order by nearest using simple squared-distance if lat/lng provided
+            lat = getattr(default_addr, 'latitude', None)
+            lng = getattr(default_addr, 'longitude', None)
+        else:
+            default_addr = None
+            pincode = None
+            lat = None
+            lng = None
+
         if pincode:
             # Include products from global suppliers OR products matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -1759,9 +1769,6 @@ class ListProducts(ListAPIView):
         else:
             qs = qs.annotate(is_favourite=Value(False, output_field=BooleanField()))
 
-        # Optional: order by nearest using simple squared-distance if lat/lng provided
-        lat = default_addr.latitude 
-        lng = default_addr.longitude
         if lat and lng:
             try:
                 lat_f = float(lat); lng_f = float(lng)
@@ -1783,7 +1790,7 @@ class ListProducts(ListAPIView):
 
 
 class ListPosts(ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     serializer_class = PostSerializer
 
     def get_queryset(self):
@@ -1796,8 +1803,12 @@ class ListPosts(ListAPIView):
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
         user = self.request.user
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = None
+
         if pincode:
             # Include posts from global suppliers OR posts from vendors matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -2348,7 +2359,7 @@ class SpotlightProductView(APIView):
 
 
 class reelsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         reels = Reel.objects.filter(
@@ -2360,8 +2371,12 @@ class reelsView(APIView):
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
         user = request.user
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = None
+
         if pincode:
             # Include reels from global suppliers OR reels from vendors matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -2375,7 +2390,7 @@ class reelsView(APIView):
 
 
 class offersView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         products = Reel.objects.filter(
@@ -2387,8 +2402,12 @@ class offersView(APIView):
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
         user = request.user
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = None
+
         if pincode:
             # Include reels from global suppliers OR reels from vendors matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -2644,6 +2663,7 @@ class ProductSearchAPIView(ListAPIView):
 
 
 class StoreBySubCategoryView(APIView):
+    permission_classes = [permissions.AllowAny]
     """
     Get all vendor stores that have products in a given subcategory.
     """
@@ -2756,6 +2776,7 @@ import time
 from django.db import connection
 
 class HomeScreenView(APIView):
+    permission_classes = [permissions.AllowAny]
     """
     Return for each MainCategory:
       - categories (product_category list)
@@ -2797,8 +2818,17 @@ class HomeScreenView(APIView):
 
             # Apply pincode and distance logic like in ListProducts (using user's default address)
             user = request.user
-            default_addr = Address.objects.filter(user=user, is_default=True).only('pincode', 'latitude', 'longitude').first()
-            pincode = default_addr.pincode if default_addr else None
+            if user.is_authenticated:
+                default_addr = Address.objects.filter(user=user, is_default=True).only('pincode', 'latitude', 'longitude').first()
+                pincode = default_addr.pincode if default_addr else None
+                lat = getattr(default_addr, 'latitude', None)
+                lng = getattr(default_addr, 'longitude', None)
+            else:
+                default_addr = None
+                pincode = None
+                lat = None
+                lng = None
+
             if pincode:
                 # Include products from global suppliers OR products matching pincode coverage
                 # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -2836,8 +2866,7 @@ class HomeScreenView(APIView):
             )
 
             # Distance ordering using user's default address coordinates, fallback to random if not available
-            lat = getattr(default_addr, 'latitude', None) if default_addr else None
-            lng = getattr(default_addr, 'longitude', None) if default_addr else None
+            # lat and lng extracted above
             if lat and lng:
                 try:
                     lat_f = float(lat); lng_f = float(lng)
@@ -3248,7 +3277,7 @@ class VendorCampaignsAPIView(APIView):
     API to return all campaigns (Banner and Notification) from all vendors.
     GET /customer/vendor-campaigns/
     """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         # Get all banner campaigns (only approved ones for customers)
