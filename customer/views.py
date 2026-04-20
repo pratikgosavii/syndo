@@ -1978,7 +1978,7 @@ class CartViewSet(viewsets.ModelViewSet):
             try:
                 from customer.serializers import send_vendor_notification
                 vendor_user = product_instance.user
-                customer_name = self.request.user.id or self.request.user.mobile or f"User {self.request.user.id}"
+                customer_name = self.request.user.id or f"User {self.request.user.id}"
                 send_vendor_notification(
                     vendor_user=vendor_user,
                     notification_type="cart_add",
@@ -2093,7 +2093,7 @@ class CartViewSet(viewsets.ModelViewSet):
         try:
             from customer.serializers import send_vendor_notification
             vendor_user = product_instance.user
-            customer_name = request.user.username or request.user.mobile or f"User {request.user.id}"
+            customer_name = request.user.username or f"User {request.user.id}"
             send_vendor_notification(
                 vendor_user=vendor_user,
                 notification_type="cart_add",
@@ -2699,8 +2699,12 @@ class StoreBySubCategoryView(APIView):
         # Filter by customer pincode, but exclude global suppliers from pincode check
         # Use the user's default address (is_default=True)
         user = request.user
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = None
+
         if pincode:
             # Include stores from global suppliers OR stores matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area

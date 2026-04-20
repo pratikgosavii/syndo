@@ -745,6 +745,7 @@ class product(models.Model):
     shop_warranty = models.BooleanField(default=False)
     brand_warranty = models.BooleanField(default=False)
 
+    is_deleted = models.BooleanField(default=False)
     is_food = models.BooleanField(default=False)
 
     # Flags

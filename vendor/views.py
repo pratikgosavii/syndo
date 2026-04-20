@@ -3225,7 +3225,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        return product.objects.filter(user=self.request.user, is_active=True)
+        return product.objects.filter(user=self.request.user, is_deleted=False)
     
     def destroy(self, request, *args, **kwargs):
         """
@@ -3233,7 +3233,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         """
         instance = self.get_object()
         instance.is_active = False
-        instance.save(update_fields=['is_active'])
+        instance.is_deleted = True
+        instance.save(update_fields=['is_active', 'is_deleted'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_create(self, serializer):

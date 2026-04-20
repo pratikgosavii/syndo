@@ -36,7 +36,7 @@ path('all-request-offer', AllRequestOfferAPIView.as_view(), name='AllRequestOffe
 path('return-exchange/', ReturnExchangeAPIView.as_view(), name='return-exchange'),
 path('order-invoice/<str:order_id>/', OnlineOrderInvoiceAPIView.as_view(), name='online-order-invoice'),
 path('order-invoice/', OnlineOrderInvoiceAPIView.as_view(), name='online-order-invoice-query'),
-    
+
 path('stores/', VendorStoreListAPIView.as_view(), name='vendor-store-list'),
 path('stores/<int:id>/', VendorStoreListAPIView.as_view(), name='vendor-store-detail'),
 
