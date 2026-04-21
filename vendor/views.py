@@ -2382,7 +2382,9 @@ def generate_barcode(request):
 
     c.save()
     buf.seek(0)
-    return HttpResponse(buf.getvalue(), content_type="application/pdf")
+    response = HttpResponse(buf.getvalue(), content_type="application/pdf")
+    response['Content-Disposition'] = 'attachment; filename="barcodes.pdf"'
+    return response
 
         
 
@@ -5025,7 +5027,7 @@ def list_sale(request):
     qs = Sale.objects.select_related('customer').prefetch_related(
         'items__product',
         Prefetch('wholesales', queryset=pos_wholesale.objects.all())
-    ).filter(user=request.user)
+    ).filter(user=request.user).exclude(wholesales__invoice_type='quotation')
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
     search = request.GET.get('search', '').strip()

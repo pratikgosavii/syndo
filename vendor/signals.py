@@ -467,6 +467,11 @@ def sale_ledger(sender, instance, created, **kwargs):
             if instance.invoice_number:
                 ref_ids.append(instance.invoice_number)
             
+            # Capture IDs of banks currently associated with these ledger entries BEFORE they are deleted
+            affected_bank_ids = set(BankLedger.objects.filter(transaction_type="sale", reference_id__in=ref_ids).values_list('bank_id', flat=True))
+            if instance.bank_id: affected_bank_ids.add(instance.bank_id)
+            if instance.advance_bank_id: affected_bank_ids.add(instance.advance_bank_id)
+
             CustomerLedger.objects.filter(transaction_type="sale", reference_id__in=ref_ids).delete()
             BankLedger.objects.filter(transaction_type="sale", reference_id__in=ref_ids).delete()
             CashLedger.objects.filter(transaction_type="sale", reference_id__in=ref_ids).delete()
@@ -482,22 +487,20 @@ def sale_ledger(sender, instance, created, **kwargs):
             customer.balance = Decimal(customer.opening_balance or 0) + Decimal(ledger_total or 0)
             customer.save(update_fields=['balance'])
 
-        if instance.bank:
-            bank = instance.bank
-            remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-            bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
-            bank.save(update_fields=['balance'])
-
-        if instance.advance_bank:
-            bank = instance.advance_bank
-            remaining_total = BankLedger.objects.filter(bank=bank).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-            # Bank balance = opening_balance + sum(all bank ledger entries)
-            bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
-            bank.save(update_fields=['balance'])
+        # Recalculate bank balance for ALL affected banks (old and new)
+        for b_id in affected_bank_ids:
+            if not b_id:
+                continue
+            try:
+                target_bank = vendor_bank.objects.get(id=b_id)
+                remaining_total = BankLedger.objects.filter(bank=target_bank).aggregate(
+                    total=Sum('amount')
+                )['total'] or 0
+                target_bank.balance = Decimal(target_bank.opening_balance or 0) + Decimal(remaining_total or 0)
+                target_bank.save(update_fields=['balance'])
+                logger.debug(f"[SALE_LEDGER] Refreshed balance for bank {target_bank.name} (ID: {b_id}): {target_bank.balance}")
+            except vendor_bank.DoesNotExist:
+                continue
 
         # Recalculate cash balance (independent of bank)
         if instance.user:
@@ -815,6 +818,11 @@ def purchase_ledger(sender, instance, created, **kwargs):
         if instance.purchase_code:
             ref_ids.append(instance.purchase_code)
             
+        # Capture IDs of banks currently associated with these ledger entries BEFORE they are deleted
+        affected_bank_ids = set(BankLedger.objects.filter(transaction_type="purchase", reference_id__in=ref_ids).values_list('bank_id', flat=True))
+        if instance.bank_id: affected_bank_ids.add(instance.bank_id)
+        if instance.advance_bank_id: affected_bank_ids.add(instance.advance_bank_id)
+
         VendorLedger.objects.filter(transaction_type="purchase", reference_id__in=ref_ids).delete()
         BankLedger.objects.filter(transaction_type="purchase", reference_id__in=ref_ids).delete()
         CashLedger.objects.filter(transaction_type="purchase", reference_id__in=ref_ids).delete()
@@ -831,27 +839,20 @@ def purchase_ledger(sender, instance, created, **kwargs):
             cash_balance.save()
             logger.debug(f"[PURCHASE_LEDGER] Cash balance recalculated: {cash_balance.balance}")
 
-        # Recalculate bank balance (from remaining BankLedger entries) if needed
-        # Handle both bank (for UPI/cheque payments) and advance_bank (for credit advance payments)
-        if instance.bank:
-            bank = instance.bank
-            remaining_total = (
-                BankLedger.objects.filter(bank=bank).aggregate(total=Sum("amount"))["total"] or 0
-            )
-            # Bank balance = opening_balance + sum(all bank ledger entries)
-            bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
-            bank.save(update_fields=["balance"])
-            logger.debug(f"[PURCHASE_LEDGER] Bank balance recalculated: {bank.balance}")
-        
-        if instance.advance_bank:
-            bank = instance.advance_bank
-            remaining_total = (
-                BankLedger.objects.filter(bank=bank).aggregate(total=Sum("amount"))["total"] or 0
-            )
-            # Bank balance = opening_balance + sum(all bank ledger entries)
-            bank.balance = Decimal(bank.opening_balance or 0) + Decimal(remaining_total or 0)
-            bank.save(update_fields=["balance"])
-            logger.debug(f"[PURCHASE_LEDGER] Advance bank balance recalculated: {bank.balance}")
+        # Recalculate bank balance for ALL affected banks (old and new)
+        for b_id in affected_bank_ids:
+            if not b_id:
+                continue
+            try:
+                target_bank = vendor_bank.objects.get(id=b_id)
+                remaining_total = (
+                    BankLedger.objects.filter(bank=target_bank).aggregate(total=Sum("amount"))["total"] or 0
+                )
+                target_bank.balance = Decimal(target_bank.opening_balance or 0) + Decimal(remaining_total or 0)
+                target_bank.save(update_fields=["balance"])
+                logger.debug(f"[PURCHASE_LEDGER] Refreshed balance for bank {target_bank.name} (ID: {b_id}): {target_bank.balance}")
+            except vendor_bank.DoesNotExist:
+                continue
 
         # Create vendor ledger entries
         if instance.vendor:

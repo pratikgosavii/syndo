@@ -35,9 +35,9 @@
         .payment-section-card .payment-section-body .form-select { border: 1px solid #CED4DA; background: #fff; border-radius: 5px; }
         /* Payment/advance toggle buttons: same active visibility as POS */
         .btn-payment {
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            color: #6b7280;
+            background: #fff !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #6b7280 !important;
             border-radius: 8px;
             font-weight: 600;
             transition: 0.2s;
@@ -59,17 +59,17 @@
         .btn-primary:hover { background-color: #151e31; border-color: #151e31; }
         /* + New Vendor */
         .btn-new-vendor { background-color: #FCA311 !important; border: 1px solid #FCA311 !important; color: #fff !important; font-weight: 600 !important; }
-        .btn-new-vendor:hover { background-color: #e5920f !important; border-color: #e5920f !important; color: #fff; }
+        .btn-new-vendor:hover { background-color: #e5920f !important; border-color: #e5920f !important; color: #fff !important; }
         /* + Add Row: light blue bg, blue border, white text */
-        .btn-add-row { background-color: #151e31; border: 1px solid #151e31; color: #fff; font-weight: 600; }
-        .btn-add-row:hover { background-color: #151e31; border-color: #151e31; color: #fff; }
+        .btn-add-row { background-color: #151e31 !important; border: 1px solid #151e31 !important; color: #fff !important; font-weight: 600 !important; }
+        .btn-add-row:hover { background-color: #151e31 !important; border-color: #151e31 !important; color: #fff !important; }
         /* + Add to Catalog: transparent/grey, dark text */
-        .btn-add-catalog { background: #E9ECEF; border: 1px solid #CED4DA; color: #495057; }
-        .btn-add-catalog:hover { background: #dee2e6; border-color: #adb5bd; color: #495057; }
-        .btn-remove-x { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: #DC3545; border: none; border-radius: 6px; color: #fff; }
-        .btn-remove-x:hover { background: #bb2d3b; color: #fff; }
-        .purchase-code-readonly { background-color: #e9ecef !important; color: #6c757d; }
-        .subtotal-row { border-top: 1px solid #dee2e6; padding-top: 0.75rem; margin-top: 0.75rem; font-size: 1rem; font-weight: 600; }
+        .btn-add-catalog { background: #E9ECEF !important; border: 1px solid #CED4DA !important; color: #495057 !important; }
+        .btn-add-catalog:hover { background: #dee2e6 !important; border-color: #adb5bd !important; color: #495057 !important; }
+        .btn-remove-x { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: #DC3545 !important; border: none !important; border-radius: 6px; color: #fff !important; }
+        .btn-remove-x:hover { background: #bb2d3b !important; color: #fff !important; }
+        .purchase-code-readonly { background-color: #e9ecef !important; color: #6c757d !important; }
+        .subtotal-row { border-top: 1px solid #dee2e6 !important; padding-top: 0.75rem; margin-top: 0.75rem; font-size: 1rem; font-weight: 600; }
     </style>
 
      <style>
@@ -94,7 +94,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: #ccc;
+        background-color: #ccc !important;
         transition: .4s;
         border-radius: 34px;
     }
@@ -106,13 +106,13 @@
         width: 18px;
         left: 3px;
         bottom: 3px;
-        background-color: white;
+        background-color: white !important;
         transition: .4s;
         border-radius: 50%;
     }
 
     input:checked + .slider {
-        background-color: orange;
+        background-color: orange !important;
     }
 
     input:checked + .slider:before {
@@ -181,7 +181,7 @@
                   <div class="col-md-3">
                     <label class="form-label">Vendor</label>
                     <div class="d-flex gap-2 align-items-start">
-                      <div class="flex-grow-1">{{ form.vendor }}</div>
+                      <div class="flex-grow-1" style="min-width: 0;">{{ form.vendor }}</div>
                       <a href="{% url 'add_vendor' %}" class="btn btn-new-vendor btn-sm flex-shrink-0" target="_blank">
                         <i class="bi bi-plus"></i> New Vendor
                       </a>
@@ -353,7 +353,7 @@
                     <select name="advance_bank" id="advance_bank" class="form-select">
                       <option value="">Select Bank Account</option>
                       {% for bank in banks %}
-                      <option value="{{ bank.id }}" {% if form.instance.advance_bank and form.instance.advance_bank.id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
+                      <option value="{{ bank.id }}" {% if form.instance.advance_bank_id == bank.id or form.instance.bank_id == bank.id %}selected{% endif %}>{{ bank.name }}</option>
                       {% endfor %}
                     </select>
                   </div>
@@ -952,10 +952,13 @@ function selectAdvancePayment(method, btn) {
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    const advanceModeEl = document.getElementById('advance_mode');
-    const method = (advanceModeEl && advanceModeEl.value) ? advanceModeEl.value : 'cash';
-    const btn = document.querySelector(`[onclick="selectAdvancePayment('${method}', this)"]`);
-    if (btn) selectAdvancePayment(method, btn);
+    const currentPayment = document.getElementById('payment_method')?.value;
+    if (currentPayment === 'credit') {
+        const advanceModeEl = document.getElementById('advance_mode');
+        const method = (advanceModeEl && advanceModeEl.value) ? advanceModeEl.value : 'cash';
+        const btn = document.querySelector(`[onclick="selectAdvancePayment('${method}', this)"]`);
+        if (btn) selectAdvancePayment(method, btn);
+    }
 
     // Before submit: clear advance_bank when Credit + Cash (avoid validation issues)
     const form = document.getElementById('purchase-form');
