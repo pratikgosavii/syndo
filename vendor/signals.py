@@ -246,12 +246,21 @@ def _get_invoice_label(transaction_type, reference_id):
         if transaction_type == "expense":
             inv = Expense.objects.filter(pk=reference_id).values_list("transaction_id", flat=True).first()
             return inv or f"EXP-#{reference_id}"
+        if transaction_type in ["payment", "refund", "deposit", "withdrawal"]:
+            inv = Payment.objects.filter(pk=reference_id).values_list("payment_number", flat=True).first()
+            return inv or f"PAY-#{reference_id}"
+        
         if transaction_type == "transfered":
             inv = BankTransfer.objects.filter(pk=reference_id).values_list("transfer_number", flat=True).first()
             return inv or f"BT-#{reference_id}"
         if transaction_type == "cash_transfer":
             inv = CashTransfer.objects.filter(pk=reference_id).values_list("transfer_number", flat=True).first()
             return inv or f"CT-#{reference_id}"
+        
+        # If reference_id is already a string number (contains - or / or non-digits), return it
+        if isinstance(reference_id, str) and any(c in reference_id for c in '-/'):
+            return reference_id
+
     except Exception:
         pass
     return f"#{reference_id}"
@@ -452,9 +461,15 @@ def sale_ledger(sender, instance, created, **kwargs):
             # Delete old entries for this reference to ensure clean updates
             # This prevents confusion from multiple entries (original + reversals + new)
             logger.debug("[SALE_LEDGER] Deleting old ledger entries...")
-            CustomerLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-            BankLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
-            CashLedger.objects.filter(transaction_type="sale", reference_id=instance.id).delete()
+            
+            # Transition-safe: check both ID and invoice_number
+            ref_ids = [str(instance.id)]
+            if instance.invoice_number:
+                ref_ids.append(instance.invoice_number)
+            
+            CustomerLedger.objects.filter(transaction_type="sale", reference_id__in=ref_ids).delete()
+            BankLedger.objects.filter(transaction_type="sale", reference_id__in=ref_ids).delete()
+            CashLedger.objects.filter(transaction_type="sale", reference_id__in=ref_ids).delete()
             logger.debug("[SALE_LEDGER] Old ledger entries deleted")
 
         # Recalculate balances from ALL remaining ledger entries (not just this transaction)
@@ -524,7 +539,7 @@ def sale_ledger(sender, instance, created, **kwargs):
             CustomerLedger.objects.create(
                 customer=customer,
                 transaction_type="sale",
-                reference_id=instance.id,
+                reference_id=instance.invoice_number or str(instance.id),
                 description=description,
                 opening_balance=opening_balance,
                 amount=amount_due,  # due amount only
@@ -572,7 +587,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                     bank_for_upi_cheque,
                     BankLedger,
                     "sale",
-                    instance.id,
+                    instance.invoice_number or str(instance.id),
                     bank_amt,
                     f"Sale {sale_label} ({instance.payment_method.upper()})",
                 )
@@ -604,7 +619,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                         instance.advance_bank,
                         BankLedger,
                         "sale",
-                        instance.id,
+                        instance.invoice_number or str(instance.id),
                         advance_amt,
                         f"Sale {sale_label} (Bank Advance)"
                     )
@@ -694,7 +709,7 @@ def sale_ledger(sender, instance, created, **kwargs):
                     None,
                     CashLedger,
                     "sale",
-                    instance.id,
+                    instance.invoice_number or str(instance.id),
                     cash_amount,
                     description,
                     user=instance.user
@@ -794,9 +809,15 @@ def purchase_ledger(sender, instance, created, **kwargs):
         
         # Delete old entries for this reference to ensure clean updates
         logger.debug("[PURCHASE_LEDGER] Deleting old ledger entries...")
-        VendorLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
-        BankLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
-        CashLedger.objects.filter(transaction_type="purchase", reference_id=instance.id).delete()
+        
+        # Transition-safe: check both ID and purchase_code
+        ref_ids = [str(instance.id)]
+        if instance.purchase_code:
+            ref_ids.append(instance.purchase_code)
+            
+        VendorLedger.objects.filter(transaction_type="purchase", reference_id__in=ref_ids).delete()
+        BankLedger.objects.filter(transaction_type="purchase", reference_id__in=ref_ids).delete()
+        CashLedger.objects.filter(transaction_type="purchase", reference_id__in=ref_ids).delete()
         logger.debug("[PURCHASE_LEDGER] Old ledger entries deleted")
 
         # Recalculate cash balance (from remaining CashLedger entries)
@@ -864,7 +885,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         vendor,
                         VendorLedger,
                         "purchase",
-                        instance.id,
+                        instance.purchase_code or str(instance.id),
                         balance_amt,
                         f"Purchase {purchase_label} (Credit)",
                         total_bill_amount=total_amt,
@@ -875,7 +896,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         vendor,
                         VendorLedger,
                         "purchase",
-                        instance.id,
+                        instance.purchase_code or str(instance.id),
                         Decimal("0"),
                         f"Purchase {purchase_label}",
                         total_bill_amount=total_amt,
@@ -898,7 +919,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                 None,
                 CashLedger,
                 "purchase",
-                instance.id,
+                instance.purchase_code or str(instance.id),
                 -cash_amount,  # Negative amount to DECREASE cash balance
                 f"Purchase {purchase_label} (Cash)",
                 user=instance.user,
@@ -913,7 +934,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                     bank_to_use,
                     BankLedger,
                     "purchase",
-                    instance.id,
+                    instance.purchase_code or str(instance.id),
                     -bank_amount,  # Negative amount to DECREASE bank balance
                     f"Purchase {purchase_label} ({instance.payment_method.upper()})",
                 )
@@ -932,7 +953,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         None,
                         CashLedger,
                         "purchase",
-                        instance.id,
+                        instance.purchase_code or str(instance.id),
                         -advance_amt,  # Negative amount to DECREASE cash balance
                             f"Purchase {purchase_label} (Credit - Cash Advance)",
                             user=instance.user,
@@ -942,7 +963,7 @@ def purchase_ledger(sender, instance, created, **kwargs):
                         instance.advance_bank,
                         BankLedger,
                         "purchase",
-                        instance.id,
+                        instance.purchase_code or str(instance.id),
                         -advance_amt,  # Negative amount to DECREASE bank balance
                                 f"Purchase {purchase_label} (Credit - Bank Advance)",
                     )
@@ -1042,7 +1063,7 @@ def expense_ledger(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Payment)
 def payment_ledger(sender, instance, created, **kwargs):
     amt = Decimal(instance.amount or 0)
-    payment_label = _get_invoice_label("payment", instance.id)
+    payment_label = instance.payment_number or f"#{instance.id}"
     
     # Get payment_type display name (Cash, UPI, Cheque) - calculate once for reuse
     payment_type_display = instance.get_payment_type_display() if hasattr(instance, 'get_payment_type_display') else instance.payment_type.upper()
@@ -1065,10 +1086,15 @@ def payment_ledger(sender, instance, created, **kwargs):
         
         # Delete old entries for this reference to ensure clean updates
         logger.debug("[PAYMENT_LEDGER] Deleting old ledger entries...")
-        CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-        VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-        CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment", "cash_transfer"], reference_id=instance.id).delete()
-        BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
+        # Use both ID and payment_number for deletion during transition to ensure all old entries are cleared
+        ref_ids = [str(instance.id)]
+        if instance.payment_number:
+            ref_ids.append(instance.payment_number)
+            
+        CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id__in=ref_ids).delete()
+        VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id__in=ref_ids).delete()
+        CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment", "cash_transfer"], reference_id__in=ref_ids).delete()
+        BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id__in=ref_ids).delete()
         logger.debug("[PAYMENT_LEDGER] Old ledger entries deleted")
 
         # Recalculate balances from ALL remaining ledger entries (not just this transaction)
@@ -1116,7 +1142,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     customer,
                     CustomerLedger,
                     "payment",
-                    instance.id,
+                    instance.payment_number,
                     -amt,  # Negative amount to decrease customer balance
                     f"Payment Received {payment_label} ({payment_type_display})"
                 )
@@ -1132,7 +1158,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     customer,
                     CustomerLedger,
                     "refund",
-                    instance.id,
+                    instance.payment_number,
                     amt,  # Positive amount to increase customer balance
                     f"Refund Given {payment_label} ({payment_type_display})"
                 )
@@ -1164,7 +1190,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     vendor,
                     VendorLedger,
                     "payment",
-                    instance.id,
+                    instance.payment_number,
                     -amt,  # Negative amount in vendor ledger means you owe less (vendor balance increases)
                     f"Payment Given {payment_label} ({payment_type_display})"
                 )
@@ -1180,7 +1206,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     vendor,
                     VendorLedger,
                     "refund",
-                    instance.id,
+                    instance.payment_number,
                     amt,  # Positive amount in vendor ledger means you owe more (vendor balance decreases)
                     f"Refund Received {payment_label} ({payment_type_display})"
                 )
@@ -1200,7 +1226,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     None,
                     CashLedger,
                     "deposit",
-                    instance.id,
+                    instance.payment_number,
                     amt,  # Positive amount to INCREASE balance
                     f"Cash Payment Received {payment_label}",
                     user=instance.user
@@ -1213,7 +1239,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     None,
                     CashLedger,
                     "payment",
-                    instance.id,
+                    instance.payment_number,
                     -amt,  # Negative amount to DECREASE balance
                     f"Cash Payment Given {payment_label}",
                     user=instance.user
@@ -1239,7 +1265,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     instance.bank,
                     BankLedger,
                     "deposit",
-                    instance.id,
+                    instance.payment_number,
                     amt,  # Positive amount to INCREASE balance
                     f"Bank Payment Received {payment_label} ({payment_type_display})"
                 )
@@ -1253,7 +1279,7 @@ def payment_ledger(sender, instance, created, **kwargs):
                     instance.bank,
                     BankLedger,
                     "withdrawal",
-                    instance.id,
+                    instance.payment_number,
                     -amt,  # Negative amount to DECREASE balance
                     f"Bank Payment Given {payment_label} ({payment_type_display})"
                 )
@@ -1282,7 +1308,7 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
             None,
             CashLedger,
             "cash_transfer",
-            instance.id,
+            instance.transfer_number or str(instance.id),
             -(instance.amount or Decimal(0)),
             f"Cash Transfer to {instance.bank_account.name}",
             user=instance.user
@@ -1293,7 +1319,7 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
             instance.bank_account,
             BankLedger,
             "cash_transfer",
-            instance.id,
+            instance.transfer_number or str(instance.id),
             (instance.amount or Decimal(0)),
             f"Cash Transfer from Cash"
         )
@@ -1306,9 +1332,13 @@ def cash_transfer_ledger(sender, instance, created, **kwargs):
 def bank_transfer_ledger(sender, instance, created, **kwargs):
     # Delete old entries for this reference to ensure clean updates
     # This prevents confusion from multiple entries for the same transaction
+    ref_ids = [str(instance.id)]
+    if instance.transfer_number:
+        ref_ids.append(instance.transfer_number)
+        
     BankLedger.objects.filter(
         transaction_type="transfered",
-        reference_id=instance.id
+        reference_id__in=ref_ids
     ).delete()
 
     amt = Decimal(instance.amount or 0)
@@ -1320,7 +1350,7 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
             instance.from_bank,
             BankLedger,
             "transfered",
-            instance.id,
+            instance.transfer_number or str(instance.id),
             -amt,
             f"Transfer to {to_name}"
         )
@@ -1332,7 +1362,7 @@ def bank_transfer_ledger(sender, instance, created, **kwargs):
             instance.to_bank,
             BankLedger,
             "transfered",
-            instance.id,
+            instance.transfer_number or str(instance.id),
             amt,
             f"Transfer from {from_name}"
         )
@@ -1455,10 +1485,14 @@ def expense_delete_ledger(sender, instance, **kwargs):
 @receiver(post_delete, sender=Payment)
 def payment_delete_ledger(sender, instance, **kwargs):
     # Delete ledger entries directly (consistent with save handler)
-    CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-    VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id=instance.id).delete()
-    CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "cash_transfer"], reference_id=instance.id).delete()
-    BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id=instance.id).delete()
+    ref_ids = [str(instance.id)]
+    if getattr(instance, 'payment_number', None):
+        ref_ids.append(instance.payment_number)
+        
+    CustomerLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id__in=ref_ids).delete()
+    VendorLedger.objects.filter(transaction_type__in=["payment", "refund"], reference_id__in=ref_ids).delete()
+    CashLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "cash_transfer"], reference_id__in=ref_ids).delete()
+    BankLedger.objects.filter(transaction_type__in=["deposit", "withdrawal", "payment"], reference_id__in=ref_ids).delete()
 
     # Recalculate balances from ALL remaining ledger entries
     if instance.customer:
@@ -1494,17 +1528,25 @@ def payment_delete_ledger(sender, instance, **kwargs):
 
 @receiver(post_delete, sender=CashTransfer)
 def cash_transfer_delete_ledger(sender, instance, **kwargs):
-    reset_ledger_for_reference(CashLedger, "cash_transfer", instance.id)
-    reset_ledger_for_reference(BankLedger, "deposit", instance.id)
+    # Transition-safe reversal
+    ref_ids = [str(instance.id)]
+    if instance.transfer_number:
+        ref_ids.append(instance.transfer_number)
+        
+    for ref in ref_ids:
+        reset_ledger_for_reference(CashLedger, "cash_transfer", ref)
+        reset_ledger_for_reference(BankLedger, "cash_transfer", ref)
 
 
 @receiver(post_delete, sender=BankTransfer)
 def bank_transfer_delete_ledger(sender, instance, **kwargs):
-    # Use reset_ledger_for_reference to create reversing entries
-    # This ensures bank balances are correctly updated when transfer is deleted
-    # Note: This creates reversal entries, but on delete it's acceptable for audit trail
-    reset_ledger_for_reference(BankLedger, "transfered", instance.id)
-    reset_ledger_for_reference(BankLedger, "deposit", instance.id)
+    # Transition-safe reversal
+    ref_ids = [str(instance.id)]
+    if instance.transfer_number:
+        ref_ids.append(instance.transfer_number)
+        
+    for ref in ref_ids:
+        reset_ledger_for_reference(BankLedger, "transfered", ref)
 
 
 # -------------------------------

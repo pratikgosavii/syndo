@@ -398,7 +398,7 @@ class BankLedger(models.Model):
         ("return", "Online Order Return"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    reference_id = models.PositiveIntegerField(blank=True, null=True)
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -430,7 +430,7 @@ class CashLedger(models.Model):
         ("return", "Online Order Return"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    reference_id = models.PositiveIntegerField(blank=True, null=True)
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -457,7 +457,7 @@ class CustomerLedger(models.Model):
         ("refund", "Refund Given"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    reference_id = models.PositiveIntegerField(blank=True, null=True)
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -489,7 +489,7 @@ class VendorLedger(models.Model):
         ("payment", "Payment Made"),
     ]
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    reference_id = models.PositiveIntegerField(blank=True, null=True)
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
     opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
