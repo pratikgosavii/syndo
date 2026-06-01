@@ -1652,11 +1652,13 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
     def get_queryset(self):
         qs = vendor_store.objects.filter(is_active=True, is_online=True, user__is_active=True)
         
-        # Filter by customer pincode, but exclude global suppliers from pincode check
-        # Use the user's default address (is_default=True)
         user = self.request.user
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = self.request.query_params.get('pincode')
+
         if pincode:
             # Include stores from global suppliers OR stores matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -1750,7 +1752,7 @@ class ListProducts(ListAPIView):
             lng = getattr(default_addr, 'longitude', None)
         else:
             default_addr = None
-            pincode = None
+            pincode = self.request.query_params.get('pincode')
             lat = None
             lng = None
 
@@ -1807,7 +1809,7 @@ class ListPosts(ListAPIView):
             default_addr = Address.objects.filter(user=user, is_default=True).first()
             pincode = default_addr.pincode if default_addr else None
         else:
-            pincode = None
+            pincode = self.request.query_params.get('pincode')
 
         if pincode:
             # Include posts from global suppliers OR posts from vendors matching pincode coverage
@@ -2341,11 +2343,13 @@ class SpotlightProductView(APIView):
             user__vendor_store__is_online=True,
         )
         
-        # Filter by customer pincode, but exclude global suppliers from pincode check
-        # Use the user's default address (is_default=True)
         user = request.user
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = request.query_params.get('pincode')
+
         if pincode:
             # Include spotlight products from global suppliers OR from vendors matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -2375,7 +2379,7 @@ class reelsView(APIView):
             default_addr = Address.objects.filter(user=user, is_default=True).first()
             pincode = default_addr.pincode if default_addr else None
         else:
-            pincode = None
+            pincode = request.query_params.get('pincode')
 
         if pincode:
             # Include reels from global suppliers OR reels from vendors matching pincode coverage
@@ -2406,7 +2410,7 @@ class offersView(APIView):
             default_addr = Address.objects.filter(user=user, is_default=True).first()
             pincode = default_addr.pincode if default_addr else None
         else:
-            pincode = None
+            pincode = request.query_params.get('pincode')
 
         if pincode:
             # Include reels from global suppliers OR reels from vendors matching pincode coverage
@@ -2631,13 +2635,18 @@ class ProductSearchAPIView(ListAPIView):
             user__vendor_store__is_online=True,
         )
 
-         # Filter by customer pincode
-          # Get pincode from ?pincode=XXXX in URL
-        pincode = self.request.GET.get("pincode")
+        user = self.request.user
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = self.request.query_params.get('pincode')
 
         if pincode:
-            qs = qs.filter(vendor__coverages__pincode=pincode)
-        user = self.request.user
+            qs = qs.filter(
+                Q(user__vendor_store__global_supplier=True) |
+                Q(user__coverages__pincode__code=pincode)
+            )
         # Annotate favourites
         
     
@@ -2703,7 +2712,7 @@ class StoreBySubCategoryView(APIView):
             default_addr = Address.objects.filter(user=user, is_default=True).first()
             pincode = default_addr.pincode if default_addr else None
         else:
-            pincode = None
+            pincode = request.query_params.get('pincode')
 
         if pincode:
             # Include stores from global suppliers OR stores matching pincode coverage
@@ -2721,6 +2730,7 @@ class StoreBySubCategoryView(APIView):
     
 
 class StoreByCategoryView(APIView):
+    permission_classes = [permissions.AllowAny]
     """
     Get all vendor stores that have products in a given subcategory.
     """
@@ -2754,10 +2764,13 @@ class StoreByCategoryView(APIView):
         ).distinct()
 
         # Filter by customer pincode, but exclude global suppliers from pincode check
-        # Use the user's default address (is_default=True)
         user = request.user
-        default_addr = Address.objects.filter(user=user, is_default=True).first()
-        pincode = default_addr.pincode if default_addr else None
+        if user.is_authenticated:
+            default_addr = Address.objects.filter(user=user, is_default=True).first()
+            pincode = default_addr.pincode if default_addr else None
+        else:
+            pincode = request.query_params.get('pincode')
+
         if pincode:
             # Include stores from global suppliers OR stores matching pincode coverage
             # Global suppliers are visible everywhere, regular vendors only in their coverage area
@@ -2829,7 +2842,7 @@ class HomeScreenView(APIView):
                 lng = getattr(default_addr, 'longitude', None)
             else:
                 default_addr = None
-                pincode = None
+                pincode = request.query_params.get('pincode')
                 lat = None
                 lng = None
 
