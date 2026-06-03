@@ -1640,6 +1640,7 @@ from .serializers import VendorStoreLiteSerializer
 class VendorStoreListAPIView(mixins.ListModelMixin,
                              mixins.RetrieveModelMixin,
                              generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
     queryset = vendor_store.objects.filter(is_active=True, user__is_active=True)
     serializer_class = VendorStoreSerializer  # ✅ USE NEW ONE HERE
     filter_backends = [filters.SearchFilter]
@@ -1651,6 +1652,10 @@ class VendorStoreListAPIView(mixins.ListModelMixin,
 
     def get_queryset(self):
         qs = vendor_store.objects.filter(is_active=True, is_online=True, user__is_active=True)
+
+        # Detail by id: no pincode filter (direct store link always works)
+        if self.kwargs.get('id'):
+            return qs.distinct()
         
         user = self.request.user
         if user.is_authenticated:
