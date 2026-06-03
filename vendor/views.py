@@ -8470,7 +8470,7 @@ def invoice_setting(request):
 
 
 class PrintVariantChoiceAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         return Response({

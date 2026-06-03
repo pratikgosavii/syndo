@@ -2334,7 +2334,7 @@ class FavouriteStoreViewSet(viewsets.ViewSet):
 
 
 class SpotlightProductView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         products = SpotlightProduct.objects.filter(
